@@ -9,4 +9,5 @@ export declare class UsersService {
     constructor(usersRepository: Repository<User>, authRepository: Repository<Auth>);
     register(createUserDto: CreateUserDto): Promise<GetUserDto>;
     UserGetById(id: number): Promise<GetUserDto>;
+    getUsersData(): Promise<GetUserDto[]>;
 }

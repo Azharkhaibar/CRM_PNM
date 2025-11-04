@@ -20,8 +20,8 @@ export class User {
 
   @Column({
     type: 'enum',
-    default: Role.ADMIN,
     enum: Role,
+    default: Role.USER,
   })
   role: Role;
 
@@ -32,19 +32,13 @@ export class User {
   })
   gender: Gender;
 
-  @CreateDateColumn({
-    type: 'timestamp',
-  })
+  @CreateDateColumn()
   created_at: Date;
 
-  @UpdateDateColumn({
-    type: 'timestamp',
-  })
+  @UpdateDateColumn()
   updated_at: Date;
 
-  @DeleteDateColumn({
-    type: 'timestamp',
-  })
+  @DeleteDateColumn()
   deleted_at: Date;
 
   @OneToOne(() => Auth, (auth) => auth.user, {

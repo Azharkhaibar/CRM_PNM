@@ -103,6 +103,9 @@ let UsersService = class UsersService {
             excludeExtraneousValues: true,
         });
     }
+    async getUsersData() {
+        const checkuser = await this.usersRepository.findOne({});
+    }
 };
 exports.UsersService = UsersService;
 exports.UsersService = UsersService = __decorate([

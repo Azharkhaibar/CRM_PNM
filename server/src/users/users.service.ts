@@ -75,4 +75,10 @@ export class UsersService {
       excludeExtraneousValues: true,
     });
   }
+
+  async getUsersData(): Promise<GetUserDto[]> {
+    const checkuser = await this.usersRepository.findOne({
+      
+    })
+  }
 }

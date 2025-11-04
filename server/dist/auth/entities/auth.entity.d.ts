@@ -1,7 +1,6 @@
 import { User } from 'src/users/entities/user.entity';
 export declare class Auth {
     auth_id: number;
-    username: string;
     email: string;
     hash_password: string;
     refresh_token?: string;

@@ -14,7 +14,6 @@ const user_entity_1 = require("../../users/entities/user.entity");
 const typeorm_1 = require("typeorm");
 let Auth = class Auth {
     auth_id;
-    username;
     email;
     hash_password;
     refresh_token;
@@ -26,10 +25,6 @@ __decorate([
     (0, typeorm_1.PrimaryGeneratedColumn)(),
     __metadata("design:type", Number)
 ], Auth.prototype, "auth_id", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ nullable: false, unique: true }),
-    __metadata("design:type", String)
-], Auth.prototype, "username", void 0);
 __decorate([
     (0, typeorm_1.Column)({
         nullable: false,
@@ -52,7 +47,7 @@ __decorate([
     __metadata("design:type", String)
 ], Auth.prototype, "reset_password_token", void 0);
 __decorate([
-    (0, typeorm_1.OneToOne)(() => user_entity_1.User, (auth) => auth.auth, {
+    (0, typeorm_1.OneToOne)(() => user_entity_1.User, (user) => user.auth, {
         onDelete: 'CASCADE',
     }),
     (0, typeorm_1.JoinColumn)({ name: 'user_id' }),

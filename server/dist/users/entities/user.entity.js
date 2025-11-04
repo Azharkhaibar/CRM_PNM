@@ -35,8 +35,8 @@ __decorate([
 __decorate([
     (0, typeorm_1.Column)({
         type: 'enum',
-        default: userEnum_1.Role.ADMIN,
         enum: userEnum_1.Role,
+        default: userEnum_1.Role.USER,
     }),
     __metadata("design:type", String)
 ], User.prototype, "role", void 0);
@@ -49,21 +49,15 @@ __decorate([
     __metadata("design:type", String)
 ], User.prototype, "gender", void 0);
 __decorate([
-    (0, typeorm_1.CreateDateColumn)({
-        type: 'timestamp',
-    }),
+    (0, typeorm_1.CreateDateColumn)(),
     __metadata("design:type", Date)
 ], User.prototype, "created_at", void 0);
 __decorate([
-    (0, typeorm_1.UpdateDateColumn)({
-        type: 'timestamp',
-    }),
+    (0, typeorm_1.UpdateDateColumn)(),
     __metadata("design:type", Date)
 ], User.prototype, "updated_at", void 0);
 __decorate([
-    (0, typeorm_1.DeleteDateColumn)({
-        type: 'timestamp',
-    }),
+    (0, typeorm_1.DeleteDateColumn)(),
     __metadata("design:type", Date)
 ], User.prototype, "deleted_at", void 0);
 __decorate([

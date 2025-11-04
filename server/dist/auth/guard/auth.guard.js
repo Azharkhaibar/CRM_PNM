@@ -8,7 +8,6 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
-var _a;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuthGuard = void 0;
 const common_1 = require("@nestjs/common");
@@ -27,28 +26,35 @@ let AuthGuard = class AuthGuard {
         if (isPublic)
             return true;
         const request = context.switchToHttp().getRequest();
-        const authHeader = request.headers['authorization'];
-        if (typeof authHeader !== 'string') {
-            throw new common_1.UnauthorizedException('Authorization header missing');
+        const token = this.extractTokenFromHeader(request);
+        if (!token) {
+            throw new common_1.UnauthorizedException('Authorization token missing');
         }
-        const parts = authHeader.split(' ');
-        if (parts.length !== 2 || parts[0] !== 'Bearer') {
-            throw new common_1.UnauthorizedException('Invalid authorization format');
-        }
-        const token = parts[1];
         try {
             const payload = await this.jwtService.verifyAsync(token);
             request.user = payload;
         }
-        catch {
+        catch (_err) {
             throw new common_1.UnauthorizedException('Invalid or expired token');
         }
         return true;
+    }
+    extractTokenFromHeader(request) {
+        const header = request.headers['authorization'];
+        if (typeof header !== 'string')
+            return undefined;
+        const parts = header.split(' ');
+        if (parts.length !== 2)
+            return undefined;
+        if (parts[0] !== 'Bearer')
+            return undefined;
+        return parts[1];
     }
 };
 exports.AuthGuard = AuthGuard;
 exports.AuthGuard = AuthGuard = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [typeof (_a = typeof jwt_1.JwtService !== "undefined" && jwt_1.JwtService) === "function" ? _a : Object, core_1.Reflector])
+    __metadata("design:paramtypes", [jwt_1.JwtService,
+        core_1.Reflector])
 ], AuthGuard);
 //# sourceMappingURL=auth.guard.js.map

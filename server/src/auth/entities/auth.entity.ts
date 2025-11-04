@@ -6,15 +6,11 @@ import {
   OneToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
-import { Role } from '../enum/enum';
 
 @Entity('auth')
 export class Auth {
   @PrimaryGeneratedColumn()
   auth_id: number;
-
-  @Column({ nullable: false, unique: true })
-  username: string;
 
   @Column({
     nullable: false,
@@ -32,9 +28,8 @@ export class Auth {
 
   @Column({ nullable: true })
   reset_password_token?: string;
-  
-  //   relationship to user
-  @OneToOne(() => User, (auth) => auth.auth, {
+
+  @OneToOne(() => User, (user) => user.auth, {
     onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'user_id' })
