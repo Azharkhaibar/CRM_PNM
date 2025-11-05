@@ -1,33 +1,42 @@
 import {
   Controller,
   Get,
-  Post,
-  Body,
   Patch,
   Param,
   Delete,
+  Body,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
-import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { Request } from 'express';
 import { GetUserDto } from './dto/get-user.dto';
 
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
-  @Post('signup')
-  async signup(@Body() CreateUserDto: CreateUserDto) {
-    const created = await this.usersService.register(CreateUserDto);
-    return {
-      message: 'User registered successfully',
-      data: created,
-    };
+  @Get()
+  async getAllUsers(): Promise<GetUserDto[]> {
+    return this.usersService.getUsersData();
   }
-  // get data users
-  // @Get()
-  // async getDataUser(@Body() GetUserDto: CreateUserDto) {
-  //   const checkUser = await this.usersService.
-  // } 
+
+  @Get(':id')
+  async getUserById(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<GetUserDto> {
+    return this.usersService.getUserById(id);
+  }
+
+  @Patch(':id')
+  async updateUser(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateUserDto,
+  ): Promise<GetUserDto> {
+    return this.usersService.updateUserById(id, dto);
+  }
+
+  @Delete(':id')
+  async deleteUser(@Param('id', ParseIntPipe) id: number) {
+    return this.usersService.deleteUserById(id);
+  }
 }

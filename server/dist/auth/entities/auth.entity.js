@@ -14,7 +14,7 @@ const user_entity_1 = require("../../users/entities/user.entity");
 const typeorm_1 = require("typeorm");
 let Auth = class Auth {
     auth_id;
-    email;
+    userID;
     hash_password;
     refresh_token;
     reset_password_token;
@@ -26,16 +26,11 @@ __decorate([
     __metadata("design:type", Number)
 ], Auth.prototype, "auth_id", void 0);
 __decorate([
-    (0, typeorm_1.Column)({
-        nullable: false,
-        unique: true,
-    }),
+    (0, typeorm_1.Column)({ nullable: false, unique: true }),
     __metadata("design:type", String)
-], Auth.prototype, "email", void 0);
+], Auth.prototype, "userID", void 0);
 __decorate([
-    (0, typeorm_1.Column)({
-        nullable: false,
-    }),
+    (0, typeorm_1.Column)({ nullable: false }),
     __metadata("design:type", String)
 ], Auth.prototype, "hash_password", void 0);
 __decorate([

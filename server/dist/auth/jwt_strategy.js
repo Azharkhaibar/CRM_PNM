@@ -8,33 +8,45 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.JwtStrategy = void 0;
 const common_1 = require("@nestjs/common");
 const passport_1 = require("@nestjs/passport");
 const passport_jwt_1 = require("passport-jwt");
 const config_1 = require("@nestjs/config");
+const typeorm_1 = require("typeorm");
+const user_entity_1 = require("../users/entities/user.entity");
+const typeorm_2 = require("@nestjs/typeorm");
 let JwtStrategy = class JwtStrategy extends (0, passport_1.PassportStrategy)(passport_jwt_1.Strategy) {
-    config;
-    constructor(config) {
+    usersRepository;
+    configService;
+    constructor(usersRepository, configService) {
         super({
             jwtFromRequest: passport_jwt_1.ExtractJwt.fromAuthHeaderAsBearerToken(),
-            ignoreExpiration: false,
-            secretOrKey: config.get('JWT_SECRET'),
+            secretOrKey: configService.get('JWT_SECRET'),
         });
-        this.config = config;
+        this.usersRepository = usersRepository;
+        this.configService = configService;
     }
     async validate(payload) {
-        return {
-            user_id: payload.sub,
-            username: payload.username,
-            role: payload.role,
-        };
+        const userId = Number(payload.sub);
+        const user = await this.usersRepository.findOne({
+            where: { user_id: userId },
+            relations: ['auth'],
+        });
+        if (!user)
+            throw new common_1.UnauthorizedException('User not found');
+        return user;
     }
 };
 exports.JwtStrategy = JwtStrategy;
 exports.JwtStrategy = JwtStrategy = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [config_1.ConfigService])
+    __param(0, (0, typeorm_2.InjectRepository)(user_entity_1.User)),
+    __metadata("design:paramtypes", [typeorm_1.Repository,
+        config_1.ConfigService])
 ], JwtStrategy);
 //# sourceMappingURL=jwt_strategy.js.map

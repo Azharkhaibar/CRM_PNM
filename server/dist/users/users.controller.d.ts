@@ -1,11 +1,13 @@
 import { UsersService } from './users.service';
-import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
 import { GetUserDto } from './dto/get-user.dto';
 export declare class UsersController {
     private readonly usersService;
     constructor(usersService: UsersService);
-    signup(CreateUserDto: CreateUserDto): Promise<{
+    getAllUsers(): Promise<GetUserDto[]>;
+    getUserById(id: number): Promise<GetUserDto>;
+    updateUser(id: number, dto: UpdateUserDto): Promise<GetUserDto>;
+    deleteUser(id: number): Promise<{
         message: string;
-        data: GetUserDto;
     }>;
 }

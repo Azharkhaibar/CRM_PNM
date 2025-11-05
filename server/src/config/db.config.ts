@@ -7,7 +7,7 @@ export const typeOrmConfig = (
 ): TypeOrmModuleOptions => {
   const dbUrl = configService.get<string>('DATABASE_URL');
 
-  // Jika DATABASE_URL tersedia, parse otomatis
+  
   if (dbUrl) {
     const parsedUrl = new url.URL(dbUrl);
 

@@ -7,7 +7,7 @@ const mapToEnum =
   <T extends Record<string, string | number>>(enumObj: T) =>
   ({ value }: { value: unknown }): T[keyof T] | undefined => {
     if (typeof value !== 'string' && typeof value !== 'number') {
-      return undefined; // hanya izinkan string/number
+      return undefined;
     }
 
     const str = String(value).trim().toLowerCase();
@@ -24,9 +24,7 @@ export class CreateUserDto {
   username: string;
 
   @IsNotEmpty()
-  @Transform(mapToEnum(Gender), {
-    toClassOnly: true,
-  })
+  @Transform(mapToEnum(Gender), { toClassOnly: true })
   @IsEnum(Gender, { message: 'Invalid Gender' })
   gender: Gender;
 

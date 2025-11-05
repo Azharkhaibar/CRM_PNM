@@ -12,8 +12,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.CreateAuthDto = void 0;
 const class_validator_1 = require("class-validator");
 class CreateAuthDto {
-    username;
-    email;
+    userID;
     password;
 }
 exports.CreateAuthDto = CreateAuthDto;
@@ -21,15 +20,10 @@ __decorate([
     (0, class_validator_1.IsString)(),
     (0, class_validator_1.IsNotEmpty)(),
     __metadata("design:type", String)
-], CreateAuthDto.prototype, "username", void 0);
-__decorate([
-    (0, class_validator_1.IsEmail)(),
-    (0, class_validator_1.IsNotEmpty)(),
-    __metadata("design:type", String)
-], CreateAuthDto.prototype, "email", void 0);
+], CreateAuthDto.prototype, "userID", void 0);
 __decorate([
     (0, class_validator_1.IsString)(),
-    (0, class_validator_1.MinLength)(10),
+    (0, class_validator_1.MinLength)(6),
     (0, class_validator_1.IsNotEmpty)(),
     __metadata("design:type", String)
 ], CreateAuthDto.prototype, "password", void 0);

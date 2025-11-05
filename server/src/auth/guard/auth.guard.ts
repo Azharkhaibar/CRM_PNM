@@ -7,10 +7,10 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { Reflector } from '@nestjs/core';
 import { IS_PUBLIC_KEY } from '../decorator/role.decorator';
+import { Request } from 'express';
 
 interface AuthRequest extends Request {
   user?: Record<string, unknown>;
-  headers: Record<string, string | string[] | undefined>;
 }
 
 @Injectable()

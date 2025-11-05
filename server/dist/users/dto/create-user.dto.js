@@ -35,9 +35,7 @@ __decorate([
 ], CreateUserDto.prototype, "username", void 0);
 __decorate([
     (0, class_validator_1.IsNotEmpty)(),
-    (0, class_transformer_1.Transform)(mapToEnum(userEnum_1.Gender), {
-        toClassOnly: true,
-    }),
+    (0, class_transformer_1.Transform)(mapToEnum(userEnum_1.Gender), { toClassOnly: true }),
     (0, class_validator_1.IsEnum)(userEnum_1.Gender, { message: 'Invalid Gender' }),
     __metadata("design:type", String)
 ], CreateUserDto.prototype, "gender", void 0);

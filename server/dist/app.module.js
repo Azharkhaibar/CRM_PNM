@@ -6,41 +6,32 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.AuthModule = void 0;
+exports.AppModule = void 0;
 const common_1 = require("@nestjs/common");
-const passport_1 = require("@nestjs/passport");
-const jwt_1 = require("@nestjs/jwt");
 const config_1 = require("@nestjs/config");
 const typeorm_1 = require("@nestjs/typeorm");
-const auth_service_1 = require("./auth/auth.service");
-const auth_controller_1 = require("./auth/auth.controller");
-const jwt_strategy_1 = require("./auth/jwt_strategy");
-const jwt_auth_guard_1 = require("./auth/guard/jwt-auth.guard");
-const auth_entity_1 = require("./auth/entities/auth.entity");
-const user_entity_1 = require("./users/entities/user.entity");
-let AuthModule = class AuthModule {
+const app_controller_1 = require("./app.controller");
+const app_service_1 = require("./app.service");
+const auth_module_1 = require("./auth/auth.module");
+const users_module_1 = require("./users/users.module");
+const db_config_1 = require("./config/db.config");
+let AppModule = class AppModule {
 };
-exports.AuthModule = AuthModule;
-exports.AuthModule = AuthModule = __decorate([
+exports.AppModule = AppModule;
+exports.AppModule = AppModule = __decorate([
     (0, common_1.Module)({
         imports: [
-            config_1.ConfigModule,
-            passport_1.PassportModule.register({ defaultStrategy: 'jwt' }),
-            jwt_1.JwtModule.registerAsync({
+            config_1.ConfigModule.forRoot({ isGlobal: true }),
+            typeorm_1.TypeOrmModule.forRootAsync({
                 imports: [config_1.ConfigModule],
                 inject: [config_1.ConfigService],
-                useFactory: (config) => ({
-                    secret: config.get('JWT_SECRET'),
-                    signOptions: {
-                        expiresIn: Number(config.get('JWT_EXPIRE')) || 86400,
-                    },
-                }),
+                useFactory: (config) => (0, db_config_1.typeOrmConfig)(config),
             }),
-            typeorm_1.TypeOrmModule.forFeature([auth_entity_1.Auth, user_entity_1.User]),
+            auth_module_1.AuthModule,
+            users_module_1.UsersModule,
         ],
-        controllers: [auth_controller_1.AuthController],
-        providers: [auth_service_1.AuthService, jwt_strategy_1.JwtStrategy, jwt_auth_guard_1.JwtAuthGuard],
-        exports: [jwt_auth_guard_1.JwtAuthGuard, passport_1.PassportModule, jwt_1.JwtModule],
+        controllers: [app_controller_1.AppController],
+        providers: [app_service_1.AppService],
     })
-], AuthModule);
+], AppModule);
 //# sourceMappingURL=app.module.js.map
