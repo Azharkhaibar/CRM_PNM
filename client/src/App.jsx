@@ -1,13 +1,17 @@
+import React from "react";
+import "./App.css";
+import { Routes, Route } from "react-router-dom";
+import Mainpage from "./pages/mainpage/home";
 
-import './App.css';
-import { Mainpage } from './pages/mainpage/home';
-import { Routes, Route } from 'react-router-dom';
 function App() {
-
   return (
-    <Routes>
-      <Route path="/" element={<Mainpage />} />
-    </Routes>
+    <div>
+      <Routes>
+        <Route path="/" element={<Mainpage />} />
+
+
+      </Routes>
+    </div>
   );
 }
 
