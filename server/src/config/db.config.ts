@@ -7,7 +7,6 @@ export const typeOrmConfig = (
 ): TypeOrmModuleOptions => {
   const dbUrl = configService.get<string>('DATABASE_URL');
 
-  
   if (dbUrl) {
     const parsedUrl = new url.URL(dbUrl);
 
@@ -19,7 +18,7 @@ export const typeOrmConfig = (
       password: parsedUrl.password,
       database: parsedUrl.pathname.replace('/', ''), // "/magangpnm" -> "magangpnm"
       autoLoadEntities: true,
-      synchronize: false, 
+      synchronize: false,
     };
   }
 
