@@ -9,6 +9,8 @@ import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 
 import { typeOrmConfig } from './config/db.config';
+import { InvestasiModule } from './investasi/investasi.module';
+import { PasarModule } from './pasar/pasar.module';
 
 @Module({
   imports: [
@@ -21,6 +23,8 @@ import { typeOrmConfig } from './config/db.config';
 
     AuthModule,
     UsersModule,
+    InvestasiModule,
+    PasarModule,
   ],
 
   controllers: [AppController],

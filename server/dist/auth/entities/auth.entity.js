@@ -30,7 +30,7 @@ __decorate([
     __metadata("design:type", String)
 ], Auth.prototype, "userID", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ nullable: false }),
+    (0, typeorm_1.Column)({ nullable: false, select: true }),
     __metadata("design:type", String)
 ], Auth.prototype, "hash_password", void 0);
 __decorate([
