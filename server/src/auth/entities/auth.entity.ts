@@ -12,10 +12,10 @@ export class Auth {
   @PrimaryGeneratedColumn()
   auth_id: number;
 
-  @Column({ nullable: false, unique: true})
+  @Column({ nullable: false, unique: true })
   userID: string;
 
-  @Column({ nullable: false })
+  @Column({ nullable: false, select: true })
   hash_password: string;
 
   @Column({ nullable: true })

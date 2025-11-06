@@ -7,7 +7,6 @@ interface AuthUser {
   userID: string;
   role?: string;
   email?: string;
-  // tambah sesuai kebutuhan
 }
 
 export const useAuth = () => {
@@ -46,19 +45,22 @@ export const useAuth = () => {
   }, [fetchUserLoginData]);
 
   const login = useCallback(
-    async (userID: string, hash_password: string) => {
+    async (userID: string, password: string) => {
       setError(null);
       setLoading(true);
 
       try {
-        const token = await LoginService.login({ userID, hash_password });
+        const token = await LoginService.login({ userID, password });
 
         localStorage.setItem('access_token', token);
 
         await fetchUserLoginData();
+
+        return token; 
       } catch (err) {
         if (err instanceof Error) {
           setError(err.message);
+          throw err; 
         }
       } finally {
         setLoading(false);

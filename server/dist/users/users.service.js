@@ -25,40 +25,69 @@ let UsersService = class UsersService {
         this.usersRepository = usersRepository;
     }
     async getUsersData() {
-        const users = await this.usersRepository.find({ relations: ['auth'] });
-        return users.map((user) => (0, class_transformer_1.plainToInstance)(get_user_dto_1.GetUserDto, user, { excludeExtraneousValues: true }));
+        try {
+            const users = await this.usersRepository.find({ relations: ['auth'] });
+            return users.map((user) => (0, class_transformer_1.plainToInstance)(get_user_dto_1.GetUserDto, user, { excludeExtraneousValues: true }));
+        }
+        catch (error) {
+            console.error(error);
+            throw new common_1.InternalServerErrorException('Failed to fetch users data');
+        }
     }
     async getUserById(id) {
-        const user = await this.usersRepository.findOne({
-            where: { user_id: id },
-            relations: ['auth'],
-        });
-        if (!user)
-            throw new common_1.NotFoundException(`User with ID ${id} not found`);
-        return (0, class_transformer_1.plainToInstance)(get_user_dto_1.GetUserDto, user, { excludeExtraneousValues: true });
+        try {
+            const user = await this.usersRepository.findOne({
+                where: { user_id: id },
+                relations: ['auth'],
+            });
+            if (!user)
+                throw new common_1.NotFoundException(`User with ID ${id} not found`);
+            return (0, class_transformer_1.plainToInstance)(get_user_dto_1.GetUserDto, user, {
+                excludeExtraneousValues: true,
+            });
+        }
+        catch (error) {
+            if (error instanceof common_1.NotFoundException)
+                throw error;
+            throw new common_1.InternalServerErrorException('Failed to fetch user');
+        }
     }
     async updateUserById(id, dto) {
-        const user = await this.usersRepository.findOne({
-            where: { user_id: id },
-            relations: ['auth'],
-        });
-        if (!user)
-            throw new common_1.NotFoundException(`User with ID ${id} not found`);
-        Object.assign(user, dto);
-        const updated = await this.usersRepository.save(user);
-        return (0, class_transformer_1.plainToInstance)(get_user_dto_1.GetUserDto, updated, {
-            excludeExtraneousValues: true,
-        });
+        try {
+            const user = await this.usersRepository.findOne({
+                where: { user_id: id },
+                relations: ['auth'],
+            });
+            if (!user)
+                throw new common_1.NotFoundException(`User with ID ${id} not found`);
+            Object.assign(user, dto);
+            const updated = await this.usersRepository.save(user);
+            return (0, class_transformer_1.plainToInstance)(get_user_dto_1.GetUserDto, updated, {
+                excludeExtraneousValues: true,
+            });
+        }
+        catch (error) {
+            if (error instanceof common_1.NotFoundException)
+                throw error;
+            throw new common_1.InternalServerErrorException('Failed to update user');
+        }
     }
     async deleteUserById(id) {
-        const user = await this.usersRepository.findOne({
-            where: { user_id: id },
-            relations: ['auth'],
-        });
-        if (!user)
-            throw new common_1.NotFoundException(`User with ID ${id} not found`);
-        await this.usersRepository.remove(user);
-        return { message: `User with ID ${id} has been deleted` };
+        try {
+            const user = await this.usersRepository.findOne({
+                where: { user_id: id },
+                relations: ['auth'],
+            });
+            if (!user)
+                throw new common_1.NotFoundException(`User with ID ${id} not found`);
+            await this.usersRepository.remove(user);
+            return { message: `User with ID ${id} has been deleted` };
+        }
+        catch (error) {
+            if (error instanceof common_1.NotFoundException)
+                throw error;
+            throw new common_1.InternalServerErrorException('Failed to delete user');
+        }
     }
 };
 exports.UsersService = UsersService;
