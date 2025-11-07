@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
 import InputField from '../components/inputField';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import bgImage from '../../../assets/Gedung-PNM-Banner.jpg';
 import fileIMG from '../../../assets/LogoRIMS.png';
 import { useAuth } from '../hooks/useAuth.hook';
-
 export default function LoginPage() {
   const [userID, setUserID] = useState('');
   const [password, setPassword] = useState('');
@@ -53,6 +52,12 @@ export default function LoginPage() {
             >
               {loading ? 'Logging in...' : 'Login'}
             </button>
+            <p className="mt-4 text-center text-sm text-gray-700">
+              Not already have an account?{' '}
+              <Link to="/register" className="text-blue-600 font-medium hover:underline">
+                Register here
+              </Link>
+            </p>
           </form>
         </div>
       </div>

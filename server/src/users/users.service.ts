@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   InternalServerErrorException,
+  BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from './entities/user.entity';
@@ -9,13 +10,40 @@ import { Repository } from 'typeorm';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { GetUserDto } from './dto/get-user.dto';
 import { plainToInstance } from 'class-transformer';
-
+import { RegisterDto } from './dto/register-user.dto';
+import { Auth } from 'src/auth/entities/auth.entity';
+import bcrypt from 'bcrypt';
 @Injectable()
 export class UsersService {
   constructor(
     @InjectRepository(User)
     private readonly usersRepository: Repository<User>,
+    @InjectRepository(Auth)
+    private readonly AuthRepository: Repository<Auth>,
   ) {}
+  async register(dto: RegisterDto) {
+    const { userID, password, role, gender } = dto;
+
+    const exists = await this.AuthRepository.findOne({
+      where: { userID },
+    });
+
+    if (exists) throw new BadRequestException('User ID Already registered');
+
+    const hash = await bcrypt.hash(password, 10);
+
+    const auth = this.AuthRepository.create({
+      userID,
+      hash_password: hash,
+      user: {
+        userID,
+        role,
+        gender,
+      },
+    });
+
+    return this.AuthRepository.save(auth);
+  }
 
   async getUsersData(): Promise<GetUserDto[]> {
     try {
@@ -24,7 +52,7 @@ export class UsersService {
         plainToInstance(GetUserDto, user, { excludeExtraneousValues: true }),
       );
     } catch (error: unknown) {
-      console.error(error); 
+      console.error(error);
       throw new InternalServerErrorException('Failed to fetch users data');
     }
   }

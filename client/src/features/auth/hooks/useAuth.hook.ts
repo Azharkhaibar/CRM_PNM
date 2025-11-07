@@ -25,9 +25,7 @@ export const useAuth = () => {
 
     try {
       const res = await RIMS_API.get('/auth/me', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       setUser(res.data);
@@ -56,11 +54,11 @@ export const useAuth = () => {
 
         await fetchUserLoginData();
 
-        return token; 
+        return token;
       } catch (err) {
         if (err instanceof Error) {
           setError(err.message);
-          throw err; 
+          throw err;
         }
       } finally {
         setLoading(false);
@@ -69,6 +67,22 @@ export const useAuth = () => {
     [fetchUserLoginData]
   );
 
+  const register = useCallback(async (data: { userID: string; password: string; role: string; gender: string }) => {
+    setError(null);
+    setLoading(true);
+
+    try {
+      await RIMS_API.post('/auth/register', data);
+      return true;
+    } catch (err) {
+      if (err instanceof AxiosError) {
+        setError(err.response?.data?.message || 'Register gagal');
+        throw err;
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, []);
   const logout = useCallback(() => {
     localStorage.removeItem('access_token');
     setUser(null);
@@ -79,6 +93,7 @@ export const useAuth = () => {
     loading,
     error,
     login,
+    register,
     logout,
   };
 };

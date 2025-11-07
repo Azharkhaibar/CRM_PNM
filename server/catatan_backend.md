@@ -7,3 +7,6 @@ Stratejik
 Kepatuhan
 Reputasi
 
+cek auth dan register service 
+
+add backend user dan integrasikan dengan auth

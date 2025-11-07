@@ -2,7 +2,7 @@ import React from 'react';
 import { FaUserCircle, FaSignOutAlt } from 'react-icons/fa';
 import { useAuth } from '../../auth/hooks/useAuth.hook';
 import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence } from "framer-motion";
 
 const Navbar = () => {
   const { user, logout } = useAuth();
