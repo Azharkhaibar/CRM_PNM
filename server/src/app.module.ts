@@ -12,6 +12,7 @@ import { typeOrmConfig } from './config/db.config';
 import { InvestasiModule } from './investasi/investasi.module';
 import { PasarModule } from './pasar/pasar.module';
 import { LikuiditasModule } from './likuiditas/likuiditas.module';
+import { OperasionalModule } from './operasional/operasional.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { LikuiditasModule } from './likuiditas/likuiditas.module';
     InvestasiModule,
     PasarModule,
     LikuiditasModule,
+    OperasionalModule,
   ],
 
   controllers: [AppController],

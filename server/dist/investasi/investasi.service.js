@@ -23,7 +23,11 @@ let InvestasiService = class InvestasiService {
         this.investRepository = investRepository;
     }
     async create(dto) {
-        const entity = this.investRepository.create(dto);
+        const weighted = dto.hasil * dto.bobot_indikator * dto.bobot;
+        const entity = this.investRepository.create({
+            ...dto,
+            weighted,
+        });
         return this.investRepository.save(entity);
     }
     async findAll() {

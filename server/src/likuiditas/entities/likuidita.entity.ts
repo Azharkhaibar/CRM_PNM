@@ -6,7 +6,7 @@ export class Likuiditas {
   id: number;
 
   @Column({ nullable: false, type: 'float' })
-  bobot: number; // bobot parameter (ex: 0.5)
+  bobot: number; 
 
   @Column({ type: 'text', nullable: false })
   parameter: string;
@@ -18,7 +18,7 @@ export class Likuiditas {
   indikator: string;
 
   @Column({ nullable: false, type: 'float' })
-  bobot_indikator: number; // ex: 0.25
+  bobot_indikator: number;
 
   @Column({ type: 'text', nullable: false })
   sumber_resiko: string;
@@ -59,7 +59,6 @@ export class Likuiditas {
   @Column({ nullable: true, type: 'float' })
   nilai_penyebut: number;
 
-  // ✅ **FIELD WAJIB** supaya create(dto) tidak error
   @Column({ nullable: true, type: 'float' })
   weighted: number;
 

@@ -4,15 +4,15 @@ import { useNavigate } from 'react-router-dom';
 import bgImage from '../../../assets/Gedung-PNM-Banner.jpg';
 import fileIMG from '../../../assets/LogoRIMS.png';
 import { useAuth } from '../hooks/useAuth.hook';
+
 export default function LoginPage() {
   const [userID, setUserID] = useState('');
   const [password, setPassword] = useState('');
-  const nvg = useNavigate()
-  const { loading, error, login} = useAuth();
+  const nvg = useNavigate();
+  const { loading, error, login } = useAuth();
 
   const handleLogin = async (e) => {
     e.preventDefault();
-
     if (!userID || !password) {
       alert('UserID dan Password harus diisi');
       return;
@@ -29,24 +29,42 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex">
-      <div className="flex-1 flex items-center justify-center bg-white p-8">
-        <div className="w-full max-w-md">
-          <div className="text-center mb-4 mt-[-170px]">
-            <img src={fileIMG} alt="PNM Logo" className="mx-auto w-[400px] h-auto rounded-lg" />
+    <div className="min-h-screen flex bg-gradient-to-br from-blue-50 to-blue-200">
+      <div className="flex-1 flex items-center justify-center p-6">
+        <div className="w-full max-w-md backdrop-blur-md bg-white/50 shadow-2xl rounded-2xl p-8 border border-white/40">
+          <div className="text-center mb-8">
+            <img src={fileIMG} alt="PNM Logo" className="mx-auto w-64 h-auto drop-shadow-lg" />
+            <h1 className="text-3xl font-semibold text-gray-800 mt-4">Selamat Datang</h1>
+            <p className="text-gray-600 text-sm mt-2">Silahkan login untuk mengakses dashboard</p>
           </div>
-          <form onSubmit={handleLogin} className="mt-[-90px]">
-            <InputField label="UserID" type="text" value={userID} onChange={(e) => setUserID(e.target.value)} />
-            <InputField label="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
-            {error && <p className="text-red-500 text-sm text-center">{error}</p>}
 
-            <button type="submit" disabled={loading} className={`w-full text-white py-2 rounded-lg  transition duration-300 cursor-pointer ${loading ? 'bg bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}>
-              {loading ? 'Logging in' : 'Login'}
+          <form onSubmit={handleLogin}>
+            <div className="space-y-4">
+              <InputField label="UserID" type="text" value={userID} onChange={(e) => setUserID(e.target.value)} />
+              <InputField label="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+            </div>
+
+            {error && <p className="text-red-500 text-sm text-center mt-2">{error}</p>}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className={`w-full mt-6 py-3 text-white font-semibold rounded-xl transition-all duration-300 shadow-lg ${loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 active:scale-[.98]'}`}
+            >
+              {loading ? 'Logging in...' : 'Login'}
             </button>
           </form>
         </div>
       </div>
-      <div className="hidden md:block w-1/2 relative bg-cover bg-center" style={{ backgroundImage: `url(${bgImage})` }}></div> 
+
+      <div
+        className="hidden md:block w-1/2 relative bg-cover bg-center grayscale-[20%] brightness-75"
+        style={{
+          backgroundImage: `url(${bgImage})`,
+        }}
+      >
+        <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+      </div>
     </div>
   );
 }

@@ -1,14 +1,14 @@
 import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
 import { LikuiditasService } from './likuiditas.service';
-import { CreateLikuiditaDto } from './dto/create-likuidita.dto';
-import { UpdateLikuiditaDto } from './dto/update-likuidita.dto';
+import { CreateLikuiditasDto } from './dto/create-likuidita.dto';
+import { UpdateLikuiditasDto } from './dto/update-likuidita.dto';
 
 @Controller('likuiditas')
 export class LikuiditasController {
   constructor(private readonly likuiditasService: LikuiditasService) {}
 
   @Post()
-  create(@Body() createLikuiditaDto: CreateLikuiditaDto) {
+  create(@Body() createLikuiditaDto: CreateLikuiditasDto) {
     return this.likuiditasService.create(createLikuiditaDto);
   }
 
@@ -23,7 +23,7 @@ export class LikuiditasController {
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateLikuiditaDto: UpdateLikuiditaDto) {
+  update(@Param('id') id: string, @Body() updateLikuiditaDto: UpdateLikuiditasDto) {
     return this.likuiditasService.update(+id, updateLikuiditaDto);
   }
 
