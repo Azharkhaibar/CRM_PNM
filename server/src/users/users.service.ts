@@ -13,6 +13,7 @@ import { plainToInstance } from 'class-transformer';
 import { RegisterDto } from './dto/register-user.dto';
 import { Auth } from 'src/auth/entities/auth.entity';
 import bcrypt from 'bcrypt';
+
 @Injectable()
 export class UsersService {
   constructor(
@@ -21,6 +22,7 @@ export class UsersService {
     @InjectRepository(Auth)
     private readonly AuthRepository: Repository<Auth>,
   ) {}
+
   async register(dto: RegisterDto) {
     const { userID, password, role, gender } = dto;
 
@@ -32,14 +34,17 @@ export class UsersService {
 
     const hash = await bcrypt.hash(password, 10);
 
+    const user = this.usersRepository.create({
+      userID,
+      role,
+      gender,
+    });
+    await this.usersRepository.save(user);
+
     const auth = this.AuthRepository.create({
       userID,
       hash_password: hash,
-      user: {
-        userID,
-        role,
-        gender,
-      },
+      user,
     });
 
     return this.AuthRepository.save(auth);
@@ -77,6 +82,10 @@ export class UsersService {
 
   async updateUserById(id: number, dto: UpdateUserDto): Promise<GetUserDto> {
     try {
+      if (!dto || Object.keys(dto).length === 0) {
+        throw new BadRequestException('Tidak ada data untuk diupdate');
+      }
+
       const user = await this.usersRepository.findOne({
         where: { user_id: id },
         relations: ['auth'],
@@ -84,14 +93,18 @@ export class UsersService {
 
       if (!user) throw new NotFoundException(`User with ID ${id} not found`);
 
-      Object.assign(user, dto);
+      Object.assign(user, dto); // merge perubahan
       const updated = await this.usersRepository.save(user);
 
       return plainToInstance(GetUserDto, updated, {
         excludeExtraneousValues: true,
       });
     } catch (error) {
-      if (error instanceof NotFoundException) throw error;
+      if (
+        error instanceof NotFoundException ||
+        error instanceof BadRequestException
+      )
+        throw error;
       throw new InternalServerErrorException('Failed to update user');
     }
   }

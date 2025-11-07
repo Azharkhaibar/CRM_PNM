@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { LoginService } from '../services/login.services';
+import { AuthService } from '../services/auth.services';
 import RIMS_API from '../api/auth.api';
 import { AxiosError } from 'axios';
 
@@ -48,7 +48,7 @@ export const useAuth = () => {
       setLoading(true);
 
       try {
-        const token = await LoginService.login({ userID, password });
+        const token = await AuthService.login({ userID, password });
 
         localStorage.setItem('access_token', token);
 
@@ -70,19 +70,20 @@ export const useAuth = () => {
   const register = useCallback(async (data: { userID: string; password: string; role: string; gender: string }) => {
     setError(null);
     setLoading(true);
-
     try {
-      await RIMS_API.post('/auth/register', data);
-      return true;
+      const res = await RIMS_API.post('/auth/register', data);
+      return res.data;
     } catch (err) {
       if (err instanceof AxiosError) {
         setError(err.response?.data?.message || 'Register gagal');
         throw err;
       }
+      throw err;
     } finally {
       setLoading(false);
     }
   }, []);
+
   const logout = useCallback(() => {
     localStorage.removeItem('access_token');
     setUser(null);

@@ -11,7 +11,6 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.RegisterDto = void 0;
 const class_validator_1 = require("class-validator");
-const class_validator_2 = require("class-validator");
 const userEnum_1 = require("../enum/userEnum");
 class RegisterDto {
     userID;
@@ -21,17 +20,17 @@ class RegisterDto {
 }
 exports.RegisterDto = RegisterDto;
 __decorate([
-    (0, class_validator_2.IsString)(),
+    (0, class_validator_1.IsString)(),
     (0, class_validator_1.IsNotEmpty)({ message: 'UserID wajib diisi' }),
     __metadata("design:type", String)
 ], RegisterDto.prototype, "userID", void 0);
 __decorate([
-    (0, class_validator_2.IsString)(),
-    (0, class_validator_2.MinLength)(6, { message: 'Password Minimal 6 karakter' }),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MinLength)(6, { message: 'Password minimal 6 karakter' }),
     __metadata("design:type", String)
 ], RegisterDto.prototype, "password", void 0);
 __decorate([
-    (0, class_validator_1.IsEnum)(userEnum_1.Role, { message: 'Role tidak Valid' }),
+    (0, class_validator_1.IsEnum)(userEnum_1.Role, { message: 'Role tidak valid' }),
     __metadata("design:type", String)
 ], RegisterDto.prototype, "role", void 0);
 __decorate([

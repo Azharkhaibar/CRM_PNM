@@ -19,7 +19,7 @@ const Navbar = () => {
         <h1 className="text-xl font-bold tracking-wide">Risk Management System</h1>
 
         <div className="flex items-center space-x-3">
-          <button className="flex items-center space-x-2 hover:bg-blue-700 px-3 py-2 rounded-lg transition">
+          <button className="flex items-center space-x-2 cursor-pointer hover:bg-blue-700 px-3 py-2 rounded-lg transition">
             <FaUserCircle className="text-2xl" />
             <span className="text-sm font-medium">{user?.userID || 'Guest'}</span>
           </button>

@@ -39,14 +39,16 @@ let UsersService = class UsersService {
         if (exists)
             throw new common_1.BadRequestException('User ID Already registered');
         const hash = await bcrypt_1.default.hash(password, 10);
+        const user = this.usersRepository.create({
+            userID,
+            role,
+            gender,
+        });
+        await this.usersRepository.save(user);
         const auth = this.AuthRepository.create({
             userID,
             hash_password: hash,
-            user: {
-                userID,
-                role,
-                gender,
-            },
+            user,
         });
         return this.AuthRepository.save(auth);
     }
@@ -80,6 +82,9 @@ let UsersService = class UsersService {
     }
     async updateUserById(id, dto) {
         try {
+            if (!dto || Object.keys(dto).length === 0) {
+                throw new common_1.BadRequestException('Tidak ada data untuk diupdate');
+            }
             const user = await this.usersRepository.findOne({
                 where: { user_id: id },
                 relations: ['auth'],
@@ -93,7 +98,8 @@ let UsersService = class UsersService {
             });
         }
         catch (error) {
-            if (error instanceof common_1.NotFoundException)
+            if (error instanceof common_1.NotFoundException ||
+                error instanceof common_1.BadRequestException)
                 throw error;
             throw new common_1.InternalServerErrorException('Failed to update user');
         }
