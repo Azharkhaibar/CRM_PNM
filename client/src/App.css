@@ -1,3 +1,22 @@
-html {
+/* Default light mode */
+body {
+  background-color: #f9fafb;
+  color: #111;
   transition: background-color 0.3s, color 0.3s;
+}
+
+/* Card Tailwind + manual dark */
+.card {
+  @apply bg-white text-gray-900 border border-gray-200 rounded-xl p-6 shadow-md transition-colors;
+}
+
+body.dark-mode {
+  background-color: #111;
+  color: #f9fafb;
+}
+
+body.dark-mode .card {
+  background-color: #1f1f1f;
+  color: #f9fafb;
+  border-color: #333;
 }
