@@ -1,8 +1,11 @@
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 
+import { DarkModeProvider } from './shared/components/Darkmodecontext.jsx';
+import DarkModeToggle from './shared/components/Toggledarkmode.jsx';
 import Mainpage from './pages/mainpage/home';
 import LoginPage from './features/auth/pages/loginform';
+import RegisterPage from './features/auth/pages/registform.jsx';
 
 import DashboardLayout from './features/Dashboard/main.jsx';
 import Dashboard from './features/Dashboard/layout/dashboard.jsx';
@@ -18,35 +21,44 @@ import Reputasi from './features/Dashboard/pages/RiskProfile/pages/Reputasi.jsx'
 
 import Report from './features/Dashboard/report/report.jsx';
 import Settings from './features/Dashboard/pages/RiskProfile/setting/setting.jsx';
-import RegisterPage from './features/auth/pages/registform.jsx';
 import ProfilePage from './features/Dashboard/pages/profile/pages/userprofile.jsx';
 
 function App() {
   return (
-    <Routes>
-      <Route path="/" element={<Mainpage />} />
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/register" element={<RegisterPage />} />
+    <DarkModeProvider>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
+        {/* Tombol toggle bisa diletakkan di sini atau di Navbar */}
+        <div className="fixed top-4 right-4 z-50">
+          <DarkModeToggle />
+        </div>
 
-      <Route path="/dashboard" element={<DashboardLayout />}>
-        <Route index element={<Dashboard />} />
+        <Routes>
+          <Route path="/" element={<Mainpage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
 
-        <Route path="risk-form" element={<Investasi />} />
+          <Route path="/dashboard" element={<DashboardLayout />}>
+            <Route index element={<Dashboard />} />
 
-        <Route path="risk-form/investasi" element={<Investasi />} />
-        <Route path="risk-form/pasar" element={<Pasar />} />
-        <Route path="risk-form/likuiditas" element={<Likuiditas />} />
-        <Route path="risk-form/operasional" element={<Operational />} />
-        <Route path="risk-form/hukum" element={<Hukum />} />
-        <Route path="risk-form/stratejik" element={<Stratejik />} />
-        <Route path="risk-form/kepatuhan" element={<Kepatuhan />} />
-        <Route path="risk-form/reputasi" element={<Reputasi />} />
+            {/* Risk Profile */}
+            <Route path="risk-form" element={<Investasi />} />
+            <Route path="risk-form/investasi" element={<Investasi />} />
+            <Route path="risk-form/pasar" element={<Pasar />} />
+            <Route path="risk-form/likuiditas" element={<Likuiditas />} />
+            <Route path="risk-form/operasional" element={<Operational />} />
+            <Route path="risk-form/hukum" element={<Hukum />} />
+            <Route path="risk-form/stratejik" element={<Stratejik />} />
+            <Route path="risk-form/kepatuhan" element={<Kepatuhan />} />
+            <Route path="risk-form/reputasi" element={<Reputasi />} />
 
-        <Route path="profile" element={<ProfilePage />} />
-        <Route path="report" element={<Report />} />
-        <Route path="settings" element={<Settings />} />
-      </Route>
-    </Routes>
+            {/* Other Pages */}
+            <Route path="profile" element={<ProfilePage />} />
+            <Route path="report" element={<Report />} />
+            <Route path="settings" element={<Settings />} />
+          </Route>
+        </Routes>
+      </div>
+    </DarkModeProvider>
   );
 }
 

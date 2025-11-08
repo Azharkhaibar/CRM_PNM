@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { FaUserCircle, FaSignOutAlt, FaCog } from 'react-icons/fa';
+import { FaUserCircle, FaSignOutAlt, FaCog, FaMoon, FaSun } from 'react-icons/fa';
 import { useAuth } from '../../auth/hooks/useAuth.hook';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -10,7 +10,13 @@ const Navbar = () => {
   const { pathname } = useLocation();
 
   const [menuOpen, setMenuOpen] = useState(false);
+  const [darkMode, setDarkMode] = useState(false);
   const menuRef = useRef(null);
+
+  useEffect(() => {
+    if (darkMode) document.documentElement.classList.add('dark');
+    else document.documentElement.classList.remove('dark');
+  }, [darkMode]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -30,7 +36,7 @@ const Navbar = () => {
   const pageTitle = pathname.replace('/dashboard/', '').replaceAll('-', ' / ') || 'Dashboard';
 
   return (
-    <nav className="bg-blue-600 text-white shadow-md sticky top-0 z-50">
+    <nav className="bg-blue-600 dark:bg-gray-900 text-white shadow-md sticky top-0 z-50 transition-colors">
       <div className="flex justify-between items-center px-6 py-3">
         <div>
           <h1 className="text-xl font-bold tracking-wide">Risk Management System</h1>
@@ -38,7 +44,11 @@ const Navbar = () => {
         </div>
 
         <div className="flex items-center gap-4 relative" ref={menuRef}>
-          <button onClick={() => setMenuOpen(!menuOpen)} className="flex items-center space-x-2 cursor-pointer hover:bg-blue-700 px-3 py-2 rounded-lg transition">
+          <button onClick={() => setDarkMode(!darkMode)} className="p-2 rounded-full bg-blue-500 dark:bg-gray-700 text-white hover:bg-blue-700 dark:hover:bg-gray-600 transition">
+            {darkMode ? <FaSun /> : <FaMoon />}
+          </button>
+
+          <button onClick={() => setMenuOpen(!menuOpen)} className="flex items-center space-x-2 cursor-pointer hover:bg-blue-700 dark:hover:bg-gray-800 px-3 py-2 rounded-lg transition">
             <FaUserCircle className="text-2xl" />
             <span className="text-sm font-medium">{user?.userID || 'Guest'}</span>
           </button>
@@ -50,16 +60,16 @@ const Navbar = () => {
                 animate={{ opacity: 1, y: 5 }}
                 exit={{ opacity: 0, y: -5 }}
                 transition={{ duration: 0.2 }}
-                className="absolute right-0 mt-2 w-40 bg-white text-gray-800 rounded-lg shadow-lg overflow-hidden z-50"
-                style={{ top: '100%' }} 
+                className="absolute right-0 mt-2 w-40 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-lg shadow-lg overflow-hidden z-50"
+                style={{ top: '100%' }}
               >
-                <button onClick={() => navigate('/dashboard/profile')} className="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center gap-2">
+                <button onClick={() => navigate('/dashboard/profile')} className="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2">
                   <FaUserCircle /> Profile
                 </button>
-                <button onClick={() => navigate('/dashboard/settings')} className="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center gap-2">
+                <button onClick={() => navigate('/dashboard/settings')} className="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2">
                   <FaCog /> Settings
                 </button>
-                <button onClick={handleLogout} className="w-full text-left px-4 py-2 hover:bg-gray-100 text-red-600 flex items-center gap-2">
+                <button onClick={handleLogout} className="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-red-600 flex items-center gap-2">
                   <FaSignOutAlt /> Logout
                 </button>
               </motion.div>
