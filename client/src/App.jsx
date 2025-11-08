@@ -1,15 +1,14 @@
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
-
+import './index.css';
 import { DarkModeProvider } from './shared/components/Darkmodecontext.jsx';
 import DarkModeToggle from './shared/components/Toggledarkmode.jsx';
+
 import Mainpage from './pages/mainpage/home';
 import LoginPage from './features/auth/pages/loginform';
 import RegisterPage from './features/auth/pages/registform.jsx';
-
 import DashboardLayout from './features/Dashboard/main.jsx';
 import Dashboard from './features/Dashboard/layout/dashboard.jsx';
-
 import Investasi from './features/Dashboard/pages/RiskProfile/pages/Investasi.jsx';
 import Pasar from './features/Dashboard/pages/RiskProfile/pages/Pasar.jsx';
 import Likuiditas from './features/Dashboard/pages/RiskProfile/pages/Likuiditas.jsx';
@@ -18,7 +17,6 @@ import Hukum from './features/Dashboard/pages/RiskProfile/pages/Hukum.jsx';
 import Stratejik from './features/Dashboard/pages/RiskProfile/pages/Stratejik.jsx';
 import Kepatuhan from './features/Dashboard/pages/RiskProfile/pages/Kepatuhan.jsx';
 import Reputasi from './features/Dashboard/pages/RiskProfile/pages/Reputasi.jsx';
-
 import Report from './features/Dashboard/report/report.jsx';
 import Settings from './features/Dashboard/pages/RiskProfile/setting/setting.jsx';
 import ProfilePage from './features/Dashboard/pages/profile/pages/userprofile.jsx';
@@ -26,12 +24,13 @@ import ProfilePage from './features/Dashboard/pages/profile/pages/userprofile.js
 function App() {
   return (
     <DarkModeProvider>
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
-        {/* Tombol toggle bisa diletakkan di sini atau di Navbar */}
-        <div className="fixed top-4 right-4 z-50">
-          <DarkModeToggle />
-        </div>
+      {/* Toggle tetap di atas semua halaman */}
+      <div className="fixed top-4 right-4 z-50">
+        <DarkModeToggle />
+      </div>
 
+      {/* Kontainer utama */}
+      <div className="min-h-screen transition-colors">
         <Routes>
           <Route path="/" element={<Mainpage />} />
           <Route path="/login" element={<LoginPage />} />

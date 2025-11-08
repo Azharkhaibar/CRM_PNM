@@ -3,10 +3,27 @@ import { FaMoon, FaSun } from 'react-icons/fa';
 import { useDarkMode } from './Darkmodecontext';
 
 export default function DarkModeToggle() {
-  const { darkMode, setDarkMode } = useDarkMode();
+  const { darkMode, toggleDarkMode } = useDarkMode();
+
+  const toggleStyle = {
+    padding: '10px',
+    borderRadius: '50%',
+    border: 'none',
+    cursor: 'pointer',
+    transition: 'all 0.3s ease',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '44px',
+    height: '44px',
+    fontSize: '18px',
+    backgroundColor: darkMode ? '#333' : '#f0f0f0',
+    color: darkMode ? '#fff' : '#333',
+    border: darkMode ? '1px solid #555' : '1px solid #ddd',
+  };
 
   return (
-    <button onClick={() => setDarkMode(!darkMode)} className="p-2 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 transition" title={darkMode ? 'Light Mode' : 'Dark Mode'}>
+    <button onClick={toggleDarkMode} style={toggleStyle} title={darkMode ? 'Light Mode' : 'Dark Mode'}>
       {darkMode ? <FaSun /> : <FaMoon />}
     </button>
   );
