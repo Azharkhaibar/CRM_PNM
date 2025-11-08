@@ -10,7 +10,7 @@ async function bootstrap() {
         origin: 'http://localhost:5173',
         credentials: true,
     });
-    app.setGlobalPrefix('/api/v1');
+    app.setGlobalPrefix('api/v1');
     app.useGlobalPipes(new common_1.ValidationPipe({
         transform: true,
         whitelist: true,

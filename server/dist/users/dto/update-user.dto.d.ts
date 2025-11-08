@@ -1,4 +1,6 @@
+import { Role, Gender } from '../enum/userEnum';
 export declare class UpdateUserDto {
     username?: string;
-    gender?: string;
+    role?: Role;
+    gender?: Gender;
 }

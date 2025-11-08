@@ -1,4 +1,5 @@
-import { IsOptional, IsString } from 'class-validator';
+import { IsEnum, IsOptional, IsString } from 'class-validator';
+import { Role, Gender } from '../enum/userEnum';
 
 export class UpdateUserDto {
   @IsOptional()
@@ -6,6 +7,10 @@ export class UpdateUserDto {
   username?: string;
 
   @IsOptional()
-  @IsString()
-  gender?: string;
+  @IsEnum(Role, { message: 'Role tidak valid' })
+  role?: Role;
+
+  @IsOptional()
+  @IsEnum(Gender, { message: 'Gender tidak valid' })
+  gender?: Gender;
 }
