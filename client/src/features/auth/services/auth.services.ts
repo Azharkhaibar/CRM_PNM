@@ -8,6 +8,7 @@ export interface LoginResponse {
 }
 
 interface AuthUser {
+  user_id: number;
   userID: string;
   role?: string;
   email?: string;

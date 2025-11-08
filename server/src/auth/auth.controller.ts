@@ -11,6 +11,7 @@ import { AuthService } from './auth.service';
 import { UsersService } from 'src/users/users.service';
 import { RegisterDto } from 'src/users/dto/register-user.dto';
 import { JwtAuthGuard } from './guard/jwt-auth.guard';
+import { RequestUser } from './dto/get-auth-response.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -36,7 +37,20 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Get('me')
-  getMe(@Req() req) {
-    return req.user;
+  async getMe(@Req() req: Request & { user: RequestUser }) {
+    const auth = await this.authService.findOneByUserID(req.user.userID);
+
+    if (!auth) {
+      throw new BadRequestException('User not found');
+    }
+
+    return {
+      user_id: auth.user.user_id,
+      userID: auth.userID,
+      role: auth.user.role,
+      gender: auth.user.gender,
+      created_at: auth.user.created_at,
+      updated_at: auth.user.updated_at,
+    };
   }
 }

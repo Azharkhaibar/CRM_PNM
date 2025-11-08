@@ -19,6 +19,7 @@ import Reputasi from './features/Dashboard/pages/RiskProfile/pages/Reputasi.jsx'
 import Report from './features/Dashboard/report/report.jsx';
 import Settings from './features/Dashboard/pages/RiskProfile/setting/setting.jsx';
 import RegisterPage from './features/auth/pages/registform.jsx';
+import ProfilePage from './features/Dashboard/pages/profile/pages/userprofile.jsx';
 
 function App() {
   return (
@@ -41,6 +42,7 @@ function App() {
         <Route path="risk-form/kepatuhan" element={<Kepatuhan />} />
         <Route path="risk-form/reputasi" element={<Reputasi />} />
 
+        <Route path="profile" element={<ProfilePage />} />
         <Route path="report" element={<Report />} />
         <Route path="settings" element={<Settings />} />
       </Route>

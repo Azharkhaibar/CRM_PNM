@@ -62,67 +62,60 @@ export class UsersService {
     }
   }
 
-  async getUserById(id: number): Promise<GetUserDto> {
+  async getUserById(user_id: number): Promise<GetUserDto> {
     try {
       const user = await this.usersRepository.findOne({
-        where: { user_id: id },
+        where: { user_id },
         relations: ['auth'],
       });
 
-      if (!user) throw new NotFoundException(`User with ID ${id} not found`);
+      if (!user)
+        throw new NotFoundException(`User with ID ${user_id} not found`);
 
       return plainToInstance(GetUserDto, user, {
         excludeExtraneousValues: true,
       });
     } catch (error) {
-      if (error instanceof NotFoundException) throw error;
       throw new InternalServerErrorException('Failed to fetch user');
     }
   }
 
-  async updateUserById(id: number, dto: UpdateUserDto): Promise<GetUserDto> {
+  async updateUserById(
+    user_id: number,
+    dto: UpdateUserDto,
+  ): Promise<GetUserDto> {
     try {
-      if (!dto || Object.keys(dto).length === 0) {
-        throw new BadRequestException('Tidak ada data untuk diupdate');
-      }
-
       const user = await this.usersRepository.findOne({
-        where: { user_id: id },
-        relations: ['auth'],
+        where: { user_id },
       });
 
-      if (!user) throw new NotFoundException(`User with ID ${id} not found`);
+      if (!user)
+        throw new NotFoundException(`User with ID ${user_id} not found`);
 
-      Object.assign(user, dto); // merge perubahan
+      Object.assign(user, dto);
       const updated = await this.usersRepository.save(user);
 
       return plainToInstance(GetUserDto, updated, {
         excludeExtraneousValues: true,
       });
     } catch (error) {
-      if (
-        error instanceof NotFoundException ||
-        error instanceof BadRequestException
-      )
-        throw error;
       throw new InternalServerErrorException('Failed to update user');
     }
   }
 
-  async deleteUserById(id: number) {
+  async deleteUserById(user_id: number) {
     try {
       const user = await this.usersRepository.findOne({
-        where: { user_id: id },
-        relations: ['auth'],
+        where: { user_id },
       });
 
-      if (!user) throw new NotFoundException(`User with ID ${id} not found`);
+      if (!user)
+        throw new NotFoundException(`User with ID ${user_id} not found`);
 
       await this.usersRepository.remove(user);
 
-      return { message: `User with ID ${id} has been deleted` };
+      return { message: `User with ID ${user_id} has been deleted` };
     } catch (error) {
-      if (error instanceof NotFoundException) throw error;
       throw new InternalServerErrorException('Failed to delete user');
     }
   }

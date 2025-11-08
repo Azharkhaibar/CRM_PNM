@@ -5,17 +5,14 @@ export class GetAuthDto {
   auth_id: number;
 
   @Expose()
-  email: string;
+  userID: string;
 
   @Expose()
   hash_password: string;
 
   @Expose()
-  created_at: Date;
+  refresh_token?: string;
 
   @Expose()
-  updated_at: Date;
-
-  @Expose()
-  deleted_at: Date;
+  reset_password_token?: string;
 }

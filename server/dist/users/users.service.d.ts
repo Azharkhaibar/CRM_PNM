@@ -10,9 +10,9 @@ export declare class UsersService {
     constructor(usersRepository: Repository<User>, AuthRepository: Repository<Auth>);
     register(dto: RegisterDto): Promise<Auth>;
     getUsersData(): Promise<GetUserDto[]>;
-    getUserById(id: number): Promise<GetUserDto>;
-    updateUserById(id: number, dto: UpdateUserDto): Promise<GetUserDto>;
-    deleteUserById(id: number): Promise<{
+    getUserById(user_id: number): Promise<GetUserDto>;
+    updateUserById(user_id: number, dto: UpdateUserDto): Promise<GetUserDto>;
+    deleteUserById(user_id: number): Promise<{
         message: string;
     }>;
 }
