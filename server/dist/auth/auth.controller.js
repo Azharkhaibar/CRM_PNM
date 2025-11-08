@@ -37,8 +37,19 @@ let AuthController = class AuthController {
             throw new common_1.BadRequestException(message);
         }
     }
-    getMe(req) {
-        return req.user;
+    async getMe(req) {
+        const auth = await this.authService.findOneByUserID(req.user.userID);
+        if (!auth) {
+            throw new common_1.BadRequestException('User not found');
+        }
+        return {
+            user_id: auth.user.user_id,
+            userID: auth.userID,
+            role: auth.user.role,
+            gender: auth.user.gender,
+            created_at: auth.user.created_at,
+            updated_at: auth.user.updated_at,
+        };
     }
 };
 exports.AuthController = AuthController;
@@ -62,7 +73,7 @@ __decorate([
     __param(0, (0, common_1.Req)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object]),
-    __metadata("design:returntype", void 0)
+    __metadata("design:returntype", Promise)
 ], AuthController.prototype, "getMe", null);
 exports.AuthController = AuthController = __decorate([
     (0, common_1.Controller)('auth'),

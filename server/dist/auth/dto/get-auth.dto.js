@@ -13,11 +13,10 @@ exports.GetAuthDto = void 0;
 const class_transformer_1 = require("class-transformer");
 class GetAuthDto {
     auth_id;
-    email;
+    userID;
     hash_password;
-    created_at;
-    updated_at;
-    deleted_at;
+    refresh_token;
+    reset_password_token;
 }
 exports.GetAuthDto = GetAuthDto;
 __decorate([
@@ -27,21 +26,17 @@ __decorate([
 __decorate([
     (0, class_transformer_1.Expose)(),
     __metadata("design:type", String)
-], GetAuthDto.prototype, "email", void 0);
+], GetAuthDto.prototype, "userID", void 0);
 __decorate([
     (0, class_transformer_1.Expose)(),
     __metadata("design:type", String)
 ], GetAuthDto.prototype, "hash_password", void 0);
 __decorate([
     (0, class_transformer_1.Expose)(),
-    __metadata("design:type", Date)
-], GetAuthDto.prototype, "created_at", void 0);
+    __metadata("design:type", String)
+], GetAuthDto.prototype, "refresh_token", void 0);
 __decorate([
     (0, class_transformer_1.Expose)(),
-    __metadata("design:type", Date)
-], GetAuthDto.prototype, "updated_at", void 0);
-__decorate([
-    (0, class_transformer_1.Expose)(),
-    __metadata("design:type", Date)
-], GetAuthDto.prototype, "deleted_at", void 0);
+    __metadata("design:type", String)
+], GetAuthDto.prototype, "reset_password_token", void 0);
 //# sourceMappingURL=get-auth.dto.js.map

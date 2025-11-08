@@ -14,7 +14,8 @@ const class_transformer_1 = require("class-transformer");
 const get_auth_response_dto_1 = require("../../auth/dto/get-auth-response.dto");
 class GetUserDto {
     user_id;
-    username;
+    userID;
+    role;
     gender;
     created_at;
     updated_at;
@@ -29,7 +30,11 @@ __decorate([
 __decorate([
     (0, class_transformer_1.Expose)(),
     __metadata("design:type", String)
-], GetUserDto.prototype, "username", void 0);
+], GetUserDto.prototype, "userID", void 0);
+__decorate([
+    (0, class_transformer_1.Expose)(),
+    __metadata("design:type", String)
+], GetUserDto.prototype, "role", void 0);
 __decorate([
     (0, class_transformer_1.Expose)(),
     __metadata("design:type", String)

@@ -21,22 +21,20 @@ export class UsersController {
   }
 
   @Get(':id')
-  async getUserById(
-    @Param('id', ParseIntPipe) id: number,
-  ): Promise<GetUserDto> {
+  getUserById(@Param('id', ParseIntPipe) id: number) {
     return this.usersService.getUserById(id);
   }
 
   @Patch(':id')
-  async updateUser(
+  updateUser(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateUserDto,
-  ): Promise<GetUserDto> {
+  ) {
     return this.usersService.updateUserById(id, dto);
   }
 
   @Delete(':id')
-  async deleteUser(@Param('id', ParseIntPipe) id: number) {
+  deleteUser(@Param('id', ParseIntPipe) id: number) {
     return this.usersService.deleteUserById(id);
   }
 }

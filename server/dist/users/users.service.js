@@ -62,35 +62,29 @@ let UsersService = class UsersService {
             throw new common_1.InternalServerErrorException('Failed to fetch users data');
         }
     }
-    async getUserById(id) {
+    async getUserById(user_id) {
         try {
             const user = await this.usersRepository.findOne({
-                where: { user_id: id },
+                where: { user_id },
                 relations: ['auth'],
             });
             if (!user)
-                throw new common_1.NotFoundException(`User with ID ${id} not found`);
+                throw new common_1.NotFoundException(`User with ID ${user_id} not found`);
             return (0, class_transformer_1.plainToInstance)(get_user_dto_1.GetUserDto, user, {
                 excludeExtraneousValues: true,
             });
         }
         catch (error) {
-            if (error instanceof common_1.NotFoundException)
-                throw error;
             throw new common_1.InternalServerErrorException('Failed to fetch user');
         }
     }
-    async updateUserById(id, dto) {
+    async updateUserById(user_id, dto) {
         try {
-            if (!dto || Object.keys(dto).length === 0) {
-                throw new common_1.BadRequestException('Tidak ada data untuk diupdate');
-            }
             const user = await this.usersRepository.findOne({
-                where: { user_id: id },
-                relations: ['auth'],
+                where: { user_id },
             });
             if (!user)
-                throw new common_1.NotFoundException(`User with ID ${id} not found`);
+                throw new common_1.NotFoundException(`User with ID ${user_id} not found`);
             Object.assign(user, dto);
             const updated = await this.usersRepository.save(user);
             return (0, class_transformer_1.plainToInstance)(get_user_dto_1.GetUserDto, updated, {
@@ -98,26 +92,20 @@ let UsersService = class UsersService {
             });
         }
         catch (error) {
-            if (error instanceof common_1.NotFoundException ||
-                error instanceof common_1.BadRequestException)
-                throw error;
             throw new common_1.InternalServerErrorException('Failed to update user');
         }
     }
-    async deleteUserById(id) {
+    async deleteUserById(user_id) {
         try {
             const user = await this.usersRepository.findOne({
-                where: { user_id: id },
-                relations: ['auth'],
+                where: { user_id },
             });
             if (!user)
-                throw new common_1.NotFoundException(`User with ID ${id} not found`);
+                throw new common_1.NotFoundException(`User with ID ${user_id} not found`);
             await this.usersRepository.remove(user);
-            return { message: `User with ID ${id} has been deleted` };
+            return { message: `User with ID ${user_id} has been deleted` };
         }
         catch (error) {
-            if (error instanceof common_1.NotFoundException)
-                throw error;
             throw new common_1.InternalServerErrorException('Failed to delete user');
         }
     }

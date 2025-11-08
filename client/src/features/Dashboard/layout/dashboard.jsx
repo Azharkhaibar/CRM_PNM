@@ -1,180 +1,86 @@
-import React, { useState } from 'react';
-import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import ChartCard from '../components/chart';
-import { riskData } from '../data/ddata';
-const Dashboard = () => {
-  const [selectedMonth, setSelectedMonth] = useState('all');
+import React, { useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 
-  // Mock data for different months
-  const monthlyRiskData = {
-    all: {
-      riskOverview: [
-        { name: 'Credit', value: 35 },
-        { name: 'Operational', value: 25 },
-        { name: 'Market', value: 20 },
-        { name: 'Liquidity', value: 10 },
-        { name: 'Other', value: 10 }
-      ]
-    },
-    jan: {
-      riskOverview: [
-        { name: 'Credit', value: 40 },
-        { name: 'Operational', value: 20 },
-        { name: 'Market', value: 15 },
-        { name: 'Liquidity', value: 15 },
-        { name: 'Other', value: 10 }
-      ]
-    },
-    feb: {
-      riskOverview: [
-        { name: 'Credit', value: 30 },
-        { name: 'Operational', value: 30 },
-        { name: 'Market', value: 25 },
-        { name: 'Liquidity', value: 5 },
-        { name: 'Other', value: 10 }
-      ]
-    },
-    mar: {
-      riskOverview: [
-        { name: 'Credit', value: 35 },
-        { name: 'Operational', value: 25 },
-        { name: 'Market', value: 20 },
-        { name: 'Liquidity', value: 10 },
-        { name: 'Other', value: 10 }
-      ]
+export default function Dashboard() {
+  const loc = useLocation();
+
+  const [showDialog, setShowDialog] = useState(false);
+  const [dialogMessage, setDialogMessage] = useState('');
+
+  useEffect(() => {
+    if (loc.state?.fromLogin) {
+      setDialogMessage('✅ Login berhasil! Selamat datang di Dashboard 👋');
+      setShowDialog(true);
+
+      setTimeout(() => {
+        setShowDialog(false); 
+      }, 2500);
     }
-  };
-
-  // Mock data for recent activities by month
-  const monthlyActivitiesData = {
-    all: [
-      { id: 1, type: 'Credit', description: 'New credit risk assessment', date: '2025-10-15' },
-      { id: 2, type: 'Operational', description: 'Operational risk mitigation', date: '2025-10-12' },
-      { id: 3, type: 'Market', description: 'Market risk update', date: '2025-10-10' },
-      { id: 4, type: 'Credit', description: 'Credit risk review', date: '2025-10-08' }
-    ],
-    jan: [
-      { id: 1, type: 'Credit', description: 'January credit assessment', date: '2025-01-15' },
-      { id: 2, type: 'Market', description: 'Market risk review', date: '2025-01-10' }
-    ],
-    feb: [
-      { id: 1, type: 'Operational', description: 'February operational review', date: '2025-02-18' },
-      { id: 2, type: 'Credit', description: 'Credit risk update', date: '2025-02-12' },
-      { id: 3, type: 'Liquidity', description: 'Liquidity risk check', date: '2025-02-05' }
-    ],
-    mar: [
-      { id: 1, type: 'Market', description: 'March market analysis', date: '2025-03-22' },
-      { id: 2, type: 'Operational', description: 'Operational risk assessment', date: '2025-03-15' },
-      { id: 3, type: 'Credit', description: 'Credit portfolio review', date: '2025-03-08' },
-      { id: 4, type: 'Other', description: 'Miscellaneous risk check', date: '2025-03-01' }
-    ]
-  };
-
-  // Get data based on selected month
-  const riskOverviewData = monthlyRiskData[selectedMonth] ? monthlyRiskData[selectedMonth].riskOverview : monthlyRiskData.all.riskOverview;
-  const recentActivitiesData = monthlyActivitiesData[selectedMonth] ? monthlyActivitiesData[selectedMonth] : monthlyActivitiesData.all;
-
-  // Colors for the pie chart
-  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
-
-  // Handle month change
-  const handleMonthChange = (event) => {
-    setSelectedMonth(event.target.value);
-  };
+  }, [loc.state]);
 
   return (
     <div className="p-6">
-      <h1 className="text-3xl font-bold mb-6">Dashboard</h1>
+      <motion.h1 initial={{ opacity: 0, y: -15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="text-3xl font-bold mb-6">
+        Dashboard
+      </motion.h1>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <ChartCard title="Risk Overview" className="h-96">
-          <div className="w-full">
-            <div className="mb-4">
-              <label htmlFor="month-select" className="block text-sm font-medium text-gray-700 mb-1">Select Month</label>
-              <select
-                id="month-select"
-                value={selectedMonth}
-                onChange={handleMonthChange}
-                className=" p-2 border border-gray-300 rounded-md"
-              >
-                <option value="all">All Months</option>
-                <option value="jan">January</option>
-                <option value="feb">February</option>
-                <option value="mar">March</option>
-              </select>
-            </div>
-            <div className="h-[254px] ml-[200px] mt-[-70px] w-[500px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={riskOverviewData}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    outerRadius={70}
-                    fill="#8884d8"
-                    dataKey="value"
-                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                  >
-                    {riskOverviewData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        </ChartCard>
+      <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }} className="bg-gradient-to-br from-blue-600 to-blue-800 text-white p-6 rounded-2xl shadow-md mb-6">
+        <h2 className="text-2xl font-semibold">Welcome Back 👋</h2>
+        <p className="text-blue-100 mt-1">Senang melihat Anda kembali. Semoga hari Anda produktif!</p>
+      </motion.div>
 
-        <ChartCard title="Recent Activities" className="h-96">
-          <div className="w-full h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={recentActivitiesData}
-                margin={{
-                  top: 5,
-                  right: 30,
-                  left: 20,
-                  bottom: 5,
-                }}
-              >
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="type" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Bar dataKey="id" fill="#8884d8" name="Activity ID" />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </ChartCard>
+      <div className="grid md:grid-cols-3 gap-6">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.3 }} className="bg-white rounded-xl shadow-md p-6 border">
+          <p className="text-gray-700 font-semibold">Total Risks</p>
+          <h3 className="text-3xl font-bold text-blue-700 mt-2">125</h3>
+          <p className="text-gray-500 text-sm mt-1">Semua risiko tercatat</p>
+        </motion.div>
+
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.4 }} className="bg-white rounded-xl shadow-md p-6 border">
+          <p className="text-gray-700 font-semibold">Mitigated</p>
+          <h3 className="text-3xl font-bold text-green-600 mt-2">58</h3>
+          <p className="text-gray-500 text-sm mt-1">Sudah terselesaikan</p>
+        </motion.div>
+
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.5 }} className="bg-white rounded-xl shadow-md p-6 border">
+          <p className="text-gray-700 font-semibold">In Progress</p>
+          <h3 className="text-3xl font-bold text-yellow-600 mt-2">32</h3>
+          <p className="text-gray-500 text-sm mt-1">Dalam proses</p>
+        </motion.div>
       </div>
 
-      <div className="mt-6 bg-white rounded-lg shadow-md p-6">
-        <h2 className="text-xl font-semibold mb-4">Summary Statistics</h2>
-        <div className="grid md:grid-cols-4 gap-4">
-          <div className="bg-blue-100 p-4 rounded-lg text-center">
-            <p className="text-2xl font-bold text-blue-800">{riskData.summaryStatistics.totalRisks}</p>
-            <p className="text-gray-600">Total Risks</p>
-          </div>
-          <div className="bg-green-100 p-4 rounded-lg text-center">
-            <p className="text-2xl font-bold text-green-800">{riskData.summaryStatistics.mitigated}</p>
-            <p className="text-gray-600">Mitigated</p>
-          </div>
-          <div className="bg-yellow-100 p-4 rounded-lg text-center">
-            <p className="text-2xl font-bold text-yellow-800">{riskData.summaryStatistics.inProgress}</p>
-            <p className="text-gray-600">In Progress</p>
-          </div>
-          <div className="bg-red-100 p-4 rounded-lg text-center">
-            <p className="text-2xl font-bold text-red-800">{riskData.summaryStatistics.critical}</p>
-            <p className="text-gray-600">Critical</p>
-          </div>
-        </div>
-      </div>
+      <motion.div initial={{ opacity: 0, y: 25 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.6 }} className="bg-white rounded-xl shadow-md p-6 mt-6 border">
+        <h2 className="text-xl font-semibold mb-4">Recent Activity</h2>
+
+        <ul className="space-y-3">
+          <li className="p-3 border rounded-lg bg-gray-50">✅ Risk mitigation completed for <b>Operational Risk</b></li>
+          <li className="p-3 border rounded-lg bg-gray-50">📌 New risk assessment added in <b>Market Risk</b></li>
+          <li className="p-3 border rounded-lg bg-gray-50">🔄 Credit risk data updated for <b>Q4</b></li>
+        </ul>
+      </motion.div>
+
+      <AnimatePresence>
+        {showDialog && (
+          <motion.div
+            className="fixed inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-50"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }} 
+          >
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.8, opacity: 0 }} 
+              transition={{ duration: 0.3 }}
+              className="bg-white shadow-xl p-6 rounded-xl text-center w-80"
+            >
+              <p className="text-lg font-semibold text-gray-800">Welcome</p>
+              <p className="text-gray-600 mt-2">{dialogMessage}</p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
-};
-
-export default Dashboard;
+}
