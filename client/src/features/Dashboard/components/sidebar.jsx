@@ -121,7 +121,6 @@ const Sidebar = () => {
             </Link>
           </li>
 
-          {/* Divider sebelum Settings */}
           <div className={dividerClass} />
 
           {/* Settings Section */}

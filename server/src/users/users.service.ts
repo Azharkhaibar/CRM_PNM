@@ -199,10 +199,12 @@ export class UsersService {
           'If your user ID exists, a password reset link has been sent to your registered email',
         userID: auth.userID,
       };
-    } catch (error) {
-      throw new InternalServerErrorException(
-        'Failed to process password reset request',
-      );
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        throw new InternalServerErrorException(
+          'Failed to process password reset request',
+        );
+      }
     }
   }
 }
