@@ -7,16 +7,18 @@ import { useAuth } from '../hooks/useAuth.hook';
 import GenderToggleSignupDialog from '../../../shared/components/genderToggle';
 import { useDarkMode } from '../../../shared/components/Darkmodecontext';
 import { motion } from 'framer-motion';
+import PinDialog from '../components/pinDialog';
 
 export default function RegisterPage() {
   const navigate = useNavigate();
   const { register, loading, error } = useAuth();
-  const { darkMode } = useDarkMode(); 
+  const { darkMode } = useDarkMode();
 
   const [userID, setUserID] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('user');
   const [genderForm, setGenderForm] = useState('male');
+  const [showPinDialog, setShowPinDialog] = useState(false);
 
   const handleRegister = async (e) => {
     e.preventDefault();
@@ -51,6 +53,11 @@ export default function RegisterPage() {
         alert(err.message || 'Registrasi gagal, cek console');
       }
     }
+  };
+
+  const handlePinVerified = () => {
+    setShowPinDialog(false);
+    // User bisa melanjutkan registrasi
   };
 
   const containerClass = `min-h-screen flex transition-colors duration-300 ${darkMode ? 'bg-gradient-to-br from-gray-900 to-gray-800' : 'bg-gradient-to-br from-blue-50 to-blue-200'}`;
@@ -116,6 +123,8 @@ export default function RegisterPage() {
       <div className="hidden md:block w-1/2 relative bg-cover bg-center transition-all duration-300" style={{ backgroundImage: `url(${bgImage})` }}>
         <div className={`absolute inset-0 transition-all duration-300 ${darkMode ? 'bg-gradient-to-t from-black/60 to-transparent' : 'bg-gradient-to-t from-black/40 to-transparent'}`} />
       </div>
+
+      <PinDialog isOpen={showPinDialog} onClose={() => setShowPinDialog(false)} onPinVerified={handlePinVerified} />
     </div>
   );
 }

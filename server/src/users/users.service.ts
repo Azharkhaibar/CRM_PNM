@@ -3,6 +3,7 @@ import {
   NotFoundException,
   InternalServerErrorException,
   BadRequestException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from './entities/user.entity';
@@ -117,6 +118,91 @@ export class UsersService {
       return { message: `User with ID ${user_id} has been deleted` };
     } catch (error) {
       throw new InternalServerErrorException('Failed to delete user');
+    }
+  }
+
+  async changePassword(
+    userID: string,
+    currentPassword: string,
+    newPassword: string,
+  ) {
+    try {
+      const auth = await this.AuthRepository.findOne({
+        where: { userID },
+        relations: ['user'],
+      });
+
+      if (!auth) {
+        throw new NotFoundException('User not found');
+      }
+
+      const isCurrentPasswordValid = await bcrypt.compare(
+        currentPassword,
+        auth.hash_password,
+      );
+      if (!isCurrentPasswordValid) {
+        throw new UnauthorizedException('Current password is incorrect');
+      }
+
+      const saltRounds = 10;
+      const hashedNewPassword = await bcrypt.hash(newPassword, saltRounds);
+
+      auth.hash_password = hashedNewPassword;
+      await this.AuthRepository.save(auth);
+
+      return {
+        message: 'Password changed successfully',
+        userID: auth.userID,
+      };
+    } catch (error) {
+      if (
+        error instanceof UnauthorizedException ||
+        error instanceof NotFoundException
+      ) {
+        throw error;
+      }
+      throw new InternalServerErrorException('Failed to change password');
+    }
+  }
+
+  async requestPasswordReset(userID: string) {
+    try {
+      const auth = await this.AuthRepository.findOne({
+        where: { userID },
+        relations: ['user'],
+      });
+
+      if (!auth) {
+        // Return generic message for security
+        return {
+          message:
+            'If your user ID exists, a password reset link has been sent to your registered email',
+        };
+      }
+
+      // TODO: Implement actual password reset logic:
+      // 1. Generate reset token
+      // const resetToken = crypto.randomBytes(32).toString('hex');
+      // const resetTokenExpiry = new Date(Date.now() + 3600000); // 1 hour
+
+      // 2. Save token to user/auth entity
+      // auth.resetToken = resetToken;
+      // auth.resetTokenExpiry = resetTokenExpiry;
+      // await this.AuthRepository.save(auth);
+
+      // 3. Send email with reset link
+      // await this.emailService.sendPasswordResetEmail(auth.user.email, resetToken);
+
+      // For now, return success message
+      return {
+        message:
+          'If your user ID exists, a password reset link has been sent to your registered email',
+        userID: auth.userID,
+      };
+    } catch (error) {
+      throw new InternalServerErrorException(
+        'Failed to process password reset request',
+      );
     }
   }
 }

@@ -51,6 +51,24 @@ let AuthController = class AuthController {
             updated_at: auth.user.updated_at,
         };
     }
+    async changePassword(req, body) {
+        try {
+            return await this.usersService.changePassword(req.user.userID, body.currentPassword, body.newPassword);
+        }
+        catch (err) {
+            const message = err instanceof Error ? err.message : 'Password change failed';
+            throw new common_1.BadRequestException(message);
+        }
+    }
+    async forgotPassword(body) {
+        try {
+            return await this.usersService.requestPasswordReset(body.userID);
+        }
+        catch (err) {
+            const message = err instanceof Error ? err.message : 'Password reset failed';
+            throw new common_1.BadRequestException(message);
+        }
+    }
 };
 exports.AuthController = AuthController;
 __decorate([
@@ -75,6 +93,22 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "getMe", null);
+__decorate([
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.Put)('change-password'),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "changePassword", null);
+__decorate([
+    (0, common_1.Post)('forgot-password'),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "forgotPassword", null);
 exports.AuthController = AuthController = __decorate([
     (0, common_1.Controller)('auth'),
     __metadata("design:paramtypes", [auth_service_1.AuthService,

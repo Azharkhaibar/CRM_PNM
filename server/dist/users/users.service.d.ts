@@ -15,4 +15,15 @@ export declare class UsersService {
     deleteUserById(user_id: number): Promise<{
         message: string;
     }>;
+    changePassword(userID: string, currentPassword: string, newPassword: string): Promise<{
+        message: string;
+        userID: string;
+    }>;
+    requestPasswordReset(userID: string): Promise<{
+        message: string;
+        userID?: undefined;
+    } | {
+        message: string;
+        userID: string;
+    }>;
 }

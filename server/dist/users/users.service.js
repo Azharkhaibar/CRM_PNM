@@ -109,6 +109,56 @@ let UsersService = class UsersService {
             throw new common_1.InternalServerErrorException('Failed to delete user');
         }
     }
+    async changePassword(userID, currentPassword, newPassword) {
+        try {
+            const auth = await this.AuthRepository.findOne({
+                where: { userID },
+                relations: ['user'],
+            });
+            if (!auth) {
+                throw new common_1.NotFoundException('User not found');
+            }
+            const isCurrentPasswordValid = await bcrypt_1.default.compare(currentPassword, auth.hash_password);
+            if (!isCurrentPasswordValid) {
+                throw new common_1.UnauthorizedException('Current password is incorrect');
+            }
+            const saltRounds = 10;
+            const hashedNewPassword = await bcrypt_1.default.hash(newPassword, saltRounds);
+            auth.hash_password = hashedNewPassword;
+            await this.AuthRepository.save(auth);
+            return {
+                message: 'Password changed successfully',
+                userID: auth.userID,
+            };
+        }
+        catch (error) {
+            if (error instanceof common_1.UnauthorizedException ||
+                error instanceof common_1.NotFoundException) {
+                throw error;
+            }
+            throw new common_1.InternalServerErrorException('Failed to change password');
+        }
+    }
+    async requestPasswordReset(userID) {
+        try {
+            const auth = await this.AuthRepository.findOne({
+                where: { userID },
+                relations: ['user'],
+            });
+            if (!auth) {
+                return {
+                    message: 'If your user ID exists, a password reset link has been sent to your registered email',
+                };
+            }
+            return {
+                message: 'If your user ID exists, a password reset link has been sent to your registered email',
+                userID: auth.userID,
+            };
+        }
+        catch (error) {
+            throw new common_1.InternalServerErrorException('Failed to process password reset request');
+        }
+    }
 };
 exports.UsersService = UsersService;
 exports.UsersService = UsersService = __decorate([

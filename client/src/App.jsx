@@ -20,6 +20,7 @@ import Reputasi from './features/Dashboard/pages/RiskProfile/pages/Reputasi.jsx'
 import Report from './features/Dashboard/report/report.jsx';
 import Settings from './features/Dashboard/pages/RiskProfile/setting/setting.jsx';
 import ProfilePage from './features/Dashboard/pages/profile/pages/userprofile.jsx';
+import ForgotPassword from './features/auth/pages/forgot-password.jsx';
 
 function App() {
   return (
@@ -35,6 +36,7 @@ function App() {
           <Route path="/" element={<Mainpage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/login/forgot-password" element={<ForgotPassword />} />
 
           <Route path="/dashboard" element={<DashboardLayout />}>
             <Route index element={<Dashboard />} />

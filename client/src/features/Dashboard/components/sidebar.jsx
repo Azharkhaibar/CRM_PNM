@@ -12,7 +12,7 @@ const Sidebar = () => {
   const [openRisk, setOpenRisk] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const { user, logout } = useAuth();
-  const { darkMode } = useDarkMode(); 
+  const { darkMode } = useDarkMode();
   const menuRef = useRef(null);
   const nvg = useNavigate();
 
@@ -55,6 +55,8 @@ const Sidebar = () => {
   const dropdownClass = `absolute bottom-full mb-2 left-0 w-52 border rounded-lg shadow-lg p-2 z-50 transition-colors duration-300 ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-200 text-gray-800'}`;
 
   const dropdownItemClass = `flex items-center gap-2 w-full px-2 py-1 rounded text-sm transition ${darkMode ? 'hover:bg-gray-600 hover:text-white' : 'hover:bg-gray-100 hover:text-gray-900'}`;
+
+  const dividerClass = `my-3 border-t transition-colors duration-300 ${darkMode ? 'border-gray-600' : 'border-gray-300'}`;
 
   return (
     <div className={sidebarClass}>
@@ -119,6 +121,10 @@ const Sidebar = () => {
             </Link>
           </li>
 
+          {/* Divider sebelum Settings */}
+          <div className={dividerClass} />
+
+          {/* Settings Section */}
           <li>
             <Link to="/dashboard/settings" className={navItemClass(isActive('/dashboard/settings', true))}>
               Settings

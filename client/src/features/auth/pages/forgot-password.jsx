@@ -1,51 +1,44 @@
 import React, { useState } from 'react';
-import InputField from '../components/inputField';
-import { useNavigate } from 'react-router-dom';
-import bgImage from '../../../assets/Gedung-PNM-Banner.jpg';
-import fileIMG from '../../../assets/LogoRIMS.png';
-import { useAuth } from '../hooks/useAuth.hook';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Link } from 'react-router-dom';
+import InputField from '../components/inputField';
+import fileIMG from '../../../assets/logo_pnm.png';
+import bgImage from '../../../assets/Gedung-PNM-Banner.jpg';
 import { useDarkMode } from '../../../shared/components/Darkmodecontext';
-import PinDialog from '../components/pinDialog';
-export default function LoginPage() {
+
+export default function ForgotPassword() {
   const [userID, setUserID] = useState('');
-  const [password, setPassword] = useState('');
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const [showDialog, setShowDialog] = useState(false);
   const [dialogMessage, setDialogMessage] = useState('');
-  const [showPinDialog, setShowPinDialog] = useState(false);
-
-  const nvg = useNavigate();
-  const { loading, error, login } = useAuth();
   const { darkMode } = useDarkMode();
 
-  const handleLogin = async (e) => {
+  const handleForgotPassword = async (e) => {
     e.preventDefault();
+    setError('');
+    setMessage('');
 
-    if (!userID || !password) {
-      setDialogMessage('UserID dan Password harus diisi');
+    if (!userID) {
+      setDialogMessage('UserID wajib diisi.');
       setShowDialog(true);
       return;
     }
 
     try {
-      await login(userID, password);
+      setLoading(true);
+      await new Promise((resolve) => setTimeout(resolve, 1500));
 
-      setDialogMessage('✅ Login berhasil! Selamat datang 👋');
+      setDialogMessage('Link reset password telah dikirim. Silakan cek email Anda.');
       setShowDialog(true);
-
-      setTimeout(() => {
-        setShowDialog(false);
-        nvg('/dashboard', { state: { fromLogin: true } });
-      }, 1500);
+      setUserID('');
     } catch (err) {
-      setDialogMessage(err.message || 'Login gagal, coba lagi');
+      setDialogMessage('Terjadi kesalahan. Silakan coba lagi.');
       setShowDialog(true);
+    } finally {
+      setLoading(false);
     }
-  };
-
-  const handlePinVerified = () => {
-    setShowPinDialog(false);
-    nvg('/register');
   };
 
   const containerClass = `min-h-screen flex relative transition-colors duration-300 ${darkMode ? 'bg-gradient-to-br from-gray-900 to-gray-800' : 'bg-gradient-to-br from-blue-50 to-blue-200'}`;
@@ -67,37 +60,24 @@ export default function LoginPage() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className={formCardClass}>
           <div className="text-center mb-8">
             <img src={fileIMG} alt="PNM Logo" className="mx-auto w-64 h-auto drop-shadow-lg transition-opacity duration-300" />
-            <h1 className={`text-3xl font-semibold mt-4 transition-colors duration-300 ${darkMode ? 'text-white' : 'text-gray-800'}`}>Selamat Datang</h1>
-            <p className={`${textClass} text-sm mt-2 transition-colors duration-300`}>Silahkan login untuk mengakses dashboard</p>
+            <h1 className={`text-3xl font-semibold mt-4 transition-colors duration-300 ${darkMode ? 'text-white' : 'text-gray-800'}`}>Lupa Password</h1>
+            <p className={`${textClass} text-sm mt-2 transition-colors duration-300`}>Masukkan UserID Anda untuk menerima link reset password</p>
           </div>
 
-          <form onSubmit={handleLogin}>
+          <form onSubmit={handleForgotPassword}>
             <div className="space-y-4">
-              <InputField label="UserID" type="text" value={userID} onChange={(e) => setUserID(e.target.value)} darkMode={darkMode} />
-              <InputField label="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} darkMode={darkMode} />
-
-              <div className="text-right">
-                <button
-                  type="button"
-                  onClick={() => nvg('/forgot-password')}
-                  className={`text-sm font-medium hover:underline transition-colors duration-300 ${darkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'}`}
-                >
-                  Forgot Password?
-                </button>
-              </div>
+              <InputField label="UserID" type="text" value={userID} onChange={(e) => setUserID(e.target.value)} darkMode={darkMode} required />
             </div>
 
-            {error && <p className={`text-sm text-center mt-2 transition-colors duration-300 ${darkMode ? 'text-red-400' : 'text-red-500'}`}>{error}</p>}
-
             <button type="submit" disabled={loading} className={buttonClass}>
-              {loading ? 'Logging in...' : 'Login'}
+              {loading ? 'Mengirim...' : 'Kirim Link Reset'}
             </button>
 
             <p className={`mt-4 text-center text-sm transition-colors duration-300 ${textClass}`}>
-              Not already have an account?{' '}
-              <button type="button" onClick={() => setShowPinDialog(true)} className={`font-medium hover:underline transition-colors duration-300 ${darkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'}`}>
-                Register here
-              </button>
+              Kembali ke{' '}
+              <Link to="/login" className={`font-medium hover:underline transition-colors duration-300 ${darkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'}`}>
+                Halaman Login
+              </Link>
             </p>
           </form>
         </motion.div>
@@ -118,6 +98,12 @@ export default function LoginPage() {
               className={`relative rounded-xl p-6 shadow-2xl max-w-sm w-full mx-4 transition-colors duration-300 ${darkMode ? 'bg-gray-800 text-white' : 'bg-white text-gray-800'}`}
             >
               <p className="text-center font-medium">{dialogMessage}</p>
+              <button
+                onClick={() => setShowDialog(false)}
+                className={`w-full mt-4 py-2 rounded-lg font-medium transition-colors duration-300 ${darkMode ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white'}`}
+              >
+                Tutup
+              </button>
             </motion.div>
           </motion.div>
         )}
@@ -131,13 +117,11 @@ export default function LoginPage() {
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke={darkMode ? '#60A5FA' : '#2563EB'} strokeWidth="4"></circle>
                 <path className="opacity-75" fill={darkMode ? '#60A5FA' : '#2563EB'} d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
               </svg>
-              <p className="font-medium">Logging in...</p>
+              <p className="font-medium">Mengirim...</p>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
-
-      <PinDialog isOpen={showPinDialog} onClose={() => setShowPinDialog(false)} onPinVerified={handlePinVerified} />
     </div>
   );
 }

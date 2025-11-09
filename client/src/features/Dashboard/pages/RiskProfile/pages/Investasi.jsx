@@ -49,7 +49,6 @@ const Investasi = () => {
     <div className="p-6">
       <h1 className="text-3xl font-bold mb-6">Risk Form - Investasi</h1>
 
-      {/* TAB MENU */}
       <div className="mb-6 border-b border-gray-200">
         <nav className="flex space-x-8">
           <button

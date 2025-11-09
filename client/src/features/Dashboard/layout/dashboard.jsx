@@ -18,7 +18,6 @@ export default function Dashboard() {
     }
   }, [loc.state]);
 
-  // Style objects untuk manual styling
   const welcomeCardStyle = {
     background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
     color: 'white',
@@ -75,7 +74,6 @@ export default function Dashboard() {
     transition: 'all 0.2s ease',
   });
 
-  // Render Overview Dashboard (default)
   const renderOverview = () => (
     <>
       <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }} style={welcomeCardStyle}>
@@ -122,7 +120,6 @@ export default function Dashboard() {
 
   return (
     <div className={`p-6 min-h-screen ${darkMode ? 'dark-mode-bg' : 'bg-gray-50'}`}>
-      {/* Header dengan Tabs */}
       <div className="flex justify-between items-center mb-6">
         <motion.h1 initial={{ opacity: 0, y: -15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className={`text-3xl font-bold ${darkMode ? 'dark-mode-text' : 'text-gray-900'}`}>
           Dashboard
@@ -142,7 +139,6 @@ export default function Dashboard() {
       {/* Konten Berdasarkan Active View */}
       {activeView === 'overview' ? renderOverview() : <RiskManagementDashboard />}
 
-      {/* Welcome Dialog */}
       <AnimatePresence>
         {showDialog && (
           <motion.div className="fixed inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-50" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>

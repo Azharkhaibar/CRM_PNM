@@ -23,4 +23,22 @@ export declare class AuthController {
         created_at: Date;
         updated_at: Date;
     }>;
+    changePassword(req: Request & {
+        user: RequestUser;
+    }, body: {
+        currentPassword: string;
+        newPassword: string;
+    }): Promise<{
+        message: string;
+        userID: string;
+    }>;
+    forgotPassword(body: {
+        userID: string;
+    }): Promise<{
+        message: string;
+        userID?: undefined;
+    } | {
+        message: string;
+        userID: string;
+    }>;
 }
