@@ -13,12 +13,14 @@ const users_service_1 = require("./users.service");
 const users_controller_1 = require("./users.controller");
 const user_entity_1 = require("./entities/user.entity");
 const auth_entity_1 = require("../auth/entities/auth.entity");
+const divisi_entity_1 = require("../divisi/entities/divisi.entity");
+const divisi_module_1 = require("../divisi/divisi.module");
 let UsersModule = class UsersModule {
 };
 exports.UsersModule = UsersModule;
 exports.UsersModule = UsersModule = __decorate([
     (0, common_1.Module)({
-        imports: [typeorm_1.TypeOrmModule.forFeature([user_entity_1.User, auth_entity_1.Auth])],
+        imports: [typeorm_1.TypeOrmModule.forFeature([user_entity_1.User, auth_entity_1.Auth, divisi_entity_1.Divisi]), divisi_module_1.DivisiModule],
         controllers: [users_controller_1.UsersController],
         providers: [users_service_1.UsersService],
         exports: [users_service_1.UsersService],

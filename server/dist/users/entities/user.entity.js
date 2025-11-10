@@ -13,6 +13,7 @@ exports.User = void 0;
 const typeorm_1 = require("typeorm");
 const userEnum_1 = require("../enum/userEnum");
 const auth_entity_1 = require("../../auth/entities/auth.entity");
+const divisi_entity_1 = require("../../divisi/entities/divisi.entity");
 let User = class User {
     user_id;
     userID;
@@ -21,6 +22,7 @@ let User = class User {
     created_at;
     updated_at;
     deleted_at;
+    divisi;
     auth;
 };
 exports.User = User;
@@ -60,6 +62,16 @@ __decorate([
     (0, typeorm_1.DeleteDateColumn)(),
     __metadata("design:type", Date)
 ], User.prototype, "deleted_at", void 0);
+__decorate([
+    (0, typeorm_1.ManyToOne)(() => divisi_entity_1.Divisi, (divisi) => divisi.users, {
+        nullable: true,
+        onDelete: 'SET NULL',
+    }),
+    (0, typeorm_1.JoinColumn)({
+        name: 'divisi_id',
+    }),
+    __metadata("design:type", Object)
+], User.prototype, "divisi", void 0);
 __decorate([
     (0, typeorm_1.OneToOne)(() => auth_entity_1.Auth, (auth) => auth.user, {
         cascade: true,

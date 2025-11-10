@@ -12,6 +12,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.GetUserDto = void 0;
 const class_transformer_1 = require("class-transformer");
 const get_auth_response_dto_1 = require("../../auth/dto/get-auth-response.dto");
+const divisi_response_dto_1 = require("../../divisi/dto/divisi-response.dto");
 class GetUserDto {
     user_id;
     userID;
@@ -21,6 +22,7 @@ class GetUserDto {
     updated_at;
     deleted_at;
     auth;
+    divisi;
 }
 exports.GetUserDto = GetUserDto;
 __decorate([
@@ -56,4 +58,19 @@ __decorate([
     (0, class_transformer_1.Type)(() => get_auth_response_dto_1.GetAuthResponseDto),
     __metadata("design:type", get_auth_response_dto_1.GetAuthResponseDto)
 ], GetUserDto.prototype, "auth", void 0);
+__decorate([
+    (0, class_transformer_1.Expose)(),
+    (0, class_transformer_1.Transform)((params) => {
+        const src = params.obj;
+        if (src.divisi) {
+            return {
+                divisi_id: src.divisi.divisi_id,
+                name: src.divisi.name,
+            };
+        }
+        return null;
+    }),
+    (0, class_transformer_1.Type)(() => divisi_response_dto_1.DivisiResponseDto),
+    __metadata("design:type", Object)
+], GetUserDto.prototype, "divisi", void 0);
 //# sourceMappingURL=get-user.dto.js.map

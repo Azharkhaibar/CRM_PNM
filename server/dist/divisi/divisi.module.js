@@ -8,15 +8,19 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.DivisiModule = void 0;
 const common_1 = require("@nestjs/common");
+const typeorm_1 = require("@nestjs/typeorm");
 const divisi_service_1 = require("./divisi.service");
 const divisi_controller_1 = require("./divisi.controller");
+const divisi_entity_1 = require("./entities/divisi.entity");
 let DivisiModule = class DivisiModule {
 };
 exports.DivisiModule = DivisiModule;
 exports.DivisiModule = DivisiModule = __decorate([
     (0, common_1.Module)({
+        imports: [typeorm_1.TypeOrmModule.forFeature([divisi_entity_1.Divisi])],
         controllers: [divisi_controller_1.DivisiController],
         providers: [divisi_service_1.DivisiService],
+        exports: [divisi_service_1.DivisiService],
     })
 ], DivisiModule);
 //# sourceMappingURL=divisi.module.js.map

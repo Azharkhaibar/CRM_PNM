@@ -76,6 +76,7 @@ __decorate([
 ], DivisiController.prototype, "remove", null);
 exports.DivisiController = DivisiController = __decorate([
     (0, common_1.Controller)('divisi'),
+    (0, common_1.UsePipes)(new common_1.ValidationPipe({ transform: true })),
     __metadata("design:paramtypes", [divisi_service_1.DivisiService])
 ], DivisiController);
 //# sourceMappingURL=divisi.controller.js.map

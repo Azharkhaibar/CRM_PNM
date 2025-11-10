@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Avatar from 'react-avatar';
 import { useAuth } from '../../auth/hooks/useAuth.hook';
 import { useDarkMode } from '../../../shared/components/Darkmodecontext';
-
+import { ChevronsUpDown } from 'lucide-react';
 const Sidebar = () => {
   const { pathname } = useLocation();
   const [openRisk, setOpenRisk] = useState(false);
@@ -14,6 +14,8 @@ const Sidebar = () => {
   const { user, logout } = useAuth();
   const { darkMode } = useDarkMode();
   const menuRef = useRef(null);
+  // state untuk milih divisi
+  const [openSelectionDivisionDialog, setOpenSelectionDivisionDialog] = useState(false)
   const nvg = useNavigate();
 
   const riskItems = ['investasi', 'pasar', 'likuiditas', 'operasional', 'hukum', 'stratejik', 'kepatuhan', 'reputasi'];
@@ -65,6 +67,13 @@ const Sidebar = () => {
       </div>
 
       <nav className="flex-1">
+        <div className="p-3 text-center bg-gray-900 rounded-md mb-2">
+          <div className="flex justify-between">
+            <p className='font-bold'>Compliance</p>
+
+            <ChevronsUpDown className='opacity-45' />
+          </div>
+        </div>
         <ul className="space-y-1">
           <li>
             <Link to="/dashboard" className={navItemClass(isActive('/dashboard', true))}>

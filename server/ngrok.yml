@@ -7,4 +7,4 @@ tunnels:
     addr: 5530
   PNM_DASHBOARD2:
     proto: http
-    addr: 5531
+    addr: 5173
