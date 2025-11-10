@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { useUserNotifications } from '../hooks/useUserNotifications';
-
+import { useUserNotifications } from '../pages/notification/hooks/notification.hook';
 export const NotificationBell = () => {
   const { unreadCount, notifications, markAsRead } = useUserNotifications();
   const [isOpen, setIsOpen] = useState(false);

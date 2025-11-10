@@ -21,6 +21,7 @@ import Report from './features/Dashboard/report/report.jsx';
 import Settings from './features/Dashboard/pages/RiskProfile/setting/setting.jsx';
 import ProfilePage from './features/Dashboard/pages/profile/pages/userprofile.jsx';
 import ForgotPassword from './features/auth/pages/forgot-password.jsx';
+import NotificationPage from './features/Dashboard/pages/notification/pages/notification.jsx';
 
 function App() {
   return (
@@ -55,6 +56,7 @@ function App() {
             {/* Other Pages */}
             <Route path="profile" element={<ProfilePage />} />
             <Route path="report" element={<Report />} />
+            <Route path="notification" element={<NotificationPage />} />
             <Route path="settings" element={<Settings />} />
           </Route>
         </Routes>

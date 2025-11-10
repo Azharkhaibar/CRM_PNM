@@ -61,7 +61,6 @@ const Sidebar = () => {
     console.log('Divisi dipilih:', division.name);
   };
 
-  // Styling classes
   const sidebarClass = `w-64 h-screen border-r p-4 flex flex-col transition-colors duration-300 ${darkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-200 text-gray-800'}`;
 
   const navItemClass = (active) =>
@@ -103,7 +102,6 @@ const Sidebar = () => {
 
   return (
     <div className={sidebarClass}>
-      {/* Logo */}
       <div className="flex justify-center mb-8">
         <img src={logo} alt="PNM" className="w-40 h-auto transition-all duration-300 hover:scale-105" />
       </div>
@@ -204,7 +202,10 @@ const Sidebar = () => {
           <div className={dividerClass} />
 
           <Link to="/dashboard/settings" className={navItemClass(isActive('/dashboard/settings', true))}>
-            ⚙️ Settings
+              Settings
+          </Link>
+          <Link to="/dashboard/notification" className={navItemClass(isActive('/dashboard/notification', true))}>
+              Notification
           </Link>
         </div>
       </nav>
