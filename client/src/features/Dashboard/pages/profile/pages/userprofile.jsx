@@ -14,29 +14,36 @@ export default function ProfilePage() {
   const [showNotif, setShowNotif] = useState(false);
   const [formData, setFormData] = useState({ role: '', gender: '' });
   const [hasChanges, setHasChanges] = useState(false);
+  const [saveError, setSaveError] = useState(null);
   const previousProfileRef = useRef(null);
+
+  const normalizeData = (data) => {
+    return {
+      role: data?.role || '',
+      gender: data?.gender || '',
+    };
+  };
 
   useEffect(() => {
     if (profile && !previousProfileRef.current) {
-      setFormData({
-        role: profile.role || '',
-        gender: profile.gender || '',
-      });
+      const normalized = normalizeData(profile);
+      console.log('🎯 Initializing form data:', normalized);
+      setFormData(normalized);
       previousProfileRef.current = profile;
     }
   }, [profile]);
 
+
   useEffect(() => {
     if (profile) {
-      const hasRoleChanged = formData.role !== profile.role;
-      const hasGenderChanged = formData.gender !== profile.gender;
+      const normalizedProfile = normalizeData(profile);
+      const hasRoleChanged = formData.role !== normalizedProfile.role;
+      const hasGenderChanged = formData.gender !== normalizedProfile.gender;
       const changesExist = hasRoleChanged || hasGenderChanged;
 
       console.log('🔄 Changes check:', {
-        formRole: formData.role,
-        profileRole: profile.role,
-        formGender: formData.gender,
-        profileGender: profile.gender,
+        formData,
+        normalizedProfile,
         hasChanges: changesExist,
       });
 
@@ -47,17 +54,11 @@ export default function ProfilePage() {
   useEffect(() => {
     if (profile && previousProfileRef.current !== profile) {
       console.log('🔄 Profile updated, syncing form data');
-      setFormData({
-        role: profile.role || '',
-        gender: profile.gender || '',
-      });
+      const normalized = normalizeData(profile);
+      setFormData(normalized);
       previousProfileRef.current = profile;
     }
   }, [profile]);
-
-  console.log('🔍 [COMPONENT] Profile data:', profile);
-  console.log('🔍 [COMPONENT] Form data:', formData);
-  console.log('🔍 [COMPONENT] Has changes:', hasChanges);
 
   const handleSave = async () => {
     if (!hasChanges) {
@@ -65,11 +66,19 @@ export default function ProfilePage() {
       return;
     }
 
+    // Validation
+    if (!formData.role || !formData.gender) {
+      setSaveError('Role dan Gender harus diisi');
+      return;
+    }
+
     try {
+      setSaveError(null);
       console.log('💾 Saving changes:', formData);
+
       const result = await updateProfile({
-        role: formData.role,
-        gender: formData.gender,
+        role: formData.role, 
+        gender: formData.gender, 
       });
 
       console.log('✅ Save successful:', result);
@@ -77,10 +86,12 @@ export default function ProfilePage() {
       setTimeout(() => setShowNotif(false), 3000);
     } catch (err) {
       console.error('Save failed:', err);
+      setSaveError(err.message || 'Gagal menyimpan perubahan');
     }
   };
 
   const handleRetry = () => {
+    setSaveError(null);
     fetchProfile();
   };
 
@@ -90,15 +101,15 @@ export default function ProfilePage() {
       ...prev,
       [field]: value,
     }));
+    if (saveError) setSaveError(null);
   };
 
   const handleResetForm = () => {
     if (profile) {
       console.log('🔄 Resetting form to profile data');
-      setFormData({
-        role: profile.role || '',
-        gender: profile.gender || '',
-      });
+      const normalized = normalizeData(profile);
+      setFormData(normalized);
+      setSaveError(null);
     }
   };
 
@@ -241,9 +252,8 @@ export default function ProfilePage() {
                   <option value="">Pilih Role</option>
                   <option value="ADMIN">Admin</option>
                   <option value="USER">User</option>
-                  <option value="MANAGER">Manager</option>
-                  <option value="SUPERVISOR">Supervisor</option>
                 </select>
+                <p className="text-xs text-gray-500 mt-1">Current: {displayRole}</p>
               </div>
 
               <div>
@@ -252,8 +262,8 @@ export default function ProfilePage() {
                   <option value="">Pilih Gender</option>
                   <option value="MALE">Male</option>
                   <option value="FEMALE">Female</option>
-                  <option value="OTHER">Other</option>
                 </select>
+                <p className="text-xs text-gray-500 mt-1">Current: {displayGender}</p>
               </div>
             </div>
 
@@ -273,6 +283,12 @@ export default function ProfilePage() {
 
               {hasChanges && <div className={`text-sm ${darkMode ? 'text-yellow-400' : 'text-yellow-600'}`}>● Ada perubahan yang belum disimpan</div>}
             </div>
+
+            {saveError && (
+              <div className={`mt-3 p-3 rounded-lg ${darkMode ? 'bg-red-900/50 text-red-300' : 'bg-red-50 text-red-600'}`}>
+                <strong>Error:</strong> {saveError}
+              </div>
+            )}
 
             {error && !profile && (
               <div className={`mt-3 p-3 rounded-lg ${darkMode ? 'bg-red-900/50 text-red-300' : 'bg-red-50 text-red-600'}`}>

@@ -22,7 +22,7 @@ export const useProfile = (user_id: number | undefined) => {
 
   const fetchProfile = useCallback(async () => {
     if (!user_id) {
-      console.log('❌ [HOOK] No user_id provided');
+      console.log('[HOOK] No user_id provided');
       setLoading(false);
       return;
     }
@@ -32,11 +32,10 @@ export const useProfile = (user_id: number | undefined) => {
     setError(null);
 
     try {
-      const res = await ProfileService.getProfile(user_id);
-      console.log('✅ [HOOK] Profile data received:', res);
+      const res = await ProfileService.getProfile(user_id);;
       setProfile(res);
     } catch (err: any) {
-      console.error('❌ [HOOK] Profile fetch failed:', err.message);
+      console.error('[HOOK] Fetch Profile gagal :(:', err.message);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -54,7 +53,7 @@ export const useProfile = (user_id: number | undefined) => {
         return;
       }
 
-      console.log('🎯 [HOOK] Starting profile update:', data);
+      console.log('update profile:', data);
       setUpdating(true);
       setError(null);
 
@@ -65,7 +64,7 @@ export const useProfile = (user_id: number | undefined) => {
         setProfile(updated);
         return updated;
       } catch (err: any) {
-        console.error('❌ [HOOK] Profile update failed:', err.message);
+        console.error('[HOOK] Profile update failed:', err.message);
         setError(err.message);
         throw err;
       } finally {

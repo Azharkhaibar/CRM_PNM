@@ -1,7 +1,8 @@
+// services/profile.service.js
 import PROFILE_API from '../api/profile.api';
 import { AxiosError } from 'axios';
 
-// Local storage key untuk menyimpan profile data
+// Local storage key untuk menyimpan profile data (hanya untuk read fallback)
 const PROFILE_STORAGE_KEY = 'user_profile_data';
 
 // Get user from auth context as fallback
@@ -13,7 +14,7 @@ const getAuthUser = () => {
   return null;
 };
 
-// Get profile from localStorage
+// Get profile from localStorage (hanya untuk read)
 const getStoredProfile = (user_id: number) => {
   if (typeof window === 'undefined') return null;
 
@@ -29,7 +30,7 @@ const getStoredProfile = (user_id: number) => {
   return null;
 };
 
-// Save profile to localStorage
+// Save profile to localStorage (hanya untuk read cache)
 const saveProfileToStorage = (user_id: number, profile: any) => {
   if (typeof window === 'undefined') return;
 
@@ -38,7 +39,7 @@ const saveProfileToStorage = (user_id: number, profile: any) => {
     const profiles = stored ? JSON.parse(stored) : {};
     profiles[user_id] = {
       ...profile,
-      updated_at: new Date().toISOString(),
+      storage_updated_at: new Date().toISOString(), // tandai sebagai cache
     };
     localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(profiles));
   } catch (error) {
@@ -62,17 +63,19 @@ export const ProfileService = {
 
       return res.data;
     } catch (err: any) {
-      console.error('❌ [SERVICE] Backend API failed');
+      console.error('[SERVICE] Backend API gagal :( ):', err);
 
+   
       const storedProfile = getStoredProfile(user_id);
       if (storedProfile) {
-        console.log('🔄 [SERVICE] Using stored profile data');
+        console.warn('⚠️ Using cached data - backend might be unavailable');
         return storedProfile;
       }
 
       const authUser = getAuthUser();
       if (authUser) {
-        console.log('🔄 [SERVICE] Using auth data as fallback');
+        console.log('🔄 [SERVICE] Using auth data as READ-ONLY fallback');
+        console.warn('⚠️ Using auth data - backend might be unavailable');
         const fallbackData = {
           user_id: authUser.user_id || user_id,
           userID: authUser.userID || `user${user_id}`,
@@ -81,12 +84,11 @@ export const ProfileService = {
           divisi: authUser.divisi || { divisi_id: 1, name: 'Compliance' },
           created_at: authUser.created_at || new Date().toISOString(),
           updated_at: authUser.updated_at || new Date().toISOString(),
+          is_cached: true,
         };
-        saveProfileToStorage(user_id, fallbackData);
         return fallbackData;
       }
 
-      // Jika semua fallback gagal
       if (err instanceof AxiosError) {
         const errorMessage = err.response?.data?.message || err.message || 'Backend Error 500';
         throw new Error(`Backend Error: ${errorMessage}`);
@@ -97,35 +99,58 @@ export const ProfileService = {
 
   updateProfile: async (user_id: number, data: any) => {
     try {
-      console.log('🎯 [SERVICE] Updating profile via API');
+      console.log('🎯 [SERVICE] Update profile via API:', { user_id, data });
+
+      if (!data.role || !data.gender) {
+        throw new Error('Role and gender are required');
+      }
+
       const res = await PROFILE_API.updateProfile(user_id, data);
 
-      // Simpan update ke localStorage
+      if (!res.data) {
+        throw new Error('No response data from server');
+      }
+
+      console.log('✅ [SERVICE] API update successful:', res.data);
+
       saveProfileToStorage(user_id, res.data);
 
-      console.log('✅ [SERVICE] API update successful');
       return res.data;
     } catch (err: any) {
-      console.error('❌ [SERVICE] API update failed, updating locally');
+      console.error('❌ [SERVICE] API update failed:', err);
 
-      const currentProfile = getStoredProfile(user_id) || getAuthUser() || {};
+      let errorMessage = 'Failed to update profile';
 
-      const updatedProfile = {
-        user_id: currentProfile.user_id || user_id,
-        userID: currentProfile.userID || `user${user_id}`,
-        role: currentProfile.role || 'USER',
-        gender: currentProfile.gender || 'MALE',
-        divisi: currentProfile.divisi || { divisi_id: 1, name: 'Compliance' },
-        created_at: currentProfile.created_at || new Date().toISOString(),
-        ...data,
-        updated_at: new Date().toISOString(),
-      };
+      if (err instanceof AxiosError) {
+        const status = err.response?.status;
+        const serverMessage = err.response?.data?.message;
 
-      // Save to localStorage
-      saveProfileToStorage(user_id, updatedProfile);
+        console.error('🔍 [SERVICE] Detailed API Error:', {
+          status,
+          serverMessage,
+          data: err.response?.data,
+          url: err.config?.url,
+          method: err.config?.method,
+        });
 
-      console.log('✅ [SERVICE] Profile updated locally:', updatedProfile);
-      return updatedProfile;
+        switch (status) {
+          case 400:
+            errorMessage = serverMessage || 'Invalid data sent to server';
+            break;
+          case 404:
+            errorMessage = 'User not found';
+            break;
+          case 500:
+            errorMessage = 'Internal server error - please try again later';
+            break;
+          default:
+            errorMessage = serverMessage || `Server error: ${status}`;
+        }
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+
+      throw new Error(errorMessage);
     }
   },
 };
