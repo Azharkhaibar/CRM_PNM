@@ -8,4 +8,5 @@ export declare class AuthService {
     login(userID: string, password: string): Promise<{
         accessToken: string;
     }>;
+    findOneByUserID(userID: string): Promise<Auth | null>;
 }

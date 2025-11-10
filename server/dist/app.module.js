@@ -17,6 +17,10 @@ const users_module_1 = require("./users/users.module");
 const db_config_1 = require("./config/db.config");
 const investasi_module_1 = require("./investasi/investasi.module");
 const pasar_module_1 = require("./pasar/pasar.module");
+const likuiditas_module_1 = require("./likuiditas/likuiditas.module");
+const operasional_module_1 = require("./operasional/operasional.module");
+const divisi_module_1 = require("./divisi/divisi.module");
+const notification_module_1 = require("./notification/notification.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -33,6 +37,10 @@ exports.AppModule = AppModule = __decorate([
             users_module_1.UsersModule,
             investasi_module_1.InvestasiModule,
             pasar_module_1.PasarModule,
+            likuiditas_module_1.LikuiditasModule,
+            operasional_module_1.OperasionalModule,
+            divisi_module_1.DivisiModule,
+            notification_module_1.NotificationModule,
         ],
         controllers: [app_controller_1.AppController],
         providers: [app_service_1.AppService],

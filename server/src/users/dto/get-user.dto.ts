@@ -6,7 +6,10 @@ export class GetUserDto {
   user_id: number;
 
   @Expose()
-  username: string;
+  userID: string;
+
+  @Expose()
+  role: string;
 
   @Expose()
   gender: string;

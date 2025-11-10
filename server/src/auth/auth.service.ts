@@ -36,4 +36,11 @@ export class AuthService {
 
     return { accessToken };
   }
+
+  async findOneByUserID(userID: string) {
+    return this.authRepository.findOne({
+      where: { userID },
+      relations: ['user'],
+    });
+  }
 }

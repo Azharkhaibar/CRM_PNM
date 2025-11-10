@@ -1,0 +1,10 @@
+version: '2'
+authtoken: 2xld2hem6XvXLZCujeBoBeAoZpt_5vFSf7s1up8KZHZdUWh1c
+
+tunnels:
+  PNM_DASHBOARD:
+    proto: http
+    addr: 5530
+  PNM_DASHBOARD2:
+    proto: http
+    addr: 5531

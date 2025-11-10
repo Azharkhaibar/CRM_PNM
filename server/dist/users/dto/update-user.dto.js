@@ -11,8 +11,10 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.UpdateUserDto = void 0;
 const class_validator_1 = require("class-validator");
+const userEnum_1 = require("../enum/userEnum");
 class UpdateUserDto {
     username;
+    role;
     gender;
 }
 exports.UpdateUserDto = UpdateUserDto;
@@ -23,7 +25,12 @@ __decorate([
 ], UpdateUserDto.prototype, "username", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
-    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsEnum)(userEnum_1.Role, { message: 'Role tidak valid' }),
+    __metadata("design:type", String)
+], UpdateUserDto.prototype, "role", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsEnum)(userEnum_1.Gender, { message: 'Gender tidak valid' }),
     __metadata("design:type", String)
 ], UpdateUserDto.prototype, "gender", void 0);
 //# sourceMappingURL=update-user.dto.js.map

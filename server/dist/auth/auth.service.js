@@ -77,6 +77,12 @@ let AuthService = class AuthService {
         const accessToken = this.jwtService.sign(payload);
         return { accessToken };
     }
+    async findOneByUserID(userID) {
+        return this.authRepository.findOne({
+            where: { userID },
+            relations: ['user'],
+        });
+    }
 };
 exports.AuthService = AuthService;
 exports.AuthService = AuthService = __decorate([

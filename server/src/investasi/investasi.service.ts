@@ -13,7 +13,13 @@ export class InvestasiService {
   ) {}
 
   async create(dto: CreateInvestasiDto): Promise<Investasi> {
-    const entity = this.investRepository.create(dto);
+    const weighted = dto.hasil * dto.bobot_indikator * dto.bobot;
+
+    const entity = this.investRepository.create({
+      ...dto,
+      weighted,
+    });
+
     return this.investRepository.save(entity);
   }
 

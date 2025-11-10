@@ -5,11 +5,15 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { cors: true });
   app.enableCors({
-    origin: 'http://localhost:5173',
+    origin: [
+      'http://localhost:5173',
+      'https://8f92cc5d4764.ngrok-free.app',
+      'https://41c5e7ce0093.ngrok-free.app',
+    ],
     credentials: true,
   });
 
-  app.setGlobalPrefix('/api/v1');
+  app.setGlobalPrefix('api/v1');
   app.useGlobalPipes(
     new ValidationPipe({
       transform: true,

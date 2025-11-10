@@ -1,8 +1,7 @@
 export declare class GetAuthDto {
     auth_id: number;
-    email: string;
+    userID: string;
     hash_password: string;
-    created_at: Date;
-    updated_at: Date;
-    deleted_at: Date;
+    refresh_token?: string;
+    reset_password_token?: string;
 }
