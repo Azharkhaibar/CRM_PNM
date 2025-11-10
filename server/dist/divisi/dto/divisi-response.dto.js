@@ -9,15 +9,19 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.CreateDivisiDto = void 0;
-const class_validator_1 = require("class-validator");
-class CreateDivisiDto {
+exports.DivisiResponseDto = void 0;
+const class_transformer_1 = require("class-transformer");
+class DivisiResponseDto {
+    divisi_id;
     name;
 }
-exports.CreateDivisiDto = CreateDivisiDto;
+exports.DivisiResponseDto = DivisiResponseDto;
 __decorate([
-    (0, class_validator_1.IsString)(),
-    (0, class_validator_1.IsNotEmpty)(),
+    (0, class_transformer_1.Expose)(),
+    __metadata("design:type", Number)
+], DivisiResponseDto.prototype, "divisi_id", void 0);
+__decorate([
+    (0, class_transformer_1.Expose)(),
     __metadata("design:type", String)
-], CreateDivisiDto.prototype, "name", void 0);
-//# sourceMappingURL=create-divisi.dto.js.map
+], DivisiResponseDto.prototype, "name", void 0);
+//# sourceMappingURL=divisi-response.dto.js.map

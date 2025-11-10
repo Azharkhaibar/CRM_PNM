@@ -14,6 +14,7 @@ import { plainToInstance } from 'class-transformer';
 import { RegisterDto } from './dto/register-user.dto';
 import { Auth } from 'src/auth/entities/auth.entity';
 import bcrypt from 'bcrypt';
+import { Divisi } from 'src/divisi/entities/divisi.entity';
 
 @Injectable()
 export class UsersService {
@@ -22,6 +23,8 @@ export class UsersService {
     private readonly usersRepository: Repository<User>,
     @InjectRepository(Auth)
     private readonly AuthRepository: Repository<Auth>,
+    @InjectRepository(Divisi)
+    private readonly divisiRepository: Repository<Divisi>,
   ) {}
 
   async register(dto: RegisterDto) {
@@ -51,9 +54,65 @@ export class UsersService {
     return this.AuthRepository.save(auth);
   }
 
+  async updateUserDivision(
+    user_id: number,
+    divisiId: number | null,
+  ): Promise<GetUserDto> {
+    try {
+      const user = await this.usersRepository.findOne({
+        where: { user_id },
+        relations: ['divisi', 'auth'],
+      });
+
+      if (!user) {
+        throw new NotFoundException(`User with ID ${user_id} not found`);
+      }
+
+      if (divisiId !== null) {
+        const divisi = await this.divisiRepository.findOne({
+          where: { divisi_id: divisiId },
+        });
+
+        if (!divisi) {
+          throw new NotFoundException(`Division with ID ${divisiId} not found`);
+        }
+      }
+
+      await this.usersRepository
+        .createQueryBuilder()
+        .update(User)
+        .set({ divisi: divisiId === null ? null : { divisi_id: divisiId } })
+        .where('user_id = :user_id', { user_id })
+        .execute();
+
+      // Get updated user data
+      const updatedUser = await this.usersRepository.findOne({
+        where: { user_id },
+        relations: ['divisi', 'auth'],
+      });
+
+      if (!updatedUser) {
+        throw new NotFoundException(
+          `User with ID ${user_id} not found after update`,
+        );
+      }
+
+      return plainToInstance(GetUserDto, updatedUser, {
+        excludeExtraneousValues: true,
+      });
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new InternalServerErrorException('Failed to update user division');
+    }
+  }
+
   async getUsersData(): Promise<GetUserDto[]> {
     try {
-      const users = await this.usersRepository.find({ relations: ['auth'] });
+      const users = await this.usersRepository.find({
+        relations: ['auth', 'divisi'],
+      });
       return users.map((user) =>
         plainToInstance(GetUserDto, user, { excludeExtraneousValues: true }),
       );
@@ -67,7 +126,7 @@ export class UsersService {
     try {
       const user = await this.usersRepository.findOne({
         where: { user_id },
-        relations: ['auth'],
+        relations: ['auth', 'divisi'],
       });
 
       if (!user)
@@ -88,18 +147,43 @@ export class UsersService {
     try {
       const user = await this.usersRepository.findOne({
         where: { user_id },
+        relations: ['divisi', 'auth'],
       });
 
-      if (!user)
+      if (!user) {
         throw new NotFoundException(`User with ID ${user_id} not found`);
+      }
 
-      Object.assign(user, dto);
-      const updated = await this.usersRepository.save(user);
+      if (dto.divisiId !== undefined) {
+        if (dto.divisiId === null) {
+          user.divisi = null;
+        } else {
+          const divisi = await this.divisiRepository.findOne({
+            where: { divisi_id: dto.divisiId },
+          });
 
-      return plainToInstance(GetUserDto, updated, {
+          if (!divisi) {
+            throw new NotFoundException(
+              `Division with ID ${dto.divisiId} not found`,
+            );
+          }
+          user.divisi = divisi;
+        }
+      }
+
+      if (dto.role) user.role = dto.role;
+      if (dto.gender) user.gender = dto.gender;
+      if (dto.username) user.userID = dto.username;
+
+      const updatedUser = await this.usersRepository.save(user);
+
+      return plainToInstance(GetUserDto, updatedUser, {
         excludeExtraneousValues: true,
       });
     } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
       throw new InternalServerErrorException('Failed to update user');
     }
   }

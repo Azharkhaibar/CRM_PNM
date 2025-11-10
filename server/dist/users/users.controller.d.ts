@@ -10,4 +10,7 @@ export declare class UsersController {
     deleteUser(id: number): Promise<{
         message: string;
     }>;
+    updateUserDivision(id: string, body: {
+        divisiId: number | null;
+    }): Promise<GetUserDto>;
 }

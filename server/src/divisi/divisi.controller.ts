@@ -1,9 +1,20 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UsePipes,
+  ValidationPipe,
+} from '@nestjs/common';
 import { DivisiService } from './divisi.service';
 import { CreateDivisiDto } from './dto/create-divisi.dto';
 import { UpdateDivisiDto } from './dto/update-divisi.dto';
 
 @Controller('divisi')
+@UsePipes(new ValidationPipe({ transform: true }))
 export class DivisiController {
   constructor(private readonly divisiService: DivisiService) {}
 

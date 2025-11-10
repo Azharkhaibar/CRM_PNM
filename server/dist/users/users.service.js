@@ -24,12 +24,15 @@ const get_user_dto_1 = require("./dto/get-user.dto");
 const class_transformer_1 = require("class-transformer");
 const auth_entity_1 = require("../auth/entities/auth.entity");
 const bcrypt_1 = __importDefault(require("bcrypt"));
+const divisi_entity_1 = require("../divisi/entities/divisi.entity");
 let UsersService = class UsersService {
     usersRepository;
     AuthRepository;
-    constructor(usersRepository, AuthRepository) {
+    divisiRepository;
+    constructor(usersRepository, AuthRepository, divisiRepository) {
         this.usersRepository = usersRepository;
         this.AuthRepository = AuthRepository;
+        this.divisiRepository = divisiRepository;
     }
     async register(dto) {
         const { userID, password, role, gender } = dto;
@@ -52,9 +55,52 @@ let UsersService = class UsersService {
         });
         return this.AuthRepository.save(auth);
     }
+    async updateUserDivision(user_id, divisiId) {
+        try {
+            const user = await this.usersRepository.findOne({
+                where: { user_id },
+                relations: ['divisi', 'auth'],
+            });
+            if (!user) {
+                throw new common_1.NotFoundException(`User with ID ${user_id} not found`);
+            }
+            if (divisiId !== null) {
+                const divisi = await this.divisiRepository.findOne({
+                    where: { divisi_id: divisiId },
+                });
+                if (!divisi) {
+                    throw new common_1.NotFoundException(`Division with ID ${divisiId} not found`);
+                }
+            }
+            await this.usersRepository
+                .createQueryBuilder()
+                .update(user_entity_1.User)
+                .set({ divisi: divisiId === null ? null : { divisi_id: divisiId } })
+                .where('user_id = :user_id', { user_id })
+                .execute();
+            const updatedUser = await this.usersRepository.findOne({
+                where: { user_id },
+                relations: ['divisi', 'auth'],
+            });
+            if (!updatedUser) {
+                throw new common_1.NotFoundException(`User with ID ${user_id} not found after update`);
+            }
+            return (0, class_transformer_1.plainToInstance)(get_user_dto_1.GetUserDto, updatedUser, {
+                excludeExtraneousValues: true,
+            });
+        }
+        catch (error) {
+            if (error instanceof common_1.NotFoundException) {
+                throw error;
+            }
+            throw new common_1.InternalServerErrorException('Failed to update user division');
+        }
+    }
     async getUsersData() {
         try {
-            const users = await this.usersRepository.find({ relations: ['auth'] });
+            const users = await this.usersRepository.find({
+                relations: ['auth', 'divisi'],
+            });
             return users.map((user) => (0, class_transformer_1.plainToInstance)(get_user_dto_1.GetUserDto, user, { excludeExtraneousValues: true }));
         }
         catch (error) {
@@ -66,7 +112,7 @@ let UsersService = class UsersService {
         try {
             const user = await this.usersRepository.findOne({
                 where: { user_id },
-                relations: ['auth'],
+                relations: ['auth', 'divisi'],
             });
             if (!user)
                 throw new common_1.NotFoundException(`User with ID ${user_id} not found`);
@@ -82,16 +128,40 @@ let UsersService = class UsersService {
         try {
             const user = await this.usersRepository.findOne({
                 where: { user_id },
+                relations: ['divisi', 'auth'],
             });
-            if (!user)
+            if (!user) {
                 throw new common_1.NotFoundException(`User with ID ${user_id} not found`);
-            Object.assign(user, dto);
-            const updated = await this.usersRepository.save(user);
-            return (0, class_transformer_1.plainToInstance)(get_user_dto_1.GetUserDto, updated, {
+            }
+            if (dto.divisiId !== undefined) {
+                if (dto.divisiId === null) {
+                    user.divisi = null;
+                }
+                else {
+                    const divisi = await this.divisiRepository.findOne({
+                        where: { divisi_id: dto.divisiId },
+                    });
+                    if (!divisi) {
+                        throw new common_1.NotFoundException(`Division with ID ${dto.divisiId} not found`);
+                    }
+                    user.divisi = divisi;
+                }
+            }
+            if (dto.role)
+                user.role = dto.role;
+            if (dto.gender)
+                user.gender = dto.gender;
+            if (dto.username)
+                user.userID = dto.username;
+            const updatedUser = await this.usersRepository.save(user);
+            return (0, class_transformer_1.plainToInstance)(get_user_dto_1.GetUserDto, updatedUser, {
                 excludeExtraneousValues: true,
             });
         }
         catch (error) {
+            if (error instanceof common_1.NotFoundException) {
+                throw error;
+            }
             throw new common_1.InternalServerErrorException('Failed to update user');
         }
     }
@@ -167,7 +237,9 @@ exports.UsersService = UsersService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, typeorm_1.InjectRepository)(user_entity_1.User)),
     __param(1, (0, typeorm_1.InjectRepository)(auth_entity_1.Auth)),
+    __param(2, (0, typeorm_1.InjectRepository)(divisi_entity_1.Divisi)),
     __metadata("design:paramtypes", [typeorm_2.Repository,
+        typeorm_2.Repository,
         typeorm_2.Repository])
 ], UsersService);
 //# sourceMappingURL=users.service.js.map

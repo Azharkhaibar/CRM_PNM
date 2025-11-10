@@ -6,9 +6,11 @@ import { UsersController } from './users.controller';
 
 import { User } from './entities/user.entity';
 import { Auth } from '../auth/entities/auth.entity';
+import { Divisi } from 'src/divisi/entities/divisi.entity';
+import { DivisiModule } from 'src/divisi/divisi.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([User, Auth])],
+  imports: [TypeOrmModule.forFeature([User, Auth, Divisi]), DivisiModule],
 
   controllers: [UsersController],
 

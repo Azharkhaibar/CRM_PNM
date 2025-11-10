@@ -12,10 +12,12 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.UpdateUserDto = void 0;
 const class_validator_1 = require("class-validator");
 const userEnum_1 = require("../enum/userEnum");
+const class_transformer_1 = require("class-transformer");
 class UpdateUserDto {
     username;
     role;
     gender;
+    divisiId;
 }
 exports.UpdateUserDto = UpdateUserDto;
 __decorate([
@@ -33,4 +35,10 @@ __decorate([
     (0, class_validator_1.IsEnum)(userEnum_1.Gender, { message: 'Gender tidak valid' }),
     __metadata("design:type", String)
 ], UpdateUserDto.prototype, "gender", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsNumber)(),
+    (0, class_transformer_1.Type)(() => Number),
+    __metadata("design:type", Object)
+], UpdateUserDto.prototype, "divisiId", void 0);
 //# sourceMappingURL=update-user.dto.js.map

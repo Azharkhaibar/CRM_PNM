@@ -37,4 +37,12 @@ export class UsersController {
   deleteUser(@Param('id', ParseIntPipe) id: number) {
     return this.usersService.deleteUserById(id);
   }
+
+  @Patch(':id/division')
+  updateUserDivision(
+    @Param('id') id: string,
+    @Body() body: { divisiId: number | null }, // Bisa null untuk remove divisi
+  ) {
+    return this.usersService.updateUserDivision(+id, body.divisiId);
+  }
 }
