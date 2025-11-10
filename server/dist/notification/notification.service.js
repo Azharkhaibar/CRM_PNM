@@ -16,16 +16,16 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.NotificationService = void 0;
 const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
-const notification_entity_1 = require("./entities/notification.entity");
 const typeorm_2 = require("typeorm");
+const notification_entity_1 = require("./entities/notification.entity");
 let NotificationService = NotificationService_1 = class NotificationService {
     notificationRepo;
+    logger = new common_1.Logger(NotificationService_1.name);
     constructor(notificationRepo) {
         this.notificationRepo = notificationRepo;
     }
-    logger = new common_1.Logger(NotificationService_1.name);
     async findAll() {
-        return await this.notificationRepo.find({
+        return this.notificationRepo.find({
             order: { created_at: 'DESC' },
         });
     }
@@ -34,88 +34,120 @@ let NotificationService = NotificationService_1 = class NotificationService {
             where: { notification_id },
         });
         if (!notification) {
-            throw new Error('Notification not found');
+            throw new common_1.NotFoundException(`Notification with ID ${notification_id} not found`);
         }
         return notification;
-    }
-    async update(notification_id, updateNotificationDto) {
-        await this.notificationRepo.update(notification_id, updateNotificationDto);
-        return await this.findOne(notification_id);
     }
     async create(crDto) {
         try {
             const notificationData = {
                 ...crDto,
-                expires_at: crDto.expiresAt,
+                user_id: Number(crDto.userId),
+                expires_at: crDto.expiresAt ?? null,
             };
+            delete notificationData.userId;
+            delete notificationData.expiresAt;
             const notif = this.notificationRepo.create(notificationData);
-            const sv = await this.notificationRepo.save(notif);
-            this.logger.log(`Notification created for user ${crDto.userId}`);
-            return sv;
+            const saved = await this.notificationRepo.save(notif);
+            this.logger.log(`✅ Notification created for user ${crDto.userId}`);
+            return saved;
         }
         catch (err) {
             if (err instanceof Error) {
-                console.error(err.stack);
+                this.logger.error('❌ Failed to create notification', err.message);
             }
             else {
-                console.error(err);
+                this.logger.error('❌ Unknown error creating notification');
             }
-            throw new Error('gagal buat notif');
+            throw new common_1.InternalServerErrorException('Gagal membuat notifikasi');
         }
     }
-    async createMultiple(crDto) {
-        const notificationsData = crDto.map((dto) => ({
-            ...dto,
-            expires_at: dto.expiresAt,
-        }));
-        const notif = this.notificationRepo.create(notificationsData);
-        return await this.notificationRepo.save(notif);
+    async update(notification_id, updateNotificationDto) {
+        const notification = await this.findOne(notification_id);
+        Object.assign(notification, updateNotificationDto);
+        return await this.notificationRepo.save(notification);
     }
-    async findByUser(userId, options) {
+    async markAllAsRead(user_id) {
+        await this.notificationRepo
+            .createQueryBuilder()
+            .update(notification_entity_1.Notification)
+            .set({ read: true })
+            .where('user_id = :user_id', { user_id })
+            .andWhere('read = false')
+            .execute();
+        this.logger.log(`✅ All notifications marked as read for user ${user_id}`);
+    }
+    async createMultiple(crDto) {
+        try {
+            const notificationsData = crDto.map((dto) => {
+                const item = {
+                    ...dto,
+                    user_id: Number(dto.userId),
+                    expires_at: dto.expiresAt ?? null,
+                };
+                delete item.userId;
+                delete item.expiresAt;
+                return item;
+            });
+            const notifEntities = this.notificationRepo.create(notificationsData);
+            const saved = await this.notificationRepo.save(notifEntities);
+            this.logger.log(`✅ Created ${saved.length} notifications`);
+            return saved;
+        }
+        catch (err) {
+            if (err instanceof Error) {
+                this.logger.error('❌ Failed to create notifications', err.message);
+            }
+            else {
+                this.logger.error('❌ Unknown error creating multiple notifications');
+            }
+            throw new common_1.InternalServerErrorException('Gagal membuat notifikasi');
+        }
+    }
+    async findByUser(user_id, options) {
         const { unreadOnly = false, limit = 50, page = 1 } = options || {};
         const query = this.notificationRepo
             .createQueryBuilder('notification')
-            .where('notification.userId = :userId', { userId })
+            .where('notification.user_id = :user_id', { user_id })
             .orderBy('notification.created_at', 'DESC')
             .skip((page - 1) * limit)
             .take(limit);
         if (unreadOnly) {
-            query.andWhere('notification.read = :read', { read: false });
+            query.andWhere('notification.read = false');
         }
         const [notifications, total] = await query.getManyAndCount();
         return { notifications, total };
     }
     async markAsRead(notification_id) {
-        const notification = await this.notificationRepo.findOne({
-            where: { notification_id },
-        });
-        if (!notification) {
-            throw new Error('Notification not found');
-        }
+        const notification = await this.findOne(notification_id);
         notification.read = true;
         return await this.notificationRepo.save(notification);
     }
-    async getUnreadCount(userId) {
+    async getUnreadCount(user_id) {
         return await this.notificationRepo.count({
-            where: { userId, read: false },
+            where: { user_id, read: false },
         });
     }
     async remove(notification_id) {
-        await this.notificationRepo.delete(notification_id);
+        const result = await this.notificationRepo.delete(notification_id);
+        if (result.affected === 0) {
+            throw new common_1.NotFoundException(`Notification with ID ${notification_id} not found`);
+        }
     }
     async removeExpired() {
-        await this.notificationRepo
+        const result = await this.notificationRepo
             .createQueryBuilder()
             .delete()
             .where('expires_at < :now', { now: new Date() })
             .execute();
+        this.logger.log(`🗑️ Removed ${result.affected ?? 0} expired notifications`);
     }
-    async getRecentUserNotifications(userId, hours = 24) {
+    async getRecentUserNotifications(user_id, hours = 24) {
         const since = new Date();
         since.setHours(since.getHours() - hours);
         return await this.notificationRepo
             .createQueryBuilder('notification')
-            .where('notification.userId = :userId', { userId })
+            .where('notification.user_id = :user_id', { user_id })
             .andWhere('notification.created_at > :since', { since })
             .orderBy('notification.created_at', 'DESC')
             .getMany();

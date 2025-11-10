@@ -7,11 +7,13 @@ import {
   DeleteDateColumn,
   OneToOne,
   ManyToOne,
+  OneToMany,
   JoinColumn,
 } from 'typeorm';
 import { Gender, Role } from '../enum/userEnum';
 import { Auth } from 'src/auth/entities/auth.entity';
 import { Divisi } from 'src/divisi/entities/divisi.entity';
+import { Notification } from 'src/notification/entities/notification.entity'; // ✅ tambahkan import ini
 
 @Entity('users')
 export class User {
@@ -28,21 +30,18 @@ export class User {
   })
   role: Role;
 
+  // ✅ Relasi ke notifikasi
+  @OneToMany(() => Notification, (notification) => notification.user, {
+    cascade: true,
+  })
+  notifications: Notification[];
+
   @Column({
     type: 'enum',
     enum: Gender,
     default: Gender.MALE,
   })
   gender: Gender;
-
-  @CreateDateColumn()
-  created_at: Date;
-
-  @UpdateDateColumn()
-  updated_at: Date;
-
-  @DeleteDateColumn()
-  deleted_at: Date;
 
   @ManyToOne(() => Divisi, (divisi) => divisi.users, {
     nullable: true,
@@ -55,4 +54,13 @@ export class User {
     cascade: true,
   })
   auth: Auth;
+
+  @CreateDateColumn()
+  created_at: Date;
+
+  @UpdateDateColumn()
+  updated_at: Date;
+
+  @DeleteDateColumn()
+  deleted_at: Date;
 }

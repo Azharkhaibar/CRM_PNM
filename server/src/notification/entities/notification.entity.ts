@@ -4,7 +4,18 @@ import {
   Entity,
   Index,
   PrimaryGeneratedColumn,
+  ManyToOne,
+  JoinColumn,
 } from 'typeorm';
+import { User } from 'src/users/entities/user.entity';
+
+export enum NotificationType {
+  INFO = 'info',
+  SUCCESS = 'success',
+  WARNING = 'warning',
+  ERROR = 'error',
+  SYSTEM = 'system',
+}
 
 @Entity('notifications')
 export class Notification {
@@ -13,13 +24,20 @@ export class Notification {
 
   @Column()
   @Index()
-  userId: string;
+  user_id: number;
+
+  @ManyToOne(() => User, (user) => user.notifications, {
+    onDelete: 'CASCADE',
+  })
+  @JoinColumn({ name: 'user_id' })
+  user: User;
 
   @Column({
     type: 'enum',
-    enum: ['info', 'success', 'warning', 'error', 'system'],
+    enum: NotificationType,
+    default: NotificationType.INFO,
   })
-  type: string;
+  type: NotificationType;
 
   @Column()
   title: string;
@@ -31,7 +49,7 @@ export class Notification {
   read: boolean;
 
   @Column({ type: 'json', nullable: true })
-  metadata: any;
+  metadata: Record<string, any> | null;
 
   @Column({ nullable: true })
   category: string;
@@ -41,5 +59,5 @@ export class Notification {
   created_at: Date;
 
   @Column({ type: 'timestamp', nullable: true })
-  expires_at: Date;
+  expires_at: Date | null;
 }

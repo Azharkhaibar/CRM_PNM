@@ -259,3 +259,5 @@ providers: [NotificationService, NotificationGateway],
 exports: [NotificationService]
 })
 export class NotificationModule {}
+
+(SUDAH OK SEMUA TINGGAL BUAT ANTARMUKA UI NOTIF DAN INTEGRASI, LOGIN, LAST_LOGOUT, ACTION)

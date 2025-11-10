@@ -38,87 +38,107 @@ let NotificationGateway = NotificationGateway_1 = class NotificationGateway {
             return { event: 'findAllNotification', data: notifications };
         }
         catch (error) {
-            this.logger.error('Error in findAllNotification', error);
-            return { event: 'error', data: 'Failed to fetch notifications' };
+            const message = error instanceof Error
+                ? error.message
+                : 'Failed to fetch notifications';
+            this.logger.error(`Error in findAllNotification: ${message}`);
+            return { event: 'error', data: message };
         }
     }
     async findOne(data) {
         try {
-            const notification = await this.notificationService.findOne(data.notification_id);
+            const notification = await this.notificationService.findOne(Number(data.notification_id));
             return { event: 'findOneNotification', data: notification };
         }
         catch (error) {
-            this.logger.error('Error in findOneNotification', error);
-            return { event: 'error', data: 'Notification not found' };
+            const message = error instanceof Error ? error.message : 'Notification not found';
+            this.logger.error(`Error in findOneNotification: ${message}`);
+            return { event: 'error', data: message };
         }
     }
     async update(updateData) {
         try {
-            const notification = await this.notificationService.update(updateData.notification_id, updateData.data);
+            const notification = await this.notificationService.update(Number(updateData.notification_id), updateData.data);
             return { event: 'updateNotification', data: notification };
         }
         catch (error) {
-            this.logger.error('Error in updateNotification', error);
-            return { event: 'error', data: 'Failed to update notification' };
+            const message = error instanceof Error
+                ? error.message
+                : 'Failed to update notification';
+            this.logger.error(`Error in updateNotification: ${message}`);
+            return { event: 'error', data: message };
         }
     }
     async remove(data) {
         try {
-            await this.notificationService.remove(data.notification_id);
+            await this.notificationService.remove(Number(data.notification_id));
             return { event: 'removeNotification', data: { success: true } };
         }
         catch (error) {
-            this.logger.error('Error in removeNotification', error);
-            return { event: 'error', data: 'Failed to remove notification' };
+            const message = error instanceof Error
+                ? error.message
+                : 'Failed to remove notification';
+            this.logger.error(`Error in removeNotification: ${message}`);
+            return { event: 'error', data: message };
         }
     }
     async markAsRead(data) {
         try {
-            const notification = await this.notificationService.markAsRead(data.notification_id);
+            const notification = await this.notificationService.markAsRead(Number(data.notification_id));
             return { event: 'markAsRead', data: notification };
         }
         catch (error) {
-            this.logger.error('Error in markAsRead', error);
-            return { event: 'error', data: 'Failed to mark notification as read' };
+            const message = error instanceof Error
+                ? error.message
+                : 'Failed to mark notification as read';
+            this.logger.error(`Error in markAsRead: ${message}`);
+            return { event: 'error', data: message };
         }
     }
     async create(createNotificationDto) {
         try {
             const notification = await this.notificationService.create(createNotificationDto);
-            this.server.emit(`user-${createNotificationDto.userId}`, {
+            const userId = Number(createNotificationDto.userId);
+            this.server.emit(`user-${userId}`, {
                 event: 'newNotification',
                 data: notification,
             });
             return { event: 'createNotification', data: notification };
         }
         catch (error) {
-            this.logger.error('Error in createNotification', error);
-            return { event: 'error', data: 'Failed to create notification' };
+            const message = error instanceof Error
+                ? error.message
+                : 'Failed to create notification';
+            this.logger.error(`Error in createNotification: ${message}`);
+            return { event: 'error', data: message };
         }
     }
     async getUserNotifications(data) {
         try {
-            const result = await this.notificationService.findByUser(data.userId, {
+            const user_id = Number(data.userId);
+            const result = await this.notificationService.findByUser(user_id, {
                 unreadOnly: data.unreadOnly,
             });
             return { event: 'getUserNotifications', data: result };
         }
         catch (error) {
-            const errorMessage = error instanceof Error
+            const message = error instanceof Error
                 ? error.message
                 : 'Failed to fetch user notifications';
-            this.logger.error('Error in getUserNotifications', errorMessage);
-            return { event: 'error', data: errorMessage };
+            this.logger.error(`Error in getUserNotifications: ${message}`);
+            return { event: 'error', data: message };
         }
     }
     async getUnreadCount(data) {
         try {
-            const count = await this.notificationService.getUnreadCount(data.userId);
+            const user_id = Number(data.userId);
+            const count = await this.notificationService.getUnreadCount(user_id);
             return { event: 'getUnreadCount', data: { count } };
         }
         catch (error) {
-            this.logger.error('Error in getUnreadCount', error);
-            return { event: 'error', data: 'Failed to get unread count' };
+            const message = error instanceof Error ? error.message : 'Failed to get unread count';
+            this.logger.error(`Error in getUnreadCount: ${message}`);
+            return { event: 'error', data: message };
         }
     }
 };

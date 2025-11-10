@@ -1,9 +1,10 @@
+import { NotificationType } from '../entities/notification.entity';
 export declare class CreateNotificationDto {
-    userId: string;
-    type: 'info' | 'success' | 'warning' | 'error' | 'system';
+    userId: number;
+    type: NotificationType;
     title: string;
     message: string;
-    metadata?: any;
+    metadata?: Record<string, any>;
     category?: string;
-    expiresAt?: Date;
+    expiresAt?: Date | null;
 }

@@ -1,21 +1,27 @@
-import { Injectable, Logger } from '@nestjs/common';
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  InternalServerErrorException,
+} from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Notification } from './entities/notification.entity';
 import { CreateNotificationDto } from './dto/create-notification.dto';
 import { UpdateNotificationDto } from './dto/update-notification.dto';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Notification } from './entities/notification.entity';
-import { Repository } from 'typeorm';
 
 @Injectable()
 export class NotificationService {
+  private readonly logger = new Logger(NotificationService.name);
+
   constructor(
     @InjectRepository(Notification)
     private readonly notificationRepo: Repository<Notification>,
   ) {}
-  private readonly logger = new Logger(NotificationService.name);
 
-  // Fixed methods using notification_id:
   async findAll(): Promise<Notification[]> {
-    return await this.notificationRepo.find({
+    return this.notificationRepo.find({
       order: { created_at: 'DESC' },
     });
   }
@@ -26,57 +32,94 @@ export class NotificationService {
     });
 
     if (!notification) {
-      throw new Error('Notification not found');
+      throw new NotFoundException(
+        `Notification with ID ${notification_id} not found`,
+      );
     }
 
     return notification;
+  }
+
+  async create(crDto: CreateNotificationDto): Promise<Notification> {
+    try {
+      const notificationData: Partial<Notification> = {
+        ...crDto,
+        user_id: Number(crDto.userId),
+        expires_at: crDto.expiresAt ?? null,
+      };
+
+      delete (notificationData as any).userId;
+      delete (notificationData as any).expiresAt;
+
+      const notif = this.notificationRepo.create(notificationData);
+      const saved = await this.notificationRepo.save(notif);
+
+      this.logger.log(`✅ Notification created for user ${crDto.userId}`);
+      return saved;
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        this.logger.error('❌ Failed to create notification', err.message);
+      } else {
+        this.logger.error('❌ Unknown error creating notification');
+      }
+      throw new InternalServerErrorException('Gagal membuat notifikasi');
+    }
   }
 
   async update(
     notification_id: number,
     updateNotificationDto: UpdateNotificationDto,
   ): Promise<Notification> {
-    await this.notificationRepo.update(notification_id, updateNotificationDto);
-    return await this.findOne(notification_id);
+    const notification = await this.findOne(notification_id);
+    Object.assign(notification, updateNotificationDto);
+    return await this.notificationRepo.save(notification);
   }
 
-  async create(crDto: CreateNotificationDto): Promise<Notification> {
-    try {
-      const notificationData = {
-        ...crDto,
-        expires_at: crDto.expiresAt,
-      };
+  async markAllAsRead(user_id: number): Promise<void> {
+    await this.notificationRepo
+      .createQueryBuilder()
+      .update(Notification)
+      .set({ read: true })
+      .where('user_id = :user_id', { user_id })
+      .andWhere('read = false')
+      .execute();
 
-      const notif = this.notificationRepo.create(notificationData);
-      const sv = await this.notificationRepo.save(notif);
-
-      this.logger.log(`Notification created for user ${crDto.userId}`);
-      return sv;
-    } catch (err: unknown) {
-      if (err instanceof Error) {
-        console.error(err.stack);
-      } else {
-        console.error(err);
-      }
-
-      throw new Error('gagal buat notif');
-    }
+    this.logger.log(`✅ All notifications marked as read for user ${user_id}`);
   }
 
+  // 🔹 Create multiple notifications
   async createMultiple(
     crDto: CreateNotificationDto[],
   ): Promise<Notification[]> {
-    const notificationsData = crDto.map((dto) => ({
-      ...dto,
-      expires_at: dto.expiresAt,
-    }));
+    try {
+      const notificationsData: Partial<Notification>[] = crDto.map((dto) => {
+        const item: Partial<Notification> = {
+          ...dto,
+          user_id: Number(dto.userId),
+          expires_at: dto.expiresAt ?? null,
+        };
+        delete (item as any).userId;
+        delete (item as any).expiresAt;
+        return item;
+      });
 
-    const notif = this.notificationRepo.create(notificationsData);
-    return await this.notificationRepo.save(notif);
+      const notifEntities = this.notificationRepo.create(notificationsData);
+      const saved = await this.notificationRepo.save(notifEntities);
+
+      this.logger.log(`✅ Created ${saved.length} notifications`);
+      return saved;
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        this.logger.error('❌ Failed to create notifications', err.message);
+      } else {
+        this.logger.error('❌ Unknown error creating multiple notifications');
+      }
+      throw new InternalServerErrorException('Gagal membuat notifikasi');
+    }
   }
 
   async findByUser(
-    userId: string,
+    user_id: number,
     options?: {
       unreadOnly?: boolean;
       limit?: number;
@@ -87,62 +130,64 @@ export class NotificationService {
 
     const query = this.notificationRepo
       .createQueryBuilder('notification')
-      .where('notification.userId = :userId', { userId })
+      .where('notification.user_id = :user_id', { user_id })
       .orderBy('notification.created_at', 'DESC')
       .skip((page - 1) * limit)
       .take(limit);
 
     if (unreadOnly) {
-      query.andWhere('notification.read = :read', { read: false });
+      query.andWhere('notification.read = false');
     }
 
     const [notifications, total] = await query.getManyAndCount();
-
     return { notifications, total };
   }
 
   async markAsRead(notification_id: number): Promise<Notification> {
-    const notification = await this.notificationRepo.findOne({
-      where: { notification_id },
-    });
-
-    if (!notification) {
-      throw new Error('Notification not found');
-    }
-
+    const notification = await this.findOne(notification_id);
     notification.read = true;
     return await this.notificationRepo.save(notification);
   }
 
-  async getUnreadCount(userId: string): Promise<number> {
+  // 🔹 Count unread notifications
+  async getUnreadCount(user_id: number): Promise<number> {
     return await this.notificationRepo.count({
-      where: { userId, read: false },
+      where: { user_id, read: false },
     });
   }
 
+  // 🔹 Delete notification
   async remove(notification_id: number): Promise<void> {
-    await this.notificationRepo.delete(notification_id);
+    const result = await this.notificationRepo.delete(notification_id);
+    if (result.affected === 0) {
+      throw new NotFoundException(
+        `Notification with ID ${notification_id} not found`,
+      );
+    }
   }
 
+  // 🔹 Remove expired notifications
   async removeExpired(): Promise<void> {
-    await this.notificationRepo
+    const result = await this.notificationRepo
       .createQueryBuilder()
       .delete()
       .where('expires_at < :now', { now: new Date() })
       .execute();
+
+    this.logger.log(`🗑️ Removed ${result.affected ?? 0} expired notifications`);
   }
 
-  // notifikasi realtime
+  // 🔹 Get recent notifications (for realtime usage)
   async getRecentUserNotifications(
-    userId: string,
-    hours: number = 24,
+    user_id: number,
+    hours = 24,
   ): Promise<Notification[]> {
     const since = new Date();
     since.setHours(since.getHours() - hours);
 
     return await this.notificationRepo
       .createQueryBuilder('notification')
-      .where('notification.userId = :userId', { userId })
+      .where('notification.user_id = :user_id', { user_id })
       .andWhere('notification.created_at > :since', { since })
       .orderBy('notification.created_at', 'DESC')
       .getMany();

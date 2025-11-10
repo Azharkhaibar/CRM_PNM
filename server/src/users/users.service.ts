@@ -256,7 +256,6 @@ export class UsersService {
       });
 
       if (!auth) {
-        // Return generic message for security
         return {
           message:
             'If your user ID exists, a password reset link has been sent to your registered email',
