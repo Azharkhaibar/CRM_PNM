@@ -14,6 +14,7 @@ import { PasarModule } from './pasar/pasar.module';
 import { LikuiditasModule } from './likuiditas/likuiditas.module';
 import { OperasionalModule } from './operasional/operasional.module';
 import { DivisiModule } from './divisi/divisi.module';
+import { NotificationModule } from './notification/notification.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { DivisiModule } from './divisi/divisi.module';
     LikuiditasModule,
     OperasionalModule,
     DivisiModule,
+    NotificationModule,
   ],
 
   controllers: [AppController],
