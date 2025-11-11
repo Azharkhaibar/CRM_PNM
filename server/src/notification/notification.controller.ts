@@ -1,70 +1,95 @@
-// src/notification/notification.controller.ts
 import {
   Controller,
   Get,
   Post,
-  Put,
+  Patch,
   Delete,
   Body,
   Param,
   Query,
-  UseGuards,
-  ParseIntPipe,
-  DefaultValuePipe,
-  ParseBoolPipe,
+  Logger,
 } from '@nestjs/common';
 import { NotificationService } from './notification.service';
 import { CreateNotificationDto } from './dto/create-notification.dto';
-import { JwtAuthGuard } from 'src/auth/guard/jwt-auth.guard';
-import { GetUser } from './decorator/get-user.decorator';
+import { UpdateNotificationDto } from './dto/update-notification.dto';
+
 @Controller('notifications')
-@UseGuards(JwtAuthGuard)
 export class NotificationController {
+  private readonly logger = new Logger(NotificationController.name);
+
   constructor(private readonly notificationService: NotificationService) {}
 
-  // 🔹 Get notifications for logged-in user
-  @Get('my')
-  async getMyNotifications(
-    @GetUser('userID') userID: string,
-    @Query('unreadOnly', new DefaultValuePipe(false), ParseBoolPipe)
-    unreadOnly?: boolean,
-    @Query('limit', new DefaultValuePipe(50), ParseIntPipe) limit?: number,
-    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page?: number,
+  @Get()
+  async findAll() {
+    this.logger.log('Fetching all notifications');
+    return await this.notificationService.findAll();
+  }
+
+  @Get('user/:user_id')
+  async findByUser(
+    @Param('user_id') user_id: number,
+    @Query('unreadOnly') unreadOnly?: string,
+    @Query('limit') limit?: string,
+    @Query('page') page?: string,
   ) {
-    const user_id = Number(userID);
-    return await this.notificationService.findByUser(user_id, {
-      unreadOnly,
-      limit,
-      page,
+    this.logger.log(`Fetching notifications for user ${user_id}`);
+    return await this.notificationService.findByUser(Number(user_id), {
+      unreadOnly: unreadOnly === 'true',
+      limit: limit ? Number(limit) : undefined,
+      page: page ? Number(page) : undefined,
     });
   }
 
-  @Get('my/unread-count')
-  async getMyUnreadCount(@GetUser('userID') userID: string) {
-    const user_id = Number(userID);
-    const count = await this.notificationService.getUnreadCount(user_id);
+  @Get('user/:user_id/unread-count')
+  async getUnreadCount(@Param('user_id') user_id: number) {
+    this.logger.log(`Fetching unread count for user ${user_id}`);
+    const count = await this.notificationService.getUnreadCount(
+      Number(user_id),
+    );
     return { count };
   }
 
-  @Put(':id/read')
-  async markAsRead(@Param('id', ParseIntPipe) id: number) {
-    return await this.notificationService.markAsRead(id);
+  @Get(':id')
+  async findOne(@Param('id') id: number) {
+    this.logger.log(`Fetching notification ${id}`);
+    return await this.notificationService.findOne(Number(id));
   }
 
-  @Put('mark-all-read')
-  async markAllAsRead(@GetUser('userID') userID: string) {
-    const user_id = Number(userID);
-    await this.notificationService.markAllAsRead(user_id);
+  @Post()
+  async create(@Body() createNotificationDto: CreateNotificationDto) {
+    this.logger.log('Creating new notification');
+    return await this.notificationService.create(createNotificationDto);
+  }
+
+  @Patch(':id')
+  async update(
+    @Param('id') id: number,
+    @Body() updateNotificationDto: UpdateNotificationDto,
+  ) {
+    this.logger.log(`Updating notification ${id}`);
+    return await this.notificationService.update(
+      Number(id),
+      updateNotificationDto,
+    );
+  }
+
+  @Patch(':id/read')
+  async markAsRead(@Param('id') id: number) {
+    this.logger.log(`Marking notification ${id} as read`);
+    return await this.notificationService.markAsRead(Number(id));
+  }
+
+  @Patch('user/:user_id/mark-all-read')
+  async markAllAsRead(@Param('user_id') user_id: number) {
+    this.logger.log(`Marking all notifications as read for user ${user_id}`);
+    await this.notificationService.markAllAsRead(Number(user_id));
     return { message: 'All notifications marked as read' };
   }
 
   @Delete(':id')
-  async remove(@Param('id', ParseIntPipe) id: number) {
-    await this.notificationService.remove(id);
-    return { message: 'Notification deleted' };
-  }
-
-  async create(@Body() dto: CreateNotificationDto) {
-    return await this.notificationService.create(dto);
+  async remove(@Param('id') id: number) {
+    this.logger.log(`Deleting notification ${id}`);
+    await this.notificationService.remove(Number(id));
+    return { message: 'Notification deleted successfully' };
   }
 }

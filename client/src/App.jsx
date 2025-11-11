@@ -9,7 +9,7 @@ import LoginPage from './features/auth/pages/loginform';
 import RegisterPage from './features/auth/pages/registform.jsx';
 import DashboardLayout from './features/Dashboard/main.jsx';
 import Dashboard from './features/Dashboard/layout/dashboard.jsx';
-import Investasi from './features/Dashboard/pages/RiskProfile/pages/Investasi.jsx';
+import Investasi from './features/Dashboard/pages/RiskProfile/pages/investasi/Investasi.jsx';
 import Pasar from './features/Dashboard/pages/RiskProfile/pages/Pasar.jsx';
 import Likuiditas from './features/Dashboard/pages/RiskProfile/pages/Likuiditas.jsx';
 import Operational from './features/Dashboard/pages/RiskProfile/pages/Operational.jsx';

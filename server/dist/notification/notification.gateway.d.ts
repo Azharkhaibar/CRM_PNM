@@ -10,81 +10,37 @@ export declare class NotificationGateway implements OnGatewayConnection, OnGatew
     constructor(notificationService: NotificationService);
     handleConnection(client: Socket): void;
     handleDisconnect(client: Socket): void;
-    findAll(): Promise<{
-        event: string;
-        data: import("./entities/notification.entity").Notification[];
-    } | {
-        event: string;
-        data: string;
-    }>;
-    findOne(data: {
+    sendNotificationToUser(userId: number, notification: any): Promise<void>;
+    handleJoinUser(client: Socket, userId: number): void;
+    handleGetAllNotifications(client: Socket): Promise<void>;
+    handleGetNotification(client: Socket, data: {
         notification_id: number;
-    }): Promise<{
-        event: string;
-        data: import("./entities/notification.entity").Notification;
-    } | {
-        event: string;
-        data: string;
-    }>;
-    update(updateData: {
+    }): Promise<void>;
+    handleUpdateNotification(client: Socket, data: {
         notification_id: number;
-        data: UpdateNotificationDto;
-    }): Promise<{
-        event: string;
-        data: import("./entities/notification.entity").Notification;
-    } | {
-        event: string;
-        data: string;
-    }>;
-    remove(data: {
+        updates: UpdateNotificationDto;
+    }): Promise<void>;
+    handleDeleteNotification(client: Socket, data: {
         notification_id: number;
-    }): Promise<{
-        event: string;
-        data: {
-            success: boolean;
-        };
-    } | {
-        event: string;
-        data: string;
-    }>;
-    markAsRead(data: {
+    }): Promise<void>;
+    handleMarkAsRead(client: Socket, data: {
         notification_id: number;
-    }): Promise<{
-        event: string;
-        data: import("./entities/notification.entity").Notification;
-    } | {
-        event: string;
-        data: string;
-    }>;
-    create(createNotificationDto: CreateNotificationDto): Promise<{
-        event: string;
-        data: import("./entities/notification.entity").Notification;
-    } | {
-        event: string;
-        data: string;
-    }>;
-    getUserNotifications(data: {
-        userId: string;
+    }): Promise<void>;
+    handleCreateNotification(client: Socket, data: CreateNotificationDto): Promise<void>;
+    handleGetUserNotifications(client: Socket, data: {
+        user_id: number;
         unreadOnly?: boolean;
-    }): Promise<{
-        event: string;
-        data: {
-            notifications: import("./entities/notification.entity").Notification[];
-            total: number;
-        };
-    } | {
-        event: string;
-        data: string;
-    }>;
-    getUnreadCount(data: {
-        userId: string;
-    }): Promise<{
-        event: string;
-        data: {
-            count: number;
-        };
-    } | {
-        event: string;
-        data: string;
-    }>;
+        limit?: number;
+        page?: number;
+    }): Promise<void>;
+    handleGetUnreadCount(client: Socket, data: {
+        user_id: number;
+    }): Promise<void>;
+    broadcastToUser(user_id: number, event: string, data: any): Promise<void>;
+    handleJoinUserRoom(client: Socket, data: {
+        user_id: number;
+    }): void;
+    handleLeaveUserRoom(client: Socket, data: {
+        user_id: number;
+    }): void;
 }

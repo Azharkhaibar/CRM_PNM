@@ -193,14 +193,14 @@ let UsersService = class UsersService {
             }
             const isCurrentPasswordValid = await bcrypt_1.default.compare(currentPassword, auth.hash_password);
             if (!isCurrentPasswordValid) {
-                throw new common_1.UnauthorizedException('Current password is incorrect');
+                throw new common_1.UnauthorizedException('password saat ini salah');
             }
             const saltRounds = 10;
             const hashedNewPassword = await bcrypt_1.default.hash(newPassword, saltRounds);
             auth.hash_password = hashedNewPassword;
             await this.AuthRepository.save(auth);
             return {
-                message: 'Password changed successfully',
+                message: 'Password Berhasil diganti',
                 userID: auth.userID,
             };
         }
@@ -209,7 +209,7 @@ let UsersService = class UsersService {
                 error instanceof common_1.NotFoundException) {
                 throw error;
             }
-            throw new common_1.InternalServerErrorException('Failed to change password');
+            throw new common_1.InternalServerErrorException('Gagal ubah Password');
         }
     }
     async requestPasswordReset(userID) {

@@ -9,13 +9,13 @@ import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 
 import { typeOrmConfig } from './config/db.config';
-import { InvestasiModule } from './investasi/investasi.module';
+import { InvestasiModule } from './investasi/investasi/investasi.module';
 import { PasarModule } from './pasar/pasar.module';
 import { LikuiditasModule } from './likuiditas/likuiditas.module';
 import { OperasionalModule } from './operasional/operasional.module';
 import { DivisiModule } from './divisi/divisi.module';
 import { NotificationModule } from './notification/notification.module';
-
+import { KpmrInvestasiModule } from './investasi/kpmr-investasi/kpmr-investasi.module';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
@@ -33,6 +33,7 @@ import { NotificationModule } from './notification/notification.module';
     OperasionalModule,
     DivisiModule,
     NotificationModule,
+    KpmrInvestasiModule,
   ],
 
   controllers: [AppController],

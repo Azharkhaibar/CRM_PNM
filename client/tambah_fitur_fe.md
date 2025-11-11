@@ -10,3 +10,6 @@ buat untuk upload foto profile users
 
 tambahkan icon atau gambar di dialog sukses login
 
+## -------------------------------------------------------------
+
+benerin notif dlu, frontend dan backend

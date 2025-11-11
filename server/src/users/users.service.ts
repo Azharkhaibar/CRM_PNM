@@ -224,7 +224,7 @@ export class UsersService {
         auth.hash_password,
       );
       if (!isCurrentPasswordValid) {
-        throw new UnauthorizedException('Current password is incorrect');
+        throw new UnauthorizedException('password saat ini salah');
       }
 
       const saltRounds = 10;
@@ -234,7 +234,7 @@ export class UsersService {
       await this.AuthRepository.save(auth);
 
       return {
-        message: 'Password changed successfully',
+        message: 'Password Berhasil diganti',
         userID: auth.userID,
       };
     } catch (error) {
@@ -244,7 +244,7 @@ export class UsersService {
       ) {
         throw error;
       }
-      throw new InternalServerErrorException('Failed to change password');
+      throw new InternalServerErrorException('Gagal ubah Password');
     }
   }
 
