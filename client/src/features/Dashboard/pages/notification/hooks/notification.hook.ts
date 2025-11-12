@@ -25,18 +25,13 @@ export const useUserNotifications = () => {
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
   const pollingRef = useRef<number | null>(null);
   const userIdRef = useRef<string | null>(null);
-
   const { notifications, addNotification, markAsRead, markAllAsRead, removeNotification, clearAll, getAllNotificationsForUser, getUnreadByUser, updateNotification, syncWithBackendData } = useNotificationStore();
-
-  // Filter untuk aktivitas login/logout user
   const getLoginLogoutNotifications = useCallback((notifications: Notification[]) => {
     return notifications.filter((n) => (n.category === 'security' || n.category === 'system') && (n.metadata?.activity_type === 'login' || n.metadata?.activity_type === 'logout' || n.metadata?.activity_type === 'user_status'));
   }, []);
 
-  // Compute activity stats
   const getActivityStats = useCallback(
     (notifications: Notification[]) => {
       const loginLogoutNotifs = getLoginLogoutNotifications(notifications);
@@ -66,7 +61,6 @@ export const useUserNotifications = () => {
     [getLoginLogoutNotifications]
   );
 
-  // Sync notifications dengan backend
   const syncNotifications = useCallback(
     async (userId: string) => {
       try {
@@ -75,7 +69,6 @@ export const useUserNotifications = () => {
 
         console.log('🔄 Starting notification sync for user:', userId);
 
-        // Gunakan getUserNotifications saja untuk menghindari error broadcast
         const result = await NotificationService.getUserNotifications(userId, {
           unreadOnly: false,
           limit: 50,
@@ -104,7 +97,6 @@ export const useUserNotifications = () => {
     const userId = user?.user_id?.toString();
 
     if (!userId) {
-      // Cleanup jika user logout
       if (pollingRef.current && userIdRef.current) {
         NotificationService.stopPolling(userIdRef.current);
       }
@@ -113,27 +105,20 @@ export const useUserNotifications = () => {
       return;
     }
 
-    // Jika user berubah, stop polling sebelumnya
     if (userIdRef.current !== userId && pollingRef.current && userIdRef.current) {
       NotificationService.stopPolling(userIdRef.current);
       pollingRef.current = null;
     }
 
-    // Start polling untuk user baru
     if (!pollingRef.current || userIdRef.current !== userId) {
       userIdRef.current = userId;
-
-      // Initial sync
       syncNotifications(userId);
-
-      // Start polling dengan interval yang reasonable
       pollingRef.current = NotificationService.startPolling(userId, 15000); // 15 detik
 
       console.log('🔔 Started notification polling for user:', userId);
     }
 
     return () => {
-      // Cleanup on unmount
       if (pollingRef.current && userIdRef.current) {
         NotificationService.stopPolling(userIdRef.current);
         pollingRef.current = null;
@@ -141,14 +126,11 @@ export const useUserNotifications = () => {
       }
     };
   }, [user?.user_id, syncNotifications]);
-
-  // Get all notifications untuk user (termasuk yang broadcast jika ada di store)
   const allNotificationsForUser = useMemo(() => {
     if (!user?.user_id) return [];
     return getAllNotificationsForUser(user.user_id.toString());
   }, [notifications, user?.user_id, getAllNotificationsForUser]);
 
-  // Hitung unread count
   const totalUnreadCount = useMemo(() => {
     if (!user?.user_id) return 0;
     return getUnreadByUser(user.user_id.toString());
@@ -158,26 +140,22 @@ export const useUserNotifications = () => {
 
   const activityStats = useMemo(() => getActivityStats(allNotificationsForUser), [allNotificationsForUser, getActivityStats]);
 
-  // Tambahkan notifikasi baru
   const addUserNotification = useCallback(
     async (notificationData: NotificationInput) => {
       if (!user?.user_id) return null;
 
       try {
-        // Kirim ke backend
         await NotificationService.createNotification({
           userId: user.user_id,
           ...notificationData,
         });
 
-        // Tambahkan ke store lokal
         return addNotification({
           ...notificationData,
           userId: user.user_id.toString(),
         });
       } catch (err) {
         console.error('Failed to create notification:', err);
-        // Fallback: tambahkan ke store lokal saja
         return addNotification({
           ...notificationData,
           userId: user.user_id.toString(),
@@ -187,14 +165,12 @@ export const useUserNotifications = () => {
     [user?.user_id, addNotification]
   );
 
-  // Mark as read dengan sync ke backend
   const markAsReadWithSync = useCallback(
     async (id: string) => {
       try {
         await NotificationService.markAsRead(id);
       } catch (err) {
         console.error('Failed to mark as read on backend:', err);
-        // Continue dengan update lokal meskipun backend gagal
       } finally {
         markAsRead(id);
       }
@@ -202,14 +178,12 @@ export const useUserNotifications = () => {
     [markAsRead]
   );
 
-  // Remove notification dengan sync ke backend
   const removeNotificationWithSync = useCallback(
     async (id: string) => {
       try {
         await NotificationService.deleteNotification(id);
       } catch (err) {
         console.error('Failed to delete on backend:', err);
-        // Continue dengan delete lokal meskipun backend gagal
       } finally {
         removeNotification(id);
       }
@@ -217,7 +191,6 @@ export const useUserNotifications = () => {
     [removeNotification]
   );
 
-  // Mark all as read untuk user current
   const markAllAsReadForCurrentUser = useCallback(async () => {
     if (!user?.user_id) return;
 
@@ -230,7 +203,6 @@ export const useUserNotifications = () => {
     }
   }, [user?.user_id, markAllAsRead]);
 
-  // Remove all notifications untuk user current
   const removeAllForCurrentUser = useCallback(async () => {
     if (!user?.user_id) return;
 
@@ -243,7 +215,6 @@ export const useUserNotifications = () => {
     }
   }, [user?.user_id, clearAll]);
 
-  // Helper methods untuk notifikasi cepat
   const addSuccessNotification = useCallback((title: string, message: string, category?: string, metadata?: Record<string, any> | null) => addUserNotification({ type: 'success', title, message, category, metadata }), [addUserNotification]);
 
   const addErrorNotification = useCallback((title: string, message: string, category?: string, metadata?: Record<string, any> | null) => addUserNotification({ type: 'error', title, message, category, metadata }), [addUserNotification]);
@@ -252,14 +223,12 @@ export const useUserNotifications = () => {
 
   const addInfoNotification = useCallback((title: string, message: string, category?: string, metadata?: Record<string, any> | null) => addUserNotification({ type: 'info', title, message, category, metadata }), [addUserNotification]);
 
-  // Refresh notifications manual
   const refreshNotifications = useCallback(async () => {
     if (user?.user_id) {
       await syncNotifications(user.user_id.toString());
     }
   }, [user?.user_id, syncNotifications]);
 
-  // Debug info untuk monitoring
   useEffect(() => {
     if (allNotificationsForUser.length > 0 && process.env.NODE_ENV === 'development') {
       console.log('📊 Notification Summary:', {
@@ -276,7 +245,6 @@ export const useUserNotifications = () => {
   }, [allNotificationsForUser, totalUnreadCount, loginLogoutNotifications.length]);
 
   return {
-    // Data
     notifications: allNotificationsForUser,
     unreadCount: totalUnreadCount,
     hasNotifications: allNotificationsForUser.length > 0,
@@ -284,8 +252,6 @@ export const useUserNotifications = () => {
     error,
     loginLogoutNotifications,
     activityStats,
-
-    // Actions
     addNotification: addUserNotification,
     markAsRead: markAsReadWithSync,
     removeNotification: removeNotificationWithSync,
@@ -293,14 +259,10 @@ export const useUserNotifications = () => {
     markAllAsRead: markAllAsReadForCurrentUser,
     removeAllNotifications: removeAllForCurrentUser,
     refreshNotifications,
-
-    // Quick actions
     addSuccessNotification,
     addErrorNotification,
     addWarningNotification,
     addInfoNotification,
-
-    // Stats
     stats: {
       total: allNotificationsForUser.length,
       unread: totalUnreadCount,

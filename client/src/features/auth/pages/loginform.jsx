@@ -218,8 +218,6 @@ export default function LoginPage() {
           }`}
         />
       </div>
-
-      {/* Success Dialog */}
       <AnimatePresence>
         {showDialog && (
           <motion.div
@@ -257,7 +255,6 @@ export default function LoginPage() {
         )}
       </AnimatePresence>
 
-      {/* Loading Overlay */}
       <AnimatePresence>
         {(loading || isLoggingIn) && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className={loadingOverlayClass}>

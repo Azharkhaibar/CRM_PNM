@@ -1,10 +1,9 @@
-// src/features/Dashboard/pages/notification/provider/notification.provider.jsx
 import React, { createContext, useContext } from 'react';
 import { useUserNotifications } from '../hooks/notification.hook';
 const NotificationContext = createContext(null);
 
 export const NotificationProvider = ({ children }) => {
-  const notificationApi = useUserNotifications(); // run once per provider mount
+  const notificationApi = useUserNotifications();
   return <NotificationContext.Provider value={notificationApi}>{children}</NotificationContext.Provider>;
 };
 

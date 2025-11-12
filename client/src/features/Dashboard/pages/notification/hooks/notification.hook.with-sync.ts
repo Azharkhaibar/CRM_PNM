@@ -66,7 +66,6 @@ export const useUserNotificationsWithSync = (): UseUserNotificationsWithSyncRetu
     getNotificationsByType,
   } = useNotificationStore();
 
-  // Memoized user notifications
   const userNotifications = useMemo(() => {
     if (!user?.user_id) return [];
     return getNotificationsByUser(user.user_id.toString());
@@ -77,7 +76,6 @@ export const useUserNotificationsWithSync = (): UseUserNotificationsWithSyncRetu
     return getUnreadByUser(user.user_id.toString());
   }, [notifications, user?.user_id, getUnreadByUser]);
 
-  // Sync with backend
   const syncWithBackend = useCallback(async () => {
     if (!user?.user_id) return;
     setIsLoading(true);

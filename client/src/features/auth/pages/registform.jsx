@@ -17,8 +17,8 @@ export default function RegisterPage() {
 
   const [userID, setUserID] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState('USER'); // ✅ DEFAULT: 'USER' (uppercase)
-  const [genderForm, setGenderForm] = useState('MALE'); // ✅ DEFAULT: 'MALE' (uppercase)
+  const [role, setRole] = useState('USER'); 
+  const [genderForm, setGenderForm] = useState('MALE'); 
   const [showPinDialog, setShowPinDialog] = useState(false);
 
   const handleRegister = async (e) => {
@@ -29,12 +29,11 @@ export default function RegisterPage() {
       return alert('UserID dan Password wajib diisi');
     }
 
-    // ✅ PASTIKAN: Semua value sudah uppercase
     const payload = {
       userID,
       password,
-      role: role.toUpperCase(), // ✅ Convert ke uppercase
-      gender: genderForm.toUpperCase(), // ✅ Convert ke uppercase
+      role: role.toUpperCase(), 
+      gender: genderForm.toUpperCase(), 
     };
 
     console.log('[Register] Payload dikirim:', payload);
@@ -66,7 +65,6 @@ export default function RegisterPage() {
 
   const handlePinVerified = () => {
     setShowPinDialog(false);
-    // User bisa melanjutkan registrasi
   };
 
   const containerClass = `min-h-screen flex transition-colors duration-300 ${darkMode ? 'bg-gradient-to-br from-gray-900 to-gray-800' : 'bg-gradient-to-br from-blue-50 to-blue-200'}`;

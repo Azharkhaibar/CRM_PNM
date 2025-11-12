@@ -54,6 +54,20 @@ let NotificationController = NotificationController_1 = class NotificationContro
         this.logger.log('Creating multiple notifications');
         return await this.notificationService.createMultiple(createNotificationDtos);
     }
+    async getAllForUser(user_id, unreadOnly, limit, page) {
+        return await this.notificationService.findAllForUser(user_id, {
+            unreadOnly: unreadOnly === 'true',
+            limit: limit ? parseInt(limit, 10) : undefined,
+            page: page ? parseInt(page, 10) : undefined,
+        });
+    }
+    async getBroadcastNotifications(unreadOnly, limit, page) {
+        return await this.notificationService.findBroadcastNotifications({
+            unreadOnly: unreadOnly === 'true',
+            limit: limit ? parseInt(limit, 10) : undefined,
+            page: page ? parseInt(page, 10) : undefined,
+        });
+    }
     async update(id, updateNotificationDto) {
         this.logger.log(`Updating notification ${id}`);
         return await this.notificationService.update(Number(id), updateNotificationDto);
@@ -131,6 +145,25 @@ __decorate([
     __metadata("design:paramtypes", [Array]),
     __metadata("design:returntype", Promise)
 ], NotificationController.prototype, "createMultiple", null);
+__decorate([
+    (0, common_1.Get)('user/:user_id/all'),
+    __param(0, (0, common_1.Param)('user_id', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Query)('unreadOnly')),
+    __param(2, (0, common_1.Query)('limit')),
+    __param(3, (0, common_1.Query)('page')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, String, String, String]),
+    __metadata("design:returntype", Promise)
+], NotificationController.prototype, "getAllForUser", null);
+__decorate([
+    (0, common_1.Get)('broadcast'),
+    __param(0, (0, common_1.Query)('unreadOnly')),
+    __param(1, (0, common_1.Query)('limit')),
+    __param(2, (0, common_1.Query)('page')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, String]),
+    __metadata("design:returntype", Promise)
+], NotificationController.prototype, "getBroadcastNotifications", null);
 __decorate([
     (0, common_1.Patch)(':id'),
     __param(0, (0, common_1.Param)('id')),

@@ -1,4 +1,4 @@
-// src/services/kpmrInvestasiService.ts
+
 import axios from 'axios';
 
 const API_URL = process.env.NODE_ENV === 'production' ? 'https://your-production-url.com/api/v1/kpmr-investasi' : 'http://localhost:5530/api/v1/kpmr-investasi';

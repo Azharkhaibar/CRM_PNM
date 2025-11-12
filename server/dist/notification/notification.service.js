@@ -102,6 +102,48 @@ let NotificationService = NotificationService_1 = class NotificationService {
             throw new common_1.InternalServerErrorException('Failed to mark notifications as read');
         }
     }
+    async findBroadcastNotifications(options = {}) {
+        try {
+            const { unreadOnly = false, limit = 50, page = 1 } = options;
+            const query = this.notificationRepository
+                .createQueryBuilder('notification')
+                .where('notification.user_id IS NULL')
+                .orderBy('notification.created_at', 'DESC')
+                .skip((page - 1) * limit)
+                .take(limit);
+            if (unreadOnly) {
+                query.andWhere('notification.read = false');
+            }
+            const [notifications, total] = await query.getManyAndCount();
+            this.logger.log(`Found ${notifications.length} broadcast notifications`);
+            return { notifications, total };
+        }
+        catch (error) {
+            this.logger.error('Failed to find broadcast notifications', error);
+            throw new common_1.InternalServerErrorException('Failed to retrieve broadcast notifications');
+        }
+    }
+    async findAllForUser(user_id, options = {}) {
+        try {
+            const { unreadOnly = false, limit = 50, page = 1 } = options;
+            const query = this.notificationRepository
+                .createQueryBuilder('notification')
+                .where('(notification.user_id = :user_id OR notification.user_id IS NULL)', { user_id })
+                .orderBy('notification.created_at', 'DESC')
+                .skip((page - 1) * limit)
+                .take(limit);
+            if (unreadOnly) {
+                query.andWhere('notification.read = false');
+            }
+            const [notifications, total] = await query.getManyAndCount();
+            this.logger.log(`Found ${notifications.length} notifications for user ${user_id}`);
+            return { notifications, total };
+        }
+        catch (error) {
+            this.logger.error(`Failed to find all notifications for user ${user_id}`, error);
+            throw new common_1.InternalServerErrorException('Failed to retrieve user notifications');
+        }
+    }
     async markAsRead(notification_id) {
         try {
             const notification = await this.findOne(notification_id);

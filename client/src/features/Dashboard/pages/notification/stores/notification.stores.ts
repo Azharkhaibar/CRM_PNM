@@ -1,4 +1,4 @@
-// stores/notification.stores.ts
+
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
@@ -24,26 +24,19 @@ interface NotificationState {
   unreadCount: number;
   lastUpdated: Date;
 
-  // CRUD actions
   addNotification: (notification: Omit<Notification, 'id' | 'timestamp' | 'read'> & { id?: string }) => void;
   markAsRead: (id: string) => void;
   markAllAsRead: () => void;
   removeNotification: (id: string) => void;
   clearAll: () => void;
-
   getNotificationsByUser: (userId: string) => Notification[];
   getUnreadByUser: (userId: string) => number;
-
   recalcUnread: () => void;
-
   markAllAsReadForUser: (userId: string) => void;
   removeAllForUser: (userId: string) => void;
   updateNotification: (id: string, updates: Partial<Notification>) => void;
-
   getNotificationsByCategory: (userId: string, category: string) => Notification[];
   getNotificationsByType: (userId: string, type: Notification['type']) => Notification[];
-
-  // New methods for broadcast and real-time features
   getBroadcastNotifications: () => Notification[];
   getUserSpecificNotifications: (userId: string) => Notification[];
   getAllNotificationsForUser: (userId: string) => Notification[];
@@ -51,7 +44,6 @@ interface NotificationState {
   syncWithBackendData: (backendNotifications: any[]) => void;
 }
 
-// ✅ FIX: Helper function untuk validasi ID
 const validateNotificationId = (id: string | number | undefined): string => {
   if (!id) {
     return `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -59,7 +51,6 @@ const validateNotificationId = (id: string | number | undefined): string => {
 
   const idStr = id.toString();
 
-  // Cek jika ID adalah NaN atau invalid
   if (idStr === 'NaN' || idStr === 'null' || idStr === 'undefined' || isNaN(Number(idStr.replace('temp-', '')))) {
     return `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   }
@@ -67,7 +58,6 @@ const validateNotificationId = (id: string | number | undefined): string => {
   return idStr;
 };
 
-// ✅ FIX: Helper function untuk validasi user ID
 const validateUserId = (userId: string | number | null | undefined): string => {
   if (!userId || userId === 'null' || userId === 'undefined' || userId === 'NaN') {
     return 'broadcast';
@@ -85,7 +75,6 @@ export const useNotificationStore = create<NotificationState>()(
       lastUpdated: new Date(),
 
       addNotification: (notification) => {
-        // ✅ FIX: Validasi ID sebelum membuat notifikasi
         const validId = validateNotificationId(notification.id);
 
         const newNotification: Notification = {
@@ -96,10 +85,9 @@ export const useNotificationStore = create<NotificationState>()(
         };
 
         set((state) => {
-          // Cek duplikat berdasarkan ID
           const exists = state.notifications.find((n) => n.id === newNotification.id);
           if (exists) {
-            console.log('⚠️ Notification already exists:', newNotification.id);
+            console.log(' Notification already exists:', newNotification.id);
             return state;
           }
 
@@ -111,8 +99,6 @@ export const useNotificationStore = create<NotificationState>()(
           });
 
           const newNotifications = [newNotification, ...state.notifications];
-
-          // Limit jumlah notifikasi (prevent memory issues)
           const limitedNotifications = newNotifications.slice(0, 200);
 
           const unreadCount = limitedNotifications.filter((n) => !n.read).length;
@@ -124,7 +110,6 @@ export const useNotificationStore = create<NotificationState>()(
           };
         });
 
-        // Trigger event untuk UI updates
         setTimeout(() => {
           const event = new CustomEvent('notificationAdded', {
             detail: { notification: newNotification },
@@ -134,7 +119,6 @@ export const useNotificationStore = create<NotificationState>()(
       },
 
       markAsRead: (id: string) => {
-        // ✅ FIX: Validasi ID sebelum operasi
         const validId = validateNotificationId(id);
         if (validId.startsWith('temp-')) {
           console.warn('⚠️ Using temporary ID for markAsRead:', validId);
@@ -150,7 +134,6 @@ export const useNotificationStore = create<NotificationState>()(
           };
         });
 
-        // Trigger event
         setTimeout(() => {
           const event = new CustomEvent('notificationRead', { detail: { id: validId } });
           window.dispatchEvent(event);
@@ -164,7 +147,6 @@ export const useNotificationStore = create<NotificationState>()(
           lastUpdated: new Date(),
         }));
 
-        // Trigger event
         setTimeout(() => {
           const event = new CustomEvent('allNotificationsRead');
           window.dispatchEvent(event);
@@ -172,7 +154,6 @@ export const useNotificationStore = create<NotificationState>()(
       },
 
       removeNotification: (id: string) => {
-        // ✅ FIX: Validasi ID sebelum operasi
         const validId = validateNotificationId(id);
         if (validId.startsWith('temp-')) {
           console.warn('⚠️ Using temporary ID for removeNotification:', validId);
@@ -236,7 +217,6 @@ export const useNotificationStore = create<NotificationState>()(
       },
 
       updateNotification: (id, updates) => {
-        // ✅ FIX: Validasi ID sebelum operasi
         const validId = validateNotificationId(id);
 
         set((state) => ({
@@ -267,7 +247,6 @@ export const useNotificationStore = create<NotificationState>()(
           .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
       },
 
-      // ✅ NEW: Cleanup expired notifications
       cleanupExpiredNotifications: () => {
         const now = new Date();
         set((state) => {
@@ -286,10 +265,8 @@ export const useNotificationStore = create<NotificationState>()(
         });
       },
 
-      // ✅ FIX: Sync with backend data dengan validasi yang lebih baik
       syncWithBackendData: (backendNotifications: any[]) => {
         const convertedNotifications: Notification[] = backendNotifications.map((backendNotif) => {
-          // ✅ FIX: Validasi semua field sebelum konversi
           const validId = validateNotificationId(backendNotif.notification_id || backendNotif.id);
           const validUserId = validateUserId(backendNotif.user_id);
 
@@ -308,10 +285,7 @@ export const useNotificationStore = create<NotificationState>()(
         });
 
         set((state) => {
-          // Filter hanya notifications dengan ID yang valid
           const validNewNotifications = convertedNotifications.filter((n) => !n.id.includes('NaN') && n.id !== 'null' && n.id !== 'undefined');
-
-          // Merge dengan existing notifications, hindari duplikat
           const existingIds = new Set(state.notifications.map((n) => n.id));
           const newNotifications = validNewNotifications.filter((n) => !existingIds.has(n.id));
 
@@ -326,7 +300,6 @@ export const useNotificationStore = create<NotificationState>()(
           };
         });
 
-        // Trigger sync event
         setTimeout(() => {
           const event = new CustomEvent('notificationsSynced', {
             detail: { count: convertedNotifications.length },
@@ -338,14 +311,12 @@ export const useNotificationStore = create<NotificationState>()(
     {
       name: 'notification-storage',
       partialize: (state) => ({
-        // ✅ FIX: Filter out notifications dengan ID invalid sebelum persist
         notifications: state.notifications.filter((n) => !n.id.includes('NaN') && n.id !== 'null' && n.id !== 'undefined'),
         unreadCount: state.unreadCount,
         lastUpdated: state.lastUpdated,
       }),
-      version: 3, // Increment version karena ada perubahan structure
+      version: 3, 
       migrate: (persistedState: any, version: number) => {
-        // ✅ FIX: Migration untuk clean up data lama yang corrupt
         if (version < 3) {
           const notifications = persistedState.notifications || [];
           const validNotifications = notifications.filter((n: any) => n.id && !n.id.includes('NaN') && n.id !== 'null' && n.id !== 'undefined');
@@ -362,14 +333,11 @@ export const useNotificationStore = create<NotificationState>()(
   )
 );
 
-// Utility functions untuk notification store
 export const notificationUtils = {
-  // Filter notifications untuk user tertentu
   filterForUser: (notifications: Notification[], userId: string): Notification[] => {
     return notifications.filter((n) => n.userId === userId || n.userId === 'broadcast');
   },
 
-  // Group notifications by date
   groupByDate: (notifications: Notification[]) => {
     const groups: { [key: string]: Notification[] } = {};
 
@@ -384,50 +352,50 @@ export const notificationUtils = {
     return groups;
   },
 
-  // Check if notification is expired
   isExpired: (notification: Notification): boolean => {
     if (!notification.expires_at) return false;
     return new Date(notification.expires_at) < new Date();
   },
 
-  // Create login notification data
-  createLoginNotification: (userId: string, userID: string) => ({
+  createLoginNotification: (userId: string, username: string) => ({
     userId,
     type: 'success' as const,
     title: 'Login Successful',
-    message: `Welcome back, ${userID}! You have successfully logged in.`,
+    message: `Welcome back, ${username}! You have successfully logged in.`,
     category: 'security',
     metadata: {
       login_time: new Date().toISOString(),
       activity_type: 'login',
+      user_id: userId,
+      username: username,
     },
   }),
 
-  // Create logout notification data
-  createLogoutNotification: (userId: string, userID: string) => ({
+  createLogoutNotification: (userId: string, username: string) => ({
     userId,
     type: 'info' as const,
     title: 'Logout Successful',
-    message: `You have successfully logged out.`,
+    message: `You have successfully logged out. See you soon, ${username}!`,
     category: 'security',
     metadata: {
       logout_time: new Date().toISOString(),
       activity_type: 'logout',
+      user_id: userId,
+      username: username,
     },
   }),
 
-  // Create broadcast notification untuk user login/logout
-  createUserStatusBroadcast: (userId: string, userID: string, action: 'login' | 'logout') => ({
+  createUserStatusBroadcast: (userId: string, username: string, action: 'login' | 'logout') => ({
     userId: 'broadcast',
     type: 'info' as const,
     title: action === 'login' ? 'User Logged In' : 'User Logged Out',
-    message: action === 'login' ? `User ${userID} has logged into the system.` : `User ${userID} has logged out from the system.`,
+    message: action === 'login' ? `User ${username} has logged into the system.` : `User ${username} has logged out from the system.`,
     category: 'system',
     metadata: {
       timestamp: new Date().toISOString(),
       activity_type: 'user_status',
       user_id: userId,
-      user_name: userID,
+      username: username,
       action: action,
     },
   }),

@@ -17,6 +17,14 @@ export declare class NotificationController {
     findOne(id: number): Promise<import("./entities/notification.entity").Notification>;
     create(createNotificationDto: CreateNotificationDto): Promise<import("./entities/notification.entity").Notification>;
     createMultiple(createNotificationDtos: CreateNotificationDto[]): Promise<import("./entities/notification.entity").Notification[]>;
+    getAllForUser(user_id: number, unreadOnly?: string, limit?: string, page?: string): Promise<{
+        notifications: import("./entities/notification.entity").Notification[];
+        total: number;
+    }>;
+    getBroadcastNotifications(unreadOnly?: string, limit?: string, page?: string): Promise<{
+        notifications: import("./entities/notification.entity").Notification[];
+        total: number;
+    }>;
     update(id: number, updateNotificationDto: UpdateNotificationDto): Promise<import("./entities/notification.entity").Notification>;
     markAsRead(id: number): Promise<import("./entities/notification.entity").Notification>;
     userStatusNotification(body: UserStatusDto): Promise<void>;

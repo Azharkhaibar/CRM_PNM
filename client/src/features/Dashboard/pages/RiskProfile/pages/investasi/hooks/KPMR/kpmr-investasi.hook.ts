@@ -13,7 +13,6 @@ export const useKpmrInvestasi = (filters?: Filters) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // 🔹 Ambil data dari backend
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
@@ -32,7 +31,6 @@ export const useKpmrInvestasi = (filters?: Filters) => {
     fetchData();
   }, [fetchData]);
 
-  // 🔹 CREATE
   const createKpmr = async (payload: CreateKpmrInvestasiDto) => {
     try {
       setLoading(true);
@@ -45,7 +43,6 @@ export const useKpmrInvestasi = (filters?: Filters) => {
     }
   };
 
-  // 🔹 UPDATE
   const updateKpmr = async (id: number, payload: UpdateKpmrInvestasiDto) => {
     try {
       setLoading(true);
@@ -58,7 +55,6 @@ export const useKpmrInvestasi = (filters?: Filters) => {
     }
   };
 
-  // 🔹 DELETE
   const deleteKpmr = async (id: number) => {
     try {
       setLoading(true);

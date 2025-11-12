@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { CheckCircle, AlertTriangle, Info, Settings } from 'lucide-react';
+import { CheckCircle, AlertTriangle, Info, Settings, X } from 'lucide-react';
 
 const IconComponent = ({ iconName, className }) => {
   const icons = {
@@ -30,6 +30,41 @@ export default function NotificationItem({ notification, index, darkMode, isSele
 
   const { icon, color } = getNotificationIcon(notification.type);
 
+  const handleMarkAsRead = (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    console.log('📝 Marking notification as read:', notification.id);
+    onMarkAsRead(notification.id);
+  };
+
+  const handleDelete = (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+
+    const confirmDelete = window.confirm(`Are you sure you want to delete this notification?\n\n"${notification.title}"`);
+
+    if (confirmDelete) {
+      console.log('🗑️ Deleting notification:', notification.id);
+      onDelete(notification.id);
+    }
+  };
+
+  const handleSelect = (e) => {
+    if (e.target.type === 'checkbox') {
+      console.log('🔘 Selecting notification:', notification.id, 'checked:', e.target.checked);
+      onSelect(notification.id, e.target.checked);
+    }
+  };
+
+  const handleCardClick = (e) => {
+    if (e.target.tagName === 'BUTTON' || e.target.type === 'checkbox') {
+      return;
+    }
+
+    console.log('🟦 Toggling notification selection:', notification.id);
+    onSelect(notification.id, !isSelected);
+  };
+
   return (
     <motion.div
       layout
@@ -46,18 +81,21 @@ export default function NotificationItem({ notification, index, darkMode, isSele
       whileHover={{ scale: 1.02 }}
       whileTap={{ scale: 0.98 }}
       className={cardClass}
+      onClick={handleCardClick}
     >
       <div className="p-4">
         <div className="flex items-start gap-3">
-          {/* Checkbox */}
-          <input type="checkbox" checked={isSelected} onChange={onSelect} className="mt-1.5 w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 focus:ring-2" />
-
-          {/* Icon */}
+          <input
+            type="checkbox"
+            checked={isSelected}
+            onChange={handleSelect}
+            onClick={(e) => e.stopPropagation()} // Prevent card click ketika checkbox diklik
+            className="mt-1.5 w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 focus:ring-2 cursor-pointer"
+          />
           <div className="flex-shrink-0 mt-0.5">
             <IconComponent iconName={icon} className={`w-5 h-5 ${color}`} />
           </div>
 
-          {/* Content */}
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between mb-2">
               <div className="flex items-center gap-2 flex-wrap">
@@ -72,14 +110,26 @@ export default function NotificationItem({ notification, index, darkMode, isSele
 
             <p className={`mb-3 text-sm leading-relaxed ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>{notification.message}</p>
 
-            {/* Actions */}
+            {notification.metadata && Object.keys(notification.metadata).length > 0 && (
+              <div className="mb-3 p-2 rounded-lg bg-gray-100 dark:bg-gray-700">
+                <details className="text-xs">
+                  <summary className="cursor-pointer font-medium">📊 Additional Details ({Object.keys(notification.metadata).length})</summary>
+                  <div className="mt-2 space-y-1">
+                    {Object.entries(notification.metadata).map(([key, value]) => (
+                      <div key={key} className="flex justify-between">
+                        <span className="font-medium capitalize">{key.replace(/_/g, ' ')}:</span>
+                        <span className="text-gray-600 dark:text-gray-400">{typeof value === 'object' ? JSON.stringify(value) : String(value)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              </div>
+            )}
+
             <div className="flex items-center gap-2">
               {!notification.read && (
                 <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onMarkAsRead();
-                  }}
+                  onClick={handleMarkAsRead}
                   className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-all duration-200 ${
                     darkMode ? 'bg-gray-700 hover:bg-gray-600 text-gray-300 hover:text-white' : 'bg-gray-200 hover:bg-gray-300 text-gray-700 hover:text-gray-900'
                   }`}
@@ -88,21 +138,18 @@ export default function NotificationItem({ notification, index, darkMode, isSele
                 </button>
               )}
               <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDelete();
-                }}
-                className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-all duration-200 ${
+                onClick={handleDelete}
+                className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-all duration-200 flex items-center gap-1 ${
                   darkMode ? 'bg-red-900/50 hover:bg-red-800 text-red-300 hover:text-white' : 'bg-red-100 hover:bg-red-200 text-red-700 hover:text-red-900'
                 }`}
               >
+                <X className="w-3 h-3" />
                 Delete
               </button>
 
-              {/* Metadata badge jika ada */}
-              {notification.metadata && Object.keys(notification.metadata).length > 0 && (
-                <span className={`text-xs px-2 py-1 rounded ${darkMode ? 'bg-gray-700 text-gray-400' : 'bg-gray-200 text-gray-600'}`}>+{Object.keys(notification.metadata).length} details</span>
-              )}
+              {/* Status badges */}
+              {notification.metadata?.is_fallback && <span className={`text-xs px-2 py-1 rounded ${darkMode ? 'bg-yellow-900/50 text-yellow-300' : 'bg-yellow-100 text-yellow-700'}`}>Local</span>}
+              {notification.metadata?.activity_type && <span className={`text-xs px-2 py-1 rounded ${darkMode ? 'bg-blue-900/50 text-blue-300' : 'bg-blue-100 text-blue-700'}`}>{notification.metadata.activity_type}</span>}
             </div>
           </div>
         </div>

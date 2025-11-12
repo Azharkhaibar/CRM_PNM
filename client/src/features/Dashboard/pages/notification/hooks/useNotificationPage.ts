@@ -9,7 +9,6 @@ interface UseNotificationPageProps {
 }
 
 interface UseNotificationPageReturn {
-  // State
   filteredNotifications: Notification[];
   categories: string[];
   filter: string;
@@ -17,23 +16,17 @@ interface UseNotificationPageReturn {
   searchTerm: string;
   selectedNotifications: string[];
   showSettings: boolean;
-
-  // Setters
   setFilter: (filter: string) => void;
   setCategoryFilter: (category: string) => void;
   setSearchTerm: (searchTerm: string) => void;
   setSelectedNotifications: (selected: string[]) => void;
   setShowSettings: (show: boolean) => void;
-
-  // Actions
   handleMarkAsRead: (id: string) => Promise<void>;
   handleMarkAllAsRead: () => Promise<void>;
   handleDelete: (id: string) => Promise<void>;
   handleBulkDelete: () => Promise<void>;
   handleSelectNotification: (id: string) => void;
   handleSelectAll: () => void;
-
-  // Utilities
   getNotificationIcon: (type: string) => { icon: string; color: string };
   getTypeColor: (type: string) => string;
   formatTime: (date: Date) => string;

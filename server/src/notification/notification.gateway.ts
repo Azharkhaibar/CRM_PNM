@@ -38,9 +38,8 @@ export class NotificationGateway
     this.logger.log(`Client disconnected: ${client.id}`);
   }
 
-  /** Type-safe methods sesuai interface */
   sendNotificationToUser(userId: number, notification: Notification) {
-    this.server.emit('notification', notification); // global emit, bisa disesuaikan
+    this.server.emit('notification', notification); 
     this.logger.log(`📩 Sent notification to user ${userId}`);
   }
 
@@ -49,7 +48,6 @@ export class NotificationGateway
     this.logger.log('📢 Broadcast notification to all connected clients');
   }
 
-  /** Optional: handle socket events untuk CRUD via WebSocket */
   @SubscribeMessage('createNotification')
   async handleCreateNotification(client: Socket, data: CreateNotificationDto) {
     try {

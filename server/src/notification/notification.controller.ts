@@ -8,6 +8,7 @@ import {
   Param,
   Query,
   Logger,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { NotificationService } from './notification.service';
 import { CreateNotificationDto } from './dto/create-notification.dto';
@@ -20,14 +21,12 @@ export class NotificationController {
 
   constructor(private readonly notificationService: NotificationService) {}
 
-  /** 🔹 Ambil semua notifikasi (admin / debugging) */
   @Get()
   async findAll() {
     this.logger.log('Fetching all notifications');
     return await this.notificationService.findAll();
   }
 
-  /** 🔹 Ambil notifikasi berdasarkan user */
   @Get('user/:user_id')
   async findByUser(
     @Param('user_id') user_id: number,
@@ -43,7 +42,6 @@ export class NotificationController {
     });
   }
 
-  /** 🔹 Ambil jumlah notifikasi belum dibaca */
   @Get('user/:user_id/unread-count')
   async getUnreadCount(@Param('user_id') user_id: number) {
     this.logger.log(`Fetching unread count for user ${user_id}`);
@@ -53,21 +51,18 @@ export class NotificationController {
     return { count };
   }
 
-  /** 🔹 Ambil 1 notifikasi by ID */
   @Get(':id')
   async findOne(@Param('id') id: number) {
     this.logger.log(`Fetching notification ${id}`);
     return await this.notificationService.findOne(Number(id));
   }
 
-  /** 🔹 Buat notifikasi baru */
   @Post()
   async create(@Body() createNotificationDto: CreateNotificationDto) {
     this.logger.log('Creating new notification');
     return await this.notificationService.create(createNotificationDto);
   }
 
-  /** 🔹 Buat banyak notifikasi sekaligus */
   @Post('bulk')
   async createMultiple(
     @Body() createNotificationDtos: CreateNotificationDto[],
@@ -77,6 +72,39 @@ export class NotificationController {
       createNotificationDtos,
     );
   }
+
+  // BARUUUU
+  // ##--------------------------------------------------------------------------------------
+
+  @Get('user/:user_id/all')
+  async getAllForUser(
+    @Param('user_id', ParseIntPipe) user_id: number,
+    @Query('unreadOnly') unreadOnly?: string,
+    @Query('limit') limit?: string,
+    @Query('page') page?: string,
+  ) {
+    return await this.notificationService.findAllForUser(user_id, {
+      unreadOnly: unreadOnly === 'true',
+      limit: limit ? parseInt(limit, 10) : undefined,
+      page: page ? parseInt(page, 10) : undefined,
+    });
+  }
+
+  @Get('broadcast')
+  async getBroadcastNotifications(
+    @Query('unreadOnly') unreadOnly?: string,
+    @Query('limit') limit?: string,
+    @Query('page') page?: string,
+  ) {
+    return await this.notificationService.findBroadcastNotifications({
+      unreadOnly: unreadOnly === 'true',
+      limit: limit ? parseInt(limit, 10) : undefined,
+      page: page ? parseInt(page, 10) : undefined,
+    });
+  }
+
+  // BARUUUU
+  // ##--------------------------------------------------------------------------------------
 
   /** 🔹 Update notifikasi */
   @Patch(':id')
@@ -91,7 +119,6 @@ export class NotificationController {
     );
   }
 
-  /** 🔹 Tandai 1 notifikasi sudah dibaca */
   @Patch(':id/read')
   async markAsRead(@Param('id') id: number) {
     this.logger.log(`Marking notification ${id} as read`);
@@ -107,15 +134,12 @@ export class NotificationController {
     );
   }
 
-  /** 🔹 Tandai semua notifikasi user sudah dibaca */
   @Patch('user/:user_id/mark-all-read')
   async markAllAsRead(@Param('user_id') user_id: number) {
     this.logger.log(`Marking all notifications as read for user ${user_id}`);
     await this.notificationService.markAllAsRead(Number(user_id));
     return { message: 'All notifications marked as read' };
   }
-
-  /** 🔹 Ambil notifikasi terbaru (misal 24 jam terakhir) */
   @Get('user/:user_id/recent')
   async getRecentUserNotifications(
     @Param('user_id') user_id: number,
@@ -131,7 +155,6 @@ export class NotificationController {
     );
   }
 
-  /** 🔹 Hapus notifikasi */
   @Delete(':id')
   async remove(@Param('id') id: number) {
     this.logger.log(`Deleting notification ${id}`);
@@ -139,7 +162,6 @@ export class NotificationController {
     return { message: 'Notification deleted successfully' };
   }
 
-  /** 🔹 Hapus notifikasi kadaluwarsa */
   @Delete()
   async removeExpired() {
     this.logger.log('Removing expired notifications');

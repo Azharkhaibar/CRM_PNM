@@ -19,6 +19,12 @@ export interface FindByUserOptions {
   page?: number;
 }
 
+export interface FindBroadcastOptions {
+  unreadOnly?: boolean;
+  limit?: number;
+  page?: number;
+}
+
 @Injectable()
 export class NotificationService {
   private readonly logger = new Logger(NotificationService.name);
@@ -31,7 +37,6 @@ export class NotificationService {
     private readonly gateway: INotificationGateway,
   ) {}
 
-  /** 🔹 Ambil semua notifikasi */
   async findAll(): Promise<Notification[]> {
     try {
       return await this.notificationRepository.find({
@@ -45,7 +50,6 @@ export class NotificationService {
     }
   }
 
-  /** 🔹 Ambil 1 notifikasi by ID */
   async findOne(notification_id: number): Promise<Notification> {
     try {
       const notification = await this.notificationRepository.findOne({
@@ -66,7 +70,6 @@ export class NotificationService {
     }
   }
 
-  /** 🔹 Buat notifikasi baru */
   async create(createDto: CreateNotificationDto): Promise<Notification> {
     try {
       const notification = this.notificationRepository.create({
@@ -78,7 +81,6 @@ export class NotificationService {
       const savedNotification =
         await this.notificationRepository.save(notification);
 
-      // Broadcast ke semua client dashboard
       this.gateway.sendNotificationToUser(
         savedNotification.user_id,
         savedNotification,
@@ -95,7 +97,6 @@ export class NotificationService {
     }
   }
 
-  /** 🔹 Update notifikasi */
   async update(
     notification_id: number,
     updateNotificationDto: UpdateNotificationDto,
@@ -104,8 +105,6 @@ export class NotificationService {
       const notification = await this.findOne(notification_id);
       Object.assign(notification, updateNotificationDto);
       const updated = await this.notificationRepository.save(notification);
-
-      // Broadcast update ke semua client
       this.gateway.sendNotificationToUser(updated.user_id, updated);
       this.gateway.sendNotificationToAll(updated);
 
@@ -119,7 +118,6 @@ export class NotificationService {
     }
   }
 
-  /** 🔹 Tandai semua notifikasi user sudah dibaca */
   async markAllAsRead(user_id: number): Promise<void> {
     try {
       await this.notificationRepository
@@ -142,14 +140,83 @@ export class NotificationService {
     }
   }
 
-  /** 🔹 Tandai notifikasi sebagai read */
+  // BARUUUU
+  // -----------------------------------------------------------------------------
+
+  async findBroadcastNotifications(
+    options: FindBroadcastOptions = {},
+  ): Promise<{ notifications: Notification[]; total: number }> {
+    try {
+      const { unreadOnly = false, limit = 50, page = 1 } = options;
+
+      const query = this.notificationRepository
+        .createQueryBuilder('notification')
+        .where('notification.user_id IS NULL') // Broadcast notifications
+        .orderBy('notification.created_at', 'DESC')
+        .skip((page - 1) * limit)
+        .take(limit);
+
+      if (unreadOnly) {
+        query.andWhere('notification.read = false');
+      }
+
+      const [notifications, total] = await query.getManyAndCount();
+
+      this.logger.log(`Found ${notifications.length} broadcast notifications`);
+      return { notifications, total };
+    } catch (error) {
+      this.logger.error('Failed to find broadcast notifications', error);
+      throw new InternalServerErrorException(
+        'Failed to retrieve broadcast notifications',
+      );
+    }
+  }
+
+  async findAllForUser(
+    user_id: number,
+    options: FindByUserOptions = {},
+  ): Promise<{ notifications: Notification[]; total: number }> {
+    try {
+      const { unreadOnly = false, limit = 50, page = 1 } = options;
+
+      const query = this.notificationRepository
+        .createQueryBuilder('notification')
+        .where(
+          '(notification.user_id = :user_id OR notification.user_id IS NULL)',
+          { user_id },
+        )
+        .orderBy('notification.created_at', 'DESC')
+        .skip((page - 1) * limit)
+        .take(limit);
+
+      if (unreadOnly) {
+        query.andWhere('notification.read = false');
+      }
+
+      const [notifications, total] = await query.getManyAndCount();
+
+      this.logger.log(
+        `Found ${notifications.length} notifications for user ${user_id}`,
+      );
+      return { notifications, total };
+    } catch (error) {
+      this.logger.error(
+        `Failed to find all notifications for user ${user_id}`,
+        error,
+      );
+      throw new InternalServerErrorException(
+        'Failed to retrieve user notifications',
+      );
+    }
+  }
+
+  // -----------------------------------------------------------------------------
+
   async markAsRead(notification_id: number): Promise<Notification> {
     try {
       const notification = await this.findOne(notification_id);
       notification.read = true;
       const updated = await this.notificationRepository.save(notification);
-
-      // Broadcast perubahan read status
       this.gateway.sendNotificationToAll(updated);
 
       return updated;
@@ -164,7 +231,6 @@ export class NotificationService {
     }
   }
 
-  /** 🔹 Hitung unread notifications per user */
   async getUnreadCount(user_id: number): Promise<number> {
     try {
       return await this.notificationRepository.count({
@@ -179,7 +245,6 @@ export class NotificationService {
     }
   }
 
-  /** 🔹 Hapus notifikasi */
   async remove(notification_id: number): Promise<void> {
     try {
       const result = await this.notificationRepository.delete(notification_id);
@@ -198,7 +263,6 @@ export class NotificationService {
     }
   }
 
-  /** 🔹 Hapus notifikasi kadaluwarsa */
   async removeExpired(): Promise<void> {
     try {
       const result = await this.notificationRepository
@@ -216,7 +280,6 @@ export class NotificationService {
     }
   }
 
-  /** 🔹 Create multiple notifications */
   async createMultiple(
     createDtos: CreateNotificationDto[],
   ): Promise<Notification[]> {
@@ -240,7 +303,6 @@ export class NotificationService {
     }
   }
 
-  /** 🔹 Cari notifikasi per user dengan pagination */
   async findByUser(
     user_id: number,
     options: FindByUserOptions = {},
@@ -270,7 +332,6 @@ export class NotificationService {
     }
   }
 
-  /** 🔹 Notifikasi perubahan status user (online/offline) */
   async notifyUserStatusChange(
     userId: number,
     userName: string,
@@ -286,11 +347,9 @@ export class NotificationService {
       expiresAt: null,
     });
 
-    // Broadcast ke semua client
     this.gateway.sendNotificationToAll(notification);
   }
 
-  /** 🔹 Ambil notifikasi terbaru per user (misal 24 jam terakhir) */
   async getRecentUserNotifications(
     user_id: number,
     hours = 24,

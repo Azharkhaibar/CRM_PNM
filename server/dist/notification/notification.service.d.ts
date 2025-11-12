@@ -8,6 +8,11 @@ export interface FindByUserOptions {
     limit?: number;
     page?: number;
 }
+export interface FindBroadcastOptions {
+    unreadOnly?: boolean;
+    limit?: number;
+    page?: number;
+}
 export declare class NotificationService {
     private readonly notificationRepository;
     private readonly gateway;
@@ -18,6 +23,14 @@ export declare class NotificationService {
     create(createDto: CreateNotificationDto): Promise<Notification>;
     update(notification_id: number, updateNotificationDto: UpdateNotificationDto): Promise<Notification>;
     markAllAsRead(user_id: number): Promise<void>;
+    findBroadcastNotifications(options?: FindBroadcastOptions): Promise<{
+        notifications: Notification[];
+        total: number;
+    }>;
+    findAllForUser(user_id: number, options?: FindByUserOptions): Promise<{
+        notifications: Notification[];
+        total: number;
+    }>;
     markAsRead(notification_id: number): Promise<Notification>;
     getUnreadCount(user_id: number): Promise<number>;
     remove(notification_id: number): Promise<void>;
