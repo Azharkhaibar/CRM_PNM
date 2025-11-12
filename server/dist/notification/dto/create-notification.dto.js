@@ -15,7 +15,7 @@ const class_transformer_1 = require("class-transformer");
 const notification_entity_1 = require("../entities/notification.entity");
 class CreateNotificationDto {
     userId;
-    type;
+    type = notification_entity_1.NotificationType.SYSTEM;
     title;
     message;
     metadata;

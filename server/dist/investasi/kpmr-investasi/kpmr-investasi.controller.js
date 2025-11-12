@@ -11,42 +11,44 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
+var KpmrInvestasiController_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.KpmrInvestasiController = void 0;
 const common_1 = require("@nestjs/common");
 const kpmr_investasi_service_1 = require("./kpmr-investasi.service");
 const create_kpmr_investasi_dto_1 = require("./dto/create-kpmr-investasi.dto");
 const update_kpmr_investasi_dto_1 = require("./dto/update-kpmr-investasi.dto");
-let KpmrInvestasiController = class KpmrInvestasiController {
-    kpmrInvestasiService;
-    constructor(kpmrInvestasiService) {
-        this.kpmrInvestasiService = kpmrInvestasiService;
+let KpmrInvestasiController = KpmrInvestasiController_1 = class KpmrInvestasiController {
+    service;
+    logger = new common_1.Logger(KpmrInvestasiController_1.name);
+    constructor(service) {
+        this.service = service;
     }
-    create(createKpmrInvestasiDto) {
-        return this.kpmrInvestasiService.create(createKpmrInvestasiDto);
+    create(dto) {
+        return this.service.create(dto);
     }
-    findAll(year, quarter, aspek_no, query) {
-        if (year || quarter || aspek_no || query) {
-            return this.kpmrInvestasiService.findByFilters({
+    findAll(year, quarter, aspekNo, query) {
+        if (year || quarter || aspekNo || query) {
+            return this.service.findByFilters({
                 year: year ? parseInt(year) : undefined,
                 quarter,
-                aspek_no,
+                aspekNo,
                 query,
             });
         }
-        return this.kpmrInvestasiService.findAll();
+        return this.service.findAll();
     }
     findOne(id) {
-        return this.kpmrInvestasiService.findOne(id);
+        return this.service.findOne(id);
     }
-    update(id, updateKpmrInvestasiDto) {
-        return this.kpmrInvestasiService.update(id, updateKpmrInvestasiDto);
+    update(id, dto) {
+        return this.service.update(id, dto);
     }
     remove(id) {
-        return this.kpmrInvestasiService.remove(id);
+        return this.service.remove(id);
     }
     findByPeriod(year, quarter) {
-        return this.kpmrInvestasiService.findByPeriod(year, quarter);
+        return this.service.findByPeriod(year, quarter);
     }
 };
 exports.KpmrInvestasiController = KpmrInvestasiController;
@@ -61,7 +63,7 @@ __decorate([
     (0, common_1.Get)(),
     __param(0, (0, common_1.Query)('year')),
     __param(1, (0, common_1.Query)('quarter')),
-    __param(2, (0, common_1.Query)('aspek_no')),
+    __param(2, (0, common_1.Query)('aspekNo')),
     __param(3, (0, common_1.Query)('query')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String, String, String, String]),
@@ -97,7 +99,7 @@ __decorate([
     __metadata("design:paramtypes", [Number, String]),
     __metadata("design:returntype", void 0)
 ], KpmrInvestasiController.prototype, "findByPeriod", null);
-exports.KpmrInvestasiController = KpmrInvestasiController = __decorate([
+exports.KpmrInvestasiController = KpmrInvestasiController = KpmrInvestasiController_1 = __decorate([
     (0, common_1.Controller)('kpmr-investasi'),
     __metadata("design:paramtypes", [kpmr_investasi_service_1.KpmrInvestasiService])
 ], KpmrInvestasiController);

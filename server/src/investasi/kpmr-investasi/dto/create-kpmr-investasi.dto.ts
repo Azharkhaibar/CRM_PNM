@@ -1,35 +1,7 @@
 import { IsString, IsNumber, IsNotEmpty, IsOptional } from 'class-validator';
 
 export class CreateKpmrInvestasiDto {
-  @IsString()
-  @IsNotEmpty()
-  tata_kelola_resiko: string;
-
-  @IsString()
-  @IsNotEmpty()
-  strong: string;
-
-  @IsString()
-  @IsNotEmpty()
-  satisfactory: string;
-
-  @IsString()
-  @IsNotEmpty()
-  fair: string;
-
-  @IsString()
-  @IsNotEmpty()
-  marginal: string;
-
-  @IsString()
-  @IsNotEmpty()
-  unsatisfactory: string;
-
-  @IsString()
-  @IsNotEmpty()
-  evidence: string;
-
-  // TAMBAHKAN FIELD BARU
+  // 📅 Periode
   @IsNumber()
   @IsNotEmpty()
   year: number;
@@ -38,27 +10,80 @@ export class CreateKpmrInvestasiDto {
   @IsNotEmpty()
   quarter: string;
 
+  // 🧩 Aspek
   @IsString()
-  @IsNotEmpty()
-  aspek_no: string;
+  @IsOptional()
+  aspekNo?: string;
 
   @IsString()
-  @IsNotEmpty()
-  aspek_title: string;
-
-  @IsNumber()
-  @IsNotEmpty()
-  aspek_bobot: number;
-
-  @IsString()
-  @IsNotEmpty()
-  section_no: string;
-
-  @IsString()
-  @IsNotEmpty()
-  section_title: string;
+  @IsOptional()
+  aspekTitle?: string;
 
   @IsNumber()
   @IsOptional()
-  section_skor?: number;
+  aspekBobot?: number;
+
+  // 📘 Section
+  @IsString()
+  @IsOptional()
+  sectionNo?: string;
+
+  @IsNumber()
+  @IsOptional()
+  sectionSkor?: number;
+
+  // ❓ Indikator / Pertanyaan section
+  @IsString()
+  @IsOptional()
+  indikator?: string;
+
+  // 📎 Evidence / bukti
+  @IsString()
+  @IsOptional()
+  evidence?: string;
+
+  // 🧠 Penilaian / Level
+  @IsString()
+  @IsOptional()
+  level1?: string;
+
+  @IsString()
+  @IsOptional()
+  level2?: string;
+
+  @IsString()
+  @IsOptional()
+  level3?: string;
+
+  @IsString()
+  @IsOptional()
+  level4?: string;
+
+  @IsString()
+  @IsOptional()
+  level5?: string;
+
+  @IsString()
+  @IsOptional()
+  tata_kelola_resiko?: string;
+
+  @IsString()
+  @IsOptional()
+  strong?: string;
+
+  @IsString()
+  @IsOptional()
+  satisfactory?: string;
+
+  @IsString()
+  @IsOptional()
+  fair?: string;
+
+  @IsString()
+  @IsOptional()
+  marginal?: string;
+
+  @IsString()
+  @IsOptional()
+  unsatisfactory?: string;
 }

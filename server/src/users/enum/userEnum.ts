@@ -4,9 +4,9 @@ export enum Gender {
   FEMALE = 'FEMALE',
 }
 
+// role enum hanya ada admin dan user
 export enum Role {
   ADMIN = 'ADMIN',
   USER = 'USER',
-  MANAGER = 'MANAGER',
-  SUPERVISOR = 'SUPERVISOR',
+  
 }

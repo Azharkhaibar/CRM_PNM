@@ -1,9 +1,10 @@
+// stores/notification.stores.ts
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 export interface Notification {
   id: string;
-  userId: string;
+  userId: string; // 'broadcast' untuk notifikasi ke semua user
   type: 'info' | 'success' | 'warning' | 'error';
   title: string;
   message: string;
@@ -15,144 +16,419 @@ export interface Notification {
     label: string;
     onClick: () => void;
   };
+  expires_at?: Date;
 }
 
 interface NotificationState {
   notifications: Notification[];
   unreadCount: number;
+  lastUpdated: Date;
 
   // CRUD actions
-  addNotification: (notification: Omit<Notification, 'id' | 'timestamp' | 'read'>) => void;
+  addNotification: (notification: Omit<Notification, 'id' | 'timestamp' | 'read'> & { id?: string }) => void;
   markAsRead: (id: string) => void;
   markAllAsRead: () => void;
   removeNotification: (id: string) => void;
   clearAll: () => void;
-  
 
-  // Getters
   getNotificationsByUser: (userId: string) => Notification[];
   getUnreadByUser: (userId: string) => number;
 
-  // Utilities
   recalcUnread: () => void;
 
-  // set Notifications 
-  
-
-  // User-specific management
   markAllAsReadForUser: (userId: string) => void;
   removeAllForUser: (userId: string) => void;
   updateNotification: (id: string, updates: Partial<Notification>) => void;
 
-  // Filtering
   getNotificationsByCategory: (userId: string, category: string) => Notification[];
   getNotificationsByType: (userId: string, type: Notification['type']) => Notification[];
+
+  // New methods for broadcast and real-time features
+  getBroadcastNotifications: () => Notification[];
+  getUserSpecificNotifications: (userId: string) => Notification[];
+  getAllNotificationsForUser: (userId: string) => Notification[];
+  cleanupExpiredNotifications: () => void;
+  syncWithBackendData: (backendNotifications: any[]) => void;
 }
+
+// ✅ FIX: Helper function untuk validasi ID
+const validateNotificationId = (id: string | number | undefined): string => {
+  if (!id) {
+    return `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  }
+
+  const idStr = id.toString();
+
+  // Cek jika ID adalah NaN atau invalid
+  if (idStr === 'NaN' || idStr === 'null' || idStr === 'undefined' || isNaN(Number(idStr.replace('temp-', '')))) {
+    return `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  }
+
+  return idStr;
+};
+
+// ✅ FIX: Helper function untuk validasi user ID
+const validateUserId = (userId: string | number | null | undefined): string => {
+  if (!userId || userId === 'null' || userId === 'undefined' || userId === 'NaN') {
+    return 'broadcast';
+  }
+
+  const userIdStr = userId.toString();
+  return userIdStr === 'null' || userIdStr === 'undefined' || userIdStr === 'NaN' ? 'broadcast' : userIdStr;
+};
 
 export const useNotificationStore = create<NotificationState>()(
   persist(
     (set, get) => ({
-      // 💡 Kosongkan mock agar siap sync dengan backend
       notifications: [],
       unreadCount: 0,
+      lastUpdated: new Date(),
 
-      /** ➕ Tambahkan notifikasi manual (local event, alert, dll) */
       addNotification: (notification) => {
+        // ✅ FIX: Validasi ID sebelum membuat notifikasi
+        const validId = validateNotificationId(notification.id);
+
         const newNotification: Notification = {
           ...notification,
-          id: Math.random().toString(36).substring(2, 9),
+          id: validId,
           timestamp: new Date(),
           read: false,
         };
 
-        set((state) => ({
-          notifications: [newNotification, ...state.notifications],
-          unreadCount: state.unreadCount + 1,
-        }));
+        set((state) => {
+          // Cek duplikat berdasarkan ID
+          const exists = state.notifications.find((n) => n.id === newNotification.id);
+          if (exists) {
+            console.log('⚠️ Notification already exists:', newNotification.id);
+            return state;
+          }
+
+          console.log('➕ Adding notification:', {
+            id: newNotification.id,
+            title: newNotification.title,
+            userId: newNotification.userId,
+            type: newNotification.type,
+          });
+
+          const newNotifications = [newNotification, ...state.notifications];
+
+          // Limit jumlah notifikasi (prevent memory issues)
+          const limitedNotifications = newNotifications.slice(0, 200);
+
+          const unreadCount = limitedNotifications.filter((n) => !n.read).length;
+
+          return {
+            notifications: limitedNotifications,
+            unreadCount,
+            lastUpdated: new Date(),
+          };
+        });
+
+        // Trigger event untuk UI updates
+        setTimeout(() => {
+          const event = new CustomEvent('notificationAdded', {
+            detail: { notification: newNotification },
+          });
+          window.dispatchEvent(event);
+        }, 50);
       },
 
-      /** ✅ Tandai satu notif sudah dibaca */
       markAsRead: (id: string) => {
+        // ✅ FIX: Validasi ID sebelum operasi
+        const validId = validateNotificationId(id);
+        if (validId.startsWith('temp-')) {
+          console.warn('⚠️ Using temporary ID for markAsRead:', validId);
+        }
+
         set((state) => {
-          const updated = state.notifications.map((n) => (n.id === id ? { ...n, read: true } : n));
+          const updated = state.notifications.map((n) => (n.id === validId ? { ...n, read: true } : n));
+
           return {
             notifications: updated,
             unreadCount: updated.filter((n) => !n.read).length,
+            lastUpdated: new Date(),
           };
         });
+
+        // Trigger event
+        setTimeout(() => {
+          const event = new CustomEvent('notificationRead', { detail: { id: validId } });
+          window.dispatchEvent(event);
+        }, 50);
       },
 
-      /** ✅ Tandai semua notif sebagai dibaca */
       markAllAsRead: () => {
         set((state) => ({
           notifications: state.notifications.map((n) => ({ ...n, read: true })),
           unreadCount: 0,
+          lastUpdated: new Date(),
         }));
+
+        // Trigger event
+        setTimeout(() => {
+          const event = new CustomEvent('allNotificationsRead');
+          window.dispatchEvent(event);
+        }, 50);
       },
 
-      /** 🗑️ Hapus satu notifikasi */
       removeNotification: (id: string) => {
+        // ✅ FIX: Validasi ID sebelum operasi
+        const validId = validateNotificationId(id);
+        if (validId.startsWith('temp-')) {
+          console.warn('⚠️ Using temporary ID for removeNotification:', validId);
+        }
+
         set((state) => {
-          const remaining = state.notifications.filter((n) => n.id !== id);
+          const remaining = state.notifications.filter((n) => n.id !== validId);
           return {
             notifications: remaining,
             unreadCount: remaining.filter((n) => !n.read).length,
+            lastUpdated: new Date(),
           };
         });
+
+        setTimeout(() => {
+          const event = new CustomEvent('notificationRemoved', { detail: { id: validId } });
+          window.dispatchEvent(event);
+        }, 50);
       },
 
-      /** 🧹 Bersihkan semua notifikasi */
-      clearAll: () => set({ notifications: [], unreadCount: 0 }),
+      clearAll: () =>
+        set({
+          notifications: [],
+          unreadCount: 0,
+          lastUpdated: new Date(),
+        }),
 
-      /** 🔍 Ambil semua notifikasi milik user tertentu */
-      getNotificationsByUser: (userId: string) => get().notifications.filter((n) => n.userId === userId),
+      getNotificationsByUser: (userId: string) => {
+        return get().notifications.filter((n) => n.userId === userId);
+      },
 
-      /** 🔍 Hitung jumlah unread notifikasi untuk user */
-      getUnreadByUser: (userId: string) => get().notifications.filter((n) => n.userId === userId && !n.read).length,
+      getUnreadByUser: (userId: string) => {
+        return get().notifications.filter((n) => (n.userId === userId || n.userId === 'broadcast') && !n.read).length;
+      },
 
-      /** 🔄 Hitung ulang total unread */
       recalcUnread: () => {
         const unread = get().notifications.filter((n) => !n.read).length;
         set({ unreadCount: unread });
       },
 
-      /** ✅ Tandai semua notif user ini sebagai dibaca */
       markAllAsReadForUser: (userId: string) => {
         set((state) => {
           const updated = state.notifications.map((n) => (n.userId === userId ? { ...n, read: true } : n));
           return {
             notifications: updated,
             unreadCount: updated.filter((n) => !n.read).length,
+            lastUpdated: new Date(),
           };
         });
       },
 
-      /** 🗑️ Hapus semua notif user tertentu */
       removeAllForUser: (userId: string) => {
         set((state) => {
           const remaining = state.notifications.filter((n) => n.userId !== userId);
           return {
             notifications: remaining,
             unreadCount: remaining.filter((n) => !n.read).length,
+            lastUpdated: new Date(),
           };
         });
       },
 
-      /** ✏️ Update properti notif tertentu */
       updateNotification: (id, updates) => {
+        // ✅ FIX: Validasi ID sebelum operasi
+        const validId = validateNotificationId(id);
+
         set((state) => ({
-          notifications: state.notifications.map((n) => (n.id === id ? { ...n, ...updates } : n)),
+          notifications: state.notifications.map((n) => (n.id === validId ? { ...n, ...updates } : n)),
+          lastUpdated: new Date(),
         }));
       },
 
-      /** 🔎 Filter berdasarkan kategori */
-      getNotificationsByCategory: (userId, category) => get().notifications.filter((n) => n.userId === userId && n.category === category),
+      getNotificationsByCategory: (userId, category) => {
+        return get().notifications.filter((n) => (n.userId === userId || n.userId === 'broadcast') && n.category === category);
+      },
 
-      /** 🔎 Filter berdasarkan tipe (info/success/warning/error) */
-      getNotificationsByType: (userId, type) => get().notifications.filter((n) => n.userId === userId && n.type === type),
+      getNotificationsByType: (userId, type) => {
+        return get().notifications.filter((n) => (n.userId === userId || n.userId === 'broadcast') && n.type === type);
+      },
+
+      getBroadcastNotifications: () => {
+        return get().notifications.filter((n) => n.userId === 'broadcast');
+      },
+
+      getUserSpecificNotifications: (userId: string) => {
+        return get().notifications.filter((n) => n.userId === userId);
+      },
+
+      getAllNotificationsForUser: (userId: string) => {
+        return get()
+          .notifications.filter((n) => n.userId === userId || n.userId === 'broadcast')
+          .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+      },
+
+      // ✅ NEW: Cleanup expired notifications
+      cleanupExpiredNotifications: () => {
+        const now = new Date();
+        set((state) => {
+          const validNotifications = state.notifications.filter((n) => {
+            if (!n.expires_at) return true;
+            return new Date(n.expires_at) > now;
+          });
+
+          console.log(`🧹 Cleaned up ${state.notifications.length - validNotifications.length} expired notifications`);
+
+          return {
+            notifications: validNotifications,
+            unreadCount: validNotifications.filter((n) => !n.read).length,
+            lastUpdated: new Date(),
+          };
+        });
+      },
+
+      // ✅ FIX: Sync with backend data dengan validasi yang lebih baik
+      syncWithBackendData: (backendNotifications: any[]) => {
+        const convertedNotifications: Notification[] = backendNotifications.map((backendNotif) => {
+          // ✅ FIX: Validasi semua field sebelum konversi
+          const validId = validateNotificationId(backendNotif.notification_id || backendNotif.id);
+          const validUserId = validateUserId(backendNotif.user_id);
+
+          return {
+            id: validId,
+            userId: validUserId,
+            type: backendNotif.type || 'info',
+            title: backendNotif.title || 'No Title',
+            message: backendNotif.message || 'No Message',
+            read: Boolean(backendNotif.read),
+            timestamp: new Date(backendNotif.created_at || backendNotif.timestamp || Date.now()),
+            category: backendNotif.category || undefined,
+            metadata: backendNotif.metadata || {},
+            expires_at: backendNotif.expires_at ? new Date(backendNotif.expires_at) : undefined,
+          };
+        });
+
+        set((state) => {
+          // Filter hanya notifications dengan ID yang valid
+          const validNewNotifications = convertedNotifications.filter((n) => !n.id.includes('NaN') && n.id !== 'null' && n.id !== 'undefined');
+
+          // Merge dengan existing notifications, hindari duplikat
+          const existingIds = new Set(state.notifications.map((n) => n.id));
+          const newNotifications = validNewNotifications.filter((n) => !existingIds.has(n.id));
+
+          const mergedNotifications = [...newNotifications, ...state.notifications].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).slice(0, 200);
+
+          console.log(`🔄 Synced ${newNotifications.length} new notifications from backend`);
+
+          return {
+            notifications: mergedNotifications,
+            unreadCount: mergedNotifications.filter((n) => !n.read).length,
+            lastUpdated: new Date(),
+          };
+        });
+
+        // Trigger sync event
+        setTimeout(() => {
+          const event = new CustomEvent('notificationsSynced', {
+            detail: { count: convertedNotifications.length },
+          });
+          window.dispatchEvent(event);
+        }, 50);
+      },
     }),
     {
-      name: 'notification-storage', // persist key
+      name: 'notification-storage',
+      partialize: (state) => ({
+        // ✅ FIX: Filter out notifications dengan ID invalid sebelum persist
+        notifications: state.notifications.filter((n) => !n.id.includes('NaN') && n.id !== 'null' && n.id !== 'undefined'),
+        unreadCount: state.unreadCount,
+        lastUpdated: state.lastUpdated,
+      }),
+      version: 3, // Increment version karena ada perubahan structure
+      migrate: (persistedState: any, version: number) => {
+        // ✅ FIX: Migration untuk clean up data lama yang corrupt
+        if (version < 3) {
+          const notifications = persistedState.notifications || [];
+          const validNotifications = notifications.filter((n: any) => n.id && !n.id.includes('NaN') && n.id !== 'null' && n.id !== 'undefined');
+
+          return {
+            ...persistedState,
+            notifications: validNotifications,
+            unreadCount: validNotifications.filter((n: any) => !n.read).length,
+          };
+        }
+        return persistedState;
+      },
     }
   )
 );
+
+// Utility functions untuk notification store
+export const notificationUtils = {
+  // Filter notifications untuk user tertentu
+  filterForUser: (notifications: Notification[], userId: string): Notification[] => {
+    return notifications.filter((n) => n.userId === userId || n.userId === 'broadcast');
+  },
+
+  // Group notifications by date
+  groupByDate: (notifications: Notification[]) => {
+    const groups: { [key: string]: Notification[] } = {};
+
+    notifications.forEach((notification) => {
+      const date = new Date(notification.timestamp).toDateString();
+      if (!groups[date]) {
+        groups[date] = [];
+      }
+      groups[date].push(notification);
+    });
+
+    return groups;
+  },
+
+  // Check if notification is expired
+  isExpired: (notification: Notification): boolean => {
+    if (!notification.expires_at) return false;
+    return new Date(notification.expires_at) < new Date();
+  },
+
+  // Create login notification data
+  createLoginNotification: (userId: string, userID: string) => ({
+    userId,
+    type: 'success' as const,
+    title: 'Login Successful',
+    message: `Welcome back, ${userID}! You have successfully logged in.`,
+    category: 'security',
+    metadata: {
+      login_time: new Date().toISOString(),
+      activity_type: 'login',
+    },
+  }),
+
+  // Create logout notification data
+  createLogoutNotification: (userId: string, userID: string) => ({
+    userId,
+    type: 'info' as const,
+    title: 'Logout Successful',
+    message: `You have successfully logged out.`,
+    category: 'security',
+    metadata: {
+      logout_time: new Date().toISOString(),
+      activity_type: 'logout',
+    },
+  }),
+
+  // Create broadcast notification untuk user login/logout
+  createUserStatusBroadcast: (userId: string, userID: string, action: 'login' | 'logout') => ({
+    userId: 'broadcast',
+    type: 'info' as const,
+    title: action === 'login' ? 'User Logged In' : 'User Logged Out',
+    message: action === 'login' ? `User ${userID} has logged into the system.` : `User ${userID} has logged out from the system.`,
+    category: 'system',
+    metadata: {
+      timestamp: new Date().toISOString(),
+      activity_type: 'user_status',
+      user_id: userId,
+      user_name: userID,
+      action: action,
+    },
+  }),
+};

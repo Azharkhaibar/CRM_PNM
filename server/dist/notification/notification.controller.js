@@ -18,6 +18,7 @@ const common_1 = require("@nestjs/common");
 const notification_service_1 = require("./notification.service");
 const create_notification_dto_1 = require("./dto/create-notification.dto");
 const update_notification_dto_1 = require("./dto/update-notification.dto");
+const user_status_dto_1 = require("./dto/user-status.dto");
 let NotificationController = NotificationController_1 = class NotificationController {
     notificationService;
     logger = new common_1.Logger(NotificationController_1.name);
@@ -49,6 +50,10 @@ let NotificationController = NotificationController_1 = class NotificationContro
         this.logger.log('Creating new notification');
         return await this.notificationService.create(createNotificationDto);
     }
+    async createMultiple(createNotificationDtos) {
+        this.logger.log('Creating multiple notifications');
+        return await this.notificationService.createMultiple(createNotificationDtos);
+    }
     async update(id, updateNotificationDto) {
         this.logger.log(`Updating notification ${id}`);
         return await this.notificationService.update(Number(id), updateNotificationDto);
@@ -57,15 +62,28 @@ let NotificationController = NotificationController_1 = class NotificationContro
         this.logger.log(`Marking notification ${id} as read`);
         return await this.notificationService.markAsRead(Number(id));
     }
+    async userStatusNotification(body) {
+        return await this.notificationService.notifyUserStatusChange(body.userId, body.userName, body.status);
+    }
     async markAllAsRead(user_id) {
         this.logger.log(`Marking all notifications as read for user ${user_id}`);
         await this.notificationService.markAllAsRead(Number(user_id));
         return { message: 'All notifications marked as read' };
     }
+    async getRecentUserNotifications(user_id, hours) {
+        const range = hours ? Number(hours) : 24;
+        this.logger.log(`Fetching notifications from last ${range}h for user ${user_id}`);
+        return await this.notificationService.getRecentUserNotifications(Number(user_id), range);
+    }
     async remove(id) {
         this.logger.log(`Deleting notification ${id}`);
         await this.notificationService.remove(Number(id));
         return { message: 'Notification deleted successfully' };
+    }
+    async removeExpired() {
+        this.logger.log('Removing expired notifications');
+        await this.notificationService.removeExpired();
+        return { message: 'Expired notifications removed successfully' };
     }
 };
 exports.NotificationController = NotificationController;
@@ -107,6 +125,13 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], NotificationController.prototype, "create", null);
 __decorate([
+    (0, common_1.Post)('bulk'),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Array]),
+    __metadata("design:returntype", Promise)
+], NotificationController.prototype, "createMultiple", null);
+__decorate([
     (0, common_1.Patch)(':id'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
@@ -122,6 +147,13 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], NotificationController.prototype, "markAsRead", null);
 __decorate([
+    (0, common_1.Post)('user-status'),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [user_status_dto_1.UserStatusDto]),
+    __metadata("design:returntype", Promise)
+], NotificationController.prototype, "userStatusNotification", null);
+__decorate([
     (0, common_1.Patch)('user/:user_id/mark-all-read'),
     __param(0, (0, common_1.Param)('user_id')),
     __metadata("design:type", Function),
@@ -129,12 +161,26 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], NotificationController.prototype, "markAllAsRead", null);
 __decorate([
+    (0, common_1.Get)('user/:user_id/recent'),
+    __param(0, (0, common_1.Param)('user_id')),
+    __param(1, (0, common_1.Query)('hours')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, String]),
+    __metadata("design:returntype", Promise)
+], NotificationController.prototype, "getRecentUserNotifications", null);
+__decorate([
     (0, common_1.Delete)(':id'),
     __param(0, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
     __metadata("design:returntype", Promise)
 ], NotificationController.prototype, "remove", null);
+__decorate([
+    (0, common_1.Delete)(),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], NotificationController.prototype, "removeExpired", null);
 exports.NotificationController = NotificationController = NotificationController_1 = __decorate([
     (0, common_1.Controller)('notifications'),
     __metadata("design:paramtypes", [notification_service_1.NotificationService])

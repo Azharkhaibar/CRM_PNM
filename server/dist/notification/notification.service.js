@@ -43,15 +43,13 @@ let NotificationService = NotificationService_1 = class NotificationService {
             const notification = await this.notificationRepository.findOne({
                 where: { notification_id },
             });
-            if (!notification) {
-                throw new common_1.NotFoundException(`Notification with ID ${notification_id} not found`);
-            }
+            if (!notification)
+                throw new common_1.NotFoundException(`Notification ${notification_id} not found`);
             return notification;
         }
         catch (error) {
-            if (error instanceof common_1.NotFoundException) {
+            if (error instanceof common_1.NotFoundException)
                 throw error;
-            }
             this.logger.error(`Failed to find notification ${notification_id}`, error);
             throw new common_1.InternalServerErrorException('Failed to retrieve notification');
         }
@@ -64,8 +62,9 @@ let NotificationService = NotificationService_1 = class NotificationService {
                 expires_at: createDto.expiresAt ?? null,
             });
             const savedNotification = await this.notificationRepository.save(notification);
-            this.gateway.sendNotificationToUser(Number(createDto.userId), savedNotification);
-            this.logger.log(`Notification created & emitted to user ${createDto.userId}`);
+            this.gateway.sendNotificationToUser(savedNotification.user_id, savedNotification);
+            this.gateway.sendNotificationToAll(savedNotification);
+            this.logger.log(`Notification created for user ${savedNotification.user_id}`);
             return savedNotification;
         }
         catch (error) {
@@ -77,7 +76,10 @@ let NotificationService = NotificationService_1 = class NotificationService {
         try {
             const notification = await this.findOne(notification_id);
             Object.assign(notification, updateNotificationDto);
-            return await this.notificationRepository.save(notification);
+            const updated = await this.notificationRepository.save(notification);
+            this.gateway.sendNotificationToUser(updated.user_id, updated);
+            this.gateway.sendNotificationToAll(updated);
+            return updated;
         }
         catch (error) {
             this.logger.error(`Failed to update notification ${notification_id}`, error);
@@ -100,53 +102,13 @@ let NotificationService = NotificationService_1 = class NotificationService {
             throw new common_1.InternalServerErrorException('Failed to mark notifications as read');
         }
     }
-    async createMultiple(createDtos) {
-        try {
-            const notificationsData = createDtos.map((dto) => {
-                const item = {
-                    ...dto,
-                    user_id: Number(dto.userId),
-                    expires_at: dto.expiresAt ?? null,
-                };
-                delete item.userId;
-                delete item.expiresAt;
-                return item;
-            });
-            const notifications = this.notificationRepository.create(notificationsData);
-            const savedNotifications = await this.notificationRepository.save(notifications);
-            this.logger.log(`Created ${savedNotifications.length} notifications`);
-            return savedNotifications;
-        }
-        catch (error) {
-            this.logger.error('Failed to create multiple notifications', error);
-            throw new common_1.InternalServerErrorException('Failed to create notifications');
-        }
-    }
-    async findByUser(user_id, options = {}) {
-        try {
-            const { unreadOnly = false, limit = 50, page = 1 } = options;
-            const query = this.notificationRepository
-                .createQueryBuilder('notification')
-                .where('notification.user_id = :user_id', { user_id })
-                .orderBy('notification.created_at', 'DESC')
-                .skip((page - 1) * limit)
-                .take(limit);
-            if (unreadOnly) {
-                query.andWhere('notification.read = false');
-            }
-            const [notifications, total] = await query.getManyAndCount();
-            return { notifications, total };
-        }
-        catch (error) {
-            this.logger.error(`Failed to find notifications for user ${user_id}`, error);
-            throw new common_1.InternalServerErrorException('Failed to retrieve user notifications');
-        }
-    }
     async markAsRead(notification_id) {
         try {
             const notification = await this.findOne(notification_id);
             notification.read = true;
-            return await this.notificationRepository.save(notification);
+            const updated = await this.notificationRepository.save(notification);
+            this.gateway.sendNotificationToAll(updated);
+            return updated;
         }
         catch (error) {
             this.logger.error(`Failed to mark notification ${notification_id} as read`, error);
@@ -167,15 +129,13 @@ let NotificationService = NotificationService_1 = class NotificationService {
     async remove(notification_id) {
         try {
             const result = await this.notificationRepository.delete(notification_id);
-            if (result.affected === 0) {
-                throw new common_1.NotFoundException(`Notification with ID ${notification_id} not found`);
-            }
+            if (result.affected === 0)
+                throw new common_1.NotFoundException(`Notification ${notification_id} not found`);
             this.logger.log(`Notification ${notification_id} deleted`);
         }
         catch (error) {
-            if (error instanceof common_1.NotFoundException) {
+            if (error instanceof common_1.NotFoundException)
                 throw error;
-            }
             this.logger.error(`Failed to delete notification ${notification_id}`, error);
             throw new common_1.InternalServerErrorException('Failed to delete notification');
         }
@@ -193,6 +153,54 @@ let NotificationService = NotificationService_1 = class NotificationService {
             this.logger.error('Failed to remove expired notifications', error);
             throw new common_1.InternalServerErrorException('Failed to remove expired notifications');
         }
+    }
+    async createMultiple(createDtos) {
+        try {
+            const notificationsData = createDtos.map((dto) => ({
+                ...dto,
+                user_id: Number(dto.userId),
+                expires_at: dto.expiresAt ?? null,
+            }));
+            const notifications = this.notificationRepository.create(notificationsData);
+            const savedNotifications = await this.notificationRepository.save(notifications);
+            this.logger.log(`Created ${savedNotifications.length} notifications`);
+            return savedNotifications;
+        }
+        catch (error) {
+            this.logger.error('Failed to create multiple notifications', error);
+            throw new common_1.InternalServerErrorException('Failed to create notifications');
+        }
+    }
+    async findByUser(user_id, options = {}) {
+        try {
+            const { unreadOnly = false, limit = 50, page = 1 } = options;
+            const query = this.notificationRepository
+                .createQueryBuilder('notification')
+                .where('notification.user_id = :user_id', { user_id })
+                .orderBy('notification.created_at', 'DESC')
+                .skip((page - 1) * limit)
+                .take(limit);
+            if (unreadOnly)
+                query.andWhere('notification.read = false');
+            const [notifications, total] = await query.getManyAndCount();
+            return { notifications, total };
+        }
+        catch (error) {
+            this.logger.error(`Failed to find notifications for user ${user_id}`, error);
+            throw new common_1.InternalServerErrorException('Failed to retrieve user notifications');
+        }
+    }
+    async notifyUserStatusChange(userId, userName, status) {
+        const notification = await this.create({
+            userId,
+            type: notification_entity_1.NotificationType.SYSTEM,
+            title: `User ${status}`,
+            message: `${userName} is now ${status}`,
+            category: 'user-status',
+            metadata: { userId, status },
+            expiresAt: null,
+        });
+        this.gateway.sendNotificationToAll(notification);
     }
     async getRecentUserNotifications(user_id, hours = 24) {
         try {
@@ -216,7 +224,6 @@ exports.NotificationService = NotificationService = NotificationService_1 = __de
     (0, common_1.Injectable)(),
     __param(0, (0, typeorm_1.InjectRepository)(notification_entity_1.Notification)),
     __param(1, (0, common_1.Inject)((0, common_1.forwardRef)(() => notification_gateway_1.NotificationGateway))),
-    __metadata("design:paramtypes", [typeorm_2.Repository,
-        notification_gateway_1.NotificationGateway])
+    __metadata("design:paramtypes", [typeorm_2.Repository, Object])
 ], NotificationService);
 //# sourceMappingURL=notification.service.js.map

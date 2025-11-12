@@ -13,6 +13,14 @@ exports.KpmrInvestasi = void 0;
 const typeorm_1 = require("typeorm");
 let KpmrInvestasi = class KpmrInvestasi {
     id_kpmr_investasi;
+    year;
+    quarter;
+    aspekNo;
+    aspekBobot;
+    aspekTitle;
+    sectionNo;
+    indikator;
+    sectionSkor;
     tata_kelola_resiko;
     strong;
     satisfactory;
@@ -27,41 +35,68 @@ __decorate([
     __metadata("design:type", Number)
 ], KpmrInvestasi.prototype, "id_kpmr_investasi", void 0);
 __decorate([
-    (0, typeorm_1.Column)(),
+    (0, typeorm_1.Column)({ type: 'int' }),
+    __metadata("design:type", Number)
+], KpmrInvestasi.prototype, "year", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'varchar', length: 10 }),
+    __metadata("design:type", String)
+], KpmrInvestasi.prototype, "quarter", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'varchar', length: 20, nullable: true, name: 'aspek_no' }),
+    __metadata("design:type", String)
+], KpmrInvestasi.prototype, "aspekNo", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'float', nullable: true, name: 'aspek_bobot' }),
+    __metadata("design:type", Number)
+], KpmrInvestasi.prototype, "aspekBobot", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'varchar', length: 255, nullable: true, name: 'aspek_title' }),
+    __metadata("design:type", String)
+], KpmrInvestasi.prototype, "aspekTitle", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'varchar', length: 20, nullable: true, name: 'section_no' }),
+    __metadata("design:type", String)
+], KpmrInvestasi.prototype, "sectionNo", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        type: 'varchar',
+        nullable: true,
+        length: 255,
+        name: 'indikator',
+    }),
+    __metadata("design:type", String)
+], KpmrInvestasi.prototype, "indikator", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'float', nullable: true, name: 'section_skor' }),
+    __metadata("design:type", Number)
+], KpmrInvestasi.prototype, "sectionSkor", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'varchar', nullable: true }),
     __metadata("design:type", String)
 ], KpmrInvestasi.prototype, "tata_kelola_resiko", void 0);
 __decorate([
-    (0, typeorm_1.Column)(),
+    (0, typeorm_1.Column)({ type: 'varchar', nullable: true }),
     __metadata("design:type", String)
 ], KpmrInvestasi.prototype, "strong", void 0);
 __decorate([
-    (0, typeorm_1.Column)({
-        nullable: false,
-    }),
+    (0, typeorm_1.Column)({ type: 'varchar', nullable: true }),
     __metadata("design:type", String)
 ], KpmrInvestasi.prototype, "satisfactory", void 0);
 __decorate([
-    (0, typeorm_1.Column)({
-        nullable: false,
-    }),
+    (0, typeorm_1.Column)({ type: 'varchar', nullable: true }),
     __metadata("design:type", String)
 ], KpmrInvestasi.prototype, "fair", void 0);
 __decorate([
-    (0, typeorm_1.Column)({
-        nullable: false,
-    }),
+    (0, typeorm_1.Column)({ type: 'varchar', nullable: true }),
     __metadata("design:type", String)
 ], KpmrInvestasi.prototype, "marginal", void 0);
 __decorate([
-    (0, typeorm_1.Column)({
-        nullable: false,
-    }),
+    (0, typeorm_1.Column)({ type: 'varchar', nullable: true }),
     __metadata("design:type", String)
 ], KpmrInvestasi.prototype, "unsatisfactory", void 0);
 __decorate([
-    (0, typeorm_1.Column)({
-        nullable: false,
-    }),
+    (0, typeorm_1.Column)({ type: 'varchar', nullable: true }),
     __metadata("design:type", String)
 ], KpmrInvestasi.prototype, "evidence", void 0);
 exports.KpmrInvestasi = KpmrInvestasi = __decorate([

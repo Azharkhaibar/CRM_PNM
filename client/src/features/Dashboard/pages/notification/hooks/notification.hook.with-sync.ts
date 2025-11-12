@@ -1,7 +1,7 @@
 import { useAuth } from '../../../../auth/hooks/useAuth.hook';
 import { useNotificationStore, Notification } from '../stores/notification.stores';
-import { NotificationService } from '../services/notification.service';
-import { useCallback, useMemo, useEffect, useState } from 'react';
+import { NotificationService } from '../services/notification.services';
+import { useCallback, useMemo, useEffect, useState, useRef } from 'react';
 import { NotificationInput } from './notification.hook';
 
 interface UseUserNotificationsWithSyncReturn {
@@ -48,6 +48,8 @@ export const useUserNotificationsWithSync = (): UseUserNotificationsWithSyncRetu
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const pollingRef = useRef<number | null>(null);
+
   const {
     notifications,
     addNotification,
@@ -64,6 +66,7 @@ export const useUserNotificationsWithSync = (): UseUserNotificationsWithSyncRetu
     getNotificationsByType,
   } = useNotificationStore();
 
+  // Memoized user notifications
   const userNotifications = useMemo(() => {
     if (!user?.user_id) return [];
     return getNotificationsByUser(user.user_id.toString());
@@ -74,17 +77,13 @@ export const useUserNotificationsWithSync = (): UseUserNotificationsWithSyncRetu
     return getUnreadByUser(user.user_id.toString());
   }, [notifications, user?.user_id, getUnreadByUser]);
 
+  // Sync with backend
   const syncWithBackend = useCallback(async () => {
     if (!user?.user_id) return;
-
     setIsLoading(true);
     setError(null);
-
     try {
-      const backendNotifications = await NotificationService.syncWithBackend(user.user_id.toString());
-      // Here you would update the store with backend data
-      // This would require adding a sync method to your store
-      console.log('Synced notifications from backend:', backendNotifications);
+      await NotificationService.syncWithBackend(user.user_id.toString());
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to sync notifications');
     } finally {
@@ -93,29 +92,30 @@ export const useUserNotificationsWithSync = (): UseUserNotificationsWithSyncRetu
   }, [user?.user_id]);
 
   useEffect(() => {
+    if (!user?.user_id) return;
+
     syncWithBackend();
-  }, [syncWithBackend]);
+    pollingRef.current = NotificationService.startPolling(user.user_id.toString(), 15000);
+
+    return () => {
+      if (pollingRef.current !== null) {
+        NotificationService.stopPolling(pollingRef.current);
+        pollingRef.current = null;
+      }
+    };
+  }, [user?.user_id, syncWithBackend]);
 
   const addUserNotification = useCallback(
-    async (notification: NotificationInput): Promise<Notification | null> => {
-      if (!user?.user_id) {
-        console.warn('Cannot add notification: No user ID');
-        return null;
-      }
-
-      const notificationData = {
-        ...notification,
-        userId: user.user_id.toString(),
-      };
-
+    async (notification: NotificationInput) => {
+      if (!user?.user_id) return null;
+      const notificationData = { ...notification, userId: user.user_id.toString() };
       try {
         if (process.env.NODE_ENV === 'production') {
-          await NotificationService.createOnBackend(notificationData);
+          const payload = { ...notificationData, userId: user.user_id, metadata: notificationData.metadata ?? undefined };
+          await NotificationService.createNotification(payload);
         }
-
         return addNotification(notificationData);
-      } catch (err) {
-        console.error('Failed to add notification:', err);
+      } catch {
         return addNotification(notificationData);
       }
     },
@@ -123,15 +123,13 @@ export const useUserNotificationsWithSync = (): UseUserNotificationsWithSyncRetu
   );
 
   const markAsReadWithSync = useCallback(
-    async (id: string): Promise<void> => {
+    async (id: string) => {
       try {
         if (process.env.NODE_ENV === 'production') {
-          await NotificationService.markAsReadOnBackend(id);
+          await NotificationService.markAsRead(id);
         }
-
         markAsRead(id);
-      } catch (err) {
-        console.error('Failed to mark as read:', err);
+      } catch {
         markAsRead(id);
       }
     },
@@ -139,15 +137,13 @@ export const useUserNotificationsWithSync = (): UseUserNotificationsWithSyncRetu
   );
 
   const removeNotificationWithSync = useCallback(
-    async (id: string): Promise<void> => {
+    async (id: string) => {
       try {
         if (process.env.NODE_ENV === 'production') {
-          await NotificationService.deleteOnBackend(id);
+          await NotificationService.deleteNotification(id);
         }
-
         removeNotification(id);
-      } catch (err) {
-        console.error('Failed to remove notification:', err);
+      } catch {
         removeNotification(id);
       }
     },
@@ -155,18 +151,12 @@ export const useUserNotificationsWithSync = (): UseUserNotificationsWithSyncRetu
   );
 
   const markAllAsReadForCurrentUser = useCallback(() => {
-    if (!user?.user_id) {
-      console.warn('Cannot mark as read: No user ID');
-      return;
-    }
+    if (!user?.user_id) return;
     markAllAsReadForUser(user.user_id.toString());
   }, [user?.user_id, markAllAsReadForUser]);
 
   const removeAllForCurrentUser = useCallback(() => {
-    if (!user?.user_id) {
-      console.warn('Cannot remove notifications: No user ID');
-      return;
-    }
+    if (!user?.user_id) return;
     removeAllForUser(user.user_id.toString());
   }, [user?.user_id, removeAllForUser]);
 
@@ -187,59 +177,27 @@ export const useUserNotificationsWithSync = (): UseUserNotificationsWithSyncRetu
   );
 
   const addSuccessNotification = useCallback(
-    (title: string, message: string, category: string = 'system', metadata: Record<string, any> | null = null) => {
-      return addUserNotification({
-        type: 'success',
-        title,
-        message,
-        category,
-        metadata,
-      });
-    },
+    (title: string, message: string, category = 'system', metadata: Record<string, any> | null = null) => addUserNotification({ type: 'success', title, message, category, metadata }),
     [addUserNotification]
   );
 
   const addErrorNotification = useCallback(
-    (title: string, message: string, category: string = 'system', metadata: Record<string, any> | null = null) => {
-      return addUserNotification({
-        type: 'error',
-        title,
-        message,
-        category,
-        metadata,
-      });
-    },
+    (title: string, message: string, category = 'system', metadata: Record<string, any> | null = null) => addUserNotification({ type: 'error', title, message, category, metadata }),
     [addUserNotification]
   );
 
   const addWarningNotification = useCallback(
-    (title: string, message: string, category: string = 'system', metadata: Record<string, any> | null = null) => {
-      return addUserNotification({
-        type: 'warning',
-        title,
-        message,
-        category,
-        metadata,
-      });
-    },
+    (title: string, message: string, category = 'system', metadata: Record<string, any> | null = null) => addUserNotification({ type: 'warning', title, message, category, metadata }),
     [addUserNotification]
   );
 
   const addInfoNotification = useCallback(
-    (title: string, message: string, category: string = 'system', metadata: Record<string, any> | null = null) => {
-      return addUserNotification({
-        type: 'info',
-        title,
-        message,
-        category,
-        metadata,
-      });
-    },
+    (title: string, message: string, category = 'system', metadata: Record<string, any> | null = null) => addUserNotification({ type: 'info', title, message, category, metadata }),
     [addUserNotification]
   );
 
-  const stats = useMemo(
-    () => ({
+  const stats = useMemo(() => {
+    return {
       total: userNotifications.length,
       unread: userUnreadCount,
       read: userNotifications.length - userUnreadCount,
@@ -254,9 +212,8 @@ export const useUserNotificationsWithSync = (): UseUserNotificationsWithSyncRetu
         acc[category] = (acc[category] || 0) + 1;
         return acc;
       }, {} as Record<string, number>),
-    }),
-    [userNotifications, userUnreadCount, getCurrentUserNotificationsByType]
-  );
+    };
+  }, [userNotifications, userUnreadCount, getCurrentUserNotificationsByType]);
 
   return {
     notifications: userNotifications,

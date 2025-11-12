@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import { Notification } from '../stores/notification.stores';
+
 interface UseNotificationPageProps {
   notifications: Notification[];
   markAsRead: (id: string) => Promise<void>;
@@ -39,14 +40,12 @@ interface UseNotificationPageReturn {
 }
 
 export const useNotificationPage = ({ notifications, markAsRead, markAllAsRead, removeNotification }: UseNotificationPageProps): UseNotificationPageReturn => {
-  // State
   const [filter, setFilter] = useState<'all' | 'unread' | 'read'>('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedNotifications, setSelectedNotifications] = useState<string[]>([]);
   const [showSettings, setShowSettings] = useState(false);
 
-  // Filter notifications
   const filteredNotifications = useMemo(() => {
     return notifications.filter((notif) => {
       const matchesFilter = filter === 'all' || (filter === 'unread' && !notif.read) || (filter === 'read' && notif.read);
@@ -59,10 +58,8 @@ export const useNotificationPage = ({ notifications, markAsRead, markAllAsRead, 
     });
   }, [notifications, filter, categoryFilter, searchTerm]);
 
-  // Get unique categories
   const categories = useMemo(() => [...new Set(notifications.map((n) => n.category).filter(Boolean))] as string[], [notifications]);
 
-  // Notification type utilities
   const getNotificationIcon = useCallback((type: string) => {
     switch (type) {
       case 'success':
@@ -93,7 +90,6 @@ export const useNotificationPage = ({ notifications, markAsRead, markAllAsRead, 
     }
   }, []);
 
-  // Actions
   const handleMarkAsRead = useCallback(
     async (id: string) => {
       try {
@@ -146,10 +142,8 @@ export const useNotificationPage = ({ notifications, markAsRead, markAllAsRead, 
     }
   }, [selectedNotifications.length, filteredNotifications]);
 
-  // Format time utility
   const formatTime = useCallback((date: Date) => {
     if (!date) return 'Unknown';
-
     const now = new Date();
     const notificationDate = new Date(date);
     const diff = now.getTime() - notificationDate.getTime();
@@ -165,7 +159,6 @@ export const useNotificationPage = ({ notifications, markAsRead, markAllAsRead, 
   }, []);
 
   return {
-    // State
     filteredNotifications,
     categories,
     filter,
@@ -173,23 +166,17 @@ export const useNotificationPage = ({ notifications, markAsRead, markAllAsRead, 
     searchTerm,
     selectedNotifications,
     showSettings,
-
-    // Setters
     setFilter,
     setCategoryFilter,
     setSearchTerm,
     setSelectedNotifications,
     setShowSettings,
-
-    // Actions
     handleMarkAsRead,
     handleMarkAllAsRead,
     handleDelete,
     handleBulkDelete,
     handleSelectNotification,
     handleSelectAll,
-
-    // Utilities
     getNotificationIcon,
     getTypeColor,
     formatTime,

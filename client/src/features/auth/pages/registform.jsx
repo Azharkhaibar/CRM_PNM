@@ -1,3 +1,4 @@
+// registform.jsx
 import React, { useState } from 'react';
 import InputField from '../components/inputField';
 import fileIMG from '../../../assets/LogoRIMS.png';
@@ -16,8 +17,8 @@ export default function RegisterPage() {
 
   const [userID, setUserID] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState('user');
-  const [genderForm, setGenderForm] = useState('male');
+  const [role, setRole] = useState('USER'); // ✅ DEFAULT: 'USER' (uppercase)
+  const [genderForm, setGenderForm] = useState('MALE'); // ✅ DEFAULT: 'MALE' (uppercase)
   const [showPinDialog, setShowPinDialog] = useState(false);
 
   const handleRegister = async (e) => {
@@ -27,7 +28,15 @@ export default function RegisterPage() {
       console.warn('[Register] UserID atau Password kosong');
       return alert('UserID dan Password wajib diisi');
     }
-    const payload = { userID, password, role, gender: genderForm };
+
+    // ✅ PASTIKAN: Semua value sudah uppercase
+    const payload = {
+      userID,
+      password,
+      role: role.toUpperCase(), // ✅ Convert ke uppercase
+      gender: genderForm.toUpperCase(), // ✅ Convert ke uppercase
+    };
+
     console.log('[Register] Payload dikirim:', payload);
 
     try {
@@ -92,10 +101,8 @@ export default function RegisterPage() {
             <div>
               <label className={labelClass}>Role</label>
               <select className={selectClass} value={role} onChange={(e) => setRole(e.target.value)}>
-                <option value="admin">Admin</option>
-                <option value="user">User</option>
-                <option value="manager">Manager</option>
-                <option value="supervisor">Supervisor</option>
+                <option value="USER">User</option>
+                <option value="ADMIN">Admin</option>
               </select>
             </div>
 

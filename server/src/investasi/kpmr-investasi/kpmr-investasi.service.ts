@@ -1,12 +1,13 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { CreateKpmrInvestasiDto } from './dto/create-kpmr-investasi.dto';
-import { UpdateKpmrInvestasiDto } from './dto/update-kpmr-investasi.dto';
+import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { KpmrInvestasi } from './entities/kpmr-investasi.entity';
 import { InjectRepository } from '@nestjs/typeorm';
+import { CreateKpmrInvestasiDto } from './dto/create-kpmr-investasi.dto';
+import { UpdateKpmrInvestasiDto } from './dto/update-kpmr-investasi.dto';
 
 @Injectable()
 export class KpmrInvestasiService {
+  private readonly logger = new Logger(KpmrInvestasiService.name);
   constructor(
     @InjectRepository(KpmrInvestasi)
     private readonly kpmrInvestRepository: Repository<KpmrInvestasi>,
@@ -15,100 +16,75 @@ export class KpmrInvestasiService {
   async create(
     createKpmrInvestasiDto: CreateKpmrInvestasiDto,
   ): Promise<KpmrInvestasi> {
+    this.logger.log(
+      `CREATE request received: ${JSON.stringify(createKpmrInvestasiDto)}`,
+    );
     try {
       const kpmrInvest = this.kpmrInvestRepository.create(
         createKpmrInvestasiDto,
       );
-      return await this.kpmrInvestRepository.save(kpmrInvest);
-    } catch (error: unknown) {
-      if (error instanceof Error) {
-        throw new Error(`Failed to create KPMR Investasi: ${error.message}`);
-      }
-      throw new Error('Failed to create KPMR Investasi');
+      const saved = await this.kpmrInvestRepository.save(kpmrInvest);
+      this.logger.log(`CREATE success: ${JSON.stringify(saved)}`);
+      return saved;
+    } catch (error) {
+      this.logger.error('CREATE failed', error);
+      throw error;
     }
   }
 
   async findAll(): Promise<KpmrInvestasi[]> {
-    return await this.kpmrInvestRepository.find();
+    this.logger.log('Fetching all KPMR Investasi');
+    return this.kpmrInvestRepository.find();
   }
 
   async findOne(id: number): Promise<KpmrInvestasi> {
-    const findKpmrInvestasi = await this.kpmrInvestRepository.findOne({
+    const entity = await this.kpmrInvestRepository.findOne({
       where: { id_kpmr_investasi: id },
     });
-
-    if (!findKpmrInvestasi) {
-      throw new NotFoundException(`KPMR Investasi with ID ${id} not found`);
-    }
-    return findKpmrInvestasi;
-  }
-
-  async findByPeriod(year: number, quarter: string): Promise<KpmrInvestasi[]> {
-    const qb = this.kpmrInvestRepository.createQueryBuilder('kpmr');
-
-    if (year !== undefined && year !== null) {
-      qb.andWhere('kpmr.year = :year', { year });
-    }
-
-    if (quarter) {
-      qb.andWhere('kpmr.quarter = :quarter', { quarter });
-    }
-
-    return await qb.getMany();
+    if (!entity)
+      throw new NotFoundException(`Data dengan ID ${id} tidak ditemukan`);
+    return entity;
   }
 
   async update(
     id: number,
-    updateKpmrInvestasiDto: UpdateKpmrInvestasiDto,
+    dto: UpdateKpmrInvestasiDto,
   ): Promise<KpmrInvestasi> {
-    const existingData = await this.findOne(id);
-    await this.kpmrInvestRepository.update(
-      { id_kpmr_investasi: id },
-      updateKpmrInvestasiDto,
-    );
-
-    return await this.findOne(id);
+    await this.kpmrInvestRepository.update(id, dto);
+    return this.findOne(id);
   }
 
   async remove(id: number): Promise<void> {
     const result = await this.kpmrInvestRepository.delete(id);
+    if (result.affected === 0)
+      throw new NotFoundException(`Data dengan ID ${id} tidak ditemukan`);
+  }
 
-    if (result.affected === 0) {
-      throw new NotFoundException(`KPMR Investasi with ID ${id} not found`);
-    }
+  async findByPeriod(year: number, quarter: string): Promise<KpmrInvestasi[]> {
+    return await this.kpmrInvestRepository.find({ where: { year, quarter } });
   }
 
   async findByFilters(filters: {
     year?: number;
     quarter?: string;
-    aspek_no?: string;
+    aspekNo?: string;
     query?: string;
   }): Promise<KpmrInvestasi[]> {
-    const queryBuilder = this.kpmrInvestRepository.createQueryBuilder('kpmr');
+    const qb = this.kpmrInvestRepository.createQueryBuilder('kpmr');
 
-    if (filters.year) {
-      queryBuilder.andWhere('kpmr.year = :year', { year: filters.year });
-    }
-
-    if (filters.quarter) {
-      queryBuilder.andWhere('kpmr.quarter = :quarter', {
-        quarter: filters.quarter,
-      });
-    }
-
-    if (filters.aspek_no) {
-      queryBuilder.andWhere('kpmr.aspek_no = :aspek_no', {
-        aspek_no: filters.aspek_no,
-      });
-    }
-
+    if (filters.year !== undefined)
+      qb.andWhere('kpmr.year = :year', { year: filters.year });
+    if (filters.quarter)
+      qb.andWhere('kpmr.quarter = :quarter', { quarter: filters.quarter });
+    if (filters.aspekNo)
+      qb.andWhere('kpmr.aspek_no = :aspekNo', { aspekNo: filters.aspekNo });
     if (filters.query) {
-      queryBuilder.andWhere(
-        '(kpmr.tata_kelola_resiko LIKE :query OR kpmr.aspek_title LIKE :query OR kpmr.section_title LIKE :query OR kpmr.evidence LIKE :query)',
-        { query: `%${filters.query}%` },
+      qb.andWhere(
+        '(kpmr.indikator LIKE :q OR kpmr.aspek_title LIKE :q OR kpmr.section_title LIKE :q OR kpmr.evidence LIKE :q)',
+        { q: `%${filters.query}%` },
       );
     }
 
-    return await queryBuilder.getMany();
+    return await qb.getMany();
   }
 }

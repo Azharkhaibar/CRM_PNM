@@ -1,17 +1,22 @@
 export declare class CreateKpmrInvestasiDto {
-    tata_kelola_resiko: string;
-    strong: string;
-    satisfactory: string;
-    fair: string;
-    marginal: string;
-    unsatisfactory: string;
-    evidence: string;
     year: number;
     quarter: string;
-    aspek_no: string;
-    aspek_title: string;
-    aspek_bobot: number;
-    section_no: string;
-    section_title: string;
-    section_skor?: number;
+    aspekNo?: string;
+    aspekTitle?: string;
+    aspekBobot?: number;
+    sectionNo?: string;
+    sectionSkor?: number;
+    indikator?: string;
+    evidence?: string;
+    level1?: string;
+    level2?: string;
+    level3?: string;
+    level4?: string;
+    level5?: string;
+    tata_kelola_resiko?: string;
+    strong?: string;
+    satisfactory?: string;
+    fair?: string;
+    marginal?: string;
+    unsatisfactory?: string;
 }

@@ -32,115 +32,36 @@ let NotificationGateway = NotificationGateway_1 = class NotificationGateway {
     handleDisconnect(client) {
         this.logger.log(`Client disconnected: ${client.id}`);
     }
-    async sendNotificationToUser(userId, notification) {
-        this.server.to(`user-${userId}`).emit('notification', notification);
+    sendNotificationToUser(userId, notification) {
+        this.server.emit('notification', notification);
+        this.logger.log(`📩 Sent notification to user ${userId}`);
     }
-    handleJoinUser(client, userId) {
-        client.join(`user-${userId}`);
-        console.log(`👤 User ${userId} joined their room`);
-    }
-    async handleGetAllNotifications(client) {
-        try {
-            const notifications = await this.notificationService.findAll();
-            client.emit('allNotifications', notifications);
-        }
-        catch (error) {
-            this.logger.error('Failed to fetch all notifications', error);
-            client.emit('error', { message: 'Failed to fetch notifications' });
-        }
-    }
-    async handleGetNotification(client, data) {
-        try {
-            const notification = await this.notificationService.findOne(data.notification_id);
-            client.emit('notification', notification);
-        }
-        catch (error) {
-            this.logger.error(`Failed to fetch notification ${data.notification_id}`, error);
-            client.emit('error', { message: 'Failed to fetch notification' });
-        }
-    }
-    async handleUpdateNotification(client, data) {
-        try {
-            const notification = await this.notificationService.update(data.notification_id, data.updates);
-            client.emit('notificationUpdated', notification);
-            this.server.emit('notificationChanged', notification);
-        }
-        catch (error) {
-            this.logger.error(`Failed to update notification ${data.notification_id}`, error);
-            client.emit('error', { message: 'Failed to update notification' });
-        }
-    }
-    async handleDeleteNotification(client, data) {
-        try {
-            await this.notificationService.remove(Number(data.notification_id));
-            client.emit('notificationDeleted', {
-                notification_id: data.notification_id,
-            });
-            this.server.emit('notificationChanged', {
-                notification_id: data.notification_id,
-            });
-        }
-        catch (error) {
-            this.logger.error(`Failed to delete notification ${data.notification_id}`, error);
-            client.emit('error', { message: 'Failed to delete notification' });
-        }
-    }
-    async handleMarkAsRead(client, data) {
-        try {
-            const notification = await this.notificationService.markAsRead(data.notification_id);
-            client.emit('notificationRead', notification);
-            this.server.emit('notificationChanged', notification);
-        }
-        catch (error) {
-            this.logger.error(`Failed to mark notification ${data.notification_id} as read`, error);
-            client.emit('error', { message: 'Failed to mark notification as read' });
-        }
+    sendNotificationToAll(notification) {
+        this.server.emit('notification', notification);
+        this.logger.log('📢 Broadcast notification to all connected clients');
     }
     async handleCreateNotification(client, data) {
         try {
             const notification = await this.notificationService.create(data);
+            this.sendNotificationToUser(notification.user_id, notification);
+            this.sendNotificationToAll(notification);
             client.emit('notificationCreated', notification);
-            this.server.emit('notificationChanged', notification);
         }
         catch (error) {
             this.logger.error('Failed to create notification', error);
             client.emit('error', { message: 'Failed to create notification' });
         }
     }
-    async handleGetUserNotifications(client, data) {
+    async handleUpdateNotification(client, data) {
         try {
-            const result = await this.notificationService.findByUser(data.user_id, {
-                unreadOnly: data.unreadOnly,
-                limit: data.limit,
-                page: data.page,
-            });
-            client.emit('userNotifications', result);
+            const updated = await this.notificationService.update(data.notification_id, data.updates);
+            this.sendNotificationToUser(updated.user_id, updated);
+            this.sendNotificationToAll(updated);
         }
         catch (error) {
-            this.logger.error(`Failed to fetch notifications for user ${data.user_id}`, error);
-            client.emit('error', { message: 'Failed to fetch user notifications' });
+            this.logger.error('Failed to update notification', error);
+            client.emit('error', { message: 'Failed to update notification' });
         }
-    }
-    async handleGetUnreadCount(client, data) {
-        try {
-            const count = await this.notificationService.getUnreadCount(data.user_id);
-            client.emit('unreadCount', { count });
-        }
-        catch (error) {
-            this.logger.error(`Failed to get unread count for user ${data.user_id}`, error);
-            client.emit('error', { message: 'Failed to get unread count' });
-        }
-    }
-    async broadcastToUser(user_id, event, data) {
-        this.server.to(`user_${user_id}`).emit(event, data);
-    }
-    handleJoinUserRoom(client, data) {
-        client.join(`user_${data.user_id}`);
-        this.logger.log(`Client ${client.id} joined user room ${data.user_id}`);
-    }
-    handleLeaveUserRoom(client, data) {
-        client.leave(`user_${data.user_id}`);
-        this.logger.log(`Client ${client.id} left user room ${data.user_id}`);
     }
 };
 exports.NotificationGateway = NotificationGateway;
@@ -149,76 +70,20 @@ __decorate([
     __metadata("design:type", socket_io_1.Server)
 ], NotificationGateway.prototype, "server", void 0);
 __decorate([
-    (0, websockets_1.SubscribeMessage)('joinUser'),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [socket_io_1.Socket, Number]),
-    __metadata("design:returntype", void 0)
-], NotificationGateway.prototype, "handleJoinUser", null);
-__decorate([
-    (0, websockets_1.SubscribeMessage)('getAllNotifications'),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [socket_io_1.Socket]),
-    __metadata("design:returntype", Promise)
-], NotificationGateway.prototype, "handleGetAllNotifications", null);
-__decorate([
-    (0, websockets_1.SubscribeMessage)('getNotification'),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [socket_io_1.Socket, Object]),
-    __metadata("design:returntype", Promise)
-], NotificationGateway.prototype, "handleGetNotification", null);
-__decorate([
-    (0, websockets_1.SubscribeMessage)('updateNotification'),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [socket_io_1.Socket, Object]),
-    __metadata("design:returntype", Promise)
-], NotificationGateway.prototype, "handleUpdateNotification", null);
-__decorate([
-    (0, websockets_1.SubscribeMessage)('deleteNotification'),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [socket_io_1.Socket, Object]),
-    __metadata("design:returntype", Promise)
-], NotificationGateway.prototype, "handleDeleteNotification", null);
-__decorate([
-    (0, websockets_1.SubscribeMessage)('markAsRead'),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [socket_io_1.Socket, Object]),
-    __metadata("design:returntype", Promise)
-], NotificationGateway.prototype, "handleMarkAsRead", null);
-__decorate([
     (0, websockets_1.SubscribeMessage)('createNotification'),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [socket_io_1.Socket, create_notification_dto_1.CreateNotificationDto]),
     __metadata("design:returntype", Promise)
 ], NotificationGateway.prototype, "handleCreateNotification", null);
 __decorate([
-    (0, websockets_1.SubscribeMessage)('getUserNotifications'),
+    (0, websockets_1.SubscribeMessage)('updateNotification'),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [socket_io_1.Socket, Object]),
     __metadata("design:returntype", Promise)
-], NotificationGateway.prototype, "handleGetUserNotifications", null);
-__decorate([
-    (0, websockets_1.SubscribeMessage)('getUnreadCount'),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [socket_io_1.Socket, Object]),
-    __metadata("design:returntype", Promise)
-], NotificationGateway.prototype, "handleGetUnreadCount", null);
-__decorate([
-    (0, websockets_1.SubscribeMessage)('joinUserRoom'),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [socket_io_1.Socket, Object]),
-    __metadata("design:returntype", void 0)
-], NotificationGateway.prototype, "handleJoinUserRoom", null);
-__decorate([
-    (0, websockets_1.SubscribeMessage)('leaveUserRoom'),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [socket_io_1.Socket, Object]),
-    __metadata("design:returntype", void 0)
-], NotificationGateway.prototype, "handleLeaveUserRoom", null);
+], NotificationGateway.prototype, "handleUpdateNotification", null);
 exports.NotificationGateway = NotificationGateway = NotificationGateway_1 = __decorate([
     (0, websockets_1.WebSocketGateway)({
-        cors: {
-            origin: '*',
-        },
+        cors: { origin: '*' },
         namespace: '/notifications',
     }),
     __param(0, (0, common_1.Inject)((0, common_1.forwardRef)(() => notification_service_1.NotificationService))),

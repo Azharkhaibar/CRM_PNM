@@ -4,7 +4,5 @@ export declare enum Gender {
 }
 export declare enum Role {
     ADMIN = "ADMIN",
-    USER = "USER",
-    MANAGER = "MANAGER",
-    SUPERVISOR = "SUPERVISOR"
+    USER = "USER"
 }

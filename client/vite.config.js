@@ -4,8 +4,14 @@ import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
   plugins: [tailwindcss(), react()],
-  // server: {
-  //   host: '0.0.0.0',
-  //   port: 5173,
-  // },
+  server: {
+    port: 5173,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:5530', // backend NestJS kamu
+        changeOrigin: true, // penting biar host header diubah
+        secure: false, // nonaktifkan SSL check (kalau http)
+      },
+    },
+  },
 });

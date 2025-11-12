@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import {
   Injectable,
   Logger,
@@ -9,9 +8,10 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Notification } from './entities/notification.entity';
+import { Notification, NotificationType } from './entities/notification.entity';
 import { CreateNotificationDto } from './dto/create-notification.dto';
 import { UpdateNotificationDto } from './dto/update-notification.dto';
+import type { INotificationGateway } from './interface/notification-gateway.interface';
 import { NotificationGateway } from './notification.gateway';
 export interface FindByUserOptions {
   unreadOnly?: boolean;
@@ -27,14 +27,11 @@ export class NotificationService {
     @InjectRepository(Notification)
     private readonly notificationRepository: Repository<Notification>,
 
-    // 🔥 gunakan forwardRef di sini
     @Inject(forwardRef(() => NotificationGateway))
-    private readonly gateway: NotificationGateway,
+    private readonly gateway: INotificationGateway,
   ) {}
 
-  /**
-   * Find all notifications
-   */
+  /** 🔹 Ambil semua notifikasi */
   async findAll(): Promise<Notification[]> {
     try {
       return await this.notificationRepository.find({
@@ -48,26 +45,19 @@ export class NotificationService {
     }
   }
 
-  /**
-   * Find one notification by ID
-   */
+  /** 🔹 Ambil 1 notifikasi by ID */
   async findOne(notification_id: number): Promise<Notification> {
     try {
       const notification = await this.notificationRepository.findOne({
         where: { notification_id },
       });
-
-      if (!notification) {
+      if (!notification)
         throw new NotFoundException(
-          `Notification with ID ${notification_id} not found`,
+          `Notification ${notification_id} not found`,
         );
-      }
-
       return notification;
     } catch (error) {
-      if (error instanceof NotFoundException) {
-        throw error;
-      }
+      if (error instanceof NotFoundException) throw error;
       this.logger.error(
         `Failed to find notification ${notification_id}`,
         error,
@@ -76,12 +66,9 @@ export class NotificationService {
     }
   }
 
-  /**
-   * Create a new notification
-   */
+  /** 🔹 Buat notifikasi baru */
   async create(createDto: CreateNotificationDto): Promise<Notification> {
     try {
-      // ✅ Buat notifikasi baru langsung dari DTO
       const notification = this.notificationRepository.create({
         ...createDto,
         user_id: Number(createDto.userId),
@@ -91,14 +78,15 @@ export class NotificationService {
       const savedNotification =
         await this.notificationRepository.save(notification);
 
-      // ✅ Kirim notifikasi ke user real-time
+      // Broadcast ke semua client dashboard
       this.gateway.sendNotificationToUser(
-        Number(createDto.userId),
+        savedNotification.user_id,
         savedNotification,
       );
+      this.gateway.sendNotificationToAll(savedNotification);
 
       this.logger.log(
-        `Notification created & emitted to user ${createDto.userId}`,
+        `Notification created for user ${savedNotification.user_id}`,
       );
       return savedNotification;
     } catch (error) {
@@ -107,9 +95,7 @@ export class NotificationService {
     }
   }
 
-  /**
-   * Update a notification
-   */
+  /** 🔹 Update notifikasi */
   async update(
     notification_id: number,
     updateNotificationDto: UpdateNotificationDto,
@@ -117,7 +103,13 @@ export class NotificationService {
     try {
       const notification = await this.findOne(notification_id);
       Object.assign(notification, updateNotificationDto);
-      return await this.notificationRepository.save(notification);
+      const updated = await this.notificationRepository.save(notification);
+
+      // Broadcast update ke semua client
+      this.gateway.sendNotificationToUser(updated.user_id, updated);
+      this.gateway.sendNotificationToAll(updated);
+
+      return updated;
     } catch (error) {
       this.logger.error(
         `Failed to update notification ${notification_id}`,
@@ -127,9 +119,7 @@ export class NotificationService {
     }
   }
 
-  /**
-   * Mark all notifications as read for a user
-   */
+  /** 🔹 Tandai semua notifikasi user sudah dibaca */
   async markAllAsRead(user_id: number): Promise<void> {
     try {
       await this.notificationRepository
@@ -152,81 +142,17 @@ export class NotificationService {
     }
   }
 
-  /**
-   * Create multiple notifications
-   */
-  async createMultiple(
-    createDtos: CreateNotificationDto[],
-  ): Promise<Notification[]> {
-    try {
-      const notificationsData: Partial<Notification>[] = createDtos.map(
-        (dto) => {
-          const item: Partial<Notification> = {
-            ...dto,
-            user_id: Number(dto.userId),
-            expires_at: dto.expiresAt ?? null,
-          };
-          delete (item as any).userId;
-          delete (item as any).expiresAt;
-          return item;
-        },
-      );
-
-      const notifications =
-        this.notificationRepository.create(notificationsData);
-      const savedNotifications =
-        await this.notificationRepository.save(notifications);
-
-      this.logger.log(`Created ${savedNotifications.length} notifications`);
-      return savedNotifications;
-    } catch (error) {
-      this.logger.error('Failed to create multiple notifications', error);
-      throw new InternalServerErrorException('Failed to create notifications');
-    }
-  }
-
-  /**
-   * Find notifications by user with pagination and filtering
-   */
-  async findByUser(
-    user_id: number,
-    options: FindByUserOptions = {},
-  ): Promise<{ notifications: Notification[]; total: number }> {
-    try {
-      const { unreadOnly = false, limit = 50, page = 1 } = options;
-
-      const query = this.notificationRepository
-        .createQueryBuilder('notification')
-        .where('notification.user_id = :user_id', { user_id })
-        .orderBy('notification.created_at', 'DESC')
-        .skip((page - 1) * limit)
-        .take(limit);
-
-      if (unreadOnly) {
-        query.andWhere('notification.read = false');
-      }
-
-      const [notifications, total] = await query.getManyAndCount();
-      return { notifications, total };
-    } catch (error) {
-      this.logger.error(
-        `Failed to find notifications for user ${user_id}`,
-        error,
-      );
-      throw new InternalServerErrorException(
-        'Failed to retrieve user notifications',
-      );
-    }
-  }
-
-  /**
-   * Mark a notification as read
-   */
+  /** 🔹 Tandai notifikasi sebagai read */
   async markAsRead(notification_id: number): Promise<Notification> {
     try {
       const notification = await this.findOne(notification_id);
       notification.read = true;
-      return await this.notificationRepository.save(notification);
+      const updated = await this.notificationRepository.save(notification);
+
+      // Broadcast perubahan read status
+      this.gateway.sendNotificationToAll(updated);
+
+      return updated;
     } catch (error) {
       this.logger.error(
         `Failed to mark notification ${notification_id} as read`,
@@ -238,9 +164,7 @@ export class NotificationService {
     }
   }
 
-  /**
-   * Count unread notifications for a user
-   */
+  /** 🔹 Hitung unread notifications per user */
   async getUnreadCount(user_id: number): Promise<number> {
     try {
       return await this.notificationRepository.count({
@@ -255,22 +179,17 @@ export class NotificationService {
     }
   }
 
-  /**
-   * Delete a notification
-   */
+  /** 🔹 Hapus notifikasi */
   async remove(notification_id: number): Promise<void> {
     try {
       const result = await this.notificationRepository.delete(notification_id);
-      if (result.affected === 0) {
+      if (result.affected === 0)
         throw new NotFoundException(
-          `Notification with ID ${notification_id} not found`,
+          `Notification ${notification_id} not found`,
         );
-      }
       this.logger.log(`Notification ${notification_id} deleted`);
     } catch (error) {
-      if (error instanceof NotFoundException) {
-        throw error;
-      }
+      if (error instanceof NotFoundException) throw error;
       this.logger.error(
         `Failed to delete notification ${notification_id}`,
         error,
@@ -279,9 +198,7 @@ export class NotificationService {
     }
   }
 
-  /**
-   * Remove expired notifications
-   */
+  /** 🔹 Hapus notifikasi kadaluwarsa */
   async removeExpired(): Promise<void> {
     try {
       const result = await this.notificationRepository
@@ -299,9 +216,81 @@ export class NotificationService {
     }
   }
 
-  /**
-   * Get recent notifications for a user
-   */
+  /** 🔹 Create multiple notifications */
+  async createMultiple(
+    createDtos: CreateNotificationDto[],
+  ): Promise<Notification[]> {
+    try {
+      const notificationsData = createDtos.map((dto) => ({
+        ...dto,
+        user_id: Number(dto.userId),
+        expires_at: dto.expiresAt ?? null,
+      }));
+
+      const notifications =
+        this.notificationRepository.create(notificationsData);
+      const savedNotifications =
+        await this.notificationRepository.save(notifications);
+
+      this.logger.log(`Created ${savedNotifications.length} notifications`);
+      return savedNotifications;
+    } catch (error) {
+      this.logger.error('Failed to create multiple notifications', error);
+      throw new InternalServerErrorException('Failed to create notifications');
+    }
+  }
+
+  /** 🔹 Cari notifikasi per user dengan pagination */
+  async findByUser(
+    user_id: number,
+    options: FindByUserOptions = {},
+  ): Promise<{ notifications: Notification[]; total: number }> {
+    try {
+      const { unreadOnly = false, limit = 50, page = 1 } = options;
+
+      const query = this.notificationRepository
+        .createQueryBuilder('notification')
+        .where('notification.user_id = :user_id', { user_id })
+        .orderBy('notification.created_at', 'DESC')
+        .skip((page - 1) * limit)
+        .take(limit);
+
+      if (unreadOnly) query.andWhere('notification.read = false');
+
+      const [notifications, total] = await query.getManyAndCount();
+      return { notifications, total };
+    } catch (error) {
+      this.logger.error(
+        `Failed to find notifications for user ${user_id}`,
+        error,
+      );
+      throw new InternalServerErrorException(
+        'Failed to retrieve user notifications',
+      );
+    }
+  }
+
+  /** 🔹 Notifikasi perubahan status user (online/offline) */
+  async notifyUserStatusChange(
+    userId: number,
+    userName: string,
+    status: 'online' | 'offline',
+  ) {
+    const notification = await this.create({
+      userId,
+      type: NotificationType.SYSTEM,
+      title: `User ${status}`,
+      message: `${userName} is now ${status}`,
+      category: 'user-status',
+      metadata: { userId, status },
+      expiresAt: null,
+    });
+
+    // Broadcast ke semua client
+    this.gateway.sendNotificationToAll(notification);
+  }
+
+  /** 🔹 Ambil notifikasi terbaru per user (misal 24 jam terakhir) */
   async getRecentUserNotifications(
     user_id: number,
     hours = 24,

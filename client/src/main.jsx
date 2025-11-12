@@ -1,18 +1,21 @@
-import { StrictMode } from 'react';
-import { createRoot } from 'react-dom/client';
-import './index.css';
-import App from './App.jsx';
+import React from 'react';
+import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
+import App from './App.jsx';
+
 import { AuthProvider } from './features/auth/provider/AuthProvider.jsx';
+import {NotificationProvider} from './features/Dashboard/pages/notification/provider/notifcation.provider.jsx';
 import { DarkModeProvider } from './shared/components/Darkmodecontext.jsx';
-createRoot(document.getElementById('root')).render(
-  <StrictMode>
-    <BrowserRouter>
-      <AuthProvider>
+ReactDOM.createRoot(document.getElementById('root')).render(
+  <React.StrictMode>
+    <AuthProvider>
+      <NotificationProvider>
         <DarkModeProvider>
-          <App />
+          <BrowserRouter>
+            <App />
+          </BrowserRouter>
         </DarkModeProvider>
-      </AuthProvider>
-    </BrowserRouter>
-  </StrictMode>
+      </NotificationProvider>
+    </AuthProvider>
+  </React.StrictMode>
 );

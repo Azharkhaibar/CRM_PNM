@@ -10,7 +10,7 @@ async function bootstrap() {
         origin: [
             'http://localhost:5173',
             'https://7659fd5f8b3f.ngrok-free.app',
-            'https://a070771a5176.ngrok-free.app ',
+            'https://a070771a5176.ngrok-free.app',
         ],
         credentials: true,
     });
@@ -18,8 +18,12 @@ async function bootstrap() {
     app.useGlobalPipes(new common_1.ValidationPipe({
         transform: true,
         whitelist: true,
-        forbidNonWhitelisted: true,
+        forbidNonWhitelisted: false,
         transformOptions: { enableImplicitConversion: true },
+        exceptionFactory: (errors) => {
+            console.error('❌ Validation Error:', errors);
+            return new common_1.BadRequestException(errors);
+        },
     }));
     const configSwagger = new swagger_1.DocumentBuilder()
         .setTitle('CRM-PNM')
@@ -28,7 +32,9 @@ async function bootstrap() {
         .build();
     const document = swagger_1.SwaggerModule.createDocument(app, configSwagger);
     swagger_1.SwaggerModule.setup('api', app, document);
-    await app.listen(process.env.PORT ?? 5530, '0.0.0.0');
+    const port = process.env.PORT ?? 5530;
+    await app.listen(port, '0.0.0.0');
+    console.log(`✅ Server running on http://localhost:${port}`);
 }
 bootstrap();
 //# sourceMappingURL=main.js.map

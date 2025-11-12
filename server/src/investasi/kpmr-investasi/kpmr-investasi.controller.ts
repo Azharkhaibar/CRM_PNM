@@ -8,64 +8,63 @@ import {
   Delete,
   Query,
   ParseIntPipe,
+  Logger,
 } from '@nestjs/common';
 import { KpmrInvestasiService } from './kpmr-investasi.service';
 import { CreateKpmrInvestasiDto } from './dto/create-kpmr-investasi.dto';
 import { UpdateKpmrInvestasiDto } from './dto/update-kpmr-investasi.dto';
+
 @Controller('kpmr-investasi')
 export class KpmrInvestasiController {
-  constructor(private readonly kpmrInvestasiService: KpmrInvestasiService) {}
+  private readonly logger = new Logger(KpmrInvestasiController.name);
+  constructor(private readonly service: KpmrInvestasiService) {}
 
   @Post()
-  create(@Body() createKpmrInvestasiDto: CreateKpmrInvestasiDto) {
-    return this.kpmrInvestasiService.create(createKpmrInvestasiDto);
+  create(@Body() dto: CreateKpmrInvestasiDto) {
+    return this.service.create(dto);
   }
 
   @Get()
   findAll(
     @Query('year') year?: string,
     @Query('quarter') quarter?: string,
-    @Query('aspek_no') aspek_no?: string,
+    @Query('aspekNo') aspekNo?: string,
     @Query('query') query?: string,
   ) {
-    // Jika ada parameter query, gunakan filter
-    if (year || quarter || aspek_no || query) {
-      return this.kpmrInvestasiService.findByFilters({
+    if (year || quarter || aspekNo || query) {
+      return this.service.findByFilters({
         year: year ? parseInt(year) : undefined,
         quarter,
-        aspek_no,
+        aspekNo,
         query,
       });
     }
-
-    // Jika tidak ada parameter, return semua data
-    return this.kpmrInvestasiService.findAll();
+    return this.service.findAll();
   }
 
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.kpmrInvestasiService.findOne(id);
+    return this.service.findOne(id);
   }
 
   @Patch(':id')
   update(
     @Param('id', ParseIntPipe) id: number,
-    @Body() updateKpmrInvestasiDto: UpdateKpmrInvestasiDto,
+    @Body() dto: UpdateKpmrInvestasiDto,
   ) {
-    return this.kpmrInvestasiService.update(id, updateKpmrInvestasiDto);
+    return this.service.update(id, dto);
   }
 
   @Delete(':id')
   remove(@Param('id', ParseIntPipe) id: number) {
-    return this.kpmrInvestasiService.remove(id);
+    return this.service.remove(id);
   }
 
-  // Endpoint khusus untuk period
   @Get('period/:year/:quarter')
   findByPeriod(
     @Param('year', ParseIntPipe) year: number,
     @Param('quarter') quarter: string,
   ) {
-    return this.kpmrInvestasiService.findByPeriod(year, quarter);
+    return this.service.findByPeriod(year, quarter);
   }
 }

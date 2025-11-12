@@ -14,7 +14,7 @@ export class CreateNotificationDto {
   userId: number; // ✅ tipe number agar cocok dengan entity.user_id
 
   @IsEnum(NotificationType)
-  type: NotificationType;
+  type: NotificationType = NotificationType.SYSTEM;
 
   @IsString()
   title: string;

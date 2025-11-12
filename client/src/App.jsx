@@ -1,12 +1,15 @@
+// App.jsx
 import React from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import './index.css';
 import { DarkModeProvider } from './shared/components/Darkmodecontext.jsx';
 import DarkModeToggle from './shared/components/Toggledarkmode.jsx';
-
+import ProtectedRoute from './features/Dashboard/routes/ProtectedAuthRoute.routes.jsx';
+import PublicRoute from './features/Dashboard/routes/PublicRoute.jsx';
 import Mainpage from './pages/mainpage/home';
 import LoginPage from './features/auth/pages/loginform';
 import RegisterPage from './features/auth/pages/registform.jsx';
+import ForgotPassword from './features/auth/pages/forgot-password.jsx';
 import DashboardLayout from './features/Dashboard/main.jsx';
 import Dashboard from './features/Dashboard/layout/dashboard.jsx';
 import Investasi from './features/Dashboard/pages/RiskProfile/pages/investasi/Investasi.jsx';
@@ -20,29 +23,63 @@ import Reputasi from './features/Dashboard/pages/RiskProfile/pages/Reputasi.jsx'
 import Report from './features/Dashboard/report/report.jsx';
 import Settings from './features/Dashboard/pages/RiskProfile/setting/setting.jsx';
 import ProfilePage from './features/Dashboard/pages/profile/pages/userprofile.jsx';
-import ForgotPassword from './features/auth/pages/forgot-password.jsx';
 import NotificationPage from './features/Dashboard/pages/notification/pages/notification.jsx';
-
+import { useAuth } from './features/auth/hooks/useAuth.hook.js';
 function App() {
+  const { user, loading } = useAuth(); // Tambahkan ini
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
   return (
     <DarkModeProvider>
-      {/* Toggle tetap di atas semua halaman */}
       <div className="fixed top-4 right-4 z-50">
         <DarkModeToggle />
       </div>
 
-      {/* Kontainer utama */}
       <div className="min-h-screen transition-colors">
         <Routes>
-          <Route path="/" element={<Mainpage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-          <Route path="/login/forgot-password" element={<ForgotPassword />} />
+          {/* Public Pages - hanya bisa diakses jika belum login */}
+          <Route
+            path="/login"
+            element={
+              <PublicRoute>
+                <LoginPage />
+              </PublicRoute>
+            }
+          />
+          <Route
+            path="/register"
+            element={
+              <PublicRoute>
+                <RegisterPage />
+              </PublicRoute>
+            }
+          />
+          <Route
+            path="/forgot-password"
+            element={
+              <PublicRoute>
+                <ForgotPassword />
+              </PublicRoute>
+            }
+          />
 
-          <Route path="/dashboard" element={<DashboardLayout />}>
+          {/* Protected Pages - hanya bisa diakses jika sudah login */}
+          <Route
+            path="/dashboard/*"
+            element={
+              <ProtectedRoute>
+                <DashboardLayout />
+              </ProtectedRoute>
+            }
+          >
             <Route index element={<Dashboard />} />
-
-            {/* Risk Profile */}
             <Route path="risk-form" element={<Investasi />} />
             <Route path="risk-form/investasi" element={<Investasi />} />
             <Route path="risk-form/pasar" element={<Pasar />} />
@@ -52,13 +89,17 @@ function App() {
             <Route path="risk-form/stratejik" element={<Stratejik />} />
             <Route path="risk-form/kepatuhan" element={<Kepatuhan />} />
             <Route path="risk-form/reputasi" element={<Reputasi />} />
-
-            {/* Other Pages */}
             <Route path="profile" element={<ProfilePage />} />
             <Route path="report" element={<Report />} />
             <Route path="notification" element={<NotificationPage />} />
             <Route path="settings" element={<Settings />} />
           </Route>
+
+          {/* Landing Page & Default Redirect */}
+          <Route path="/" element={user ? <Navigate to="/dashboard" replace /> : <Mainpage />} />
+
+          {/* Catch all route */}
+          <Route path="*" element={<Navigate to={user ? '/dashboard' : '/login'} replace />} />
         </Routes>
       </div>
     </DarkModeProvider>

@@ -12,58 +12,28 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.CreateKpmrInvestasiDto = void 0;
 const class_validator_1 = require("class-validator");
 class CreateKpmrInvestasiDto {
+    year;
+    quarter;
+    aspekNo;
+    aspekTitle;
+    aspekBobot;
+    sectionNo;
+    sectionSkor;
+    indikator;
+    evidence;
+    level1;
+    level2;
+    level3;
+    level4;
+    level5;
     tata_kelola_resiko;
     strong;
     satisfactory;
     fair;
     marginal;
     unsatisfactory;
-    evidence;
-    year;
-    quarter;
-    aspek_no;
-    aspek_title;
-    aspek_bobot;
-    section_no;
-    section_title;
-    section_skor;
 }
 exports.CreateKpmrInvestasiDto = CreateKpmrInvestasiDto;
-__decorate([
-    (0, class_validator_1.IsString)(),
-    (0, class_validator_1.IsNotEmpty)(),
-    __metadata("design:type", String)
-], CreateKpmrInvestasiDto.prototype, "tata_kelola_resiko", void 0);
-__decorate([
-    (0, class_validator_1.IsString)(),
-    (0, class_validator_1.IsNotEmpty)(),
-    __metadata("design:type", String)
-], CreateKpmrInvestasiDto.prototype, "strong", void 0);
-__decorate([
-    (0, class_validator_1.IsString)(),
-    (0, class_validator_1.IsNotEmpty)(),
-    __metadata("design:type", String)
-], CreateKpmrInvestasiDto.prototype, "satisfactory", void 0);
-__decorate([
-    (0, class_validator_1.IsString)(),
-    (0, class_validator_1.IsNotEmpty)(),
-    __metadata("design:type", String)
-], CreateKpmrInvestasiDto.prototype, "fair", void 0);
-__decorate([
-    (0, class_validator_1.IsString)(),
-    (0, class_validator_1.IsNotEmpty)(),
-    __metadata("design:type", String)
-], CreateKpmrInvestasiDto.prototype, "marginal", void 0);
-__decorate([
-    (0, class_validator_1.IsString)(),
-    (0, class_validator_1.IsNotEmpty)(),
-    __metadata("design:type", String)
-], CreateKpmrInvestasiDto.prototype, "unsatisfactory", void 0);
-__decorate([
-    (0, class_validator_1.IsString)(),
-    (0, class_validator_1.IsNotEmpty)(),
-    __metadata("design:type", String)
-], CreateKpmrInvestasiDto.prototype, "evidence", void 0);
 __decorate([
     (0, class_validator_1.IsNumber)(),
     (0, class_validator_1.IsNotEmpty)(),
@@ -76,32 +46,92 @@ __decorate([
 ], CreateKpmrInvestasiDto.prototype, "quarter", void 0);
 __decorate([
     (0, class_validator_1.IsString)(),
-    (0, class_validator_1.IsNotEmpty)(),
+    (0, class_validator_1.IsOptional)(),
     __metadata("design:type", String)
-], CreateKpmrInvestasiDto.prototype, "aspek_no", void 0);
+], CreateKpmrInvestasiDto.prototype, "aspekNo", void 0);
 __decorate([
     (0, class_validator_1.IsString)(),
-    (0, class_validator_1.IsNotEmpty)(),
+    (0, class_validator_1.IsOptional)(),
     __metadata("design:type", String)
-], CreateKpmrInvestasiDto.prototype, "aspek_title", void 0);
-__decorate([
-    (0, class_validator_1.IsNumber)(),
-    (0, class_validator_1.IsNotEmpty)(),
-    __metadata("design:type", Number)
-], CreateKpmrInvestasiDto.prototype, "aspek_bobot", void 0);
-__decorate([
-    (0, class_validator_1.IsString)(),
-    (0, class_validator_1.IsNotEmpty)(),
-    __metadata("design:type", String)
-], CreateKpmrInvestasiDto.prototype, "section_no", void 0);
-__decorate([
-    (0, class_validator_1.IsString)(),
-    (0, class_validator_1.IsNotEmpty)(),
-    __metadata("design:type", String)
-], CreateKpmrInvestasiDto.prototype, "section_title", void 0);
+], CreateKpmrInvestasiDto.prototype, "aspekTitle", void 0);
 __decorate([
     (0, class_validator_1.IsNumber)(),
     (0, class_validator_1.IsOptional)(),
     __metadata("design:type", Number)
-], CreateKpmrInvestasiDto.prototype, "section_skor", void 0);
+], CreateKpmrInvestasiDto.prototype, "aspekBobot", void 0);
+__decorate([
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], CreateKpmrInvestasiDto.prototype, "sectionNo", void 0);
+__decorate([
+    (0, class_validator_1.IsNumber)(),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", Number)
+], CreateKpmrInvestasiDto.prototype, "sectionSkor", void 0);
+__decorate([
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], CreateKpmrInvestasiDto.prototype, "indikator", void 0);
+__decorate([
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], CreateKpmrInvestasiDto.prototype, "evidence", void 0);
+__decorate([
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], CreateKpmrInvestasiDto.prototype, "level1", void 0);
+__decorate([
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], CreateKpmrInvestasiDto.prototype, "level2", void 0);
+__decorate([
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], CreateKpmrInvestasiDto.prototype, "level3", void 0);
+__decorate([
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], CreateKpmrInvestasiDto.prototype, "level4", void 0);
+__decorate([
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], CreateKpmrInvestasiDto.prototype, "level5", void 0);
+__decorate([
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], CreateKpmrInvestasiDto.prototype, "tata_kelola_resiko", void 0);
+__decorate([
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], CreateKpmrInvestasiDto.prototype, "strong", void 0);
+__decorate([
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], CreateKpmrInvestasiDto.prototype, "satisfactory", void 0);
+__decorate([
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], CreateKpmrInvestasiDto.prototype, "fair", void 0);
+__decorate([
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], CreateKpmrInvestasiDto.prototype, "marginal", void 0);
+__decorate([
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], CreateKpmrInvestasiDto.prototype, "unsatisfactory", void 0);
 //# sourceMappingURL=create-kpmr-investasi.dto.js.map

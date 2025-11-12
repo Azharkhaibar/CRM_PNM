@@ -47,3 +47,4 @@ export default function NotificationList({ darkMode, notifications, selectedNoti
     </motion.div>
   );
 }
+

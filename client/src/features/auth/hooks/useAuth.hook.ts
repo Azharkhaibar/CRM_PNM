@@ -1,3 +1,4 @@
+// hooks/useAuth.hook.ts
 import { useState, useCallback, useEffect } from 'react';
 import { AuthService } from '../services/auth.services';
 import RIMS_API from '../api/auth.api';
@@ -5,6 +6,7 @@ import { AxiosError } from 'axios';
 import { NotificationService } from '../../Dashboard/pages/notification/services/notification.services';
 import { ProfileService } from '../../Dashboard/pages/profile/services/profile.services';
 import { useNotificationStore } from '../../Dashboard/pages/notification/stores/notification.stores';
+
 interface AuthUser {
   userID: string;
   role?: string;
@@ -21,77 +23,27 @@ export const useAuth = () => {
   // Function untuk membuat notifikasi login
   const createLoginNotification = useCallback(async (userId: number, userID: string) => {
     try {
-      const { addNotification } = useNotificationStore.getState();
-
-      await NotificationService.createNotification({
-        userId: userId,
-        type: 'success',
-        title: 'Login Successful',
-        message: `Welcome back, ${userID}! You have successfully logged into RIMS at ${new Date().toLocaleTimeString()}.`,
-        category: 'security',
-        metadata: {
-          login_time: new Date().toISOString(),
-          user_agent: navigator.userAgent,
-          activity_type: 'login',
-          ip_address: 'system', // Bisa diganti dengan real IP jika ada
-        },
-      });
-
-      addNotification({
-        userId: userId.toString(),
-        type: 'success',
-        title: 'Login Successful',
-        message: `Welcome back, ${userID}! You have successfully logged into RIMS at ${new Date().toLocaleTimeString()}.`,
-        category: 'security',
-        metadata: {
-          login_time: new Date().toISOString(),
-          user_agent: navigator.userAgent,
-          activity_type: 'login',
-        },
-      });
-      console.log('✅ Login notification created for user:', userID);
+      await NotificationService.createLoginNotification(userId, userID);
+      await NotificationService.createUserStatusBroadcast(userId, userID, 'login');
+      console.log('✅ Login notifications created for user:', userID);
     } catch (error) {
-      console.error('❌ Failed to create login notification:', error);
+      console.error('❌ Failed to create login notifications:', error);
     }
   }, []);
 
   // Function untuk membuat notifikasi logout
   const createLogoutNotification = useCallback(async (userId: number, userID: string) => {
     try {
-      const { addNotification } = useNotificationStore.getState();
-      await NotificationService.createNotification({
-        userId: userId,
-        type: 'info',
-        title: 'Logout Successful',
-        message: `You have logged out from RIMS at ${new Date().toLocaleTimeString()}.`,
-        category: 'security',
-        metadata: {
-          logout_time: new Date().toISOString(),
-          activity_type: 'logout',
-          session_duration: 'system', // Bisa dihitung duration session
-        },
-      });
-
-      addNotification({
-        userId: userId.toString(),
-        type: 'info',
-        title: 'Logout Successful',
-        message: `You have logged out from RIMS at ${new Date().toLocaleTimeString()}.`,
-        category: 'security',
-        metadata: {
-          logout_time: new Date().toISOString(),
-          activity_type: 'logout',
-        },
-      });
-      console.log('✅ Logout notification created for user:', userID);
+      await NotificationService.createLogoutNotification(userId, userID);
+      await NotificationService.createUserStatusBroadcast(userId, userID, 'logout');
+      console.log('✅ Logout notifications created for user:', userID);
     } catch (error) {
-      console.error('❌ Failed to create logout notification:', error);
+      console.error('❌ Failed to create logout notifications:', error);
     }
   }, []);
 
   const fetchUserLoginData = useCallback(async () => {
     const token = localStorage.getItem('access_token');
-
     if (!token) {
       setUser(null);
       setLoading(false);
@@ -102,20 +54,16 @@ export const useAuth = () => {
       const res = await RIMS_API.get('/auth/me', {
         headers: { Authorization: `Bearer ${token}` },
       });
-
       const userData = res.data;
       setUser(userData);
 
-      // Check if this is first login today to create notification
+      // Cek apakah sudah ada notifikasi login hari ini
       const lastLoginDate = localStorage.getItem(`last_login_${userData.user_id}`);
       const today = new Date().toDateString();
 
       if (lastLoginDate !== today) {
         await createLoginNotification(userData.user_id, userData.userID);
         localStorage.setItem(`last_login_${userData.user_id}`, today);
-
-        // Juga simpan waktu login untuk tracking session
-        localStorage.setItem(`login_time_${userData.user_id}`, new Date().toISOString());
       }
     } catch (err) {
       console.error('Failed fetch /me:', err);
@@ -137,7 +85,6 @@ export const useAuth = () => {
 
       try {
         const token = await AuthService.login({ userID, password });
-
         localStorage.setItem('access_token', token);
 
         const res = await RIMS_API.get('/auth/me', {
@@ -147,20 +94,16 @@ export const useAuth = () => {
         const userData = res.data;
         setUser(userData);
 
-        // Create login notification after successful login
         if (userData.user_id) {
           await createLoginNotification(userData.user_id, userData.userID);
-
-          // Simpan waktu login untuk tracking session duration
-          localStorage.setItem(`login_time_${userData.user_id}`, new Date().toISOString());
+          localStorage.setItem(`last_login_${userData.user_id}`, new Date().toDateString());
         }
 
         return token;
       } catch (err) {
-        if (err instanceof Error) {
-          setError(err.message);
-          throw err;
-        }
+        const errorMessage = err instanceof Error ? err.message : 'Login failed';
+        setError(errorMessage);
+        throw err;
       } finally {
         setLoading(false);
       }
@@ -168,6 +111,7 @@ export const useAuth = () => {
     [createLoginNotification]
   );
 
+  // ✅ PERBAIKAN: Fix error handling untuk register
   const register = useCallback(async (data: { userID: string; password: string; role: string; gender: string }) => {
     setError(null);
     setLoading(true);
@@ -191,11 +135,45 @@ export const useAuth = () => {
 
       return res.data;
     } catch (err) {
+      // ✅ PERBAIKAN: Handle error response yang berisi array message
       if (err instanceof AxiosError) {
-        setError(err.response?.data?.message || 'Register gagal');
-        throw err;
+        const responseData = err.response?.data;
+
+        let errorMessage = 'Register gagal';
+
+        if (responseData) {
+          // Jika response berisi array message (seperti validation errors)
+          if (Array.isArray(responseData.message)) {
+            // Gabungkan semua message menjadi satu string
+            errorMessage = responseData.message
+              .map((msg: any) => {
+                if (typeof msg === 'string') return msg;
+                if (msg.constraints) {
+                  // Handle class-validator constraints
+                  return Object.values(msg.constraints).join(', ');
+                }
+                return JSON.stringify(msg);
+              })
+              .join(', ');
+          }
+          // Jika response berisi string message
+          else if (typeof responseData.message === 'string') {
+            errorMessage = responseData.message;
+          }
+          // Jika response berisi error field
+          else if (responseData.error) {
+            errorMessage = responseData.error;
+          }
+        }
+
+        setError(errorMessage);
+        throw new Error(errorMessage);
       }
-      throw err;
+
+      // Untuk error non-Axios
+      const errorMessage = err instanceof Error ? err.message : 'Register gagal';
+      setError(errorMessage);
+      throw new Error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -203,7 +181,7 @@ export const useAuth = () => {
 
   const logout = useCallback(async () => {
     if (user?.user_id) {
-      // Create logout notification before clearing data
+      // Create notifications before clearing data
       await createLogoutNotification(user.user_id, user.userID);
     }
 
@@ -211,12 +189,12 @@ export const useAuth = () => {
     localStorage.removeItem('access_token');
     if (user?.user_id) {
       localStorage.removeItem(`last_login_${user.user_id}`);
-      localStorage.removeItem(`login_time_${user.user_id}`);
     }
 
     setUser(null);
   }, [user, createLogoutNotification]);
 
+  // ✅ FIX: Tambahkan fungsi fetchProfile yang hilang
   const fetchProfile = useCallback(async () => {
     if (!user?.user_id) {
       return null;
@@ -363,6 +341,6 @@ export const useAuth = () => {
     updateProfile,
     changePassword,
     requestPasswordReset,
-    trackUserActivity, // Export trackUserActivity untuk digunakan di komponen lain
+    trackUserActivity,
   };
 };

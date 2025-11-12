@@ -1,6 +1,7 @@
 import { NotificationService } from './notification.service';
 import { CreateNotificationDto } from './dto/create-notification.dto';
 import { UpdateNotificationDto } from './dto/update-notification.dto';
+import { UserStatusDto } from './dto/user-status.dto';
 export declare class NotificationController {
     private readonly notificationService;
     private readonly logger;
@@ -15,12 +16,18 @@ export declare class NotificationController {
     }>;
     findOne(id: number): Promise<import("./entities/notification.entity").Notification>;
     create(createNotificationDto: CreateNotificationDto): Promise<import("./entities/notification.entity").Notification>;
+    createMultiple(createNotificationDtos: CreateNotificationDto[]): Promise<import("./entities/notification.entity").Notification[]>;
     update(id: number, updateNotificationDto: UpdateNotificationDto): Promise<import("./entities/notification.entity").Notification>;
     markAsRead(id: number): Promise<import("./entities/notification.entity").Notification>;
+    userStatusNotification(body: UserStatusDto): Promise<void>;
     markAllAsRead(user_id: number): Promise<{
         message: string;
     }>;
+    getRecentUserNotifications(user_id: number, hours?: string): Promise<import("./entities/notification.entity").Notification[]>;
     remove(id: number): Promise<{
+        message: string;
+    }>;
+    removeExpired(): Promise<{
         message: string;
     }>;
 }

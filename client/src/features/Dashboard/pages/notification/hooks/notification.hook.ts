@@ -1,7 +1,8 @@
+// hooks/notification.hook.ts
 import { useAuth } from '../../../../auth/hooks/useAuth.hook';
 import { useNotificationStore, Notification } from '../stores/notification.stores';
 import { NotificationService } from '../services/notification.services';
-import { useCallback, useMemo, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 
 export interface NotificationInput {
   type: 'info' | 'success' | 'warning' | 'error';
@@ -9,189 +10,174 @@ export interface NotificationInput {
   message: string;
   category?: string;
   metadata?: Record<string, any> | null;
-  action?: {
-    label: string;
-    onClick: () => void;
-  };
+  action?: { label: string; onClick: () => void };
 }
 
 interface NotificationStats {
   total: number;
   unread: number;
   read: number;
-  byType: {
-    info: number;
-    success: number;
-    warning: number;
-    error: number;
-  };
+  byType: { info: number; success: number; warning: number; error: number };
   byCategory: Record<string, number>;
-}
-
-interface UseUserNotificationsReturn {
-  // Data
-  notifications: Notification[];
-  unreadCount: number;
-  hasNotifications: boolean;
-  isLoading: boolean;
-  error: string | null;
-
-  // Actions
-  addNotification: (notification: NotificationInput) => Promise<Notification | null>;
-  markAsRead: (id: string) => Promise<void>;
-  removeNotification: (id: string) => Promise<void>;
-  updateNotification: (id: string, updates: Partial<Notification>) => void;
-
-  // Bulk actions
-  markAllAsRead: () => Promise<void>;
-  removeAllNotifications: () => Promise<void>;
-
-  // Global actions (admin)
-  markAllAsReadGlobal: () => void;
-  removeAllNotificationsGlobal: () => void;
-
-  // Sync
-  refreshNotifications: () => Promise<void>;
-
-  // Convenience methods
-  addSuccessNotification: (title: string, message: string, category?: string, metadata?: Record<string, any> | null) => Promise<Notification | null>;
-  addErrorNotification: (title: string, message: string, category?: string, metadata?: Record<string, any> | null) => Promise<Notification | null>;
-  addWarningNotification: (title: string, message: string, category?: string, metadata?: Record<string, any> | null) => Promise<Notification | null>;
-  addInfoNotification: (title: string, message: string, category?: string, metadata?: Record<string, any> | null) => Promise<Notification | null>;
-
-  // Stats
-  stats: NotificationStats;
-
-  // Filter methods
-  getNotificationsByCategory: (category: string) => Notification[];
-  getNotificationsByType: (type: 'info' | 'success' | 'warning' | 'error') => Notification[];
 }
 
 export const useUserNotifications = () => {
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [pollingIntervalId, setPollingIntervalId] = useState<number | null>(null);
 
-  const { notifications, addNotification, markAsRead, markAllAsRead, removeNotification, removeAllNotifications, markAllAsReadForUser, removeAllForUser, getNotificationsByUser, getUnreadByUser, updateNotification } = useNotificationStore();
+  const pollingRef = useRef<number | null>(null);
+  const userIdRef = useRef<string | null>(null);
 
-  // Function untuk mendapatkan login/logout notifications
+  const { notifications, addNotification, markAsRead, markAllAsRead, removeNotification, clearAll, getAllNotificationsForUser, getUnreadByUser, updateNotification, syncWithBackendData } = useNotificationStore();
+
+  // Filter untuk aktivitas login/logout user
   const getLoginLogoutNotifications = useCallback((notifications: Notification[]) => {
-    return notifications.filter((notif) => notif.category === 'security' && notif.metadata?.activity_type === 'login');
+    return notifications.filter((n) => (n.category === 'security' || n.category === 'system') && (n.metadata?.activity_type === 'login' || n.metadata?.activity_type === 'logout' || n.metadata?.activity_type === 'user_status'));
   }, []);
 
-  // Function untuk mendapatkan activity statistics dengan default values
+  // Compute activity stats
   const getActivityStats = useCallback(
     (notifications: Notification[]) => {
       const loginLogoutNotifs = getLoginLogoutNotifications(notifications);
 
       const today = new Date().toDateString();
-      const todayLogins = loginLogoutNotifs.filter((notif) => new Date(notif.timestamp).toDateString() === today);
+      const todayActivities = loginLogoutNotifs.filter((n) => new Date(n.timestamp).toDateString() === today);
 
-      const last7DaysLogins = loginLogoutNotifs.filter((notif) => {
-        const notifDate = new Date(notif.timestamp);
+      const last7DaysActivities = loginLogoutNotifs.filter((n) => {
+        const notifDate = new Date(n.timestamp);
         const sevenDaysAgo = new Date();
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
         return notifDate >= sevenDaysAgo;
       });
 
+      const loginActivities = loginLogoutNotifs.filter((n) => n.metadata?.activity_type === 'login' || n.metadata?.action === 'login');
+      const logoutActivities = loginLogoutNotifs.filter((n) => n.metadata?.activity_type === 'logout' || n.metadata?.action === 'logout');
+
       return {
-        totalLogins: loginLogoutNotifs.length,
-        todayLogins: todayLogins.length,
-        last7DaysLogins: last7DaysLogins.length,
-        lastLogin: loginLogoutNotifs[0]?.timestamp || null,
+        totalActivities: loginLogoutNotifs.length,
+        todayActivities: todayActivities.length,
+        last7DaysActivities: last7DaysActivities.length,
+        loginActivities: loginActivities.length,
+        logoutActivities: logoutActivities.length,
+        lastActivity: loginLogoutNotifs[0]?.timestamp || null,
       };
     },
     [getLoginLogoutNotifications]
   );
 
-  // Auto-sync dengan backend saat user login
+  // Sync notifications dengan backend
+  const syncNotifications = useCallback(
+    async (userId: string) => {
+      try {
+        setIsLoading(true);
+        setError(null);
+
+        console.log('🔄 Starting notification sync for user:', userId);
+
+        // Gunakan getUserNotifications saja untuk menghindari error broadcast
+        const result = await NotificationService.getUserNotifications(userId, {
+          unreadOnly: false,
+          limit: 50,
+        });
+
+        // Sync data ke store
+        syncWithBackendData(result.notifications);
+
+        console.log('✅ Notifications synced successfully:', {
+          total: result.notifications.length,
+          userSpecific: result.notifications.filter((n) => n.userId === userId).length,
+        });
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to sync notifications';
+        setError(errorMessage);
+        console.warn('⚠️ Sync completed with warnings:', errorMessage);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [syncWithBackendData]
+  );
+
+  // Setup polling dan sync
   useEffect(() => {
-    if (user?.user_id) {
-      console.log('🔄 Starting notification system for user:', user.user_id);
-      syncWithBackend();
+    const userId = user?.user_id?.toString();
 
-      // Start polling for real-time updates (setiap 15 detik)
-      const intervalId = NotificationService.startPolling(user.user_id.toString(), 15000);
-      setPollingIntervalId(intervalId);
-
-      return () => {
-        if (intervalId) {
-          NotificationService.stopPolling(intervalId);
-        }
-      };
+    if (!userId) {
+      // Cleanup jika user logout
+      if (pollingRef.current && userIdRef.current) {
+        NotificationService.stopPolling(userIdRef.current);
+      }
+      pollingRef.current = null;
+      userIdRef.current = null;
+      return;
     }
-  }, [user?.user_id]);
 
-  const syncWithBackend = useCallback(async () => {
-    if (!user?.user_id) return;
-
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      await NotificationService.syncWithBackend(user.user_id.toString());
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to sync notifications';
-      setError(errorMessage);
-      console.warn('Sync failed, using local data:', errorMessage);
-    } finally {
-      setIsLoading(false);
+    // Jika user berubah, stop polling sebelumnya
+    if (userIdRef.current !== userId && pollingRef.current && userIdRef.current) {
+      NotificationService.stopPolling(userIdRef.current);
+      pollingRef.current = null;
     }
-  }, [user?.user_id]);
 
-  const userNotifications = useMemo(() => {
+    // Start polling untuk user baru
+    if (!pollingRef.current || userIdRef.current !== userId) {
+      userIdRef.current = userId;
+
+      // Initial sync
+      syncNotifications(userId);
+
+      // Start polling dengan interval yang reasonable
+      pollingRef.current = NotificationService.startPolling(userId, 15000); // 15 detik
+
+      console.log('🔔 Started notification polling for user:', userId);
+    }
+
+    return () => {
+      // Cleanup on unmount
+      if (pollingRef.current && userIdRef.current) {
+        NotificationService.stopPolling(userIdRef.current);
+        pollingRef.current = null;
+        userIdRef.current = null;
+      }
+    };
+  }, [user?.user_id, syncNotifications]);
+
+  // Get all notifications untuk user (termasuk yang broadcast jika ada di store)
+  const allNotificationsForUser = useMemo(() => {
     if (!user?.user_id) return [];
-    return getNotificationsByUser(user.user_id.toString());
-  }, [notifications, user?.user_id, getNotificationsByUser]);
+    return getAllNotificationsForUser(user.user_id.toString());
+  }, [notifications, user?.user_id, getAllNotificationsForUser]);
 
-  const userUnreadCount = useMemo(() => {
+  // Hitung unread count
+  const totalUnreadCount = useMemo(() => {
     if (!user?.user_id) return 0;
     return getUnreadByUser(user.user_id.toString());
   }, [notifications, user?.user_id, getUnreadByUser]);
 
-  // Login/logout specific notifications
-  const loginLogoutNotifications = useMemo(() => {
-    return getLoginLogoutNotifications(userNotifications);
-  }, [userNotifications, getLoginLogoutNotifications]);
+  const loginLogoutNotifications = useMemo(() => getLoginLogoutNotifications(allNotificationsForUser), [allNotificationsForUser, getLoginLogoutNotifications]);
 
-  // Activity statistics dengan default values
-  const activityStats = useMemo(() => {
-    return getActivityStats(userNotifications);
-  }, [userNotifications, getActivityStats]);
+  const activityStats = useMemo(() => getActivityStats(allNotificationsForUser), [allNotificationsForUser, getActivityStats]);
 
-  // Default activity stats untuk menghindari undefined
-  const safeActivityStats = useMemo(() => {
-    return {
-      totalLogins: activityStats?.totalLogins || 0,
-      todayLogins: activityStats?.todayLogins || 0,
-      last7DaysLogins: activityStats?.last7DaysLogins || 0,
-      lastLogin: activityStats?.lastLogin || null,
-    };
-  }, [activityStats]);
-
+  // Tambahkan notifikasi baru
   const addUserNotification = useCallback(
-    async (notificationData: any) => {
-      if (!user?.user_id) {
-        console.warn('Cannot add notification: No user ID');
-        return null;
-      }
+    async (notificationData: NotificationInput) => {
+      if (!user?.user_id) return null;
 
       try {
-        // Coba sync dengan backend
+        // Kirim ke backend
         await NotificationService.createNotification({
           userId: user.user_id,
           ...notificationData,
         });
 
-        // Tambahkan ke local store
+        // Tambahkan ke store lokal
         return addNotification({
           ...notificationData,
           userId: user.user_id.toString(),
         });
       } catch (err) {
-        console.warn('Failed to add notification to backend, using local store only:', err);
-        // Fallback: tambahkan ke local store saja
+        console.error('Failed to create notification:', err);
+        // Fallback: tambahkan ke store lokal saja
         return addNotification({
           ...notificationData,
           userId: user.user_id.toString(),
@@ -201,154 +187,114 @@ export const useUserNotifications = () => {
     [user?.user_id, addNotification]
   );
 
+  // Mark as read dengan sync ke backend
   const markAsReadWithSync = useCallback(
     async (id: string) => {
       try {
-        // Coba sync dengan backend
         await NotificationService.markAsRead(id);
-
-        // Update local store
-        markAsRead(id);
       } catch (err) {
-        console.warn('Failed to mark as read on backend, using local store only:', err);
+        console.error('Failed to mark as read on backend:', err);
+        // Continue dengan update lokal meskipun backend gagal
+      } finally {
         markAsRead(id);
       }
     },
     [markAsRead]
   );
 
+  // Remove notification dengan sync ke backend
   const removeNotificationWithSync = useCallback(
     async (id: string) => {
       try {
-        // Coba sync dengan backend
         await NotificationService.deleteNotification(id);
-
-        // Update local store
-        removeNotification(id);
       } catch (err) {
-        console.warn('Failed to delete notification on backend, using local store only:', err);
+        console.error('Failed to delete on backend:', err);
+        // Continue dengan delete lokal meskipun backend gagal
+      } finally {
         removeNotification(id);
       }
     },
     [removeNotification]
   );
 
+  // Mark all as read untuk user current
   const markAllAsReadForCurrentUser = useCallback(async () => {
-    if (!user?.user_id) {
-      console.warn('Cannot mark as read: No user ID');
-      return;
-    }
+    if (!user?.user_id) return;
 
     try {
-      // Coba sync dengan backend
       await NotificationService.markAllAsRead(user.user_id.toString());
-
-      markAllAsReadForUser(user.user_id.toString());
     } catch (err) {
-      console.warn('Failed to mark all as read on backend, using local store only:', err);
-      markAllAsReadForUser(user.user_id.toString());
+      console.error('Failed to mark all as read on backend:', err);
+    } finally {
+      markAllAsRead();
     }
-  }, [user?.user_id, markAllAsReadForUser]);
+  }, [user?.user_id, markAllAsRead]);
 
+  // Remove all notifications untuk user current
   const removeAllForCurrentUser = useCallback(async () => {
-    if (!user?.user_id) {
-      console.warn('Cannot remove notifications: No user ID');
-      return;
-    }
+    if (!user?.user_id) return;
 
     try {
       await NotificationService.deleteAllUserNotifications(user.user_id.toString());
-
-      removeAllForUser(user.user_id.toString());
     } catch (err) {
-      console.warn('Failed to delete all notifications on backend, using local store only:', err);
-      removeAllForUser(user.user_id.toString());
+      console.error('Failed to delete all on backend:', err);
+    } finally {
+      clearAll();
     }
-  }, [user?.user_id, removeAllForUser]);
+  }, [user?.user_id, clearAll]);
 
-  const addSuccessNotification = useCallback(
-    (title: string, message: string, category: string = 'system', metadata: any = null) => {
-      return addUserNotification({
-        type: 'success',
-        title,
-        message,
-        category,
-        metadata,
-      });
-    },
-    [addUserNotification]
-  );
+  // Helper methods untuk notifikasi cepat
+  const addSuccessNotification = useCallback((title: string, message: string, category?: string, metadata?: Record<string, any> | null) => addUserNotification({ type: 'success', title, message, category, metadata }), [addUserNotification]);
 
-  const addErrorNotification = useCallback(
-    (title: string, message: string, category: string = 'system', metadata: any = null) => {
-      return addUserNotification({
-        type: 'error',
-        title,
-        message,
-        category,
-        metadata,
-      });
-    },
-    [addUserNotification]
-  );
+  const addErrorNotification = useCallback((title: string, message: string, category?: string, metadata?: Record<string, any> | null) => addUserNotification({ type: 'error', title, message, category, metadata }), [addUserNotification]);
 
-  const addWarningNotification = useCallback(
-    (title: string, message: string, category: string = 'system', metadata: any = null) => {
-      return addUserNotification({
-        type: 'warning',
-        title,
-        message,
-        category,
-        metadata,
-      });
-    },
-    [addUserNotification]
-  );
+  const addWarningNotification = useCallback((title: string, message: string, category?: string, metadata?: Record<string, any> | null) => addUserNotification({ type: 'warning', title, message, category, metadata }), [addUserNotification]);
 
-  const addInfoNotification = useCallback(
-    (title: string, message: string, category: string = 'system', metadata: any = null) => {
-      return addUserNotification({
-        type: 'info',
-        title,
-        message,
-        category,
-        metadata,
-      });
-    },
-    [addUserNotification]
-  );
+  const addInfoNotification = useCallback((title: string, message: string, category?: string, metadata?: Record<string, any> | null) => addUserNotification({ type: 'info', title, message, category, metadata }), [addUserNotification]);
 
-  // Manual refresh
+  // Refresh notifications manual
   const refreshNotifications = useCallback(async () => {
-    await syncWithBackend();
-  }, [syncWithBackend]);
+    if (user?.user_id) {
+      await syncNotifications(user.user_id.toString());
+    }
+  }, [user?.user_id, syncNotifications]);
+
+  // Debug info untuk monitoring
+  useEffect(() => {
+    if (allNotificationsForUser.length > 0 && process.env.NODE_ENV === 'development') {
+      console.log('📊 Notification Summary:', {
+        total: allNotificationsForUser.length,
+        unread: totalUnreadCount,
+        loginLogout: loginLogoutNotifications.length,
+        recent: allNotificationsForUser.slice(0, 3).map((n) => ({
+          title: n.title,
+          userId: n.userId,
+          metadata: n.metadata,
+        })),
+      });
+    }
+  }, [allNotificationsForUser, totalUnreadCount, loginLogoutNotifications.length]);
 
   return {
     // Data
-    notifications: userNotifications,
-    unreadCount: userUnreadCount,
-    hasNotifications: userNotifications.length > 0,
+    notifications: allNotificationsForUser,
+    unreadCount: totalUnreadCount,
+    hasNotifications: allNotificationsForUser.length > 0,
     isLoading,
     error,
-
-    // Login/Logout specific data
     loginLogoutNotifications,
-    activityStats: safeActivityStats, // Gunakan safeActivityStats yang sudah ada default values
+    activityStats,
 
     // Actions
     addNotification: addUserNotification,
     markAsRead: markAsReadWithSync,
     removeNotification: removeNotificationWithSync,
     updateNotification,
-
-    // Bulk actions
     markAllAsRead: markAllAsReadForCurrentUser,
     removeAllNotifications: removeAllForCurrentUser,
-
-    // Sync
     refreshNotifications,
 
-    // Convenience methods
+    // Quick actions
     addSuccessNotification,
     addErrorNotification,
     addWarningNotification,
@@ -356,10 +302,9 @@ export const useUserNotifications = () => {
 
     // Stats
     stats: {
-      total: userNotifications.length,
-      unread: userUnreadCount,
-      read: userNotifications.length - userUnreadCount,
-      ...safeActivityStats,
+      total: allNotificationsForUser.length,
+      unread: totalUnreadCount,
+      read: allNotificationsForUser.length - totalUnreadCount,
     },
   };
 };
