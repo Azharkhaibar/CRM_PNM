@@ -12,6 +12,14 @@ import { exportInvestasiToExcel } from "../utils/exportExcel";
 // ==== Utils Export KPMR (sudah kamu pakai) ====
 import { exportKPMRInvestasiToExcel } from "../utils/exportExcelKPMR";
 
+// ===================== Brand =====================
+// Sesuaikan warna brand PNM di sini bila perlu
+const PNM_BRAND = {
+  primary: "#0068B3", // fallback biru PNM (silakan ganti sesuai guideline)
+  primarySoft: "#E6F1FA", // tint lembut
+  gradient: "bg-gradient-to-r from-[#0076C6]/90 via-[#00A3DA]/90 to-[#33C2B5]/90",
+};
+
 // ===================== KPMR: Template form per section =====================
 const KPMR_EMPTY_FORM = {
   year: getCurrentYear ? getCurrentYear() : new Date().getFullYear(),
@@ -39,7 +47,6 @@ const KPMR_EMPTY_FORM = {
 };
 
 // ===================== Investasi: fallback empty row =====================
-// Jika utils/makeEmptyRow belum tersedia, gunakan fallback lokal
 const invFallbackEmpty = (year, quarter) => ({
   year,
   quarter,
@@ -70,7 +77,7 @@ export default function Investasi() {
   // ====== Tabs ======
   const [activeTab, setActiveTab] = useState("investasi");
 
-  // ====== Periode + search (dipakai dua tab, tapi state-nya tidak sharing data) ======
+  // ====== Periode + search ======
   const [viewYear, setViewYear] = useState(getCurrentYear ? getCurrentYear() : new Date().getFullYear());
   const [viewQuarter, setViewQuarter] = useState(getCurrentQuarter ? getCurrentQuarter() : "Q1");
   const [query, setQuery] = useState("");
@@ -78,14 +85,15 @@ export default function Investasi() {
   // ---------------------------------------------------------------------------
   //                              TAB INVESTASI
   // ---------------------------------------------------------------------------
+  const invMakeRow = () =>
+    typeof makeEmptyRow === "function"
+      ? { ...makeEmptyRow(), year: viewYear, quarter: viewQuarter }
+      : invFallbackEmpty(viewYear, viewQuarter);
 
-  // State data Investasi (MANDIRI, tidak bercampur KPMR)
-  const invMakeRow = () => (typeof makeEmptyRow === "function" ? { ...makeEmptyRow(), year: viewYear, quarter: viewQuarter } : invFallbackEmpty(viewYear, viewQuarter));
   const [INVESTASI_rows, setINVESTASI_rows] = useState([]);
   const [INVESTASI_form, setINVESTASI_form] = useState(invMakeRow());
   const [INVESTASI_editingIndex, setINVESTASI_editingIndex] = useState(null);
 
-  // Filter periode + pencarian untuk tabel Investasi
   const INVESTASI_filtered = useMemo(() => {
     return INVESTASI_rows
       .filter((r) => r.year === viewYear && r.quarter === viewQuarter)
@@ -97,7 +105,6 @@ export default function Investasi() {
       .sort((a, b) => `${a.subNo}`.localeCompare(`${b.subNo}`, undefined, { numeric: true }));
   }, [INVESTASI_rows, viewYear, viewQuarter, query]);
 
-  // Total weighted untuk summary Investasi (kalau DataTable kamu butuh)
   const INVESTASI_totalWeighted = useMemo(() => {
     return INVESTASI_filtered.reduce((sum, r) => sum + (Number(r.weighted || 0) || 0), 0);
   }, [INVESTASI_filtered]);
@@ -175,9 +182,7 @@ export default function Investasi() {
   };
 
   const INVESTASI_exportExcel = () =>
-    exportInvestasiToExcel
-      ? exportInvestasiToExcel(INVESTASI_filtered, viewYear, viewQuarter)
-      : null;
+    exportInvestasiToExcel ? exportInvestasiToExcel(INVESTASI_filtered, viewYear, viewQuarter) : null;
 
   // ---------------------------------------------------------------------------
   //                              TAB K P M R
@@ -284,508 +289,466 @@ export default function Investasi() {
   // ================================ RENDER ===================================
   return (
     <div className="p-6">
-      <h1 className="text-3xl font-bold mb-6">Risk Form - Investasi</h1>
+      {/* HERO / TITLE */}
+      <div className={`relative rounded-2xl overflow-hidden mb-6 shadow-sm ${PNM_BRAND.gradient}`}>
+        <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_20%_0%,white,transparent_40%),radial-gradient(circle_at_80%_100%,white,transparent_35%)]" />
+        <div className="relative px-6 py-7 sm:px-8 sm:py-8">
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white drop-shadow-sm">Risk Form – Investasi</h1>
+          <p className="mt-1 text-white/90 text-sm">Input laporan lebih cepat, rapi, dan konsisten.</p>
+        </div>
+      </div>
 
       {/* Tabs */}
       <div className="mb-6 border-b border-gray-200">
         <nav className="flex space-x-8">
           <button
             onClick={() => setActiveTab("investasi")}
-            className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === "investasi"
+            className={`py-3 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === "investasi"
                 ? "border-blue-500 text-blue-600"
-                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                : "border-transparent text-gray-600 hover:text-gray-800 hover:border-gray-300"
               }`}
+            title="Form indikator & perhitungan bobot"
           >
             Investasi
           </button>
 
           <button
             onClick={() => setActiveTab("kpmr")}
-            className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === "kpmr"
+            className={`py-3 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === "kpmr"
                 ? "border-blue-500 text-blue-600"
-                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                : "border-transparent text-gray-600 hover:text-gray-800 hover:border-gray-300"
               }`}
+            title="Form KPMR – penilaian kualitas penerapan MR"
           >
             KPMR Investasi
           </button>
         </nav>
       </div>
 
-      <div className="bg-white rounded-lg shadow-md p-6">
+      <div className="bg-white rounded-2xl shadow-md p-6">
         {/* ================= TAB: INVESTASI ================= */}
         {activeTab === "investasi" && (
           <>
             <header className="px-4 py-4 flex items-center justify-between gap-3">
               <h2 className="text-xl sm:text-2xl font-semibold">Form – Investasi</h2>
-              <div className="flex items-center gap-2">
-                <div className="hidden md:flex items-center gap-2">
-                  <YearInput
-                    value={viewYear}
-                    onChange={(v) => {
-                      setViewYear(v);
-                      // sinkron juga form investasi agar periodenya ikut
-                      setINVESTASI_form((f) => ({ ...f, year: v }));
-                    }}
-                  />
-                  <QuarterSelect
-                    value={viewQuarter}
-                    onChange={(v) => {
-                      setViewQuarter(v);
-                      setINVESTASI_form((f) => ({ ...f, quarter: v }));
-                    }}
-                  />
+              <div className="flex items-center gap-3">
+                {/* tahun + triwulan (tetap sejajar) */}
+                <div className="hidden md:flex items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <label className="sr-only">Tahun</label>
+                    <YearInput
+                      value={viewYear}
+                      onChange={(v) => {
+                        setViewYear(v);
+                        setINVESTASI_form((f) => ({ ...f, year: v }));
+                      }}
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <label className="sr-only">Triwulan</label>
+                    <QuarterSelect
+                      value={viewQuarter}
+                      onChange={(v) => {
+                        setViewQuarter(v);
+                        setINVESTASI_form((f) => ({ ...f, quarter: v }));
+                      }}
+                    />
+                  </div>
                 </div>
-                <div className="relative">
-                  <input
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Cari no/sub/indikator/keterangan…"
-                    className="pl-9 pr-3 py-2 rounded-xl border w-64"
-                  />
-                  <Search size={16} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
+
+                {/* group search + export: sedikit dinaikkan agar sejajar dengan input di kiri */}
+                <div className="flex items-center gap-2 transform -translate-y-1">
+                  {/* search */}
+                  <div className="relative">
+                    <input
+                      value={query} 
+                      onChange={(e) => setQuery(e.target.value)}
+                      placeholder="Cari no/sub/indikator/keterangan…"
+                      className="pl-9 pr-3 py-2 rounded-xl border w-64"
+                    />
+                    <Search size={16} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
+                  </div>
+
+                  {/* export button */}
+                  <button
+                    onClick={INVESTASI_exportExcel}
+                    className="inline-flex items-center gap-2 rounded-xl px-4 py-2 border bg-gray-900 text-white hover:bg-black"
+                  >
+                    <Download size={18} /> Export {viewYear}-{viewQuarter}
+                  </button>
                 </div>
-                <button
-                  onClick={INVESTASI_exportExcel}
-                  className="inline-flex items-center gap-2 rounded-xl px-4 py-2 border bg-gray-900 text-white hover:bg-black"
-                >
-                  <Download size={18} /> Export {viewYear}-{viewQuarter}
-                </button>
               </div>
             </header>
 
-            {/* FORM INVESTASI (komponenmu yang sudah ada) */}
-            <FormSection
-              form={INVESTASI_form}
-              setForm={setINVESTASI_form}
-              onAdd={INVESTASI_addRow}
-              onSave={INVESTASI_saveEdit}
-              onReset={INVESTASI_resetForm}
-              editing={INVESTASI_editingIndex !== null}
-            />
+            {/* FORM INVESTASI */}
+            <div className="">
+              <FormSection
+                form={INVESTASI_form}
+                setForm={setINVESTASI_form}
+                onAdd={INVESTASI_addRow}
+                onSave={INVESTASI_saveEdit}
+                onReset={INVESTASI_resetForm}
+                editing={INVESTASI_editingIndex !== null}
+                title="Form Investasi"
+              />
+              {/* Hint bar */}
+              <div className="flex flex-wrap items-center gap-3 text-xs text-gray-600 mt-3">
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-50 border">
+                  <span className="i-lucide-sparkles" />
+                  Tip: gunakan <kbd className="px-1.5 py-0.5 bg-gray-100 border rounded">Tab</kbd> untuk pindah input, <kbd className="px-1.5 py-0.5 bg-gray-100 border rounded">Enter</kbd> untuk simpan cepat.
+                </div>
+              </div>
+            </div>
 
             {/* Filter periode info */}
-            <section className="bg-white rounded-2xl shadow p-4">
+            <section className="bg-white rounded-2xl shadow p-4 mt-4 border">
               <div className="flex items-center gap-3 flex-wrap">
                 <div className="font-medium">Tampilkan Periode:</div>
                 <YearInput value={viewYear} onChange={setViewYear} />
                 <QuarterSelect value={viewQuarter} onChange={setViewQuarter} />
-                <div className="text-sm text-gray-500">
-                  Hanya baris {viewYear}-{viewQuarter} yang ditampilkan.
-                </div>
+                <div className="text-sm text-gray-500">Hanya baris {viewYear}-{viewQuarter} yang ditampilkan.</div>
+                <div className="ml-auto text-sm font-semibold">Total Weighted: {Number(INVESTASI_totalWeighted || 0).toFixed(4)}</div>
               </div>
             </section>
 
-            {/* TABEL INVESTASI (komponenmu yang sudah ada) */}
-            <DataTable
-              rows={INVESTASI_filtered}
-              totalWeighted={INVESTASI_totalWeighted}
-              viewYear={viewYear}
-              viewQuarter={viewQuarter}
-              startEdit={INVESTASI_startEdit}
-              removeRow={INVESTASI_removeRow}
-            />
+            {/* TABEL INVESTASI */}
+            <div className="mt-4">
+              <DataTable
+                rows={INVESTASI_filtered}
+                totalWeighted={INVESTASI_totalWeighted}
+                viewYear={viewYear}
+                viewQuarter={viewQuarter}
+                startEdit={INVESTASI_startEdit}
+                removeRow={INVESTASI_removeRow}
+              />
+            </div>
           </>
         )}
 
         {/* ================= TAB: KPMR ================= */}
         {activeTab === "kpmr" && (
           <div className="space-y-6">
-                      {/* Header tools */}
-                      <header className="bg-white rounded-xl border shadow-sm">
-                          <div className="px-4 py-4 flex items-center justify-between gap-3">
-                              <h1 className="text-2xl font-bold">KPMR – Investasi</h1>
-          
-                              <div className="flex items-center gap-2">
-                                  <YearInput
-                                      value={viewYear}
-                                      onChange={(v) => {
-                                          setViewYear(v);
-                                          setKPMR_form((f) => ({ ...f, year: v }));
-                                      }}
-                                  />
-                                  <QuarterSelect
-                                      value={viewQuarter}
-                                      onChange={(v) => {
-                                          setViewQuarter(v);
-                                          setKPMR_form((f) => ({ ...f, quarter: v }));
-                                      }}
-                                  />
-          
-                                  <div className="relative">
-                                      <input
-                                          value={query}
-                                          onChange={(e) => setQuery(e.target.value)}
-                                          placeholder="Cari aspek/section/evidence…"
-                                          className="pl-9 pr-3 py-2 rounded-xl border w-64"
-                                      />
-                                      <Search size={16} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
-                                  </div>
-          
-                                  <button
-                                      onClick={KPMR_exportExcel}
-                                      className="inline-flex items-center gap-2 rounded-xl px-4 py-2 border bg-gray-900 text-white hover:bg-black"
-                                  >
-                                      <Download size={18} /> Export {viewYear}-{viewQuarter}
-                                  </button>
-                              </div>
-                          </div>
-                      </header>
-          
-                      {/* ===== FORM (UI KPMR) ===== */}
-                      <section className="rounded-xl border shadow p-4 bg-[#DBDBDB]">
-                          <div className="flex items-center justify-between mb-3">
-                              <h2 className="text-lg font-semibold">Form KPMR – Investasi</h2>
-                              <div className="text-sm text-gray-500">
-                                  Periode: <span className="font-medium">{KPMR_form.year}-{KPMR_form.quarter}</span>
-                              </div>
-                          </div>
-          
-                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-                              {/* KIRI – Meta Aspek & Section */}
-                              <div className="space-y-3">
-                                  {/* Aspek (No) & Bobot */}
-                                  <div className="grid grid-cols-2 gap-3">
-                                      <label className="block">
-                                          <div className="mb-1 text-sm text-gray-600 font-medium">Aspek (No)</div>
-                                          <input
-                                              className="w-full rounded-xl border px-3 py-2 bg-white"
-                                              value={KPMR_form.aspekNo}
-                                              onChange={(e) => KPMR_handleChange("aspekNo", e.target.value)}
-                                          />
-                                      </label>
-          
-                                      <label className="block">
-                                          <div className="mb-1 text-sm text-gray-600 font-medium">Bobot Aspek</div>
-                                          <div className="relative">
-                                              <input
-                                                  type="number"
-                                                  className="w-full rounded-xl border pl-3 pr-10 py-2 bg-white"
-                                                  value={KPMR_form.aspekBobot}
-                                                  onChange={(e) =>
-                                                      KPMR_handleChange("aspekBobot", e.target.value === "" ? "" : Number(e.target.value))
-                                                  }
-                                              />
-                                              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">%</span>
-                                          </div>
-                                      </label>
-                                  </div>
-          
-                                  {/* Judul Aspek */}
-                                  <label className="block">
-                                      <div className="mb-1 text-sm text-gray-600 font-medium">Judul Aspek</div>
-                                      <input
-                                          className="w-full rounded-xl border px-3 py-2 bg-white"
-                                          value={KPMR_form.aspekTitle}
-                                          onChange={(e) => KPMR_handleChange("aspekTitle", e.target.value)}
-                                      />
-                                  </label>
-          
-                                  {/* No Section, Skor Section, Skor Average */}
-                                  <div className="grid grid-cols-3 gap-3">
-                                      <label className="block">
-                                          <div className="mb-1 text-sm text-gray-600 font-medium">No Section</div>
-                                          <input
-                                              className="w-full rounded-xl border px-3 py-2 bg-white"
-                                              value={KPMR_form.sectionNo}
-                                              onChange={(e) => KPMR_handleChange("sectionNo", e.target.value)}
-                                          />
-                                      </label>
-          
-                                      <label className="block">
-                                          <div className="mb-1 text-sm text-gray-600 font-medium">Skor Section</div>
-                                          <input
-                                              type="number"
-                                              className="w-full rounded-xl border px-3 py-2 bg-white"
-                                              value={KPMR_form.sectionSkor}
-                                              onChange={(e) =>
-                                                  KPMR_handleChange("sectionSkor", e.target.value === "" ? "" : Number(e.target.value))
-                                              }
-                                          />
-                                      </label>
-          
-                                      <label className="block">
-                                          <div className="mb-1 text-sm text-gray-600 font-medium">Skor Average</div>
-                                          <input
-                                              className="w-full rounded-xl border px-3 py-2 bg-gray-50"
-                                              value={(() => {
-                                                  const sameAspek = KPMR_filtered.filter(
-                                                      (r) => r.aspekNo === KPMR_form.aspekNo && r.aspekTitle === KPMR_form.aspekTitle
-                                                  );
-                                                  const nums = sameAspek
-                                                      .map((r) => (r.sectionSkor === "" ? null : Number(r.sectionSkor)))
-                                                      .filter((v) => v != null && !isNaN(v));
-                                                  return nums.length
-                                                      ? (nums.reduce((a, b) => a + b, 0) / nums.length).toFixed(2)
-                                                      : "";
-                                              })()}
-                                              readOnly
-                                          />
-                                      </label>
-                                  </div>
-          
-                                  {/* Pertanyaan Section */}
-                                  <label className="block">
-                                      <div className="mb-1 text-sm text-gray-600 font-medium">Pertanyaan Section</div>
-                                      <textarea
-                                          className="w-full rounded-xl border px-3 py-2 bg-white min-h-[64px]"
-                                          value={KPMR_form.sectionTitle}
-                                          onChange={(e) => KPMR_handleChange("sectionTitle", e.target.value)}
-                                      />
-                                  </label>
-          
-                                  {/* Evidence */}
-                                  <label className="block">
-                                      <div className="mb-1 text-sm text-gray-600 font-medium">Evidence</div>
-                                      <textarea
-                                          className="w-full rounded-xl border px-3 py-2 bg-white min-h-[56px]"
-                                          value={KPMR_form.evidence}
-                                          onChange={(e) => KPMR_handleChange("evidence", e.target.value)}
-                                      />
-                                  </label>
-                              </div>
-          
-                              {/* KANAN – 5 Level (kartu kecil) */}
-                              <div className="space-y-3">
-                                  {/* 1 */}
-                                  <div className="rounded-xl border shadow-sm bg-white">
-                                      <div className="px-3 pt-3 text-[13px] font-semibold">1. Strong</div>
-                                      <div className="p-3">
-                                          <textarea
-                                              className="w-full rounded-lg border px-3 py-2 bg-white min-h-[56px]"
-                                              value={KPMR_form.level1}
-                                              onChange={(e) => KPMR_handleChange("level1", e.target.value)}
-                                              placeholder="Deskripsi 1 (Strong)…"
-                                          />
-                                      </div>
-                                  </div>
-          
-                                  {/* 2 */}
-                                  <div className="rounded-xl border shadow-sm bg-white">
-                                      <div className="px-3 pt-3 text-[13px] font-semibold">2. Satisfactory</div>
-                                      <div className="p-3">
-                                          <textarea
-                                              className="w-full rounded-lg border px-3 py-2 bg-white min-h-[56px]"
-                                              value={KPMR_form.level2}
-                                              onChange={(e) => KPMR_handleChange("level2", e.target.value)}
-                                              placeholder="Deskripsi 2 (Satisfactory)…"
-                                          />
-                                      </div>
-                                  </div>
-          
-                                  {/* 3 */}
-                                  <div className="rounded-xl border shadow-sm bg-white">
-                                      <div className="px-3 pt-3 text-[13px] font-semibold">3. Fair</div>
-                                      <div className="p-3">
-                                          <textarea
-                                              className="w-full rounded-lg border px-3 py-2 bg-white min-h-[56px]"
-                                              value={KPMR_form.level3}
-                                              onChange={(e) => KPMR_handleChange("level3", e.target.value)}
-                                              placeholder="Deskripsi 3 (Fair)…"
-                                          />
-                                      </div>
-                                  </div>
-          
-                                  {/* 4 */}
-                                  <div className="rounded-xl border shadow-sm bg-white">
-                                      <div className="px-3 pt-3 text-[13px] font-semibold">4. Marginal</div>
-                                      <div className="p-3">
-                                          <textarea
-                                              className="w-full rounded-lg border px-3 py-2 bg-white min-h-[56px]"
-                                              value={KPMR_form.level4}
-                                              onChange={(e) => KPMR_handleChange("level4", e.target.value)}
-                                              placeholder="Deskripsi 4 (Marginal)…"
-                                          />
-                                      </div>
-                                  </div>
-          
-                                  {/* 5 */}
-                                  <div className="rounded-xl border shadow-sm bg-white">
-                                      <div className="px-3 pt-3 text-[13px] font-semibold">5. Unsatisfactory</div>
-                                      <div className="p-3">
-                                          <textarea
-                                              className="w-full rounded-lg border px-3 py-2 bg-white min-h-[56px]"
-                                              value={KPMR_form.level5}
-                                              onChange={(e) => KPMR_handleChange("level5", e.target.value)}
-                                              placeholder="Deskripsi 5 (Unsatisfactory)…"
-                                          />
-                                      </div>
-                                  </div>
-                              </div>
-                          </div>
-          
-                          {/* Tombol kanan bawah */}
-                          <div className="flex justify-end gap-2 mt-4">
-                              {KPMR_editingIndex === null ? (
-                                  <button
-                                      onClick={KPMR_addRow}
-                                      className="bg-green-500 hover:bg-green-600 text-white font-semibold px-5 py-2 rounded-lg shadow mt-7"
-                                  >
-                                      Simpan
-                                  </button>
-                              ) : (
-                                  <div className="flex gap-2 mt-7">
-                                      <button
-                                          onClick={KPMR_saveEdit}
-                                          className="inline-flex items-center gap-2 rounded-xl px-4 py-2 bg-blue-600 text-white hover:bg-blue-700"
-                                      >
-                                          Simpan
-                                      </button>
-                                      <button
-                                          onClick={() => {
-                                              setKPMR_editingIndex(null);
-                                              KPMR_resetForm();
-                                          }}
-                                          className="inline-flex items-center gap-2 rounded-xl px-4 py-2 border hover:bg-gray-50"
-                                      >
-                                          Batal
-                                      </button>
-                                  </div>
-                              )}
-                          </div>
-                      </section>
-          
-                      {/* TABEL HASIL */}
-                      <section className="bg-white rounded-xl shadow overflow-hidden">
-                          <div className="px-4 py-3 bg-gray-100 border-b">
-                              <div className="font-semibold">Data KPMR – Investasi ({viewYear}-{viewQuarter})</div>
-                          </div>
-          
-                          <div className="overflow-x-auto">
-                              <table className="min-w-[1400px] text-sm border border-gray-300 border-collapse">
-                                  <thead>
-                                      {/* BARIS 1 */}
-                                      <tr className="bg-[#1f4e79] text-white">
-                                          <th className="border px-3 py-2 text-left" colSpan={2}>
-                                              KUALITAS PENERAPAN MANAJEMEN RISIKO
-                                          </th>
-                                          <th className="border px-3 py-2 text-center w-24" rowSpan={2}>Skor</th>
-                                          <th className="border px-3 py-2 text-center w-40" rowSpan={2}>1 (Strong)</th>
-                                          <th className="border px-3 py-2 text-center w-40" rowSpan={2}>2 (Satisfactory)</th>
-                                          <th className="border px-3 py-2 text-center w-40" rowSpan={2}>3 (Fair)</th>
-                                          <th className="border px-3 py-2 text-center w-40" rowSpan={2}>4 (Marginal)</th>
-                                          <th className="border px-3 py-2 text-center w-44" rowSpan={2}>5 (Unsatisfactory)</th>
-                                          <th className="border px-3 py-2 text-center w-[260px]" rowSpan={2}>Evidence</th>
-                                      </tr>
-                                      {/* BARIS 2 */}
-                                      <tr className="bg-[#1f4e79] text-white">
-                                          <th className="border px-3 py-2 w-20">No</th>
-                                          <th className="border px-3 py-2">Pertanyaan / Indikator</th>
-                                      </tr>
-                                  </thead>
-          
-                                  <tbody>
-                                      {KPMR_groups.length === 0 ? (
-                                          <tr>
-                                              <td className="border px-3 py-6 text-center text-gray-500" colSpan={9}>
-                                                  Belum ada data
-                                              </td>
-                                          </tr>
-                                      ) : (
-                                          KPMR_groups.map((g, gi) => {
-                                              const vals = g.items
-                                                  .map((it) => (it.sectionSkor === "" ? null : Number(it.sectionSkor)))
-                                                  .filter((v) => v != null && !isNaN(v));
-                                              const skorAspek = vals.length
-                                                  ? (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(2)
-                                                  : "";
-          
-                                              return (
-                                                  <React.Fragment key={gi}>
-                                                      {/* baris aspek */}
-                                                      <tr className="bg-[#e9f5e1]">
-                                                          <td className="border px-3 py-2 font-semibold" colSpan={2}>
-                                                              {g.aspekNo} : {g.aspekTitle}{" "}
-                                                              <span className="text-gray-600">(Bobot: {g.aspekBobot}%)</span>
-                                                          </td>
-                                                          <td className="border px-3 py-2 text-center font-bold" style={{ backgroundColor: "#93d150" }}>
-                                                              {skorAspek}
-                                                          </td>
-                                                          <td className="border px-3 py-2" colSpan={5}></td>
-                                                          <td className="border px-3 py-2"></td>
-                                                      </tr>
-          
-                                                      {/* baris section */}
-                                                      {g.items.map((r, idx) => {
-                                                          const filteredIndex = KPMR_filtered.findIndex(
-                                                              (x) =>
-                                                                  x.year === r.year &&
-                                                                  x.quarter === r.quarter &&
-                                                                  x.aspekNo === r.aspekNo &&
-                                                                  x.sectionNo === r.sectionNo &&
-                                                                  x.sectionTitle === r.sectionTitle
-                                                          );
-                                                          return (
-                                                              <tr key={`${gi}-${idx}`} className="align-top hover:bg-gray-50">
-                                                                  <td className="border px-2 py-2 text-center">{r.sectionNo}</td>
-                                                                  <td className="border px-2 py-2 whitespace-pre-wrap">{r.sectionTitle}</td>
-                                                                  <td className="border px-2 py-2 text-center">{r.sectionSkor}</td>
-                                                                  <td className="border px-2 py-2 whitespace-pre-wrap">{r.level1}</td>
-                                                                  <td className="border px-2 py-2 whitespace-pre-wrap">{r.level2}</td>
-                                                                  <td className="border px-2 py-2 whitespace-pre-wrap">{r.level3}</td>
-                                                                  <td className="border px-2 py-2 whitespace-pre-wrap">{r.level4}</td>
-                                                                  <td className="border px-2 py-2 whitespace-pre-wrap">{r.level5}</td>
-                                                              <td className="border px-2 py-2 whitespace-pre-wrap">
-                                                                <div className="flex items-center justify-between gap-2">
-                                                                  <span className="flex-1" />
-                                                                  <div className="flex gap-2 shrink-0">
-                                                                    <button
-                                                                      onClick={() => KPMR_startEdit(filteredIndex)}
-                                                                      className="inline-flex items-center gap-1 px-2 py-1 rounded border hover:bg-gray-50"
-                                                                      title="Edit baris ini"
-                                                                    >
-                                                                      <Edit3 size={14} /> Edit
-                                                                    </button>
-                                                                    <button
-                                                                      onClick={() => KPMR_removeRow(filteredIndex)}
-                                                                      className="inline-flex items-center gap-1 px-2 py-1 rounded border hover:bg-red-50 text-red-600"
-                                                                      title="Hapus baris ini"
-                                                                    >
-                                                                      <Trash2 size={14} /> Hapus
-                                                                    </button>
-                                                                  </div>
-                                                                </div>
-                                                              </td>
+            {/* Header tools */}
+            <header className="rounded-xl shadow-sm">
+              <div className="px-4 py-4 flex items-center justify-between gap-3">
+                <h1 className="text-2xl font-bold">KPMR – Investasi</h1>
 
-                                                              </tr>
-                                                          );
-                                                      })}
-                                                  </React.Fragment>
-                                              );
-                                          })
-                                      )}
-          
-                                      {/* BARIS RATA-RATA TOTAL SEMUA ASPEK (tanpa teks di kiri) */}
-                                      <tr className="bg-[#c9daf8] font-semibold">
-                                          {/* kosongkan kiri */}
-                                          <td colSpan={2} className="border px-3 py-2"></td>
-                                          {/* hanya angka rata-rata di kolom skor */}
-                                          <td
-                                              className="border px-3 py-2 text-center font-bold"
-                                              style={{ backgroundColor: "#93d150" }}
-                                          >
-                                              {(() => {
-                                                  if (!KPMR_groups || KPMR_groups.length === 0) return "";
-                                                  const perAspek = KPMR_groups
-                                                      .map((g) => {
-                                                          const vals = g.items
-                                                              .map((it) => (it.sectionSkor === "" ? null : Number(it.sectionSkor)))
-                                                              .filter((v) => v != null && !isNaN(v));
-                                                          return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
-                                                      })
-                                                      .filter((v) => v != null && !isNaN(v));
-                                                  return perAspek.length
-                                                      ? (perAspek.reduce((a, b) => a + b, 0) / perAspek.length).toFixed(2)
-                                                      : "";
-                                              })()}
-                                          </td>
-                                          {/* kosongkan kolom deskripsi */}
-                                          <td colSpan={6} className="border px-3 py-2"></td>
-                                      </tr>
-                                  </tbody>
-                              </table>
-                          </div>
-                      </section>
+                <div className="flex items-center gap-2">
+                  <YearInput
+                    value={viewYear}
+                    onChange={(v) => {
+                      setViewYear(v);
+                      setKPMR_form((f) => ({ ...f, year: v }));
+                    }}
+                  />
+                  <QuarterSelect
+                    value={viewQuarter}
+                    onChange={(v) => {
+                      setViewQuarter(v);
+                      setKPMR_form((f) => ({ ...f, quarter: v }));
+                    }}
+                  />
+
+                  <div className="relative">
+                    <input
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      placeholder="Cari aspek/section/evidence…"
+                      className="pl-9 pr-3 py-2 rounded-xl border w-64 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 transition"
+                      aria-label="Cari data KPMR"
+                    />
+                    <Search size={16} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
                   </div>
+
+                  <button
+                    onClick={KPMR_exportExcel}
+                    className="inline-flex items-center gap-2 rounded-xl px-4 py-2 border bg-gray-900 text-white hover:bg-black"
+                    title={`Export ${viewYear}-${viewQuarter}`}
+                  >
+                    <Download size={18} /> Export {viewYear}-{viewQuarter}
+                  </button>
+                </div>
+              </div>
+            </header>
+
+            {/* ===== FORM (UI KPMR) ===== */}
+            {/* Perubahan UTAMA sesuai request: bg abu-abu -> menyesuaikan warna PNM */}
+            <section className={`rounded-2xl border shadow p-4 ${PNM_BRAND.gradient} text-white`}>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-lg font-semibold drop-shadow">Form KPMR – Investasi</h2>
+                <div className="text-sm text-white/90">
+                  Periode: <span className="font-semibold">{KPMR_form.year}-{KPMR_form.quarter}</span>
+                </div>
+              </div>
+
+              {/* Card konten di atas background brand */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                {/* KIRI – Meta Aspek & Section */}
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <label className="block">
+                      <div className="mb-1 text-[13px] text-white/90 font-medium">Aspek (No)</div>
+                      <input
+                        className="w-full rounded-xl px-3 py-2 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-white/40"
+                        value={KPMR_form.aspekNo}
+                        onChange={(e) => KPMR_handleChange("aspekNo", e.target.value)}
+                      />
+                    </label>
+
+                    <label className="block">
+                      <div className="mb-1 text-[13px] text-white/90 font-medium">Bobot Aspek</div>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          className="w-full rounded-xl pl-3 pr-10 py-2 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-white/40"
+                          value={KPMR_form.aspekBobot}
+                          onChange={(e) => KPMR_handleChange("aspekBobot", e.target.value === "" ? "" : Number(e.target.value))}
+                        />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">%</span>
+                      </div>
+                    </label>
+                  </div>
+
+                  <label className="block">
+                    <div className="mb-1 text-[13px] text-white/90 font-medium">Judul Aspek</div>
+                    <input
+                      className="w-full rounded-xl px-3 py-2 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-white/40"
+                      value={KPMR_form.aspekTitle}
+                      onChange={(e) => KPMR_handleChange("aspekTitle", e.target.value)}
+                    />
+                  </label>
+
+                  <div className="grid grid-cols-3 gap-3">
+                    <label className="block">
+                      <div className="mb-1 text-[13px] text-white/90 font-medium">No Section</div>
+                      <input
+                        className="w-full rounded-xl px-3 py-2 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-white/40"
+                        value={KPMR_form.sectionNo}
+                        onChange={(e) => KPMR_handleChange("sectionNo", e.target.value)}
+                      />
+                    </label>
+
+                    <label className="block">
+                      <div className="mb-1 text-[13px] text-white/90 font-medium">Skor Section</div>
+                      <input
+                        type="number"
+                        className="w-full rounded-xl px-3 py-2 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-white/40"
+                        value={KPMR_form.sectionSkor}
+                        onChange={(e) => KPMR_handleChange("sectionSkor", e.target.value === "" ? "" : Number(e.target.value))}
+                      />
+                    </label>
+
+                    <label className="block">
+                      <div className="mb-1 text-[13px] text-white/90 font-medium">Skor Average</div>
+                      <input
+                        className="w-full rounded-xl px-3 py-2 bg-white/70 text-gray-900"
+                        value={(() => {
+                          const sameAspek = KPMR_filtered.filter(
+                            (r) => r.aspekNo === KPMR_form.aspekNo && r.aspekTitle === KPMR_form.aspekTitle
+                          );
+                          const nums = sameAspek
+                            .map((r) => (r.sectionSkor === "" ? null : Number(r.sectionSkor)))
+                            .filter((v) => v != null && !isNaN(v));
+                          return nums.length ? (nums.reduce((a, b) => a + b, 0) / nums.length).toFixed(2) : "";
+                        })()}
+                        readOnly
+                      />
+                    </label>
+                  </div>
+
+                  <label className="block">
+                    <div className="mb-1 text-[13px] text-white/90 font-medium">Pertanyaan Section</div>
+                    <textarea
+                      className="w-full rounded-xl px-3 py-2 bg-white text-gray-900 min-h-[64px] focus:outline-none focus:ring-2 focus:ring-white/40"
+                      value={KPMR_form.sectionTitle}
+                      onChange={(e) => KPMR_handleChange("sectionTitle", e.target.value)}
+                    />
+                  </label>
+
+                  <label className="block">
+                    <div className="mb-1 text-[13px] text-white/90 font-medium">Evidence</div>
+                    <textarea
+                      className="w-full rounded-xl px-3 py-2 bg-white text-gray-900 min-h-[56px] focus:outline-none focus:ring-2 focus:ring-white/40"
+                      value={KPMR_form.evidence}
+                      onChange={(e) => KPMR_handleChange("evidence", e.target.value)}
+                    />
+                  </label>
+                </div>
+
+                {/* KANAN – 5 Level */}
+                <div className="space-y-3">
+                  {[1, 2, 3, 4, 5].map((v) => (
+                    <div key={v} className="rounded-xl shadow-sm bg-white/95 backdrop-blur">
+                      <div className="px-3 pt-3 text-[13px] font-semibold text-gray-800">
+                        {v}. {['Strong', 'Satisfactory', 'Fair', 'Marginal', 'Unsatisfactory'][v - 1]}
+                      </div>
+                      <div className="p-3">
+                        <textarea
+                          className="w-full rounded-lg px-3 py-2 bg-white min-h-[56px] focus:outline-none focus:ring-2 focus:ring-blue-500/30 text-gray-900"
+                          value={KPMR_form[`level${v}`]}
+                          onChange={(e) => KPMR_handleChange(`level${v}`, e.target.value)}
+                          placeholder={`Deskripsi ${v} (${['Strong', 'Satisfactory', 'Fair', 'Marginal', 'Unsatisfactory'][v - 1]})…`}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Tombol kanan bawah */}
+              <div className="flex justify-end gap-2 mt-4">
+                {KPMR_editingIndex === null ? (
+                  <button
+                    onClick={KPMR_addRow}
+                    className="bg-green-500 hover:bg-green-600 text-white font-semibold px-5 py-2 rounded-lg shadow mt-7"
+                  >
+                    Simpan
+                  </button>
+                ) : (
+                  <div className="flex gap-2">
+                    <button
+                      onClick={KPMR_saveEdit}
+                      className="inline-flex items-center gap-2 rounded-xl px-4 py-2 bg-white text-gray-900 hover:bg-gray-100"
+                    >
+                      Simpan
+                    </button>
+                    <button
+                      onClick={() => { setKPMR_editingIndex(null); KPMR_resetForm(); }}
+                      className="inline-flex items-center gap-2 rounded-xl px-4 py-2 border bg-transparent hover:bg-white/10"
+                    >
+                      Batal
+                    </button>
+                  </div>
+                )}
+              </div>
+            </section>
+
+            {/* TABEL HASIL */}
+            <section className="bg-white rounded-2xl shadow overflow-hidden">
+              <div className="px-4 py-3 bg-gray-100 border-b">
+                <div className="font-semibold">Data KPMR – Investasi ({viewYear}-{viewQuarter})</div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="min-w-[1400px] text-sm border border-gray-300 border-collapse">
+                  <thead>
+                    <tr className="bg-[#1f4e79] text-white">
+                      <th className="border px-3 py-2 text-left" colSpan={2}>KUALITAS PENERAPAN MANAJEMEN RISIKO</th>
+                      <th className="border px-3 py-2 text-center w-24" rowSpan={2}>Skor</th>
+                      <th className="border px-3 py-2 text-center w-40" rowSpan={2}>1 (Strong)</th>
+                      <th className="border px-3 py-2 text-center w-40" rowSpan={2}>2 (Satisfactory)</th>
+                      <th className="border px-3 py-2 text-center w-40" rowSpan={2}>3 (Fair)</th>
+                      <th className="border px-3 py-2 text-center w-40" rowSpan={2}>4 (Marginal)</th>
+                      <th className="border px-3 py-2 text-center w-44" rowSpan={2}>5 (Unsatisfactory)</th>
+                      <th className="border px-3 py-2 text-center w-[260px]" rowSpan={2}>Evidence</th>
+                    </tr>
+                    <tr className="bg-[#1f4e79] text-white">
+                      <th className="border px-3 py-2 w-20">No</th>
+                      <th className="border px-3 py-2">Pertanyaan / Indikator</th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {KPMR_groups.length === 0 ? (
+                      <tr>
+                        <td className="border px-3 py-6 text-center text-gray-500" colSpan={9}>Belum ada data</td>
+                      </tr>
+                    ) : (
+                      KPMR_groups.map((g, gi) => {
+                        const vals = g.items
+                          .map((it) => (it.sectionSkor === "" ? null : Number(it.sectionSkor)))
+                          .filter((v) => v != null && !isNaN(v));
+                        const skorAspek = vals.length ? (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(2) : "";
+
+                        return (
+                          <React.Fragment key={gi}>
+                            {/* baris aspek */}
+                            <tr className="bg-[#e9f5e1]">
+                              <td className="border px-3 py-2 font-semibold" colSpan={2}>
+                                {g.aspekNo} : {g.aspekTitle} <span className="text-gray-600">(Bobot: {g.aspekBobot}%)</span>
+                              </td>
+                              <td className="border px-3 py-2 text-center font-bold" style={{ backgroundColor: "#93d150" }}>
+                                {skorAspek}
+                              </td>
+                              <td className="border px-3 py-2" colSpan={5}></td>
+                              <td className="border px-3 py-2"></td>
+                            </tr>
+
+                            {/* baris section */}
+                            {g.items.map((r, idx) => {
+                              const filteredIndex = KPMR_filtered.findIndex(
+                                (x) =>
+                                  x.year === r.year &&
+                                  x.quarter === r.quarter &&
+                                  x.aspekNo === r.aspekNo &&
+                                  x.sectionNo === r.sectionNo &&
+                                  x.sectionTitle === r.sectionTitle
+                              );
+                              return (
+                                <tr key={`${gi}-${idx}`} className="align-top hover:bg-gray-50">
+                                  <td className="border px-2 py-2 text-center">{r.sectionNo}</td>
+                                  <td className="border px-2 py-2 whitespace-pre-wrap">{r.sectionTitle}</td>
+                                  <td className="border px-2 py-2 text-center">{r.sectionSkor}</td>
+                                  <td className="border px-2 py-2 whitespace-pre-wrap">{r.level1}</td>
+                                  <td className="border px-2 py-2 whitespace-pre-wrap">{r.level2}</td>
+                                  <td className="border px-2 py-2 whitespace-pre-wrap">{r.level3}</td>
+                                  <td className="border px-2 py-2 whitespace-pre-wrap">{r.level4}</td>
+                                  <td className="border px-2 py-2 whitespace-pre-wrap">{r.level5}</td>
+                                  <td className="border px-2 py-2 whitespace-pre-wrap">
+                                    <div className="flex items-center justify-between gap-2">
+                                      <span className="flex-1" />
+                                      <div className="flex gap-2 shrink-0">
+                                        <button
+                                          onClick={() => KPMR_startEdit(filteredIndex)}
+                                          className="inline-flex items-center gap-1 px-2 py-1 rounded border hover:bg-gray-50"
+                                          title="Edit baris ini"
+                                        >
+                                          <Edit3 size={14} /> Edit
+                                        </button>
+                                        <button
+                                          onClick={() => KPMR_removeRow(filteredIndex)}
+                                          className="inline-flex items-center gap-1 px-2 py-1 rounded border hover:bg-red-50 text-red-600"
+                                          title="Hapus baris ini"
+                                        >
+                                          <Trash2 size={14} /> Hapus
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </td>
+
+                                </tr>
+                              );
+                            })}
+                          </React.Fragment>
+                        );
+                      })
+                    )}
+
+                    {/* BARIS RATA-RATA TOTAL */}
+                    <tr className="bg-[#c9daf8] font-semibold">
+                      <td colSpan={2} className="border px-3 py-2"></td>
+                      <td className="border px-3 py-2 text-center font-bold" style={{ backgroundColor: "#93d150" }}>
+                        {(() => {
+                          if (!KPMR_groups || KPMR_groups.length === 0) return "";
+                          const perAspek = KPMR_groups
+                            .map((g) => {
+                              const vals = g.items
+                                .map((it) => (it.sectionSkor === "" ? null : Number(it.sectionSkor)))
+                                .filter((v) => v != null && !isNaN(v));
+                              return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+                            })
+                            .filter((v) => v != null && !isNaN(v));
+                          return perAspek.length ? (perAspek.reduce((a, b) => a + b, 0) / perAspek.length).toFixed(2) : "";
+                        })()}
+                      </td>
+                      <td colSpan={6} className="border px-3 py-2"></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          </div>
         )}
       </div>
     </div>

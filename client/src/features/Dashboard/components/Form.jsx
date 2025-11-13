@@ -4,11 +4,9 @@ import {
     TextAreaField,
     NumberField,
     ReadOnlyField,
-    QuarterSelect,
-    YearInput,
     RiskField,
 } from "./Inputs";
-import { computeWeighted } from "../../Dashboard/pages/RiskProfile/utils/calc";
+import { computeWeighted } from "../pages/RiskProfile/utils/calc";
 
 const FALLBACK_FORM = {
     year: new Date().getFullYear(),
@@ -43,6 +41,7 @@ export default function FormSection({
     onSave = () => { },
     onReset = () => { },
     editing = false,
+    title = "Form Investasi",
 }) {
     const form = { ...FALLBACK_FORM, ...(incomingForm || {}) };
 
@@ -67,57 +66,73 @@ export default function FormSection({
         setForm((prev) => ({ ...(prev || FALLBACK_FORM), [k]: v }));
 
     return (
-        <section className="rounded-xl bg-[#DBDBDB] p-4">
-            <h2 className="text-2xl font-semibold mb-4">Investasi</h2>
+        <section className="relative rounded-2xl overflow-hidden mb-6 shadow-sm bg-gradient-to-r from-[#0076C6]/90 via-[#00A3DA]/90 to-[#33C2B5]/90">
+            <div className="p-6 sm:p-7">
+                {/* HEADER */}
+                <div className="flex items-center justify-between mb-5">
+                    <h2 className="text-white font-semibold text-lg sm:text-xl">
+                        {title}
+                    </h2>
+                    <div className="text-white/90 text-xs sm:text-sm">
+                        Periode:{" "}
+                        <span className="font-semibold">
+                            {form.year}-{form.quarter}
+                        </span>
+                    </div>
+                </div>
 
-            <div className="rounded-lg">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* kiri */}
+                {/* GRID DUA KOLOM */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* === KIRI === */}
                     <div className="space-y-3">
                         <div className="grid grid-cols-2 gap-3">
                             <TextField
-                                label="No"
+                                label={<span className="text-white">No</span>}
                                 value={form.no}
                                 onChange={(v) => handleChange("no", v)}
                             />
                             <TextField
-                                label="No Parameter"
+                                label={<span className="text-white">No Parameter</span>}
                                 value={form.subNo}
                                 onChange={(v) => handleChange("subNo", v)}
                             />
                         </div>
 
                         <TextField
-                            label="Parameter"
+                            label={<span className="text-white">Parameter</span>}
                             value={form.sectionLabel}
                             onChange={(v) => handleChange("sectionLabel", v)}
                         />
+
                         <TextAreaField
-                            label="Sumber risiko"
+                            label={<span className="text-white">Sumber Risiko</span>}
                             value={form.sumberRisiko}
                             onChange={(v) => handleChange("sumberRisiko", v)}
                         />
 
                         <TextField
-                            label="Faktor Penyebut"
+                            label={<span className="text-white">Faktor Penyebut</span>}
                             value={form.denominatorLabel}
                             onChange={(v) => handleChange("denominatorLabel", v)}
                         />
                         <TextField
-                            label="Total penyebut"
+                            label={<span className="text-white">Total Penyebut</span>}
                             value={form.denominatorValue}
                             onChange={(v) => handleChange("denominatorValue", v)}
                         />
 
                         <div className="grid grid-cols-3 gap-3">
-                            <ReadOnlyField label="Preview Hasil(%)" value={previewHasilPercent} />
+                            <ReadOnlyField
+                                label={<span className="text-white">Preview Hasil(%)</span>}
+                                value={previewHasilPercent}
+                            />
                             <NumberField
-                                label="Peringkat(1-5)"
+                                label={<span className="text-white">Peringkat(1–5)</span>}
                                 value={form.peringkat}
                                 onChange={(v) => handleChange("peringkat", v)}
                             />
                             <ReadOnlyField
-                                label="Weighted(auto)"
+                                label={<span className="text-white">Weighted(auto)</span>}
                                 value={
                                     form.weighted !== ""
                                         ? `${form.weighted}%`
@@ -130,57 +145,57 @@ export default function FormSection({
                         </div>
 
                         <TextAreaField
-                            label="Keterangan"
+                            label={<span className="text-white">Keterangan</span>}
                             value={form.keterangan}
                             onChange={(v) => handleChange("keterangan", v)}
                         />
                     </div>
 
-                    {/* kanan */}
+                    {/* === KANAN === */}
                     <div className="space-y-3">
                         <div className="grid grid-cols-2 gap-3">
                             <NumberField
-                                label="Bobot"
+                                label={<span className="text-white">Bobot</span>}
                                 value={form.bobotSection}
                                 onChange={(v) => handleChange("bobotSection", v)}
                             />
                             <NumberField
-                                label="Bobot Indikator"
+                                label={<span className="text-white">Bobot Indikator</span>}
                                 value={form.bobotIndikator}
                                 onChange={(v) => handleChange("bobotIndikator", v)}
                             />
                         </div>
 
                         <TextAreaField
-                            label="Indikator"
+                            label={<span className="text-white">Indikator</span>}
                             value={form.indikator}
                             onChange={(v) => handleChange("indikator", v)}
                         />
+
                         <TextAreaField
-                            label="Dampak"
+                            label={<span className="text-white">Dampak</span>}
                             value={form.dampak}
                             onChange={(v) => handleChange("dampak", v)}
                         />
 
                         <TextField
-                            label="Faktor pembilang"
+                            label={<span className="text-white">Faktor Pembilang</span>}
                             value={form.numeratorLabel}
                             onChange={(v) => handleChange("numeratorLabel", v)}
                         />
                         <TextField
-                            label="Total pembilang"
+                            label={<span className="text-white">Total Pembilang</span>}
                             value={form.numeratorValue}
                             onChange={(v) => handleChange("numeratorValue", v)}
                         />
 
-
-                        {/* SKALA RISIKO (tetap bisa di-edit angkanya) */}
+                        {/* === SKALA RISIKO === */}
                         <div className="grid grid-cols-1 sm:grid-cols-5 gap-3">
                             <RiskField
                                 label="Low"
                                 value={form.low}
                                 onChange={(v) => handleChange("low", v)}
-                                color="#B7E1A1"                 // hijau muda
+                                color="#B7E1A1"
                                 textColor="#0B3D2E"
                                 placeholder="x ≤ 1%"
                             />
@@ -188,7 +203,7 @@ export default function FormSection({
                                 label="Low to Moderate"
                                 value={form.lowToModerate}
                                 onChange={(v) => handleChange("lowToModerate", v)}
-                                color="#CFE0FF"                 // biru muda
+                                color="#CFE0FF"
                                 textColor="#0B2545"
                                 placeholder="1% < x ≤ 2%"
                             />
@@ -196,7 +211,7 @@ export default function FormSection({
                                 label="Moderate"
                                 value={form.moderate}
                                 onChange={(v) => handleChange("moderate", v)}
-                                color="#FFEEAD"                 // kuning muda
+                                color="#FFEEAD"
                                 textColor="#4B3A00"
                                 placeholder="2% < x ≤ 3%"
                             />
@@ -204,7 +219,7 @@ export default function FormSection({
                                 label="Moderate to High"
                                 value={form.moderateToHigh}
                                 onChange={(v) => handleChange("moderateToHigh", v)}
-                                color="#FAD2A7"                 // oranye muda
+                                color="#FAD2A7"
                                 textColor="#5A2E00"
                                 placeholder="3% < x ≤ 4%"
                             />
@@ -212,41 +227,40 @@ export default function FormSection({
                                 label="High"
                                 value={form.high}
                                 onChange={(v) => handleChange("high", v)}
-                                color="#E57373"                 // merah soft
+                                color="#E57373"
                                 textColor="#FFFFFF"
                                 placeholder="x > 4%"
                             />
                         </div>
-
                     </div>
                 </div>
-            </div>
 
-            {/* tombol */}
-            <div className="flex justify-end mt-5">
-                {!editing ? (
-                    <button
-                        onClick={onAdd}
-                        className="bg-green-500 hover:bg-green-600 text-white font-semibold px-5 py-2 rounded-lg shadow"
-                    >
-                        Simpan
-                    </button>
-                ) : (
-                    <div className="flex gap-3">
+                {/* === TOMBOL === */}
+                <div className="flex justify-end gap-2 mt-6">
+                    {!editing ? (
                         <button
-                            onClick={onSave}
-                            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-5 py-2 rounded-lg shadow"
+                            onClick={onAdd}
+                            className="bg-green-500 hover:bg-green-600 text-white font-semibold px-5 py-2 rounded-lg shadow"
                         >
                             Simpan
                         </button>
-                        <button
-                            onClick={onReset}
-                            className="border border-gray-400 hover:bg-gray-100 px-5 py-2 rounded-lg shadow text-gray-700"
-                        >
-                            Batal
-                        </button>
-                    </div>
-                )}
+                    ) : (
+                        <>
+                            <button
+                                onClick={onSave}
+                                className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-5 py-2 rounded-lg shadow"
+                            >
+                                Simpan
+                            </button>
+                            <button
+                                onClick={onReset}
+                                className="border bg-white hover:bg-gray-50 font-semibold px-5 py-2 rounded-lg shadow-sm"
+                            >
+                                Batal
+                            </button>
+                        </>
+                    )}
+                </div>
             </div>
         </section>
     );
