@@ -76,7 +76,6 @@ const Investasi = () => {
           </div>
         )}
 
-        {/* === GANTI BAGIAN INI === */}
         {activeTab === 'kpmr' && (
           <div>
             <KPMR />

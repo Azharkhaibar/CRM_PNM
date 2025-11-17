@@ -10,7 +10,6 @@ export const useAuditLogStats = () => {
 
   const { loading, error, data, getStats: fetchStats, clearError } = useAuditLog();
 
-  // Load stats
   const loadStats = async () => {
     try {
       await fetchStats();
@@ -19,7 +18,6 @@ export const useAuditLogStats = () => {
     }
   };
 
-  // Update stats ketika data berubah
   useEffect(() => {
     if (data) {
       setStats({
@@ -31,12 +29,10 @@ export const useAuditLogStats = () => {
     }
   }, [data]);
 
-  // Initial load
   useEffect(() => {
     loadStats();
   }, []);
 
-  // Refresh stats
   const refreshStats = () => {
     loadStats();
   };

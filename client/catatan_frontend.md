@@ -5,7 +5,7 @@ karena masuk page login belum bisa
 
 ## ------------------------------------------------------------------
 
-3. Audit Trail
+3. Audit Trail (OK)
 
 Tambah menu:
 Audit Log
@@ -109,3 +109,13 @@ Rapat Komite Risiko
 Pengajuan Laporan
 
 Jadwal review & audit
+
+## -------------------------------------------------------------------------------------
+
+menambahkan fungsi menghapus logout di notifikasi page (login) sudah tinggal logout (OK)
+
+## -----------------------------------------------------------------------------------
+
+fungsi atau button reset di audit log page untuk menghapus jejak aktivitas
+
+Memberperbaiki semua fungsi notif menampilkan semua log dan sinkronisasi fix

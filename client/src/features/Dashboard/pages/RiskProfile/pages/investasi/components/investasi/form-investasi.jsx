@@ -109,7 +109,6 @@ export default function FormSection({ form: incomingForm, setForm = () => {}, on
       const serviceData = convertToServiceFormat(form);
       const result = await onAdd(serviceData);
 
-      // Log aktivitas CREATE setelah berhasil
       if (logCreate && typeof logCreate === 'function') {
         await logCreate('INVESTASI', `Menambahkan data investasi baru - Parameter: "${form.sectionLabel}", Indikator: "${form.indikator}", Sub No: ${form.subNo}`, {
           endpoint: '/api/investments',
@@ -124,13 +123,12 @@ export default function FormSection({ form: incomingForm, setForm = () => {}, on
         console.log('Audit log created successfully');
       }
 
-      // Reset form
       onReset();
       alert('Data investasi berhasil ditambahkan!');
     } catch (error) {
       console.error('Error adding investment:', error);
 
-      // Log jika gagal
+
       if (logCreate && typeof logCreate === 'function') {
         await logCreate('INVESTASI', `Gagal menambahkan data investasi - Parameter: "${form.sectionLabel}", Indikator: "${form.indikator}"`, {
           endpoint: '/api/investments',
@@ -157,7 +155,6 @@ export default function FormSection({ form: incomingForm, setForm = () => {}, on
 
       const result = await onSave(serviceData);
 
-      // Log aktivitas UPDATE setelah berhasil
       if (logUpdate && typeof logUpdate === 'function') {
         await logUpdate('INVESTASI', `Memperbarui data investasi - Parameter: "${form.sectionLabel}", Indikator: "${form.indikator}", Sub No: ${form.subNo}`, {
           endpoint: `/api/investments/${form.id || serviceData.no_indikator}`,

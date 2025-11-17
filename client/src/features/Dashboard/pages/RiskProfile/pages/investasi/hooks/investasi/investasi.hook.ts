@@ -48,7 +48,6 @@ export const useInvestasi = (filters?: FilterInvest) => {
     fetchInvestDt();
   }, [fetchInvestDt]);
 
-  // PERBAIKAN UTAMA: Handle error format yang spesifik dari server
   const createInvestasi = async (payload: CreateInvestasiDto): Promise<void> => {
     try {
       setLoading(true);
@@ -62,21 +61,17 @@ export const useInvestasi = (filters?: FilterInvest) => {
     } catch (err: any) {
       console.error('Error in createInvestasi:', err);
 
-      // Extract meaningful error message from server response
       let errorMessage = 'Gagal menambah investasi';
 
       if (err.response?.data) {
         const errorData = err.response.data;
         console.log('Raw error data from server:', errorData);
 
-        // PERBAIKAN: Handle format error spesifik dari server
         // Server mengembalikan: { message: Array, error: "Bad Request", statusCode: 400 }
         if (Array.isArray(errorData.message)) {
-          // Handle array of validation error objects
+         
           const validationErrors = errorData.message.map((errorObj: any) => {
-            // Format: { target: {...}, value: null, property: 'no_indikator', constraints: {...} }
             if (errorObj.constraints) {
-              // Extract constraint messages seperti "no_indikator should not be null"
               return Object.values(errorObj.constraints).join(', ');
             }
             if (errorObj.property) {
@@ -86,7 +81,6 @@ export const useInvestasi = (filters?: FilterInvest) => {
           });
           errorMessage = validationErrors.join('; ');
         }
-        // Handle other error formats
         else if (typeof errorData === 'string') {
           errorMessage = errorData;
         } else if (errorData.message && typeof errorData.message === 'string') {
@@ -94,7 +88,6 @@ export const useInvestasi = (filters?: FilterInvest) => {
         } else if (errorData.error) {
           errorMessage = errorData.error;
         } else {
-          // Safe stringify for complex objects
           try {
             errorMessage = JSON.stringify(errorData);
           } catch {
@@ -125,8 +118,6 @@ export const useInvestasi = (filters?: FilterInvest) => {
       setInvestasiDt((prev) => prev.map((i) => (i.id_investasi === id ? updatedItem : i)));
     } catch (err: any) {
       console.error('Error in updateInvestasi:', err);
-
-      // Apply the same error handling logic for update
       let errorMessage = 'Gagal mengupdate investasi';
       if (err.response?.data) {
         const errorData = err.response.data;

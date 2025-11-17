@@ -1,10 +1,72 @@
 // audit-log/services/audit-log.services.ts
-import axios from 'axios';
+import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 
 const API_BASE_URL = 'http://localhost:5530/api/v1';
 
+interface AuditLogData {
+  action: string;
+  module: string;
+  description: string;
+  endpoint?: string;
+  ipAddress?: string;
+  isSuccess?: boolean;
+  userId?: number | null;
+  metadata?: Record<string, unknown>;
+}
+
+interface PaginationParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  action?: string;
+  module?: string;
+  start_date?: string;
+  end_date?: string;
+}
+
+interface User {
+  user_id: number;
+  userID: string;
+  role: string;
+  gender: string;
+}
+
+interface AuditLog {
+  id: number;
+  userId: number | null;
+  user: User | null;
+  action: string;
+  module: string;
+  description: string;
+  endpoint: string | null;
+  ip_address: string;
+  isSuccess: boolean;
+  timestamp: string;
+  metadata: any;
+}
+
+interface AuditLogListResponse {
+  data: AuditLog[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+interface DeleteMultipleResponse {
+  message: string;
+  deletedCount: number;
+}
+
+interface AuditLogStats {
+  today: Array<{ action: string; count: string }>;
+  week: Array<{ action: string; count: string }>;
+  month: Array<{ action: string; count: string }>;
+  modules: string[];
+}
+
 class AuditLogService {
-  api: any;
+  private api: AxiosInstance;
 
   constructor() {
     this.api = axios.create({
@@ -12,12 +74,17 @@ class AuditLogService {
       headers: {
         'Content-Type': 'application/json',
       },
+      timeout: 15000,
     });
 
+    this.setupInterceptors();
+  }
+
+  private setupInterceptors(): void {
     this.api.interceptors.request.use(
-      (config: any) => {
+      (config: AxiosRequestConfig) => {
         const token = localStorage.getItem('authToken');
-        if (token) {
+        if (token && config.headers) {
           config.headers.Authorization = `Bearer ${token}`;
         }
         return config;
@@ -26,114 +93,103 @@ class AuditLogService {
         return Promise.reject(error);
       }
     );
+
+    this.api.interceptors.response.use(
+      (response: AxiosResponse) => {
+        return response;
+      },
+      (error: any) => {
+        return Promise.reject(error);
+      }
+    );
   }
 
-  // PERBAIKAN: Tambahkan debug dan fix IP/user issues
-  async createAuditLog(auditLogData: { action: string; module: string; description: string; endpoint?: string; ipAddress?: string; isSuccess?: boolean; userId?: number | null; metadata?: Record<string, unknown> }) {
+  async createAuditLog(auditLogData: AuditLogData): Promise<any> {
     try {
-      // DEBUG: Cek localStorage
-      console.log('🔍 [DEBUG] localStorage user:', localStorage.getItem('user'));
+      const userJson = localStorage.getItem('user');
+      let userId: number | null = null;
 
-      // Dapatkan user info dari localStorage - PERBAIKAN
-      const userData = JSON.parse(localStorage.getItem('user') || '{}');
-      console.log('🔍 [DEBUG] Parsed user data:', userData);
-
-      // Dapatkan IP - PERBAIKAN dengan fallback
-      let clientIP = 'unknown';
-      try {
-        clientIP = await this.getClientIP();
-        console.log('🔍 [DEBUG] Client IP:', clientIP);
-      } catch (ipError) {
-        console.warn('⚠️ Tidak bisa dapatkan IP external, gunakan fallback');
-        clientIP = 'local';
+      if (userJson) {
+        try {
+          const userData = JSON.parse(userJson);
+          userId = userData.user_id || userData.id || userData.userId;
+        } catch (parseError) {
+          console.error('Error parsing user data:', parseError);
+        }
       }
 
-      // Format payload - PERBAIKAN field mapping
+      const clientIP = await this.getClientIP();
+
+      const description = auditLogData.description && auditLogData.description !== 'No description provided' ? auditLogData.description : `${auditLogData.action} ${auditLogData.module}`;
+
       const payload = {
-        action: auditLogData.action, // Langsung pakai string, backend handle enum
-        module: auditLogData.module, // Langsung pakai string
-        description: auditLogData.description,
+        action: auditLogData.action,
+        module: auditLogData.module,
+        description: description,
         endpoint: auditLogData.endpoint || window.location.pathname,
-        ipAddress: auditLogData.ipAddress || clientIP,
-        isSuccess: auditLogData.isSuccess !== undefined ? auditLogData.isSuccess : true,
-        // PERBAIKAN: Cari userId dari berbagai kemungkinan field
-        userId: auditLogData.userId ?? ((userData.user_id ?? null) || userData.user_id || userData.id || userData.userId || null),
+        ip_address: auditLogData.ipAddress || clientIP,
+        isSuccess: auditLogData.isSuccess ?? true,
+        userId: auditLogData.userId ?? userId,
         metadata: auditLogData.metadata && Object.keys(auditLogData.metadata).length > 0 ? auditLogData.metadata : null,
       };
 
-      console.log('🔄 [AUDIT] Mengirim payload:', payload);
+      console.log('📝 Creating audit log:', payload); 
 
       const response = await this.api.post('/audit-logs', payload);
-      console.log('✅ [AUDIT] Berhasil membuat log:', response.data);
       return response.data;
     } catch (error: any) {
-      console.error('❌ [AUDIT] Gagal membuat log:', error);
-      console.error('❌ [AUDIT] Error response:', error.response?.data);
-
-      // Jangan throw error agar tidak mengganggu flow utama
+      console.error('Failed to create audit log:', error);
       return null;
     }
   }
 
-  // PERBAIKAN: getClientIP dengan timeout
-  async getClientIP(): Promise<string> {
+  private async getClientIP(): Promise<string> {
     try {
-      // Timeout setelah 3 detik
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3000);
-
       const response = await fetch('https://api.ipify.org?format=json', {
-        signal: controller.signal,
+        signal: AbortSignal.timeout(5000),
+        mode: 'cors',
       });
 
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
+      if (response.ok) {
+        const data = await response.json();
+        return data.ip;
       }
-
-      const data = await response.json();
-      return data.ip;
+      return 'unknown';
     } catch (error) {
-      console.warn('⚠️ Gagal mendapatkan IP external:', error);
-
-      // Fallback: coba dapatkan IP dari connection info
-      try {
-        // @ts-ignore - Property experimental mungkin ada di browser
-        const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-        if (connection && connection.localAddress) {
-          return connection.localAddress;
-        }
-      } catch (e) {
-        // Ignore
-      }
-
       return 'unknown';
     }
   }
 
-  // Get all audit logs dengan filter
-  async getAuditLogs(params = {}) {
+  async getAuditLogs(params: PaginationParams = {}): Promise<AuditLogListResponse> {
     try {
       const response = await this.api.get('/audit-logs', { params });
-      return response.data;
-    } catch (error) {
+
+      const responseData = response.data;
+
+      const normalizedResponse: AuditLogListResponse = {
+        data: responseData.data || [],
+        total: responseData.total || 0,
+        page: responseData.page || params.page || 1,
+        limit: responseData.limit || params.limit || 20,
+        totalPages: responseData.totalPages || Math.ceil((responseData.total || 0) / (params.limit || 20)),
+      };
+
+      return normalizedResponse;
+    } catch (error: any) {
       throw this.handleError(error);
     }
   }
 
-  // Get stats
-  async getAuditLogStats() {
+  async getAuditLogStats(): Promise<AuditLogStats> {
     try {
       const response = await this.api.get('/audit-logs/stats');
       return response.data;
-    } catch (error) {
+    } catch (error: any) {
       throw this.handleError(error);
     }
   }
 
-  // Export to Excel
-  async exportAuditLogs(params = {}) {
+  async exportAuditLogs(params: PaginationParams = {}): Promise<{ success: boolean; filename: string }> {
     try {
       const response = await this.api.get('/audit-logs/export', {
         params,
@@ -143,6 +199,7 @@ class AuditLogService {
       const blob = new Blob([response.data], {
         type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       });
+
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
@@ -151,8 +208,8 @@ class AuditLogService {
       let filename = `audit-logs-${new Date().toISOString().split('T')[0]}.xlsx`;
 
       if (contentDisposition) {
-        const filenameMatch = contentDisposition.match(/filename="?(.+)"?/);
-        if (filenameMatch && filenameMatch.length === 2) {
+        const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+        if (filenameMatch && filenameMatch[1]) {
           filename = filenameMatch[1];
         }
       }
@@ -160,30 +217,84 @@ class AuditLogService {
       link.setAttribute('download', filename);
       document.body.appendChild(link);
       link.click();
-      link.remove();
+      document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
 
       return { success: true, filename };
-    } catch (error) {
+    } catch (error: any) {
       throw this.handleError(error);
     }
   }
 
-  // Error handler
-  handleError(error: any) {
+  async deleteAuditLog(logId: number): Promise<{ message: string }> {
+    try {
+      const response = await this.api.delete(`/audit-logs/${logId}`);
+      return response.data;
+    } catch (err: any) {
+      throw this.handleError(err);
+    }
+  }
+
+  async deleteMultipleAuditLogs(logsIds: number[]): Promise<DeleteMultipleResponse> {
+    try {
+      const responseDelete = await this.api.delete('/audit-logs/batch/delete', {
+        data: { ids: logsIds },
+      });
+      return responseDelete.data;
+    } catch (error: any) {
+      throw this.handleError(error);
+    }
+  }
+
+  async deleteByFilter(filters: { start_date?: string; end_date?: string; action?: string; module?: string }): Promise<DeleteMultipleResponse> {
+    try {
+      const response = await this.api.delete('/audit-logs/filter/delete', {
+        params: filters,
+      });
+      return response.data;
+    } catch (error: any) {
+      throw this.handleError(error);
+    }
+  }
+
+  async deleteAllAuditLogs(): Promise<DeleteMultipleResponse> {
+    try {
+      const response = await this.api.delete('/audit-logs/all/delete');
+      return response.data;
+    } catch (error: any) {
+      throw this.handleError(error);
+    }
+  }
+
+  private handleError(error: any): Error {
     if (axios.isAxiosError(error)) {
       if (error.response) {
-        const errorMessage = error.response.data?.message || error.response.data?.error || 'Terjadi kesalahan pada server';
-        throw new Error(errorMessage);
+        const status = error.response.status;
+        const serverMessage = error.response.data?.message || error.response.data?.error;
+
+        switch (status) {
+          case 400:
+            return new Error(serverMessage || 'Permintaan tidak valid');
+          case 401:
+            return new Error('Sesi telah berakhir, silakan login kembali');
+          case 403:
+            return new Error('Anda tidak memiliki akses');
+          case 404:
+            return new Error('Data tidak ditemukan');
+          case 500:
+            return new Error(serverMessage || 'Terjadi kesalahan pada server');
+          default:
+            return new Error(serverMessage || `Terjadi kesalahan (${status})`);
+        }
       } else if (error.request) {
-        throw new Error('Tidak dapat terhubung ke server');
+        return new Error('Tidak dapat terhubung ke server');
       } else {
-        throw new Error(error.message);
+        return new Error(error.message || 'Terjadi kesalahan dalam mengirim permintaan');
       }
     } else if (error instanceof Error) {
-      throw error;
+      return error;
     } else {
-      throw new Error('Terjadi kesalahan yang tidak diketahui');
+      return new Error('Terjadi kesalahan yang tidak diketahui');
     }
   }
 }

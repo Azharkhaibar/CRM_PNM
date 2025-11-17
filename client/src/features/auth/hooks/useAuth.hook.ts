@@ -1,4 +1,4 @@
-// hooks/useAuth.hook.ts
+
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { AuthService } from '../services/auth.services';
 import RIMS_API from '../api/auth.api';
@@ -21,7 +21,7 @@ export const useAuth = () => {
   const [updating, setUpdating] = useState<boolean>(false);
 
   const userRef = useRef<AuthUser | null>(null);
-  
+
   const loginNotificationSentRef = useRef<boolean>(false);
 
   useEffect(() => {
@@ -297,7 +297,6 @@ export const useAuth = () => {
     }
   }, [createLogoutNotification]);
 
- 
   const quickLogout = useCallback(() => {
     const logoutId = `quick-logout-${Date.now()}`;
     console.log(`[${logoutId}] Starting quick logout process...`);
@@ -516,7 +515,7 @@ export const useAuth = () => {
     login,
     register,
     logout,
-    quickLogout, 
+    quickLogout,
     fetchProfile,
     updateProfile,
     changePassword,

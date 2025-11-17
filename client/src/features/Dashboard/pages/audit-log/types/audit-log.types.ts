@@ -1,26 +1,60 @@
 // audit-log/types/audit-log.types.ts
-export const ActionType = {
-  CREATE: 'CREATE',
-  UPDATE: 'UPDATE',
-  DELETE: 'DELETE',
-  VIEW: 'VIEW',
-  EXPORT: 'EXPORT',
-  LOGIN: 'LOGIN',
-  LOGOUT: 'LOGOUT',
-} as const;
+export interface AuditLog {
+  id: number;
+  userId: number | null;
+  user: {
+    id: number;
+    name: string;
+    username?: string;
+    email?: string;
+    role?: string;
+  } | null;
+  action: string;
+  module: string;
+  description: string;
+  endpoint: string | null;
+  ip_address: string | null;
+  isSuccess: boolean;
+  timestamp: string;
+  metadata: Record<string, unknown> | null;
+}
 
-export const ModuleType = {
-  INVESTASI: 'INVESTASI',
-  PASAR: 'PASAR',
-  LIKUIDITAS: 'LIKUIDITAS',
-  OPERASIONAL: 'OPERASIONAL',
-  HUKUM: 'HUKUM',
-  STRATEJIK: 'STRATEJIK',
-  KEPATUHAN: 'KEPATUHAN',
-  REPUTASI: 'REPUTASI',
-  USER_MANAGEMENT: 'USER_MANAGEMENT',
-  SYSTEM: 'SYSTEM',
-} as const;
+export interface AuditLogListResponse {
+  data: AuditLog[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
 
-export type ActionType = keyof typeof ActionType;
-export type ModuleType = keyof typeof ModuleType;
+export interface PaginationParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  action?: string;
+  module?: string;
+  start_date?: string;
+  end_date?: string;
+  userId?: number;
+}
+
+export interface AuditLogStats {
+  today: Array<{ action: string; count: string }>;
+  week: Array<{ action: string; count: string }>;
+  month: Array<{ action: string; count: string }>;
+  modules: string[];
+}
+
+export interface AuditLogParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  filters?: Record<string, any>;
+}
+
+export interface PaginationInfo {
+  page: number;
+  limit: number;
+  totalPages: number;
+  total: number;
+}

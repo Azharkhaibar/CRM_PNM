@@ -59,10 +59,8 @@ const Navbar = () => {
             {darkMode ? <FaSun className="text-lg" /> : <FaMoon className="text-lg" />}
           </button>
 
-          {/* Notification Bell - Sudah Terintegrasi */}
           <NotificationBell />
 
-          {/* User Menu */}
           <div className="relative" ref={menuRef}>
             <button onClick={() => setMenuOpen(!menuOpen)} className={`flex items-center space-x-2 cursor-pointer px-3 py-2 rounded-lg transition ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-blue-700'}`}>
               <FaUserCircle className="text-2xl" />
@@ -82,7 +80,6 @@ const Navbar = () => {
                   className={`absolute right-0 mt-2 w-56 rounded-lg shadow-xl overflow-hidden z-50 ${darkMode ? 'bg-gray-700 text-white border border-gray-600' : 'bg-white text-gray-800 border border-gray-200'}`}
                   style={{ top: '100%' }}
                 >
-                  {/* User Info Section */}
                   <div className={`p-4 border-b ${darkMode ? 'border-gray-600 bg-gray-600/50' : 'border-gray-200 bg-gray-50'}`}>
                     <div className="flex items-center gap-3">
                       <FaUserCircle className="text-2xl text-gray-400" />
@@ -94,7 +91,6 @@ const Navbar = () => {
                     </div>
                   </div>
 
-                  {/* Menu Items */}
                   <div className="py-1">
                     <button
                       onClick={() => {
@@ -132,7 +128,6 @@ const Navbar = () => {
                     </button>
                   </div>
 
-                  {/* Logout Section */}
                   <div className={`border-t ${darkMode ? 'border-gray-600' : 'border-gray-200'}`} />
 
                   <button

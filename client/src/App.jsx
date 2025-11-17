@@ -95,7 +95,6 @@ function App() {
             <Route path="settings" element={<Settings />} />
           </Route>
 
-          {/* Landing Page & Default Redirect */}
           <Route path="/" element={user ? <Navigate to="/dashboard" replace /> : <Mainpage />} />
 
           {/* Catch all route */}

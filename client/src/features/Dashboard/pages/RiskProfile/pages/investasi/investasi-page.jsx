@@ -6,6 +6,8 @@ import { getCurrentQuarter, getCurrentYear } from './utils/investasi/time';
 import { computeWeighted } from './utils/investasi/calc';
 import { exportInvestasiToExcel } from './utils/investasi/exportExcel';
 import { useInvestasi } from './hooks/investasi/investasi.hook';
+import { useAuditLog } from '../../../audit-log/hooks/audit-log.hooks';
+import { useAuth } from '../../../../../auth/hooks/useAuth.hook';
 
 const YearInput = ({ value, onChange }) => (
   <select value={value} onChange={(e) => onChange(Number(e.target.value))} className="rounded-xl border border-gray-300 px-4 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-medium">
@@ -27,7 +29,6 @@ const QuarterSelect = ({ value, onChange }) => (
   </select>
 );
 
-// Fallback empty row
 const invFallbackEmpty = (year, quarter) => ({
   year,
   quarter,
@@ -62,11 +63,14 @@ export default function InvestasiPage() {
   const [localerror, setLocalError] = useState(null);
 
   // ====== Service Integration ======
+  const { user: authUser } = useAuth();
   const { loading, investasiDt, error, createInvestasi, updateInvestasi, deleteInvestasiDt, fetchInvestDt } = useInvestasi({
     year: viewYear,
     quarter: viewQuarter,
     query: query,
   });
+
+  const { logUpdate, logDelete, logExport } = useAuditLog();
 
   // ====== Form State ======
   const [INVESTASI_form, setINVESTASI_form] = useState(invFallbackEmpty(viewYear, viewQuarter));
@@ -76,36 +80,88 @@ export default function InvestasiPage() {
     setLocalError(null);
   }, [INVESTASI_form]);
 
-  const handleAuditLog = async (logData) => {
+  const handleAuditLog = async (action, description, isSuccess = true, metadata = {}) => {
     try {
-      const auditData = {
-        ...logData,
-        waktu: new Date().toLocaleString('id-ID'),
-        user: 'Nama User', // Ganti dengan user yang login dari context/state
-        ipAddress: '192.168.1.1', // Dapatkan dari sistem atau API
-      };
-
-      console.log('AUDIT LOG:', auditData);
-
-      // Kirim ke backend API
-      const response = await fetch('/api/v1/audit-logs', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(auditData),
+      console.log('🔍 [AUTH DEBUG] useAuth hook data:', {
+        authUser,
+        hasAuthUser: !!authUser,
+        authUserType: typeof authUser,
+        authUserKeys: authUser ? Object.keys(authUser) : 'No authUser',
       });
 
-      if (!response.ok) {
-        console.error('Gagal menyimpan audit log');
+      const localStorageUser = localStorage.getItem('user');
+      console.log('🔍 [AUTH DEBUG] localStorage user:', localStorageUser);
+
+      if (localStorageUser) {
+        const parsedLocalUser = JSON.parse(localStorageUser);
+        console.log('🔍 [AUTH DEBUG] Parsed localStorage user:', {
+          user_id: parsedLocalUser.user_id,
+          userID: parsedLocalUser.userID,
+          role: parsedLocalUser.role,
+          allFields: Object.keys(parsedLocalUser),
+        });
       }
+
+      const userId = authUser?.user_id || authUser?.id;
+      console.log('🔍 [AUTH DEBUG] Final userId for audit:', userId);
+
+      const auditData = {
+        action,
+        module: 'INVESTASI',
+        description,
+        isSuccess,
+        userId: userId || null,
+        metadata: {
+          year: viewYear,
+          quarter: viewQuarter,
+          authUserId: userId,
+          authUserAvailable: !!authUser,
+          ...metadata,
+        },
+      };
+
+      console.log('📝 [AUTH DEBUG] Final audit data:', auditData);
+
+      switch (action) {
+        // case 'CREATE':
+        //   await logCreate('INVESTASI', description, {
+        //     isSuccess,
+        //     userId: userId || null,
+        //     metadata: auditData.metadata,
+        //   });
+        //   break;
+        case 'UPDATE':
+          await logUpdate('INVESTASI', description, {
+            isSuccess,
+            userId: userId || null,
+            metadata: auditData.metadata,
+          });
+          break;
+        case 'DELETE':
+          await logDelete('INVESTASI', description, {
+            isSuccess,
+            userId: userId || null,
+            metadata: auditData.metadata,
+          });
+          break;
+        case 'EXPORT':
+          await logExport('INVESTASI', description, {
+            isSuccess,
+            userId: userId || null,
+            metadata: auditData.metadata,
+          });
+          break;
+        default:
+          break;
+      }
+
+      console.log('✅ [AUTH DEBUG] Audit logged with userId:', userId);
     } catch (error) {
-      console.error('Error audit log:', error);
+      console.error('❌ [AUTH DEBUG] Audit failed:', error);
     }
   };
 
   // Convert service data to form format
-  // Di InvestasiPage - perbaiki convertFormToService
   const convertFormToService = (formData) => {
     const num = Number(formData.numeratorValue || 0);
     const den = Number(formData.denominatorValue || 0);
@@ -151,10 +207,75 @@ export default function InvestasiPage() {
     console.log('Converted service data - no_indikator:', serviceData.no_indikator, 'type:', typeof serviceData.no_indikator);
     return serviceData;
   };
+
   const INVESTASI_resetForm = () => {
     setINVESTASI_form(invFallbackEmpty(viewYear, viewQuarter));
     setINVESTASI_editingId(null);
   };
+
+  // ====== ✅ FIXED: Enhanced INVESTASI_addRow dengan Audit Log ======
+  // const INVESTASI_addRow = async () => {
+  //   try {
+  //     const validationErrors = [];
+
+  //     if (!INVESTASI_form.sectionLabel?.trim()) {
+  //       validationErrors.push('Nama Parameter harus diisi');
+  //     }
+  //     if (!INVESTASI_form.indikator?.trim()) {
+  //       validationErrors.push('Indikator Kinerja harus diisi');
+  //     }
+  //     if (!INVESTASI_form.no || isNaN(Number(INVESTASI_form.no))) {
+  //       validationErrors.push('Nomor harus berupa angka yang valid');
+  //     }
+  //     if (!INVESTASI_form.subNo?.trim()) {
+  //       validationErrors.push('Sub Nomor harus diisi');
+  //     } else {
+  //       const subNoNumber = Number(INVESTASI_form.subNo);
+  //       if (isNaN(subNoNumber)) {
+  //         validationErrors.push('Sub Nomor harus berupa angka yang valid (contoh: 1.1, 2.3, dll)');
+  //       }
+  //     }
+  //     if (isNaN(Number(INVESTASI_form.bobotSection))) {
+  //       validationErrors.push('Bobot Section harus berupa angka');
+  //     }
+  //     if (isNaN(Number(INVESTASI_form.bobotIndikator))) {
+  //       validationErrors.push('Bobot Indikator harus berupa angka');
+  //     }
+  //     if (isNaN(Number(INVESTASI_form.peringkat))) {
+  //       validationErrors.push('Peringkat harus berupa angka');
+  //     }
+
+  //     if (validationErrors.length > 0) {
+  //       await handleAuditLog('CREATE', `Gagal validasi tambah data investasi - ${validationErrors.join(', ')}`, false, { validationErrors });
+  //       alert('Silakan perbaiki kesalahan berikut:\n\n' + validationErrors.join('\n'));
+  //       return;
+  //     }
+
+  //     const serviceData = convertFormToService(INVESTASI_form);
+  //     console.log('Sending data to server - no_indikator:', serviceData.no_indikator, 'type:', typeof serviceData.no_indikator);
+
+  //     // ✅ Log audit sebelum create
+  //     await handleAuditLog('CREATE', `Menambahkan data investasi - Parameter: "${serviceData.parameter}", Indikator: "${serviceData.indikator}", Sub No: ${serviceData.no_indikator}`, true, {
+  //       parameter: serviceData.parameter,
+  //       indikator: serviceData.indikator,
+  //       no_indikator: serviceData.no_indikator,
+  //       bobot: serviceData.bobot,
+  //       bobot_indikator: serviceData.bobot_indikator,
+  //     });
+
+  //     await createInvestasi(serviceData);
+  //     INVESTASI_resetForm();
+  //     alert('Data berhasil ditambahkan!');
+  //   } catch (err) {
+  //     await handleAuditLog('CREATE', `Gagal menambah data investasi - Parameter: "${INVESTASI_form.sectionLabel}", Indikator: "${INVESTASI_form.indikator}"`, false, {
+  //       error: err.message,
+  //       parameter: INVESTASI_form.sectionLabel,
+  //       indikator: INVESTASI_form.indikator,
+  //     });
+  //     console.error('Gagal menambah data:', err);
+  //     alert('Gagal menambah data. Silakan coba lagi.');
+  //   }
+  // };
 
   const INVESTASI_addRow = async () => {
     try {
@@ -194,37 +315,20 @@ export default function InvestasiPage() {
 
       const serviceData = convertFormToService(INVESTASI_form);
       console.log('Sending data to server - no_indikator:', serviceData.no_indikator, 'type:', typeof serviceData.no_indikator);
-      // Log audit sebelum create
-      await handleAuditLog({
-        aksi: 'TAMBAH',
-        module: 'INVESTASI',
-        deskripsi: `Menambahkan data investasi baru - Parameter: "${serviceData.parameter}", Indicator: "${serviceData.indikator}", Sub No: ${serviceData.no_indikator}`,
-        status: 'SUKSES',
-      });
 
       await createInvestasi(serviceData);
       INVESTASI_resetForm();
       alert('Data berhasil ditambahkan!');
     } catch (err) {
-      await handleAuditLog({
-        aksi: 'TAMBAH',
-        module: 'INVESTASI',
-        deskripsi: `Gagal menambah data investasi - Parameter: "${INVESTASI_form.sectionLabel}", Indicator: "${INVESTASI_form.indikator}"`,
-        status: 'GAGAL',
-      });
       console.error('Gagal menambah data:', err);
+      alert('Gagal menambah data. Silakan coba lagi.');
     }
   };
 
   const INVESTASI_startEdit = (investasi) => {
     setINVESTASI_form(convertFormToService(investasi));
-    handleAuditLog({
-      aksi: 'EDIT',
-      module: 'INVESTASI',
-      deskripsi: `Memulai edit data investasi - Parameter: "${investasi.parameter || investasi.sectionLabel}", Indicator: "${investasi.indikator}", Sub No: ${investasi.no_indikator || investasi.subNo}`,
-      status: 'SUKSES',
-    });
     setINVESTASI_editingId(investasi.id_investasi);
+
   };
 
   const INVESTASI_saveEdit = async () => {
@@ -232,61 +336,104 @@ export default function InvestasiPage() {
 
     try {
       const serviceData = convertFormToService(INVESTASI_form);
-      await handleAuditLog({
-        aksi: 'UPDATE',
-        module: 'INVESTASI',
-        deskripsi: `Mengupdate data investasi - Parameter: "${serviceData.parameter}", Indicator: "${serviceData.indikator}", Sub No: ${serviceData.no_indikator}`,
-        status: 'SUKSES',
-      });
+
+      // await handleAuditLog('UPDATE', `Mengupdate data investasi - Parameter: "${serviceData.parameter}", Indikator: "${serviceData.indikator}", Sub No: ${serviceData.no_indikator}`, true, {
+      //   id_investasi: INVESTASI_editingId,
+      //   parameter: serviceData.parameter,
+      //   indikator: serviceData.indikator,
+      //   no_indikator: serviceData.no_indikator,
+      //   changes: serviceData,
+      // });
+
       await updateInvestasi(INVESTASI_editingId, serviceData);
       INVESTASI_resetForm();
+      alert('Data berhasil diupdate!');
     } catch (err) {
-      await handleAuditLog({
-        aksi: 'UPDATE',
-        module: 'INVESTASI',
-        deskripsi: `Gagal update data investasi - Parameter: "${INVESTASI_form.sectionLabel}", Indicator: "${INVESTASI_form.indikator}"`,
-        status: 'GAGAL',
+      await handleAuditLog('UPDATE', `Gagal update data investasi - Parameter: "${INVESTASI_form.sectionLabel}", Indikator: "${INVESTASI_form.indikator}"`, false, {
+        id_investasi: INVESTASI_editingId,
+        error: err.message,
+        parameter: INVESTASI_form.sectionLabel,
+        indikator: INVESTASI_form.indikator,
       });
       console.error('Gagal mengupdate data:', err);
+      alert('Gagal mengupdate data. Silakan coba lagi.');
     }
   };
 
+ 
   const INVESTASI_removeRow = async (investasi) => {
     if (window.confirm('Apakah Anda yakin ingin menghapus data ini?')) {
       try {
-        await handleAuditLog({
-          aksi: 'HAPUS',
-          module: 'INVESTASI',
-          deskripsi: `Menghapus data investasi - Parameter: "${investasi.parameter || investasi.sectionLabel}", Indicator: "${investasi.indikator}", Sub No: ${investasi.no_indikator || investasi.subNo}`,
-          status: 'SUKSES',
+        await handleAuditLog('DELETE', `Menghapus data investasi - Parameter: "${investasi.parameter || investasi.sectionLabel}", Indikator: "${investasi.indikator}", Sub No: ${investasi.no_indikator || investasi.subNo}`, true, {
+          id_investasi: investasi.id_investasi,
+          parameter: investasi.parameter,
+          indikator: investasi.indikator,
+          no_indikator: investasi.no_indikator,
         });
+
         await deleteInvestasiDt(investasi.id_investasi);
+
         if (INVESTASI_editingId === investasi.id_investasi) {
           INVESTASI_resetForm();
         }
+
+        alert('Data berhasil dihapus!');
       } catch (err) {
-        await handleAuditLog({
-          aksi: 'HAPUS',
-          module: 'INVESTASI',
-          deskripsi: `Gagal menghapus data investasi - Parameter: "${investasi.parameter || investasi.sectionLabel}", Indicator: "${investasi.indikator}"`,
-          status: 'GAGAL',
+        await handleAuditLog('DELETE', `Gagal menghapus data investasi - Parameter: "${investasi.parameter || investasi.sectionLabel}", Indikator: "${investasi.indikator}"`, false, {
+          id_investasi: investasi.id_investasi,
+          error: err.message,
+          parameter: investasi.parameter,
+          indikator: investasi.indikator,
         });
         console.error('Gagal menghapus data:', err);
+        alert('Gagal menghapus data. Silakan coba lagi.');
       }
+    } else {
+      //  untuk menghindari duplikasi
     }
   };
 
   const INVESTASI_exportExcel = () => {
-    if (exportInvestasiToExcel) {
-      handleAuditLog({
-        aksi: 'EXPORT',
-        module: 'INVESTASI',
-        deskripsi: `Export data Excel investasi - Periode: ${viewYear}-${viewQuarter}, Jumlah Data: ${investasiDt.length}`,
-        status: 'SUKSES',
+    try {
+      if (exportInvestasiToExcel) {
+        handleAuditLog('EXPORT', `Export data Excel investasi - Periode: ${viewYear}-${viewQuarter}, Jumlah Data: ${investasiDt.length}`, true, {
+          year: viewYear,
+          quarter: viewQuarter,
+          total_records: investasiDt.length,
+          file_type: 'excel',
+        });
+
+        exportInvestasiToExcel(investasiDt, viewYear, viewQuarter);
+      }
+    } catch (err) {
+      handleAuditLog('EXPORT', `Gagal export data Excel investasi - Periode: ${viewYear}-${viewQuarter}`, false, {
+        year: viewYear,
+        quarter: viewQuarter,
+        error: err.message,
       });
-      exportInvestasiToExcel(investasiDt, viewYear, viewQuarter);
+      console.error('Gagal export Excel:', err);
     }
   };
+
+  // ====== useEffect untuk log search ======
+  // useEffect(() => {
+  //   if (query) {
+  //     handleAuditLog('VIEW', `Mencari data investasi - Keyword: "${query}", Periode: ${viewYear}-${viewQuarter}`, true, {
+  //       search_query: query,
+  //       year: viewYear,
+  //       quarter: viewQuarter,
+  //     });
+  //   }
+  // }, [query]);
+
+  // ====== useEffect untuk log periode change ======
+  // useEffect(() => {
+  //   handleAuditLog('VIEW', `Mengubah periode view investasi - Periode: ${viewYear}-${viewQuarter}`, true, {
+  //     year: viewYear,
+  //     quarter: viewQuarter,
+  //     action: 'period_change',
+  //   });
+  // }, [viewYear, viewQuarter]);
 
   const INVESTASI_filtered = useMemo(() => {
     return investasiDt.sort((a, b) => (a.no_indikator || a.subNo).localeCompare(b.no_indikator || b.subNo, undefined, { numeric: true }));
@@ -329,7 +476,6 @@ export default function InvestasiPage() {
         </div>
       </header>
 
-      {/* Error Display */}
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-xl p-4">
           <div className="flex items-center gap-2 text-red-800">
@@ -341,7 +487,6 @@ export default function InvestasiPage() {
         </div>
       )}
 
-      {/* Form Section */}
       <FormSection
         form={INVESTASI_form}
         setForm={setINVESTASI_form}
@@ -353,7 +498,6 @@ export default function InvestasiPage() {
         title={INVESTASI_editingId !== null ? 'Edit Data Investasi' : 'Tambah Data Investasi'}
       />
 
-      {/* Filter & Total Weighted */}
       <section className="bg-white rounded-2xl shadow-lg border border-gray-100 p-4 flex flex-wrap items-center gap-4 justify-between">
         <div className="flex items-center gap-3">
           <span className="font-medium text-gray-700">Tampilkan Periode:</span>
@@ -363,7 +507,6 @@ export default function InvestasiPage() {
         <div className="text-sm font-semibold text-green-600">Total Weighted: {Number(INVESTASI_totalWeighted || 0).toFixed(4)}</div>
       </section>
 
-      {/* Loading State */}
       {loading && (
         <div className="flex justify-center items-center py-8">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -371,7 +514,7 @@ export default function InvestasiPage() {
         </div>
       )}
 
-      {/* Table */}
+
       {!loading && <DataTable rows={INVESTASI_filtered} totalWeighted={INVESTASI_totalWeighted} viewYear={viewYear} viewQuarter={viewQuarter} startEdit={INVESTASI_startEdit} removeRow={INVESTASI_removeRow} logAudit={handleAuditLog} />}
     </div>
   );

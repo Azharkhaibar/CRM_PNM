@@ -3,7 +3,7 @@ import { Notification, useNotificationStore } from '../stores/notification.store
 
 export interface BackendNotification {
   notification_id: number;
-  user_id: number | null; // null untuk broadcast ke semua user
+  user_id: number | null; 
   type: 'info' | 'success' | 'warning' | 'error';
   title: string;
   message: string;
@@ -15,7 +15,7 @@ export interface BackendNotification {
 }
 
 export interface CreateNotificationDto {
-  userId: number | null; // null untuk broadcast ke semua user
+  userId: number | null; 
   type: 'info' | 'success' | 'warning' | 'error';
   title: string;
   message: string;
@@ -29,7 +29,6 @@ export class NotificationService {
 
   private static pollingIntervals = new Map<string, number>();
 
-  // ✅ FIX: Tambahkan debug logging methods
   private static debugLog(action: string, data?: any) {
     console.log(`🔔 [NotificationService] ${action}:`, data || '');
   }
@@ -56,7 +55,6 @@ export class NotificationService {
     return data as T;
   }
 
-  // ✅ FIX: Improved getUserNotifications dengan better error handling
   static async getUserNotifications(userId: string, options?: { unreadOnly?: boolean; limit?: number; page?: number }): Promise<{ notifications: Notification[]; total: number }> {
     try {
       this.debugLog('getUserNotifications', { userId, options });
@@ -96,7 +94,6 @@ export class NotificationService {
     }
   }
 
-  // ✅ FIX: Improved getBroadcastNotifications
   static async getBroadcastNotifications(options?: { unreadOnly?: boolean; limit?: number; page?: number }): Promise<{ notifications: Notification[]; total: number }> {
     try {
       this.debugLog('getBroadcastNotifications', { options });
@@ -132,7 +129,6 @@ export class NotificationService {
     } catch (error) {
       this.errorLog('getBroadcastNotifications', error, { options });
 
-      // ✅ FIX: Fallback yang lebih baik - ambil semua dan filter
       try {
         this.debugLog('Trying fallback for broadcast notifications');
 
@@ -147,7 +143,6 @@ export class NotificationService {
 
         const allData = await this.handleResponse<{ notifications: BackendNotification[]; total: number }>(allResponse);
 
-        // ✅ FIX: Pastikan allData.notifications ada sebelum filter
         const broadcastNotifications = (allData.notifications || []).filter((notif) => notif.user_id === null || notif.user_id === undefined);
 
         const result = {
@@ -163,7 +158,6 @@ export class NotificationService {
       } catch (fallbackError) {
         this.errorLog('Broadcast fallback failed', fallbackError);
 
-        // ✅ FIX: Last resort - return dari store local
         try {
           const store = useNotificationStore.getState();
           const broadcastNotifications = store.getBroadcastNotifications();
@@ -332,7 +326,6 @@ export class NotificationService {
     }
   }
 
-  // ✅ FIX: Improved createLoginNotification
   static async createLoginNotification(userId: number, username: string): Promise<BackendNotification> {
     try {
       this.debugLog('createLoginNotification', { userId, username });
@@ -364,13 +357,11 @@ export class NotificationService {
     } catch (error) {
       this.errorLog('createLoginNotification', error, { userId, username });
 
-      // ✅ FALLBACK: Create local notification
       this.createLocalFallbackNotification(userId, username, 'login');
       throw error;
     }
   }
 
-  // ✅ FIX: Improved createLogoutNotification
   static async createLogoutNotification(userId: number, username: string): Promise<BackendNotification> {
     try {
       this.debugLog('createLogoutNotification', { userId, username });
@@ -402,19 +393,18 @@ export class NotificationService {
     } catch (error) {
       this.errorLog('createLogoutNotification', error, { userId, username });
 
-      // ✅ FALLBACK: Create local notification
       this.createLocalFallbackNotification(userId, username, 'logout');
       throw error;
     }
   }
 
-  // ✅ FIX: Improved createUserStatusBroadcast
+
   static async createUserStatusBroadcast(userId: number, username: string, action: 'login' | 'logout'): Promise<BackendNotification> {
     try {
       this.debugLog('createUserStatusBroadcast', { userId, username, action });
 
       const notificationData: CreateNotificationDto = {
-        userId: null, // null berarti broadcast ke semua user
+        userId: null,
         type: 'info',
         title: action === 'login' ? 'User Logged In' : 'User Logged Out',
         message: action === 'login' ? `User ${username} has logged into the system.` : `User ${username} has logged out from the system.`,
@@ -442,7 +432,6 @@ export class NotificationService {
     }
   }
 
-  // ✅ NEW: Local fallback notification method
   private static createLocalFallbackNotification(userId: number, username: string, action: 'login' | 'logout') {
     try {
       const store = useNotificationStore.getState();
@@ -648,7 +637,6 @@ export class NotificationService {
     }
   }
 
-  // ✅ FIX: Polling untuk real-time updates
   static startPolling(userId: string, interval: number = 15000): number {
     this.debugLog('startPolling', { userId, interval });
 
@@ -686,9 +674,7 @@ export class NotificationService {
     this.debugLog('stopAllPolling - all stopped');
   }
 
-  // ✅ FIX: Improved convertFromBackend
   private static convertFromBackend(backendNotif: BackendNotification): Notification {
-    // Validasi ID sebelum konversi
     const validId = backendNotif.notification_id && !isNaN(backendNotif.notification_id) && backendNotif.notification_id > 0 ? backendNotif.notification_id.toString() : `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
     return {

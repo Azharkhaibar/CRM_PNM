@@ -3,18 +3,19 @@ import { useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useDarkMode } from '../../../shared/components/Darkmodecontext';
 import RiskManagementDashboard from '../components/chartComponents/riskmanagement';
+
 export default function Dashboard() {
   const loc = useLocation();
   const { darkMode } = useDarkMode();
   const [showDialog, setShowDialog] = useState(false);
   const [dialogMessage, setDialogMessage] = useState('');
-  const [activeView, setActiveView] = useState('overview'); // 'overview' atau 'risk-kpi'
+  const [activeView, setActiveView] = useState('overview');
 
   useEffect(() => {
     if (loc.state?.fromLogin) {
       setDialogMessage('✅ Login berhasil! Selamat datang di Dashboard 👋');
       setShowDialog(true);
-      setTimeout(() => setShowDialog(false), 2500);
+      setTimeout(() => setShowDialog(false), 4000);
     }
   }, [loc.state]);
 
@@ -53,14 +54,26 @@ export default function Dashboard() {
   };
 
   const dialogStyle = {
-    backgroundColor: darkMode ? 'var(--card-bg)' : '#ffffff',
-    color: darkMode ? 'var(--text-primary)' : '#1f2937',
-    padding: '1.5rem',
-    borderRadius: '0.75rem',
-    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
-    maxWidth: '320px',
-    width: '90%',
-    border: `1px solid ${darkMode ? 'var(--border-color)' : '#e5e7eb'}`,
+    backgroundColor: darkMode ? '#1f2937' : '#ffffff',
+    color: darkMode ? '#f9fafb' : '#1f2937',
+    padding: '1.25rem',
+    borderRadius: '1rem',
+    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 10px 10px -5px rgba(0, 0, 0, 0.1)',
+    maxWidth: '380px',
+    width: '100%',
+    border: `1px solid ${darkMode ? '#374151' : '#e5e7eb'}`,
+    position: 'relative',
+    overflow: 'hidden',
+  };
+
+  const progressBarStyle = {
+    position: 'absolute',
+    bottom: '0',
+    left: '0',
+    height: '3px',
+    backgroundColor: '#10b981',
+    width: '100%',
+    transformOrigin: 'left',
   };
 
   const tabButtonStyle = (isActive) => ({
@@ -141,11 +154,45 @@ export default function Dashboard() {
 
       <AnimatePresence>
         {showDialog && (
-          <motion.div className="fixed inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-50" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.8, opacity: 0 }} transition={{ duration: 0.3 }} style={dialogStyle}>
-              <p className="text-lg font-semibold">Welcome</p>
-              <p className="mt-2">{dialogMessage}</p>
-            </motion.div>
+          <motion.div
+            className="fixed bottom-6 right-6 z-50"
+            initial={{ opacity: 0, x: 100, scale: 0.8 }}
+            animate={{ opacity: 1, x: 0, scale: 1 }}
+            exit={{ opacity: 0, x: 100, scale: 0.8 }}
+            transition={{
+              type: 'spring',
+              stiffness: 300,
+              damping: 25,
+            }}
+          >
+            <div style={dialogStyle} className="relative">
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center">
+                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-lg mb-1">Welcome Back!</h3>
+                  <p className="text-sm opacity-90 leading-relaxed">Login berhasil! Selamat datang di Dashboard Risk Management</p>
+                  <div className="flex items-center gap-2 mt-2 text-xs text-gray-500 dark:text-gray-400">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>Baru saja</span>
+                  </div>
+                </div>
+
+                <button onClick={() => setShowDialog(false)} className="flex-shrink-0 w-6 h-6 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 flex items-center justify-center transition-colors">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              <motion.div style={progressBarStyle} initial={{ scaleX: 1 }} animate={{ scaleX: 0 }} transition={{ duration: 4, ease: 'linear' }} />
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

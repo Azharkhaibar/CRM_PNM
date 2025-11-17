@@ -8,13 +8,11 @@ export default function DataTable({
   viewQuarter,
   startEdit,
   removeRow,
-  logAudit, // Tambahkan prop untuk fungsi audit log
+  logAudit, 
 }) {
   const filtered = rows;
 
-  // Fungsi untuk handle edit dengan audit log
   const handleEdit = (rowData) => {
-    // Log aksi edit ke audit log
     if (logAudit) {
       logAudit({
         aksi: 'EDIT',
@@ -26,14 +24,13 @@ export default function DataTable({
     startEdit(rowData);
   };
 
-  // Fungsi untuk handle delete dengan audit log
+
   const handleDelete = async (rowData) => {
-    // Konfirmasi penghapusan
     const isConfirmed = window.confirm(`Apakah Anda yakin ingin menghapus data investasi?\nParameter: ${rowData.parameter || rowData.sectionLabel}\nIndicator: ${rowData.indikator}`);
 
     if (isConfirmed) {
       try {
-        // Log aksi delete ke audit log
+  
         if (logAudit) {
           logAudit({
             aksi: 'HAPUS',
@@ -43,7 +40,6 @@ export default function DataTable({
           });
         }
 
-        // Panggil fungsi removeRow asli
         await removeRow(rowData);
       } catch (error) {
         // Log jika gagal
@@ -58,7 +54,6 @@ export default function DataTable({
         console.error('Error deleting row:', error);
       }
     } else {
-      // Log jika user membatalkan
       if (logAudit) {
         logAudit({
           aksi: 'HAPUS',

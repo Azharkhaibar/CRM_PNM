@@ -111,7 +111,6 @@ export class UsersService {
 
   async getUserById(user_id: number): Promise<any> {
     try {
-      // Simple query tanpa relations dulu
       const user = await this.usersRepository.findOne({
         where: { user_id },
       });

@@ -76,7 +76,6 @@ export const InvestasiService = {
     }
   },
 
-  // Di investasi.service.ts - perbaiki createInvestasi
   async createInvestasi(data: CreateInvestasiDto) {
   try {
     console.log('Creating investasi with data:', JSON.stringify(data, null, 2));
@@ -98,7 +97,6 @@ export const InvestasiService = {
       console.error('Status Text:', error.response.statusText);
       console.error('Data:', error.response.data);
       
-      // More detailed logging for validation errors
       if (error.response.data && typeof error.response.data === 'object') {
         console.error('Error object structure:', {
           keys: Object.keys(error.response.data),

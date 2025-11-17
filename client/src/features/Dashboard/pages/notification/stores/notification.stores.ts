@@ -4,7 +4,7 @@ import { persist } from 'zustand/middleware';
 
 export interface Notification {
   id: string;
-  userId: string; // 'broadcast' untuk notifikasi ke semua user
+  userId: string; 
   type: 'info' | 'success' | 'warning' | 'error';
   title: string;
   message: string;

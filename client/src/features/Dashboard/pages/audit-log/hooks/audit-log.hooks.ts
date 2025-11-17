@@ -10,6 +10,11 @@ interface AdditionalLogData {
   metadata?: Record<string, unknown>;
 }
 
+interface DeleteMultipleResponse {
+  message: string;
+  deletedCount: number;
+}
+
 interface AuditLogResponse {
   data: any;
   total?: number;
@@ -25,12 +30,48 @@ interface PaginationParams {
   end_date?: string;
 }
 
+// ✅ SESUAIKAN DENGAN STRUCTURE BACKEND
+interface User {
+  user_id: number;
+  userID: string;
+  role: string;
+  gender: string;
+}
+
+interface AuditLog {
+  id: number;
+  userId: number | null;
+  user: User | null;
+  action: string;
+  module: string;
+  description: string;
+  endpoint: string | null;
+  ip_address: string;
+  isSuccess: boolean;
+  timestamp: string;
+  metadata: any;
+}
+
+interface AuditLogListResponse {
+  data: AuditLog[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+interface AuditLogStats {
+  today: Array<{ action: string; count: string }>;
+  week: Array<{ action: string; count: string }>;
+  month: Array<{ action: string; count: string }>;
+  modules: string[];
+}
+
 export const useAuditLog = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<AuditLogResponse | null>(null);
 
-  // Helper function untuk create log dengan format standar
   const createLog = useCallback(
     async (logData: { action: string; module: string; description: string; endpoint?: string; ipAddress?: string; isSuccess?: boolean; userId?: number | null; metadata?: Record<string, unknown> }): Promise<any> => {
       try {
@@ -109,7 +150,7 @@ export const useAuditLog = () => {
     async (description: string, additionalData: AdditionalLogData = {}): Promise<any> => {
       return createLog({
         action: 'LOGIN',
-        module: 'USER',
+        module: 'USER_MANAGEMENT',
         description,
         ...additionalData,
       });
@@ -121,7 +162,7 @@ export const useAuditLog = () => {
     async (description: string, additionalData: AdditionalLogData = {}): Promise<any> => {
       return createLog({
         action: 'LOGOUT',
-        module: 'USER',
+        module: 'USER_MANAGEMENT',
         description,
         ...additionalData,
       });
@@ -130,7 +171,7 @@ export const useAuditLog = () => {
   );
 
   // Get audit logs dengan filter
-  const getAuditLogs = useCallback(async (params: PaginationParams = {}): Promise<any> => {
+  const getAuditLogs = useCallback(async (params: PaginationParams = {}): Promise<AuditLogListResponse> => {
     setLoading(true);
     setError(null);
 
@@ -147,7 +188,7 @@ export const useAuditLog = () => {
   }, []);
 
   // Get stats
-  const getStats = useCallback(async (): Promise<any> => {
+  const getStats = useCallback(async (): Promise<AuditLogStats> => {
     setLoading(true);
     setError(null);
 
@@ -164,7 +205,7 @@ export const useAuditLog = () => {
   }, []);
 
   // Export to Excel
-  const exportToExcel = useCallback(async (params: PaginationParams = {}): Promise<any> => {
+  const exportToExcel = useCallback(async (params: PaginationParams = {}): Promise<{ success: boolean; filename: string }> => {
     setLoading(true);
     setError(null);
 
@@ -177,6 +218,100 @@ export const useAuditLog = () => {
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  // DELETE FUNCTION SECTION
+
+  // ✅ DELETE FUNCTIONS
+  const deleteAuditLog = useCallback(async (logId: number): Promise<{ message: string }> => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const result = await auditLogServices.deleteAuditLog(logId);
+      return result;
+    } catch (err: any) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const deleteMultipleAuditLogs = useCallback(async (logIds: number[]): Promise<DeleteMultipleResponse> => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      if (!logIds || logIds.length === 0) {
+        throw new Error('tidak ada log yg dipilih untuk dihapus');
+      }
+      const result = await auditLogServices.deleteMultipleAuditLogs(logIds);
+      return result;
+    } catch (err: any) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const deleteByFilter = useCallback(async (filters: { start_date?: string; end_date?: string; action?: string; module?: string }): Promise<DeleteMultipleResponse> => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const result = await auditLogServices.deleteByFilter(filters);
+      return result;
+    } catch (err: any) {
+      const errorMessage = err.message || 'Gagal menghapus log berdasarkan filter';
+      setError(errorMessage);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const deleteAllAuditLogs = useCallback(async (): Promise<DeleteMultipleResponse> => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      if (!window.confirm('Apakah Anda yakin ingin menghapus SEMUA log audit? Tindakan ini tidak dapat dibatalkan!')) {
+        throw new Error('Operasi dibatalkan oleh pengguna');
+      }
+
+      const result = await auditLogServices.deleteAllAuditLogs();
+      return result;
+    } catch (err: any) {
+      const errorMessage = err.message || 'Gagal menghapus semua log audit';
+      setError(errorMessage);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Utility function untuk mendapatkan display name dari user
+  const getUserDisplayName = useCallback((user: User | null): string => {
+    if (!user) return 'System';
+
+    // Gunakan userID sebagai display name
+    if (user.userID) {
+      return user.userID;
+    }
+
+    return `User ${user.user_id}`;
+  }, []);
+
+  const getUserRoleDisplay = useCallback((user: User | null): string => {
+    if (!user) return 'System';
+    return user.role || 'User';
+  }, []);
+
+  const formatTimestamp = useCallback((timestamp: string): string => {
+    if (!timestamp) return '-';
+    return new Date(timestamp).toLocaleString('id-ID');
   }, []);
 
   // Clear error
@@ -211,6 +346,17 @@ export const useAuditLog = () => {
     getStats,
     exportToExcel,
 
+    // ✅ DELETE OPERATIONS
+    deleteAuditLog,
+    deleteMultipleAuditLogs,
+    deleteByFilter,
+    deleteAllAuditLogs,
+
+    // ✅ UTILITY FUNCTIONS
+    getUserDisplayName,
+    getUserRoleDisplay,
+    formatTimestamp,
+
     // Utility functions
     clearError,
     reset,
@@ -218,4 +364,4 @@ export const useAuditLog = () => {
 };
 
 // Export types untuk digunakan di komponen lain
-export type { AdditionalLogData, AuditLogResponse, PaginationParams };
+export type { AdditionalLogData, AuditLogResponse, PaginationParams, AuditLogListResponse, AuditLog, User, AuditLogStats };

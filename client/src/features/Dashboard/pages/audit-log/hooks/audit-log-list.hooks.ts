@@ -1,98 +1,201 @@
+// hooks/audit-log-list.hooks.ts
 import { useState, useEffect, useCallback } from 'react';
-import { useAuditLog } from './audit-log.hooks';
+import auditLogServices from '../services/audit-log.services';
 
-export const useAuditLogList = (initialParams = {}) => {
-  const [params, setParams] = useState({
-    page: 1,
-    limit: 20,
-    ...initialParams,
-  });
+interface Pagination {
+  page: number;
+  limit: number;
+  totalPages: number;
+}
 
-  const [auditLogs, setAuditLogs] = useState([]);
+interface Filters {
+  start_date?: string;
+  end_date?: string;
+  action?: string;
+  module?: string;
+  search?: string;
+}
+
+interface User {
+  user_id: number;
+  userID: string;
+  role: string;
+  gender: string;
+}
+
+interface AuditLog {
+  id: number;
+  userId: number | null;
+  user: User | null;
+  action: string;
+  module: string;
+  description: string;
+  endpoint: string | null;
+  ip_address: string;
+  isSuccess: boolean;
+  timestamp: string;
+  metadata: any;
+}
+
+interface AuditLogResponse {
+  data: AuditLog[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export const useAuditLogList = () => {
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [total, setTotal] = useState(0);
-  const [pagination, setPagination] = useState({
+  const [pagination, setPagination] = useState<Pagination>({
     page: 1,
     limit: 20,
-    totalPages: 0,
+    totalPages: 1,
   });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const { loading, error, data, getAuditLogs: fetchAuditLogs, clearError } = useAuditLog();
+  const fetchAuditLogs = useCallback(async (page: number = 1, filters: Filters = {}) => {
+    try {
+      setLoading(true);
+      setError(null);
 
-  // Load audit logs
-  const loadAuditLogs = useCallback(
-    async (newParams = {}) => {
-      const mergedParams = { ...params, ...newParams };
-      setParams(mergedParams);
+      const queryParams = {
+        page,
+        limit: 20,
+        ...filters,
+      };
 
-      try {
-        const result = await fetchAuditLogs(mergedParams);
-        if (result) {
-          setAuditLogs(result.data || []);
-          setTotal(result.total || 0);
-          setPagination({
-            page: mergedParams.page,
-            limit: mergedParams.limit,
-            totalPages: Math.ceil((result.total || 0) / mergedParams.limit),
-          });
-        }
-      } catch (err) {
-        // Error sudah dihandle oleh useAuditLog
-        console.error('Failed to load audit logs:', err);
-      }
-    },
-    [params, fetchAuditLogs]
-  );
+      console.log('📡 Fetching audit logs with params:', queryParams);
 
-  // Initial load
-  useEffect(() => {
-    loadAuditLogs();
+      const response: AuditLogResponse = await auditLogServices.getAuditLogs(queryParams);
+
+      console.log('✅ Audit logs response:', {
+        dataCount: response.data?.length,
+        total: response.total,
+        page: response.page,
+        hasUserData: response.data?.some((log) => log.user !== null),
+      });
+
+      response.data?.forEach((log, index) => {
+        console.log(`📝 Log di useAuditLog ${index + 1}:`, {
+          id: log.id,
+          userId: log.userId,
+          hasUser: !!log.user,
+          userID: log.user?.userID,
+          userRole: log.user?.role,
+          userGender: log.user?.gender,
+        });
+      });
+
+      setAuditLogs(response.data || []);
+      setTotal(response.total || 0);
+      setPagination({
+        page: response.page || 1,
+        limit: response.limit || 20,
+        totalPages: response.totalPages || 1,
+      });
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || err.message || 'Gagal memuat data audit';
+      setError(errorMessage);
+      console.error('❌ Error fetching audit logs:', err);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  // Search handler
+  const deleteAuditLog = useCallback(
+    async (logId: number): Promise<{ message: string }> => {
+      try {
+        setLoading(true);
+        setError(null);
+        const result = await auditLogServices.deleteAuditLog(logId);
+        await fetchAuditLogs(pagination.page);
+        return result;
+      } catch (err: any) {
+        const errorMessage = err.message || 'gagal hapus log audit';
+        setError(errorMessage);
+        throw err;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [fetchAuditLogs, pagination.page]
+  );
+
+  const deleteMultipleAuditLogs = useCallback(
+    async (logIds: number[]): Promise<{ message: string; deletedCount: number }> => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        if (!logIds || logIds.length === 0) {
+          throw new Error('Tidak ada log yang dipilih untuk dihapus');
+        }
+
+        const result = await auditLogServices.deleteMultipleAuditLogs(logIds);
+
+        await fetchAuditLogs(pagination.page);
+
+        return result;
+      } catch (err: any) {
+        const errorMessage = err.message || 'Gagal menghapus log audit';
+        setError(errorMessage);
+        throw err;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [fetchAuditLogs, pagination.page]
+  );
+
   const handleSearch = useCallback(
-    (searchTerm) => {
-      loadAuditLogs({ search: searchTerm, page: 1 });
+    (search: string) => {
+      fetchAuditLogs(1, { search });
     },
-    [loadAuditLogs]
+    [fetchAuditLogs]
   );
 
-  // Filter handler
   const handleFilter = useCallback(
-    (filters) => {
-      loadAuditLogs({ ...filters, page: 1 });
+    (filters: Filters) => {
+      fetchAuditLogs(1, filters);
     },
-    [loadAuditLogs]
+    [fetchAuditLogs]
   );
 
-  // Pagination handler
   const handlePageChange = useCallback(
-    (newPage) => {
-      loadAuditLogs({ page: newPage });
+    (page: number) => {
+      fetchAuditLogs(page);
     },
-    [loadAuditLogs]
+    [fetchAuditLogs]
   );
 
-  // Refresh data
+  const clearError = useCallback(() => {
+    setError(null);
+  }, []);
+
   const refresh = useCallback(() => {
-    loadAuditLogs();
-  }, [loadAuditLogs]);
+    fetchAuditLogs(pagination.page);
+  }, [fetchAuditLogs, pagination.page]);
+
+  useEffect(() => {
+    fetchAuditLogs();
+  }, [fetchAuditLogs]);
 
   return {
-    // State
     auditLogs,
     total,
     pagination,
     loading,
     error,
-
-    // Actions
     handleSearch,
     handleFilter,
     handlePageChange,
-    refresh,
-    clearError,
+    deleteAuditLog,
+    deleteMultipleAuditLogs,
 
-    // Current params
-    currentParams: params,
+    clearError,
+    refresh,
   };
 };

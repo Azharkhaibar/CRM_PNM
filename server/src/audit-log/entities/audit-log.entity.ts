@@ -39,8 +39,8 @@ export class AuditLog {
   @Column({ name: 'user_id', nullable: true })
   userId: number | null; // <-- WAJIB ADA
 
-  @ManyToOne(() => User, { onDelete: 'SET NULL', nullable: true })
-  @JoinColumn({ name: 'user_id' })
+  @ManyToOne(() => User, { onDelete: 'SET NULL', nullable: true, eager: true })
+  @JoinColumn({ name: 'user_id', referencedColumnName: 'user_id' })
   user: User | null;
 
   @Column({

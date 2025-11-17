@@ -27,6 +27,7 @@ export class CreateAuditLogDto {
   endpoint?: string;
 
   @IsString()
+  @IsOptional()
   ip_address: string;
 
   @IsBoolean()

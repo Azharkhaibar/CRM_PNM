@@ -88,11 +88,9 @@ export function YearInput({ label = 'Tahun', value, onChange, className = '' }) 
   );
 }
 
-/* RiskField — versi modern */
 export function RiskField({ label, value, onChange, color = '#93D24D', textColor = '#111827', placeholder, className = '' }) {
   return (
     <div className={`${className} rounded-lg overflow-hidden shadow-md`}>
-      {/* Header berwarna */}
       <div
         style={{
           background: color,

@@ -58,8 +58,8 @@ __decorate([
     __metadata("design:type", Object)
 ], AuditLog.prototype, "userId", void 0);
 __decorate([
-    (0, typeorm_1.ManyToOne)(() => user_entity_1.User, { onDelete: 'SET NULL', nullable: true }),
-    (0, typeorm_1.JoinColumn)({ name: 'user_id' }),
+    (0, typeorm_1.ManyToOne)(() => user_entity_1.User, { onDelete: 'SET NULL', nullable: true, eager: true }),
+    (0, typeorm_1.JoinColumn)({ name: 'user_id', referencedColumnName: 'user_id' }),
     __metadata("design:type", Object)
 ], AuditLog.prototype, "user", void 0);
 __decorate([
