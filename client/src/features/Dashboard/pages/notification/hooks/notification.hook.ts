@@ -24,12 +24,10 @@ export const useUserNotifications = () => {
 
   const userId = user?.user_id?.toString();
 
-  // ✅ Consolidated activity detection logic
   const getLoginLogoutNotifications = useCallback((notifications: Notification[]) => {
     return notifications.filter((n) => (n.category === 'security' || n.category === 'system') && (n.metadata?.activity_type === 'login' || n.metadata?.activity_type === 'logout' || n.metadata?.activity_type === 'user_status'));
   }, []);
 
-  // ✅ Improved activity stats calculation
   const getActivityStats = useCallback(
     (notifications: Notification[]) => {
       const loginLogoutNotifs = getLoginLogoutNotifications(notifications);
@@ -63,7 +61,6 @@ export const useUserNotifications = () => {
     [getLoginLogoutNotifications]
   );
 
-  // ✅ Improved sync function with better error handling
   const syncNotifications = useCallback(
     async (userId: string) => {
       if (!userId) return;
@@ -96,34 +93,27 @@ export const useUserNotifications = () => {
     [syncWithBackendData]
   );
 
-  // ✅ FIXED: Setup polling dan sync - CLEAN VERSION
   useEffect(() => {
     const currentUserId = user?.user_id?.toString();
 
-    // Always cleanup previous polling first
     if (pollingRef.current && userIdRef.current) {
       NotificationService.stopPolling(userIdRef.current);
       pollingRef.current = null;
       userIdRef.current = null;
     }
 
-    // Only setup polling if we have a user
     if (!currentUserId) {
       return;
     }
 
-    // Store current user ID
     userIdRef.current = currentUserId;
 
-    // Initial sync
     syncNotifications(currentUserId);
 
-    // Start polling
     pollingRef.current = NotificationService.startPolling(currentUserId, 15000);
 
     console.log('🔔 Started notification polling for user:', currentUserId);
 
-    // Cleanup on unmount or user change
     return () => {
       if (pollingRef.current && userIdRef.current) {
         NotificationService.stopPolling(userIdRef.current);
@@ -133,7 +123,6 @@ export const useUserNotifications = () => {
     };
   }, [user?.user_id, syncNotifications]);
 
-  // ✅ Memoized data calculations
   const allNotificationsForUser = useMemo(() => {
     return userId ? getAllNotificationsForUser(userId) : [];
   }, [notifications, userId, getAllNotificationsForUser]);
@@ -146,7 +135,6 @@ export const useUserNotifications = () => {
 
   const activityStats = useMemo(() => getActivityStats(allNotificationsForUser), [allNotificationsForUser, getActivityStats]);
 
-  // ✅ Consolidated notification creation
   const createNotification = useCallback(
     async (type: NotificationInput['type'], title: string, message: string, category?: string, metadata?: Record<string, any>) => {
       if (!userId) return null;
@@ -225,9 +213,7 @@ export const useUserNotifications = () => {
     }
   }, [userId, syncNotifications]);
 
-  // ✅ Debug logging in development
   useEffect(() => {
-    // Di Vite, gunakan import.meta.env.DEV
     if (import.meta.env.DEV && allNotificationsForUser.length > 0) {
       console.log('📊 Notification Stats:', {
         total: allNotificationsForUser.length,
@@ -238,7 +224,6 @@ export const useUserNotifications = () => {
   }, [allNotificationsForUser.length, totalUnreadCount, loginLogoutNotifications.length]);
 
   return {
-    // Data
     notifications: allNotificationsForUser,
     unreadCount: totalUnreadCount,
     hasNotifications: allNotificationsForUser.length > 0,
@@ -247,7 +232,6 @@ export const useUserNotifications = () => {
     loginLogoutNotifications,
     activityStats,
 
-    // Operations
     addNotification: createNotification,
     markAsRead: markAsReadWithSync,
     removeNotification: removeNotificationWithSync,
@@ -256,13 +240,11 @@ export const useUserNotifications = () => {
     removeAllNotifications: clearAll,
     refreshNotifications,
 
-    // Convenience methods
     addSuccessNotification,
     addErrorNotification,
     addWarningNotification,
     addInfoNotification,
 
-    // Stats
     stats: {
       total: allNotificationsForUser.length,
       unread: totalUnreadCount,

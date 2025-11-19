@@ -204,7 +204,6 @@ export const useUserNotificationsWithSync = (): UseUserNotificationsWithSyncRetu
       console.log('📦 Sync result:', {
         notificationCount: result.notifications.length,
         total: result.total,
-        // ✅ DEBUG: Log semua notifikasi untuk inspeksi
         notifications: result.notifications.map((n) => ({
           id: n.id,
           title: n.title,
@@ -214,7 +213,6 @@ export const useUserNotificationsWithSync = (): UseUserNotificationsWithSyncRetu
         })),
       });
 
-      // ✅ PROTECTION 3: Only sync if we have meaningful data
       if (result.notifications.length > 0) {
         syncWithBackendData(result.notifications);
         console.log('✅ Sync completed successfully');
