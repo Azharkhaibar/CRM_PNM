@@ -1,7 +1,9 @@
 /* Default light mode */
+
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@100..900&display=swap');
 body {
-  background-color: #f9fafb;
   color: #111;
+  font-family: 'Montserrat', sans-serif;
   transition: background-color 0.3s, color 0.3s;
 }
 

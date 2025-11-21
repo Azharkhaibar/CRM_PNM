@@ -134,21 +134,18 @@ export function exportInvestasiToExcel(filteredRows, viewYear, viewQuarter) {
   ];
   ws['!freeze'] = { xSplit: 0, ySplit: 2 };
 
-  // merge vertikal per entri
   const firstDataRow = 2;
   mainRowIndexes.forEach((idx) => {
     const rMain = firstDataRow + idx;
-    ws['!merges'].push({ s: { r: rMain, c: 0 }, e: { r: rMain + 2, c: 0 } }); // No
-    ws['!merges'].push({ s: { r: rMain, c: 1 }, e: { r: rMain + 2, c: 1 } }); // Bobot Section
-    ws['!merges'].push({ s: { r: rMain, c: 2 }, e: { r: rMain + 2, c: 2 } }); // Section
-    ws['!merges'].push({ s: { r: rMain, c: 16 }, e: { r: rMain + 2, c: 16 } }); // Keterangan
+    ws['!merges'].push({ s: { r: rMain, c: 0 }, e: { r: rMain + 2, c: 0 } }); 
+    ws['!merges'].push({ s: { r: rMain, c: 1 }, e: { r: rMain + 2, c: 1 } });
+    ws['!merges'].push({ s: { r: rMain, c: 2 }, e: { r: rMain + 2, c: 2 } }); 
+    ws['!merges'].push({ s: { r: rMain, c: 16 }, e: { r: rMain + 2, c: 16 } }); 
   });
 
-  // merge horizontal summary (c=13..14)
   const summaryRowAbs = firstDataRow + summaryRowIndexRel;
   ws['!merges'].push({ s: { r: summaryRowAbs, c: 13 }, e: { r: summaryRowAbs, c: 14 } });
 
-  // header style
   const H = COLORS.headerDarkBlue;
   [0, 1, 5, 6, 7, 13, 14, 16].forEach((c) => setStyle(ws, 0, c, headerStyle(H)));
   [2, 3, 4].forEach((c) => setStyle(ws, 0, c, headerStyle(H)));
@@ -160,7 +157,6 @@ export function exportInvestasiToExcel(filteredRows, viewYear, viewQuarter) {
   setStyle(ws, 0, 15, headerStyle(COLORS.headerWeighted, '#000'));
   [2, 3, 4].forEach((c) => setStyle(ws, 1, c, headerStyle(H)));
 
-  // body styling
   const lastDataRow = firstDataRow + dataRows.length - 1;
   for (let r = firstDataRow; r <= lastDataRow; r++) {
     const isPembilang = (r - firstDataRow) % 3 === 1;
@@ -174,12 +170,10 @@ export function exportInvestasiToExcel(filteredRows, viewYear, viewQuarter) {
       cell.s = { ...(cell.s || {}), ...bodyStyle };
       const hasValue = !(cell.v === '' || cell.v == null);
 
-      // Biru kalau ada isi: No(0), Bobot Section(1), Bobot Indikator(5), Sumber Risiko(6), Dampak(7)
       if ([0, 1, 5, 6, 7].includes(c) && hasValue) {
         cell.s = withFill(cell.s, COLORS.blueFill);
       }
 
-      // Low..High (center + hijau muda jika ada isi)
       if (c >= 8 && c <= 12) {
         if (hasValue) cell.s = withFill(cell.s, COLORS.lightGreen);
         cell.s.alignment = { ...(cell.s.alignment || {}), horizontal: 'center' };
@@ -201,7 +195,6 @@ export function exportInvestasiToExcel(filteredRows, viewYear, viewQuarter) {
         }
       }
 
-      // Peringkat (heatmap)
       if (c === 14) {
         cell.s.alignment = { ...(cell.s.alignment || {}), horizontal: 'center' };
         if (hasValue) {
@@ -228,7 +221,6 @@ export function exportInvestasiToExcel(filteredRows, viewYear, viewQuarter) {
         }
       }
 
-      // Weighted (center + abu-abu kalau ada)
       if (c === 15) {
         cell.s.alignment = { ...(cell.s.alignment || {}), horizontal: 'center' };
         if (hasValue) {
@@ -238,13 +230,11 @@ export function exportInvestasiToExcel(filteredRows, viewYear, viewQuarter) {
         }
       }
 
-      // Keterangan center
       if (c === 16) {
         cell.s.alignment = { ...(cell.s.alignment || {}), horizontal: 'center' };
       }
     }
 
-    // Aksen "web look" baris utama: Section/SubNo/Indikator hanya jika ada isi
     const offset = (r - firstDataRow) % 3;
     if (offset === 0) {
       [2, 3, 4].forEach((c) => {

@@ -65,25 +65,25 @@ const Sidebar = () => {
   const sidebarClass = `w-64 h-screen border-r p-4 flex flex-col transition-colors duration-300 ${darkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-200 text-gray-800'}`;
 
   const navItemClass = (active) =>
-    `block py-2 px-4 rounded-lg text-[16px] font-medium transition-all duration-200 ${
-      active ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25' : darkMode ? 'text-gray-300 hover:bg-gray-700 hover:text-white hover:shadow-lg' : 'text-gray-700 hover:bg-blue-50 hover:text-blue-700 hover:shadow-md'
+    `block py-3 gap px-4 rounded-lg text-[16px] font-medium transition-all duration-200 ${
+      active ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25' : darkMode ? 'text-gray-300 hover:bg-gray-700 hover:text-white' : 'text-gray-700 hover:bg-blue-50 hover:text-blue-700 '
     }`;
 
   const riskButtonClass = (active) =>
     `w-full flex items-center justify-between py-2 px-4 rounded-lg text-[16px] font-medium transition-all duration-200 ${
-      active ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25' : darkMode ? 'text-gray-300 hover:bg-gray-700 hover:text-white hover:shadow-lg' : 'text-gray-700 hover:bg-blue-50 hover:text-blue-700 hover:shadow-md'
+      active ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25' : darkMode ? 'text-gray-300 hover:bg-gray-700 hover:text-white' : 'text-gray-700 hover:bg-blue-50 hover:text-blue-700 '
     }`;
 
   const riskSubItemClass = (active) =>
     `block py-2 px-4 rounded-lg text-[14px] font-normal transition-all duration-200 ml-2 ${
-      active ? 'bg-blue-500 text-white shadow-md' : darkMode ? 'text-gray-400 hover:bg-gray-700 hover:text-white' : 'text-gray-600 hover:bg-blue-100 hover:text-blue-600'
+      active ? 'bg-blue-500 text-white' : darkMode ? 'text-gray-400 hover:bg-gray-700 hover:text-white' : 'text-gray-600 hover:bg-blue-100 hover:text-blue-600'
     }`;
 
   const borderClass = darkMode ? 'border-gray-600' : 'border-gray-200';
 
   const userSectionClass = `mt-auto relative flex items-center gap-3 p-3 rounded-lg border transition-colors duration-300 ${darkMode ? 'bg-gray-700 border-gray-600 hover:bg-gray-600' : 'bg-gray-50 border-gray-200 hover:bg-gray-100'}`;
 
-  const dropdownClass = `absolute bottom-full mb-2 left-0 w-64 border rounded-xl shadow-2xl p-3 z-50 backdrop-blur-sm transition-colors duration-300 ${
+  const dropdownClass = `absolute bottom-full mb-2 left-0 w-64 border rounded-xl p-3 z-50 backdrop-blur-sm transition-colors duration-300 ${
     darkMode ? 'bg-gray-700/95 border-gray-600 text-white' : 'bg-white/95 border-gray-200 text-gray-800'
   }`;
 
@@ -92,10 +92,10 @@ const Sidebar = () => {
   const dividerClass = `my-3 border-t transition-colors duration-300 ${darkMode ? 'border-gray-600' : 'border-gray-200'}`;
 
   const divisionButtonClass = `w-full p-3 rounded-xl border transition-all duration-300 cursor-pointer group ${
-    darkMode ? 'bg-gray-700 border-gray-600 hover:bg-gray-600 hover:border-gray-500' : 'bg-white border-gray-200 hover:bg-blue-50 hover:border-blue-200 hover:shadow-md'
+    darkMode ? 'bg-gray-700 border-gray-600 hover:bg-gray-600 hover:border-gray-500' : 'bg-white border-gray-200 hover:bg-blue-50 hover:border-blue-200'
   }`;
 
-  const divisionDropdownClass = `absolute top-full left-0 right-0 mt-2 border rounded-xl shadow-2xl p-3 z-50 backdrop-blur-sm transition-colors duration-300 ${
+  const divisionDropdownClass = `absolute top-full left-0 right-0 mt-2 border rounded-xl  p-3 z-50 backdrop-blur-sm transition-colors duration-300 ${
     darkMode ? 'bg-gray-700/95 border-gray-600 text-white' : 'bg-white/95 border-gray-200 text-gray-800'
   }`;
 
@@ -143,7 +143,7 @@ const Sidebar = () => {
       <style>{scrollbarClass}</style>
 
       <div className={sidebarClass}>
-        <div className="flex justify-center mb-8 mt-[25px] flex-shrink-0">
+        <div className="flex justify-center mb-8 mt-[25\px] flex-shrink-0">
           <img src={logo} alt="PNM" className="w-40 h-auto transition-all duration-300 hover:scale-105" />
         </div>
 
@@ -152,7 +152,7 @@ const Sidebar = () => {
             <div className={divisionButtonClass} onClick={() => setDivisionDropdownOpen(!divisionDropdownOpen)}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${selectedDivision.color} text-white shadow-md`}>
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${selectedDivision.color} text-white `}>
                     <FaBuilding className="text-sm" />
                   </div>
                   <div className="flex flex-col items-start">
@@ -205,11 +205,11 @@ const Sidebar = () => {
                 </Link>
 
                 <Link to="#" className={navItemClass(isActive('/dashboard/ras'))}>
-                  RAS
+                  Risk Appetite Statement
                 </Link>
                 <div className="space-y-1">
-                  <button onClick={() => setOpenRisk(!openRisk)} className={riskButtonClass(isActive('/dashboard/risk-form'))}>
-                    <span className="flex items-center gap-2"> Risk Profile</span>
+                  <button onClick={() => setOpenRisk(!openRisk)} className={`${riskButtonClass(isActive('/dashboard/risk-form'))} w-full flex justify-between`}>
+                    <span className="flex gap-2 text-left">Profil Resiko Holding</span>
                     {openRisk ? <FaChevronUp className="text-xs" /> : <FaChevronDown className="text-xs" />}
                   </button>
 
@@ -237,7 +237,7 @@ const Sidebar = () => {
                 </Link>
 
                 <Link to="/dashboard/report" className={navItemClass(isActive('/dashboard/report', true))}>
-                  Report
+                  Laporan
                 </Link>
 
                 <div className={dividerClass} />
@@ -258,7 +258,7 @@ const Sidebar = () => {
 
         <div className={userSectionClass} ref={menuRef}>
           <button onClick={() => setMenuOpen(!menuOpen)} className="flex items-center gap-3 w-full hover:opacity-80 transition-opacity">
-            <Avatar src={user?.photoURL} name={user?.userID || 'User'} size="44" round color={darkMode ? '#60A5FA' : '#2563EB'} className="flex-shrink-0 shadow-md" />
+            <Avatar src={user?.photoURL} name={user?.userID || 'User'} size="44" round color={darkMode ? '#60A5FA' : '#2563EB'} className="flex-shrink-0" />
             <div className="flex-1 flex flex-col items-start justify-center min-w-0">
               <div className={`font-semibold text-left truncate w-full text-sm ${darkMode ? 'text-white' : 'text-gray-800'}`}>{user?.userID || 'Nama User'}</div>
               <div className={`text-xs text-left truncate w-full ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>

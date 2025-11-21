@@ -49,26 +49,24 @@ const Investasi = () => {
     <div className="">
       <h1 className="text-3xl font-bold mb-6">Risk Form - Investasi</h1>
 
-      {/* ==== TAB NAVIGATION ==== */}
       <div className="mb-6 border-b border-gray-200">
         <nav className="flex space-x-8">
           <button
             onClick={() => setActiveTab('investasi')}
             className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'investasi' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
           >
-            Investasi
+            Resiko Inheren
           </button>
 
           <button
             onClick={() => setActiveTab('kpmr')}
             className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'kpmr' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
           >
-            KPMR Investasi
+            Kualitas Penerapan Manajemen Resiko (KPMR)
           </button>
         </nav>
       </div>
 
-      {/* ==== TAB CONTENT ==== */}
       <div className="bg-white rounded-lg shadow-md p-6">
         {activeTab === 'investasi' && (
           <div>
