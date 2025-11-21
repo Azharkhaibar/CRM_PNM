@@ -144,11 +144,9 @@ export function exportInvestasiToExcel(filteredRows, viewYear, viewQuarter) {
     ws['!merges'].push({ s: { r: rMain, c: 16 }, e: { r: rMain + 2, c: 16 } }); // Keterangan
   });
 
-  // merge horizontal summary (c=13..14)
   const summaryRowAbs = firstDataRow + summaryRowIndexRel;
   ws['!merges'].push({ s: { r: summaryRowAbs, c: 13 }, e: { r: summaryRowAbs, c: 14 } });
 
-  // header style
   const H = COLORS.headerDarkBlue;
   [0, 1, 5, 6, 7, 13, 14, 16].forEach((c) => setStyle(ws, 0, c, headerStyle(H)));
   [2, 3, 4].forEach((c) => setStyle(ws, 0, c, headerStyle(H)));
@@ -160,7 +158,6 @@ export function exportInvestasiToExcel(filteredRows, viewYear, viewQuarter) {
   setStyle(ws, 0, 15, headerStyle(COLORS.headerWeighted, '#000'));
   [2, 3, 4].forEach((c) => setStyle(ws, 1, c, headerStyle(H)));
 
-  // body styling
   const lastDataRow = firstDataRow + dataRows.length - 1;
   for (let r = firstDataRow; r <= lastDataRow; r++) {
     const isPembilang = (r - firstDataRow) % 3 === 1;
@@ -174,12 +171,11 @@ export function exportInvestasiToExcel(filteredRows, viewYear, viewQuarter) {
       cell.s = { ...(cell.s || {}), ...bodyStyle };
       const hasValue = !(cell.v === '' || cell.v == null);
 
-      // Biru kalau ada isi: No(0), Bobot Section(1), Bobot Indikator(5), Sumber Risiko(6), Dampak(7)
+     
       if ([0, 1, 5, 6, 7].includes(c) && hasValue) {
         cell.s = withFill(cell.s, COLORS.blueFill);
       }
 
-      // Low..High (center + hijau muda jika ada isi)
       if (c >= 8 && c <= 12) {
         if (hasValue) cell.s = withFill(cell.s, COLORS.lightGreen);
         cell.s.alignment = { ...(cell.s.alignment || {}), horizontal: 'center' };
@@ -201,7 +197,6 @@ export function exportInvestasiToExcel(filteredRows, viewYear, viewQuarter) {
         }
       }
 
-      // Peringkat (heatmap)
       if (c === 14) {
         cell.s.alignment = { ...(cell.s.alignment || {}), horizontal: 'center' };
         if (hasValue) {

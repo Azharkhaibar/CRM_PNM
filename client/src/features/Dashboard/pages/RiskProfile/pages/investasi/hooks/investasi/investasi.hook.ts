@@ -1,4 +1,3 @@
-// investasi.hook.ts
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { InvestasiService, CreateInvestasiDto, UpdateInvestasiDto, Investasi } from '../../service/investasi.service';
 
@@ -66,8 +65,6 @@ export const useInvestasi = (filters?: FilterInvest) => {
       if (err.response?.data) {
         const errorData = err.response.data;
         console.log('Raw error data from server:', errorData);
-
-        // Server mengembalikan: { message: Array, error: "Bad Request", statusCode: 400 }
         if (Array.isArray(errorData.message)) {
          
           const validationErrors = errorData.message.map((errorObj: any) => {
