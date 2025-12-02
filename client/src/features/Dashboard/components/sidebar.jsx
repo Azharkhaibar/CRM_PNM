@@ -21,7 +21,7 @@ const Sidebar = () => {
   const riskItems = ['investasi', 'pasar', 'likuiditas', 'operasional', 'hukum', 'stratejik', 'kepatuhan', 'reputasi'];
 
   useEffect(() => {
-    if (pathname.startsWith('/dashboard/risk-form')) {
+    if (pathname.startsWith('/dashboard/risk-profile')) {
       setOpenRisk(true);
     }
   }, [pathname]);
@@ -103,7 +103,7 @@ const Sidebar = () => {
                   className={`ml-4 mt-2 space-y-1 border-l pl-3 overflow-hidden ${borderClass}`}
                 >
                   {riskItems.map((item) => {
-                    const itemPath = `/dashboard/risk-form/${item}`;
+                    const itemPath = `/dashboard/risk-profile/${item}`;
                     const active = pathname === itemPath;
                     return (
                       <li key={item}>

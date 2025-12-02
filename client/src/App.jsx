@@ -3,8 +3,8 @@ import { Routes, Route } from 'react-router-dom';
 import './index.css';
 import { DarkModeProvider } from './shared/components/Darkmodecontext.jsx';
 import DarkModeToggle from './shared/components/Toggledarkmode.jsx';
-
-import Mainpage from './pages/mainpage/home';
+import KPMR from './features/Dashboard/pages/RiskProfile/pages/KPMR.jsx';
+import Mainpage from './pages/mainpage/home.jsx';
 import LoginPage from './features/auth/pages/loginform';
 import RegisterPage from './features/auth/pages/registform.jsx';
 import DashboardLayout from './features/Dashboard/main.jsx';
@@ -42,15 +42,15 @@ function App() {
             <Route index element={<Dashboard />} />
 
             {/* Risk Profile */}
-            <Route path="risk-form" element={<Investasi />} />
-            <Route path="risk-form/investasi" element={<Investasi />} />
-            <Route path="risk-form/pasar" element={<Pasar />} />
-            <Route path="risk-form/likuiditas" element={<Likuiditas />} />
-            <Route path="risk-form/operasional" element={<Operational />} />
-            <Route path="risk-form/hukum" element={<Hukum />} />
-            <Route path="risk-form/stratejik" element={<Stratejik />} />
-            <Route path="risk-form/kepatuhan" element={<Kepatuhan />} />
-            <Route path="risk-form/reputasi" element={<Reputasi />} />
+            <Route path="risk-profile/investasi" element={<Investasi />} />
+            <Route path="risk-profile/kpmr" element={<KPMR />} />
+            <Route path="risk-profile/pasar" element={<Pasar />} />
+            <Route path="risk-profile/likuiditas" element={<Likuiditas />} />
+            <Route path="risk-profile/operasional" element={<Operational />} />
+            <Route path="risk-profile/hukum" element={<Hukum />} />
+            <Route path="risk-profile/stratejik" element={<Stratejik />} />
+            <Route path="risk-profile/kepatuhan" element={<Kepatuhan />} />
+            <Route path="risk-profile/reputasi" element={<Reputasi />} />
 
             {/* Other Pages */}
             <Route path="profile" element={<ProfilePage />} />

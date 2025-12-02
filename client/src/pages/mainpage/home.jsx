@@ -6,3 +6,5 @@ export const Mainpage = () => {
         </div>
     )
 }
+
+export default Mainpage

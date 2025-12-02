@@ -24,6 +24,35 @@ const fmtPercentFromDecimal = (v) => {
   return (Number(v) * 100).toFixed(2) + "%";
 };
 
+// ===== helper formatter =====
+const formatHasilNumber = (value, maxDecimals = 4) => {
+  if (value === "" || value == null) return "";
+  const n = Number(value);
+  if (!isFinite(n) || isNaN(n)) return "";
+
+  // batasi maxDecimals, lalu buang .0000 di belakang
+  const fixed = n.toFixed(maxDecimals);
+  return fixed.replace(/\.?0+$/, ""); // "1.2300" -> "1.23", "0.0000" -> "0"
+};
+
+const parseNum = (v) => {
+  if (v == null || v === "") return 0;
+  if (typeof v === "number") return v;
+
+  // buang koma, spasi, dll biar "1,000" -> "1000"
+  const cleaned = String(v).replace(/,/g, "").replace(/\s/g, "");
+
+  // Jika ada tanda persen, konversi ke desimal
+  if (cleaned.includes('%')) {
+    const numValue = Number(cleaned.replace('%', ''));
+    if (isNaN(numValue)) return 0;
+    return numValue / 100;
+  }
+
+  const n = Number(cleaned);
+  return isNaN(n) ? 0 : n;
+};
+
 const emptyIndicator = {
   id: null,
   subNo: "",
@@ -44,6 +73,10 @@ const emptyIndicator = {
   weighted: "",
   hasil: "",
   keterangan: "",
+  // Tambahkan field isPercent
+  isPercent: false,
+  mode: "RASIO", // Tambahkan field mode
+  formula: "", // Tambahkan field formula
 };
 
 // KPMR template
@@ -79,7 +112,8 @@ export default function Likuiditas() {
       id: "s-1",
       no: "3.1",
       bobotSection: 100,
-      parameter: "Komposisi Aset dan Liabilitas Jangka Pendek termasuk Transaksi Rekening Administratif",
+      parameter:
+        "Komposisi Aset dan Liabilitas Jangka Pendek termasuk Transaksi Rekening Administratif",
       indicators: [
         {
           id: "i-1",
@@ -103,6 +137,10 @@ export default function Likuiditas() {
           weighted: 50,
           hasil: 1.25,
           keterangan: "Loading",
+          // Tambahkan field isPercent
+          isPercent: false,
+          mode: "RASIO",
+          formula: "",
         },
       ],
     },
@@ -112,7 +150,8 @@ export default function Likuiditas() {
     id: "s-1",
     no: "3.1",
     bobotSection: 100,
-    parameter: "Komposisi Aset dan Liabilitas Jangka Pendek termasuk Transaksi Rekening Administratif",
+    parameter:
+      "Komposisi Aset dan Liabilitas Jangka Pendek termasuk Transaksi Rekening Administratif",
   });
 
   const [indicatorForm, setIndicatorForm] = useState({ ...emptyIndicator });
@@ -141,17 +180,20 @@ export default function Likuiditas() {
     return sections.reduce(
       (sum, s) =>
         sum +
-        s.indicators.reduce(
-          (ss, it) => ss + (Number(it.weighted) || 0),
-          0
-        ),
+        s.indicators.reduce((ss, it) => ss + (Number(it.weighted) || 0), 0),
       0
     );
   }, [sections]);
 
   function selectSection(id) {
     const s = sections.find((x) => x.id === id);
-    if (s) setSectionForm({ id: s.id, no: s.no, bobotSection: s.bobotSection, parameter: s.parameter });
+    if (s)
+      setSectionForm({
+        id: s.id,
+        no: s.no,
+        bobotSection: s.bobotSection,
+        parameter: s.parameter,
+      });
   }
 
   function addSection() {
@@ -164,7 +206,12 @@ export default function Likuiditas() {
       indicators: [],
     };
     setSections((p) => [...p, s]);
-    setSectionForm({ id: s.id, no: s.no, bobotSection: s.bobotSection, parameter: s.parameter });
+    setSectionForm({
+      id: s.id,
+      no: s.no,
+      bobotSection: s.bobotSection,
+      parameter: s.parameter,
+    });
   }
 
   function saveSection() {
@@ -192,14 +239,45 @@ export default function Likuiditas() {
     setIndicatorForm((p) => ({ ...p, [k]: v }));
   }
 
-  function computeHasil(ind) {
-    const num = Number(ind.pembilangValue || 0);
-    const den = Number(ind.penyebutValue || 0);
-    if (!den) return "";
-    const result = num / den;
-    if (!isFinite(result) || isNaN(result)) return "";
-    return Number(result.toFixed(6));
-  }
+  // ----- perhitungan hasil & weighted -----
+  const computeHasil = (ind) => {
+    const mode = ind.mode || "RASIO";
+
+    const pemb = parseNum(ind.pembilangValue);
+    const peny = parseNum(ind.penyebutValue);
+
+    // 🔹 Kalau ada rumus custom (pemb, peny) → pakai apa adanya
+    if (ind.formula && ind.formula.trim() !== "") {
+      try {
+        const expr = ind.formula
+          .replace(/\bpemb\b/g, "pemb")
+          .replace(/\bpeny\b/g, "peny");
+        const fn = new Function("pemb", "peny", `return (${expr});`);
+        const res = fn(pemb, peny);
+        if (!isFinite(res) || isNaN(res)) return "";
+        return Number(res);
+      } catch (e) {
+        console.warn("Invalid formula (Likuiditas):", ind.formula, e);
+        return "";
+      }
+    }
+
+    // 🔹 RASIO biasa → pemb / peny
+    if (mode === "RASIO") {
+      if (peny === 0) return "";
+      const result = pemb / peny;
+      if (!isFinite(result) || isNaN(result)) return "";
+      return Number(result);
+    }
+
+    // 🔹 NILAI_TUNGGAL → langsung ambil nilai penyebut
+    if (mode === "NILAI_TUNGGAL") {
+      if (peny === 0) return "";
+      return Number(peny);
+    }
+
+    return "";
+  };
 
   function computeWeightedAuto(ind, sectionBobot) {
     const sectionB = Number(sectionBobot || 0);
@@ -276,10 +354,7 @@ export default function Likuiditas() {
       p.map((s) =>
         s.id !== sectionId
           ? s
-          : {
-            ...s,
-            indicators: s.indicators.filter((it) => it.id !== indicatorId),
-          }
+          : { ...s, indicators: s.indicators.filter((it) => it.id !== indicatorId) }
       )
     );
   }
@@ -295,27 +370,28 @@ export default function Likuiditas() {
   });
   const [KPMR_editingIndex, setKPMR_editingIndex] = useState(null);
 
-  const KPMR_handleChange = (k, v) =>
-    setKPMR_form((f) => ({ ...f, [k]: v }));
+  const KPMR_handleChange = (k, v) => setKPMR_form((f) => ({ ...f, [k]: v }));
 
-  const KPMR_filtered = useMemo(() => {
-    return KPMR_rows
-      .filter((r) => r.year === viewYear && r.quarter === viewQuarter)
-      .filter((r) =>
-        `${r.aspekNo} ${r.aspekTitle} ${r.sectionNo} ${r.sectionTitle} ${r.evidence} ${r.level1} ${r.level2} ${r.level3} ${r.level4} ${r.level5}`
-          .toLowerCase()
-          .includes(query.toLowerCase())
-      )
-      .sort((a, b) => {
-        const aA = `${a.aspekNo}`.localeCompare(`${b.aspekNo}`, undefined, {
-          numeric: true,
-        });
-        if (aA !== 0) return aA;
-        return `${a.sectionNo}`.localeCompare(`${b.sectionNo}`, undefined, {
-          numeric: true,
-        });
-      });
-  }, [KPMR_rows, viewYear, viewQuarter, query]);
+  const KPMR_filtered = useMemo(
+    () =>
+      KPMR_rows
+        .filter((r) => r.year === viewYear && r.quarter === viewQuarter)
+        .filter((r) =>
+          `${r.aspekNo} ${r.aspekTitle} ${r.sectionNo} ${r.sectionTitle} ${r.evidence} ${r.level1} ${r.level2} ${r.level3} ${r.level4} ${r.level5}`
+            .toLowerCase()
+            .includes(query.toLowerCase())
+        )
+        .sort((a, b) => {
+          const aA = `${a.aspekNo}`.localeCompare(`${b.aspekNo}`, undefined, {
+            numeric: true,
+          });
+          if (aA !== 0) return aA;
+          return `${a.sectionNo}`.localeCompare(`${b.sectionNo}`, undefined, {
+            numeric: true,
+          });
+        }),
+    [KPMR_rows, viewYear, viewQuarter, query]
+  );
 
   const KPMR_groups = useMemo(() => {
     const g = new Map();
@@ -326,12 +402,7 @@ export default function Likuiditas() {
     }
     return Array.from(g.entries()).map(([k, items]) => {
       const [aspekNo, aspekTitle, aspekBobot] = k.split("|");
-      return {
-        aspekNo,
-        aspekTitle,
-        aspekBobot: Number(aspekBobot),
-        items,
-      };
+      return { aspekNo, aspekTitle, aspekBobot: Number(aspekBobot), items };
     });
   }, [KPMR_filtered]);
 
@@ -377,7 +448,7 @@ export default function Likuiditas() {
   };
 
   const KPMR_removeRow = (idx) => {
-    const target = KPMR_filtered[idx];
+    const target = KPMR_filtered[KPMR_editingIndex];
     const id = KPMR_rows.findIndex(
       (x) =>
         x.year === target.year &&
@@ -482,37 +553,33 @@ export default function Likuiditas() {
               <h2 className="text-xl sm:text-2xl font-semibold">
                 Form – Likuiditas
               </h2>
-              <div className="flex items-center gap-3">
+              <div className="flex items-end gap-4">
                 {/* tahun + triwulan */}
-                <div className="hidden md:flex items-center gap-3">
-                  <div className="flex items-center gap-2">
-                    <label className="sr-only">Tahun</label>
+                <div className="hidden md:flex items-end gap-4">
+                  {/* Tahun */}
+                  <div className="flex flex-col gap-1">
                     <YearInput
                       value={viewYear}
-                      onChange={(v) => {
-                        setViewYear(v);
-                      }}
+                      onChange={(v) => setViewYear(v)}
                     />
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <label className="sr-only">Triwulan</label>
+                  {/* Triwulan */}
+                  <div className="flex flex-col gap-1">
                     <QuarterSelect
                       value={viewQuarter}
-                      onChange={(v) => {
-                        setViewQuarter(v);
-                      }}
+                      onChange={(v) => setViewQuarter(v)}
                     />
                   </div>
                 </div>
 
-                {/* group search + export */}
-                <div className="flex items-center gap-2 transform -translate-y-1">
+                {/* search + export */}
+                <div className="flex items-end gap-2">
                   <div className="relative">
                     <input
                       value={query}
                       onChange={(e) => setQuery(e.target.value)}
-                      placeholder="Cari no/sub/indikator/keterangan…"
+                      placeholder="Cari no/sub/indikator…"
                       className="pl-9 pr-3 py-2 rounded-xl border w-64"
                     />
                     <Search
@@ -533,17 +600,21 @@ export default function Likuiditas() {
 
             {/* top toolbar with section */}
             <div className="relative rounded-2xl overflow-hidden mb-6 shadow-sm bg-gradient-to-r from-[#0076C6]/90 via-[#00A3DA]/90 to-[#33C2B5]/90">
+              {/* Form Section header fields */}
               <div className="rounded-2xl border-2 border-gray-300 p-4 shadow-sm mb-6">
                 <h2 className="text-white font-semibold text-lg sm:text-xl mb-6">
-                  Form Likuiditas
+                  Form Section – Likuiditas
                 </h2>
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="flex items-center gap-2">
-                    <div className="text-xs text-white font-medium">
+
+                {/* Row with No Sec | Bobot Sec | Section | Buttons */}
+                <div className="flex items-end gap-4 mb-4">
+                  {/* No Sec */}
+                  <div className="flex flex-col">
+                    <label className="text-xs text-white font-medium mb-1">
                       No Sec
-                    </div>
+                    </label>
                     <input
-                      className="w-20 px-3 py-2 rounded-lg border-2 border-gray-300 text-center font-medium bg-white"
+                      className="w-20 h-10 px-3 rounded-lg border-2 border-gray-300 text-center font-medium bg-white"
                       value={sectionForm.no}
                       onChange={(e) =>
                         setSectionForm((f) => ({ ...f, no: e.target.value }))
@@ -551,13 +622,14 @@ export default function Likuiditas() {
                     />
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <div className="text-xs text-white font-medium">
-                      Bobot Par
-                    </div>
+                  {/* Bobot Sec */}
+                  <div className="flex flex-col">
+                    <label className="text-xs text-white font-medium mb-1">
+                      Bobot Sec
+                    </label>
                     <input
                       type="number"
-                      className="w-24 px-3 py-2 rounded-lg border-2 border-gray-300 text-center font-medium bg-white"
+                      className="w-28 h-10 px-3 rounded-lg border-2 border-gray-300 text-center font-medium bg-white"
                       value={sectionForm.bobotSection ?? ""}
                       onChange={(e) =>
                         setSectionForm((f) => ({
@@ -568,12 +640,13 @@ export default function Likuiditas() {
                     />
                   </div>
 
-                  <div className="flex-1">
-                    <div className="text-xs text-white font-medium mb-1">
+                  {/* Section */}
+                  <div className="flex-1 flex flex-col">
+                    <label className="text-xs text-white font-medium mb-1">
                       Section
-                    </div>
+                    </label>
                     <input
-                      className="w-full px-4 py-2 rounded-lg border-2 border-gray-300 font-medium bg-white"
+                      className="w-full h-10 px-4 rounded-lg border-2 border-gray-300 font-medium bg-white"
                       value={sectionForm.parameter}
                       onChange={(e) =>
                         setSectionForm((f) => ({
@@ -581,11 +654,12 @@ export default function Likuiditas() {
                           parameter: e.target.value,
                         }))
                       }
-                      placeholder="Komposisi Aset dan Liabilitas Jangka Pendek termasuk Transaksi Rekening Administratif"
+                      placeholder="Uraian section risiko likuiditas"
                     />
                   </div>
 
-                  <div className="flex items-center gap-2 pt-5">
+                  {/* Buttons */}
+                  <div className="flex gap-2 self-end">
                     <button
                       className="w-10 h-10 rounded-lg bg-green-500 hover:bg-green-600 text-white flex items-center justify-center"
                       onClick={addSection}
@@ -622,9 +696,7 @@ export default function Likuiditas() {
                     value={sectionForm.id || ""}
                     onChange={(e) => {
                       const selectedId = e.target.value;
-                      if (selectedId) {
-                        selectSection(selectedId);
-                      }
+                      if (selectedId) selectSection(selectedId);
                     }}
                   >
                     <option value="">-- Pilih Section --</option>
@@ -652,9 +724,7 @@ export default function Likuiditas() {
                     <input
                       className="w-full rounded-lg border-2 border-gray-300 px-3 py-3 text-sm bg-white"
                       value={indicatorForm.subNo}
-                      onChange={(e) =>
-                        setIndicatorField("subNo", e.target.value)
-                      }
+                      onChange={(e) => setIndicatorField("subNo", e.target.value)}
                       placeholder="3.1.1"
                     />
                   </div>
@@ -665,10 +735,8 @@ export default function Likuiditas() {
                     <input
                       className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-sm bg-white"
                       value={indicatorForm.indikator}
-                      onChange={(e) =>
-                        setIndicatorField("indikator", e.target.value)
-                      }
-                      placeholder="Rasio Lancar (Current Ratio)…"
+                      onChange={(e) => setIndicatorField("indikator", e.target.value)}
+                      placeholder="Rasio Lancar (Current Ratio)..."
                     />
                   </div>
                   <div className="col-span-3">
@@ -679,10 +747,99 @@ export default function Likuiditas() {
                       type="number"
                       className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-sm text-right bg-white"
                       value={indicatorForm.bobotIndikator ?? ""}
-                      onChange={(e) =>
-                        setIndicatorField("bobotIndikator", e.target.value)
-                      }
+                      onChange={(e) => setIndicatorField("bobotIndikator", e.target.value)}
                       placeholder="50%"
+                    />
+                  </div>
+                </div>
+
+                {/* Metode Penghitungan + Rumus */}
+                <div className="grid grid-cols-12 gap-4 mb-4">
+                  <div className="col-span-4">
+                    <label className="text-sm font-medium mb-2 block text-white">
+                      Metode Penghitungan
+                    </label>
+                    <select
+                      className="w-full rounded-lg border-2 border-gray-300 px-3 py-3 text-sm bg-white"
+                      value={indicatorForm.mode || "RASIO"}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setIndicatorField("mode", v);
+                      }}
+                    >
+                      <option value="RASIO">Rasio (Pembilang / Penyebut)</option>
+                      <option value="NILAI_TUNGGAL">
+                        Nilai tunggal (hanya penyebut)
+                      </option>
+                    </select>
+                  </div>
+
+                  <div className="col-span-8">
+                    <label className="text-sm font-medium mb-2 block text-white">
+                      Rumus Parameter (opsional) &nbsp;
+                      <span className="text-xs">
+                        gunakan variabel <b>pemb</b> dan <b>peny</b>
+                      </span>
+                    </label>
+                    <div className="flex items-center gap-4">
+                      <input
+                        type="text"
+                        className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-sm bg-white"
+                        placeholder={
+                          indicatorForm.mode === "NILAI_TUNGGAL"
+                            ? "Contoh: peny / 1000"
+                            : "Contoh: peny / pemb"
+                        }
+                        value={indicatorForm.formula || ""}
+                        onChange={(e) =>
+                          setIndicatorField("formula", e.target.value)
+                        }
+                      />
+                      <label className="flex items-center gap-2 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={indicatorForm.isPercent || false}
+                          onChange={(e) =>
+                            setIndicatorField("isPercent", e.target.checked)
+                          }
+                          className="w-6 h-6 rounded-full border-2 border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <div
+                          className="w-12 h-12 flex items-center justify-center rounded-lg border-2 border-gray-300 bg-gray-100 text-lg font-bold cursor-pointer"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setIndicatorField("isPercent", !indicatorForm.isPercent);
+                          }}
+                        >
+                          %
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Faktor Pembilang & Value Row */}
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label className="text-sm font-medium mb-2 block text-white">
+                      Faktor Pembilang
+                    </label>
+                    <input
+                      className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-sm bg-white"
+                      value={indicatorForm.pembilangLabel}
+                      onChange={(e) => setIndicatorField("pembilangLabel", e.target.value)}
+                      placeholder="Aktiva Lancar (Jutaan)"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium mb-2 block text-white">
+                      Value Pembilang
+                    </label>
+                    <input
+                      className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-sm bg-white"
+                      value={indicatorForm.pembilangValue ?? ""}
+                      onChange={(e) => setIndicatorField("pembilangValue", e.target.value)}
+                      placeholder="5000"
                     />
                   </div>
                 </div>
@@ -696,9 +853,7 @@ export default function Likuiditas() {
                     <input
                       className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-sm bg-white"
                       value={indicatorForm.penyebutLabel}
-                      onChange={(e) =>
-                        setIndicatorField("penyebutLabel", e.target.value)
-                      }
+                      onChange={(e) => setIndicatorField("penyebutLabel", e.target.value)}
                       placeholder="Hutang Lancar (Jutaan)"
                     />
                   </div>
@@ -709,40 +864,8 @@ export default function Likuiditas() {
                     <input
                       className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-sm bg-white"
                       value={indicatorForm.penyebutValue ?? ""}
-                      onChange={(e) =>
-                        setIndicatorField("penyebutValue", e.target.value)
-                      }
+                      onChange={(e) => setIndicatorField("penyebutValue", e.target.value)}
                       placeholder="4000"
-                    />
-                  </div>
-                </div>
-
-                {/* Faktor Pembilang & Value Row */}
-                <div className="grid grid-cols-2 gap-4 mb-4">
-                  <div>
-                    <label className="text-sm font-medium mb-2 block text-white">
-                      Faktor Pembilang
-                    </label>
-                    <input
-                      className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-sm bg-white"
-                      value={indicatorForm.pembilangLabel}
-                      onChange={(e) =>
-                        setIndicatorField("pembilangLabel", e.target.value)
-                      }
-                      placeholder="Aktiva Lancar (Jutaan)"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium mb-2 block text-white">
-                      Value Pembilang
-                    </label>
-                    <input
-                      className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-sm bg-white"
-                      value={indicatorForm.pembilangValue ?? ""}
-                      onChange={(e) =>
-                        setIndicatorField("pembilangValue", e.target.value)
-                      }
-                      placeholder="5000"
                     />
                   </div>
                 </div>
@@ -757,9 +880,7 @@ export default function Likuiditas() {
                       rows={4}
                       className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-sm resize-none bg-white"
                       value={indicatorForm.sumberRisiko}
-                      onChange={(e) =>
-                        setIndicatorField("sumberRisiko", e.target.value)
-                      }
+                      onChange={(e) => setIndicatorField("sumberRisiko", e.target.value)}
                       placeholder="Contoh: penurunan kualitas piutang, keterlambatan pembayaran, dsb."
                     />
                   </div>
@@ -771,36 +892,47 @@ export default function Likuiditas() {
                       rows={4}
                       className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-sm resize-none bg-white"
                       value={indicatorForm.dampak}
-                      onChange={(e) =>
-                        setIndicatorField("dampak", e.target.value)
-                      }
+                      onChange={(e) => setIndicatorField("dampak", e.target.value)}
                       placeholder="Contoh: penurunan tingkat kesehatan, gagal bayar kewajiban jangka pendek, dsb."
                     />
                   </div>
                 </div>
 
-                {/* Bottom Section: Hasil Preview, Peringkat, Weighted, Legend & Button */}
+                {/* Bottom Section: Hasil Preview, Peringkat, Weighted, Legend */}
                 <div className="grid grid-cols-12 gap-4">
                   {/* Left side: Preview boxes */}
                   <div className="col-span-6 flex gap-4">
                     <div className="flex-1">
                       <label className="text-sm font-medium mb-2 block text-white">
-                        Hasil Preview (Rasio)
+                        Hasil Preview
                       </label>
                       <input
                         className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-sm bg-gray-50"
-                        value={
-                          indicatorForm.penyebutValue
-                            ? (
-                              Number(
-                                indicatorForm.pembilangValue || 0
-                              ) /
-                              Number(
-                                indicatorForm.penyebutValue || 1
-                              )
-                            ).toFixed(4)
-                            : ""
-                        }
+                        value={(() => {
+                          const raw = computeHasil(indicatorForm);
+                          if (raw === "" || raw == null || isNaN(Number(raw))) return "";
+
+                          // Check if either input contains a percentage sign
+                          const pembHasPercent = String(indicatorForm.pembilangValue).includes('%');
+                          const penyHasPercent = String(indicatorForm.penyebutValue).includes('%');
+
+                          // If both inputs are percentages, don't multiply by 100
+                          if (pembHasPercent && penyHasPercent) {
+                            return formatHasilNumber(raw, 2);
+                          }
+
+                          // Default behavior is persentase (seperti kode asli)
+                          const showAsPercent = indicatorForm.isPercent !== false;
+
+                          if (showAsPercent) {
+                            const pct = Number(raw) * 100;
+                            if (!isFinite(pct) || isNaN(pct)) return "";
+                            return pct.toFixed(2) + "%";
+                          }
+
+                          // Jika isPercent = false, tampilkan angka apa adanya
+                          return formatHasilNumber(raw, 4);
+                        })()}
                         readOnly
                       />
                     </div>
@@ -814,9 +946,7 @@ export default function Likuiditas() {
                         max="5"
                         className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-sm bg-white"
                         value={indicatorForm.peringkat ?? ""}
-                        onChange={(e) =>
-                          setIndicatorField("peringkat", e.target.value)
-                        }
+                        onChange={(e) => setIndicatorField("peringkat", e.target.value)}
                       />
                     </div>
                     <div className="flex-1">
@@ -853,9 +983,7 @@ export default function Likuiditas() {
                       className="w-full"
                       label="Low to Moderate"
                       value={indicatorForm.lowToModerate}
-                      onChange={(v) =>
-                        setIndicatorField("lowToModerate", v)
-                      }
+                      onChange={(v) => setIndicatorField("lowToModerate", v)}
                       color="#CFE0FF"
                       textColor="#0B2545"
                       placeholder="1.3 ≤ x < 1.5"
@@ -864,9 +992,7 @@ export default function Likuiditas() {
                       className="w-full"
                       label="Moderate"
                       value={indicatorForm.moderate}
-                      onChange={(v) =>
-                        setIndicatorField("moderate", v)
-                      }
+                      onChange={(v) => setIndicatorField("moderate", v)}
                       color="#FFEEAD"
                       textColor="#4B3A00"
                       placeholder="1.1 ≤ x < 1.3"
@@ -875,9 +1001,7 @@ export default function Likuiditas() {
                       className="w-full"
                       label="Moderate to High"
                       value={indicatorForm.moderateToHigh}
-                      onChange={(v) =>
-                        setIndicatorField("moderateToHigh", v)
-                      }
+                      onChange={(v) => setIndicatorField("moderateToHigh", v)}
                       color="#FAD2A7"
                       textColor="#5A2E00"
                       placeholder="1.0 ≤ x < 1.1"
@@ -892,6 +1016,19 @@ export default function Likuiditas() {
                       placeholder="x < 1.0"
                     />
                   </div>
+                </div>
+
+                {/* Keterangan */}
+                <div className="mt-4">
+                  <label className="text-sm font-medium mb-2 block text-white">
+                    Keterangan
+                  </label>
+                  <input
+                    className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-sm bg-white"
+                    value={indicatorForm.keterangan}
+                    onChange={(e) => setIndicatorField("keterangan", e.target.value)}
+                    placeholder="Loading"
+                  />
                 </div>
               </div>
 
@@ -924,341 +1061,400 @@ export default function Likuiditas() {
             </div>
 
             {/* table area */}
-            {/* table area */}
-            <div className="rounded-xl border bg-white shadow-sm overflow-auto">
-              <table className="min-w-[1450px] text-sm border border-gray-300 border-collapse">
-                <thead>
-                  <tr className="bg-[#1f4e79] text-white">
-                    <th
-                      className="border px-3 py-2 text-left"
-                      rowSpan={2}
-                      style={{ width: 60 }}
-                    >
-                      No
-                    </th>
-                    <th
-                      className="border px-3 py-2 text-left"
-                      rowSpan={2}
-                      style={{ width: 80 }}
-                    >
-                      Bobot
-                    </th>
+            <section className="mt-4">
+              <div className="bg-white rounded-2xl shadow overflow-hidden">
+                <div className="relative h-[350px]">
+                  <div className="absolute inset-0 overflow-x-auto overflow-y-auto">
+                    <table className="min-w-[1450px] text-sm border border-gray-300 border-collapse">
+                      <thead>
+                        <tr className="bg-[#1f4e79] text-white">
+                          <th
+                            className="border border-black px-3 py-2 text-left"
+                            rowSpan={2}
+                            style={{ width: 60 }}
+                          >
+                            No
+                          </th>
+                          <th
+                            className="border border-black px-3 py-2 text-left"
+                            rowSpan={2}
+                            style={{ width: 80 }}
+                          >
+                            Bobot
+                          </th>
 
-                    {/* Group: Parameter atau Indikator */}
-                    <th
-                      className="border px-3 py-2 text-left"
-                      colSpan={3}
-                    >
-                      Parameter atau Indikator
-                    </th>
+                          <th
+                            className="border border-black px-3 py-2 text-left"
+                            colSpan={3}
+                          >
+                            Parameter atau Indikator
+                          </th>
 
-                    <th
-                      className="border px-3 py-2 text-center"
-                      rowSpan={2}
-                      style={{ width: 90 }}
-                    >
-                      Bobot Indikator
-                    </th>
-                    <th
-                      className="border px-3 py-2 text-left"
-                      rowSpan={2}
-                      style={{ width: 220 }}
-                    >
-                      Sumber Risiko
-                    </th>
-                    <th
-                      className="border px-3 py-2 text-left"
-                      rowSpan={2}
-                      style={{ width: 240 }}
-                    >
-                      Dampak
-                    </th>
-                    <th
-                      className="px-3 py-2 bg-[#b7d7a8] text-left text-black"
-                      rowSpan={2}
-                    >
-                      Low
-                    </th>
-                    <th
-                      className="px-3 py-2 bg-[#c9daf8] text-left text-black"
-                      rowSpan={2}
-                    >
-                      Low to Moderate
-                    </th>
-                    <th
-                      className="px-3 py-2 bg-[#fff2cc] text-left text-black"
-                      rowSpan={2}
-                    >
-                      Moderate
-                    </th>
-                    <th
-                      className="px-3 py-2 bg-[#f9cb9c] text-left text-black"
-                      rowSpan={2}
-                    >
-                      Moderate to High
-                    </th>
-                    <th
-                      className="px-3 py-2 bg-[#e06666] text-left"
-                      rowSpan={2}
-                    >
-                      High
-                    </th>
-                    <th
-                      className="px-3 py-2 bg-[#2e75b6] text-left"
-                      rowSpan={2}
-                      style={{ width: 100 }}
-                    >
-                      Hasil (Rasio)
-                    </th>
-                    <th
-                      className="px-3 py-2 bg-[#385723] text-left"
-                      rowSpan={2}
-                      style={{ width: 70 }}
-                    >
-                      Peringkat
-                    </th>
-                    <th
-                      className="px-3 py-2 bg-[#d9d9d9] text-left text-black"
-                      rowSpan={2}
-                      style={{ width: 90 }}
-                    >
-                      Weighted
-                    </th>
-                    <th
-                      className="px-3 py-2 bg-[#1f4e79] text-left"
-                      rowSpan={2}
-                      style={{ width: 220 }}
-                    >
-                      Keterangan
-                    </th>
-                    <th
-                      className="border px-3 py-2 text-center"
-                      rowSpan={2}
-                      style={{ width: 80 }}
-                    >
-                      Aksi
-                    </th>
-                  </tr>
+                          <th
+                            className="border border-black px-3 py-2 text-center"
+                            rowSpan={2}
+                            style={{ width: 90 }}
+                          >
+                            Bobot Indikator
+                          </th>
+                          <th
+                            className="border border-black px-3 py-2 text-left"
+                            rowSpan={2}
+                            style={{ minWidth: 220 }}
+                          >
+                            Sumber Risiko
+                          </th>
+                          <th
+                            className="border border-black px-3 py-2 text-left"
+                            rowSpan={2}
+                            style={{ minWidth: 240 }}
+                          >
+                            Dampak
+                          </th>
+                          <th
+                            className="border border-black px-3 py-2 bg-[#b7d7a8] text-left text-black"
+                            rowSpan={2}
+                          >
+                            Low
+                          </th>
+                          <th
+                            className="border border-black px-3 py-2 bg-[#c9daf8] text-left text-black"
+                            rowSpan={2}
+                          >
+                            Low to Moderate
+                          </th>
+                          <th
+                            className="border border-black px-3 py-2 bg-[#fff2cc] text-left text-black"
+                            rowSpan={2}
+                          >
+                            Moderate
+                          </th>
+                          <th
+                            className="border border-black px-3 py-2 bg-[#f9cb9c] text-left text-black"
+                            rowSpan={2}
+                          >
+                            Moderate to High
+                          </th>
+                          <th
+                            className="border border-black px-3 py-2 bg-[#e06666] text-left"
+                            rowSpan={2}
+                          >
+                            High
+                          </th>
+                          <th
+                            className="border border-black px-3 py-2 bg-[#2e75b6]"
+                            rowSpan={2}
+                            style={{ width: 100 }}
+                          >
+                            Hasil
+                          </th>
+                          <th
+                            className="border border-black px-3 py-2 bg-[#2e75b6]"
+                            rowSpan={2}
+                            style={{ width: 70 }}
+                          >
+                            Peringkat
+                          </th>
+                          <th
+                            className="border border-black px-3 py-2 bg-[#2e75b6] text-white"
+                            rowSpan={2}
+                            style={{ width: 90 }}
+                          >
+                            Weighted
+                          </th>
+                          <th
+                            className="border border-black px-3 py-2 text-center"
+                            rowSpan={2}
+                            style={{ width: 80 }}
+                          >
+                            Aksi
+                          </th>
+                        </tr>
+                        <tr className="bg-[#1f4e79] text-white">
+                          <th
+                            className="border border-black px-3 py-2 text-left"
+                            style={{ minWidth: 260 }}
+                          >
+                            Section
+                          </th>
+                          <th
+                            className="border border-black px-3 py-2 text-left"
+                            style={{ width: 70 }}
+                          >
+                            Sub No
+                          </th>
+                          <th
+                            className="border border-black px-3 py-2 text-left"
+                            style={{ minWidth: 360 }}
+                          >
+                            Indikator
+                          </th>
+                        </tr>
+                      </thead>
 
-                  {/* sub header untuk group "Parameter atau Indikator" */}
-                  <tr className="bg-[#1f4e79] text-white">
-                    <th className="border px-3 py-2 text-left" style={{ width: 260 }}>
-                      Section
-                    </th>
-                    <th className="border px-3 py-2 text-left" style={{ width: 70 }}>
-                      Sub No
-                    </th>
-                    <th className="border px-3 py-2 text-left" style={{ width: 360 }}>
-                      Indikator
-                    </th>
-                  </tr>
-                </thead>
-
-                <tbody>
-                  {filteredSections.length === 0 ? (
-                    <tr>
-                      <td
-                        className="border px-3 py-6 text-center text-gray-500"
-                        colSpan={18}
-                      >
-                        Belum ada data
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredSections.map((s) => {
-                      if (!s) return null;
-                      const inds = s.indicators || [];
-                      if (!inds.length) {
-                        return (
-                          <tr key={s.id} className="bg-[#e9f5e1]">
-                            <td className="border px-3 py-3 text-center">
-                              {s.no}
-                            </td>
-                            <td className="border px-3 py-3 text-center">
-                              {s.bobotSection}%
-                            </td>
-                            <td className="border px-3 py-3" colSpan={15}>
-                              {s.parameter} – Belum ada indikator
+                      <tbody>
+                        {filteredSections.length === 0 ? (
+                          <tr>
+                            <td
+                              className="border px-3 py-6 text-center text-gray-500"
+                              colSpan={17}
+                            >
+                              Belum ada data
                             </td>
                           </tr>
-                        );
-                      }
-
-                      return (
-                        <React.Fragment key={s.id}>
-                          {inds.map((it, idx) => {
-                            const firstOfSection = idx === 0;
-                            const hasilDisplay =
-                              typeof it.hasil === "number" ||
-                                (typeof it.hasil === "string" &&
-                                  it.hasil !== "" &&
-                                  !isNaN(Number(it.hasil)))
-                                ? Number(it.hasil).toFixed(4)
-                                : it.hasil
-                                  ? String(it.hasil)
-                                  : "";
-
-                            const weightedDisplay =
-                              typeof it.weighted === "number" ||
-                                (typeof it.weighted === "string" &&
-                                  it.weighted !== "" &&
-                                  !isNaN(Number(it.weighted)))
-                                ? Number(it.weighted).toFixed(2)
-                                : "";
-
-                            const sectionRowSpan = inds.length * rowsPerIndicator;
+                        ) : (
+                          filteredSections.map((s) => {
+                            if (!s) return null;
+                            const inds = s.indicators || [];
+                            if (!inds.length) {
+                              return (
+                                <tr key={s.id} className="bg-[#e9f5e1]">
+                                  <td className="border px-3 py-3 text-center">
+                                    {s.no}
+                                  </td>
+                                  <td className="border px-3 py-3 text-center">
+                                    {s.bobotSection}%
+                                  </td>
+                                  <td className="border px-3 py-3" colSpan={15}>
+                                    {s.parameter} – Belum ada indikator
+                                  </td>
+                                </tr>
+                              );
+                            }
 
                             return (
-                              <React.Fragment key={it.id}>
-                                {/* baris utama indikator */}
-                                <tr>
-                                  {firstOfSection && (
-                                    <>
-                                      <td
-                                        rowSpan={sectionRowSpan}
-                                        className="border px-3 py-3 align-top bg-[#e9f5e1] text-center font-semibold"
-                                      >
-                                        {s.no}
-                                      </td>
-                                      <td
-                                        rowSpan={sectionRowSpan}
-                                        className="border px-3 py-3 align-top bg-[#e9f5e1] text-center"
-                                      >
-                                        {s.bobotSection}%
-                                      </td>
-                                      <td
-                                        rowSpan={sectionRowSpan}
-                                        className="border px-3 py-3 align-top bg-[#e9f5e1]"
-                                      >
-                                        {s.parameter}
-                                      </td>
-                                    </>
-                                  )}
+                              <React.Fragment key={s.id}>
+                                {inds.map((it, idx) => {
+                                  const firstOfSection = idx === 0;
 
-                                  {/* Sub No & Indikator */}
-                                  <td className="border px-3 py-3 text-center align-top">
-                                    {it.subNo}
-                                  </td>
-                                  <td className="border px-3 py-3 align-top">
-                                    <div className="font-medium">
-                                      {it.indikator}
-                                    </div>
-                                  </td>
+                                  let hasilDisplay = "";
+                                  if (it.hasil !== "" && it.hasil != null && !isNaN(Number(it.hasil))) {
+                                    // Check if either input contains a percentage sign
+                                    const pembHasPercent = String(it.pembilangValue).includes('%');
+                                    const penyHasPercent = String(it.penyebutValue).includes('%');
 
-                                  <td className="border px-3 py-3 text-center align-top">
-                                    {it.bobotIndikator}%
-                                  </td>
-                                  <td className="border px-3 py-3 align-top">
-                                    {it.sumberRisiko}
-                                  </td>
-                                  <td className="border px-3 py-3 align-top">
-                                    {it.dampak}
-                                  </td>
+                                    // If both inputs are percentages, don't multiply by 100
+                                    if (pembHasPercent && penyHasPercent) {
+                                      hasilDisplay = formatHasilNumber(it.hasil, 2);
+                                    } else {
+                                      // Default behavior is persentase (seperti kode asli)
+                                      const showAsPercent = it.isPercent !== false;
 
-                                  <td className="border px-3 py-3 text-center">
-                                    {it.low}
-                                  </td>
-                                  <td className="border px-3 py-3 text-center">
-                                    {it.lowToModerate}
-                                  </td>
-                                  <td className="border px-3 py-3 text-center">
-                                    {it.moderate}
-                                  </td>
-                                  <td className="border px-3 py-3 text-center">
-                                    {it.moderateToHigh}
-                                  </td>
-                                  <td className="border px-3 py-3 text-center">
-                                    {it.high}
-                                  </td>
+                                      if (showAsPercent) {
+                                        const pct = Number(it.hasil) * 100;
+                                        if (!isFinite(pct) || isNaN(pct)) {
+                                          hasilDisplay = "";
+                                        } else {
+                                          hasilDisplay = pct.toFixed(2) + "%";
+                                        }
+                                      } else {
+                                        hasilDisplay = formatHasilNumber(it.hasil, 4);
+                                      }
+                                    }
+                                  }
 
-                                  <td className="border px-3 py-3 text-right">
-                                    {hasilDisplay}
-                                  </td>
+                                  const weightedDisplay =
+                                    typeof it.weighted === "number" ||
+                                      (typeof it.weighted === "string" && it.weighted !== "")
+                                      ? Number(it.weighted).toFixed(2)
+                                      : "";
 
-                                  <td className="border px-3 py-3 text-center">
-                                    <div
-                                      style={{ minWidth: 36, minHeight: 24 }}
-                                      className="inline-block rounded bg-yellow-300 px-2"
-                                    >
-                                      {it.peringkat}
-                                    </div>
-                                  </td>
+                                  return (
+                                    <React.Fragment key={it.id}>
+                                      <tr>
+                                        {firstOfSection && (
+                                          <>
+                                            <td
+                                              rowSpan={inds.length * rowsPerIndicator}
+                                              className="border px-3 py-3 align-top bg-[#d9eefb] text-center font-semibold"
+                                            >
+                                              {s.no}
+                                            </td>
+                                            <td
+                                              rowSpan={inds.length * rowsPerIndicator}
+                                              className="border px-3 py-3 align-top bg-[#d9eefb] text-center"
+                                            >
+                                              {s.bobotSection}%
+                                            </td>
+                                            <td
+                                              rowSpan={inds.length * rowsPerIndicator}
+                                              className="border px-3 py-3 align-top bg-[#d9eefb]"
+                                            >
+                                              {s.parameter}
+                                            </td>
+                                          </>
+                                        )}
 
-                                  <td className="border px-3 py-3 text-right">
-                                    {weightedDisplay}
-                                  </td>
-                                  <td className="border px-3 py-3">
-                                    {it.keterangan}
-                                  </td>
+                                        <td className="border px-3 py-3 text-center align-top bg-[#d9eefb]">
+                                          {it.subNo}
+                                        </td>
+                                        <td className="border px-3 py-3 align-top bg-[#d9eefb]">
+                                          <div className="font-medium whitespace-pre-wrap">
+                                            {it.indikator}
+                                          </div>
+                                        </td>
 
-                                  <td className="border px-3 py-3 text-center">
-                                    <div className="flex items-center justify-center gap-2">
-                                      <button
-                                        onClick={() => editIndicator(s.id, it.id)}
-                                        className="px-2 py-1 rounded border"
-                                      >
-                                        <Edit3 size={14} />
-                                      </button>
-                                      <button
-                                        onClick={() => removeIndicator(s.id, it.id)}
-                                        className="px-2 py-1 rounded border text-red-600"
-                                      >
-                                        <Trash2 size={14} />
-                                      </button>
-                                    </div>
-                                  </td>
-                                </tr>
+                                        <td className="border px-3 py-3 text-center align-top bg-[#d9eefb]">
+                                          {it.bobotIndikator}%
+                                        </td>
+                                        <td className="border px-3 py-3 align-top bg-[#d9eefb]">
+                                          {it.sumberRisiko}
+                                        </td>
+                                        <td className="border px-3 py-3 align-top bg-[#d9eefb]">
+                                          {it.dampak}
+                                        </td>
 
-                                {/* baris Pembilang – muncul di kolom Indikator */}
-                                <tr className="bg-white">
-                                  {/* kolom Sub No (kosong, karena cuma ditampilkan di baris utama) */}
-                                  <td className="border px-3 py-2 text-center"></td>
-                                  <td className="border px-3 py-2">
-                                    <div className="text-sm text-gray-700 mt-1">
-                                      {it.pembilangLabel || "-"}
-                                    </div>
-                                  </td>
-                                  {/* kolom-kolom lainnya dikosongkan */}
-                                  <td className="border px-3 py-2" colSpan={13}></td>
-                                </tr>
+                                        <td className="border px-3 py-3 text-center bg-green-700/10">
+                                          {it.low}
+                                        </td>
+                                        <td className="border px-3 py-3 text-center bg-green-700/10">
+                                          {it.lowToModerate}
+                                        </td>
+                                        <td className="border px-3 py-3 text-center bg-green-700/10">
+                                          {it.moderate}
+                                        </td>
+                                        <td className="border px-3 py-3 text-center bg-green-700/10">
+                                          {it.moderateToHigh}
+                                        </td>
+                                        <td className="border px-3 py-3 text-center bg-green-700/10">
+                                          {it.high}
+                                        </td>
 
-                                {/* baris Penyebut – juga di kolom Indikator */}
-                                <tr className="bg-white">
-                                  <td className="border px-3 py-2 text-center"></td>
-                                  <td className="border px-3 py-2">
-                                    <div className="text-sm text-gray-700 mt-1">
-                                      {it.penyebutLabel || "-"}
-                                    </div>
-                                  </td>
-                                  <td className="border px-3 py-2" colSpan={13}></td>
-                                </tr>
+                                        <td className="border px-3 py-3 text-right bg-gray-400/20">
+                                          {hasilDisplay}
+                                        </td>
+
+                                        <td className="border px-3 py-3 text-center">
+                                          <div
+                                            style={{ minWidth: 36, minHeight: 24 }}
+                                            className="inline-block rounded bg-yellow-300 px-2"
+                                          >
+                                            {it.peringkat}
+                                          </div>
+                                        </td>
+
+                                        <td className="border px-3 py-3 text-right bg-gray-400/20">
+                                          {weightedDisplay}
+                                        </td>
+
+                                        <td className="border px-3 py-3 text-center">
+                                          <div className="flex items-center justify-center gap-2">
+                                            <button
+                                              onClick={() => editIndicator(s.id, it.id)}
+                                              className="px-2 py-1 rounded border"
+                                            >
+                                              <Edit3 size={14} />
+                                            </button>
+                                            <button
+                                              onClick={() => removeIndicator(s.id, it.id)}
+                                              className="px-2 py-1 rounded border text-red-600"
+                                            >
+                                              <Trash2 size={14} />
+                                            </button>
+                                          </div>
+                                        </td>
+                                      </tr>
+
+                                      {/* Pembilang row – sekarang DI ATAS */}
+                                      <tr className="bg-white">
+                                        {/* kolom: Indikator & Pembilang/Penyebut */}
+
+                                        {/* kolom-kolom kosong tapi tetap bergaris */}
+                                        <td className="border px-3 py-2"></td>  {/* Bobot Indikator */}
+                                        <td className="border px-3 py-2">
+                                          <div className="text-sm text-gray-700 mt-1">
+                                            {it.penyebutLabel || "-"}
+                                          </div>
+                                        </td>
+                                        <td className="border px-3 py-2"></td>  {/* Sumber Risiko */}
+                                        <td className="border px-3 py-2"></td>  {/* Dampak */}
+                                        <td className="border px-3 py-2"></td>  {/* Low */}
+                                        <td className="border px-3 py-2"></td>  {/* Low to Moderate */}
+                                        <td className="border px-3 py-2"></td>  {/* Moderate */}
+                                        <td className="border px-3 py-2"></td>  {/* Moderate to High */}
+                                        <td className="border px-3 py-2"></td>  {/* High */}
+
+
+                                        {/* kolom: Peringkat, Weighted, Keterangan, Aksi */}
+                                        <td className="border px-3 py-2"></td>
+                                        {/* kolom: Hasil = nilai penyebut */}
+                                        <td className="border px-3 py-2 bg-[#c6d9a7] text-right">
+                                          {it.penyebutValue ? fmtNumber(it.penyebutValue) : ""}
+                                        </td>
+                                        <td className="border px-3 py-2"></td>
+                                        <td className="border px-3 py-2"></td>
+                                        <td className="border px-3 py-2"></td>
+                                      </tr>
+
+                                      {/* Pembilang row – sekarang DI BAWAH */}
+                                      <tr className="bg-white">
+                                        {/* kolom: Indikator & Pembilang/Penyebut */}
+
+                                        {/* kolom-kolom kosong tapi tetap bergaris */}
+                                        <td className="border px-3 py-2"></td>  {/* Bobot Indikator */}
+                                        <td className="border px-3 py-2">
+                                          <div className="text-sm text-gray-700 mt-1">
+                                            {it.pembilangLabel || "-"}
+                                          </div>
+                                        </td>
+                                        <td className="border px-3 py-2"></td>  {/* Sumber Risiko */}
+                                        <td className="border px-3 py-2"></td>  {/* Dampak */}
+                                        <td className="border px-3 py-2"></td>  {/* Low */}
+                                        <td className="border px-3 py-2"></td>  {/* Low to Moderate */}
+                                        <td className="border px-3 py-2"></td>  {/* Moderate */}
+                                        <td className="border px-3 py-2"></td>  {/* Moderate to High */}
+                                        <td className="border px-3 py-2"></td>  {/* High */}
+
+
+                                        {/* kolom: Peringkat, Weighted, Keterangan, Aksi */}
+                                        <td className="border px-3 py-2"></td>
+                                        {/* kolom: Hasil = nilai pembilang */}
+                                        <td className="border px-3 py-2 bg-[#c6d9a7] text-right">
+                                          {it.pembilangValue ? fmtNumber(it.pembilangValue) : ""}
+                                        </td>
+                                        <td className="border px-3 py-2"></td>
+                                        <td className="border px-3 py-2"></td>
+                                        <td className="border px-3 py-2"></td>
+                                      </tr>
+                                    </React.Fragment>
+                                  );
+                                })}
                               </React.Fragment>
                             );
-                          })}
-                        </React.Fragment>
-                      );
-                    })
-                  )}
-                </tbody>
+                          })
+                        )}
+                      </tbody>
 
-                <tfoot>
-                  <tr>
-                    <td className="border border-gray-400" colSpan={13}></td>
-                    <td
-                      className="border border-gray-400 text-white font-semibold text-center bg-[#0b3861]"
-                      colSpan={2}
-                    >
-                      Summary
-                    </td>
-                    <td className="border border-gray-400 text-white font-semibold text-center bg-[#8fce00]">
-                      {totalWeighted.toFixed(2)}
-                    </td>
-                    <td className="border border-gray-400" colSpan={2}></td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
+                      <tfoot>
+                        <tr>
+                          {/* sampai kolom High */}
+                          <td
+                            className="border border-gray-400"
+                            colSpan={13}
+                          ></td>
 
+                          {/* Summary memanjang sampai kolom Peringkat (Hasil + Peringkat) */}
+                          <td
+                            className="border border-gray-400 text-white font-semibold text-center bg-[#0b3861]"
+                            colSpan={2}
+                          >
+                            Summary
+                          </td>
+
+                          {/* Nilai total di bawah kolom Weighted */}
+                          <td className="border border-gray-400 text-white font-semibold text-center bg-[#8fce00]">
+                            {totalWeighted.toFixed(2)}
+                          </td>
+
+                          {/* Kolom Aksi (kosong) */}
+                          <td className="border border-gray-400"></td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </section>
           </>
         )}
 
@@ -1354,9 +1550,7 @@ export default function Likuiditas() {
                       <input
                         className="w-full rounded-xl px-3 py-2 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-white/40"
                         value={KPMR_form.aspekNo}
-                        onChange={(e) =>
-                          KPMR_handleChange("aspekNo", e.target.value)
-                        }
+                        onChange={(e) => KPMR_handleChange("aspekNo", e.target.value)}
                       />
                     </label>
 
@@ -1392,9 +1586,7 @@ export default function Likuiditas() {
                     <input
                       className="w-full rounded-xl px-3 py-2 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-white/40"
                       value={KPMR_form.aspekTitle}
-                      onChange={(e) =>
-                        KPMR_handleChange("aspekTitle", e.target.value)
-                      }
+                      onChange={(e) => KPMR_handleChange("aspekTitle", e.target.value)}
                     />
                   </label>
 
@@ -1406,9 +1598,7 @@ export default function Likuiditas() {
                       <input
                         className="w-full rounded-xl px-3 py-2 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-white/40"
                         value={KPMR_form.sectionNo}
-                        onChange={(e) =>
-                          KPMR_handleChange("sectionNo", e.target.value)
-                        }
+                        onChange={(e) => KPMR_handleChange("sectionNo", e.target.value)}
                       />
                     </label>
 
@@ -1449,9 +1639,7 @@ export default function Likuiditas() {
                                 ? null
                                 : Number(r.sectionSkor)
                             )
-                            .filter(
-                              (v) => v != null && !isNaN(v)
-                            );
+                            .filter((v) => v != null && !isNaN(v));
                           return nums.length
                             ? (
                               nums.reduce((a, b) => a + b, 0) /
@@ -1471,9 +1659,7 @@ export default function Likuiditas() {
                     <textarea
                       className="w-full rounded-xl px-3 py-2 bg-white text-gray-900 min-h-[64px] focus:outline-none focus:ring-2 focus:ring-white/40"
                       value={KPMR_form.sectionTitle}
-                      onChange={(e) =>
-                        KPMR_handleChange("sectionTitle", e.target.value)
-                      }
+                      onChange={(e) => KPMR_handleChange("sectionTitle", e.target.value)}
                     />
                   </label>
 
@@ -1484,9 +1670,7 @@ export default function Likuiditas() {
                     <textarea
                       className="w-full rounded-xl px-3 py-2 bg-white text-gray-900 min-h-[56px] focus:outline-none focus:ring-2 focus:ring-white/40"
                       value={KPMR_form.evidence}
-                      onChange={(e) =>
-                        KPMR_handleChange("evidence", e.target.value)
-                      }
+                      onChange={(e) => KPMR_handleChange("evidence", e.target.value)}
                     />
                   </label>
                 </div>
@@ -1500,10 +1684,13 @@ export default function Likuiditas() {
                     >
                       <div className="px-3 pt-3 text-[13px] font-semibold text-gray-800">
                         {v}.{" "}
-                        {
-                          ["Strong", "Satisfactory", "Fair", "Marginal", "Unsatisfactory"][
-                          v - 1
-                          ]
+                        {[
+                          "Strong",
+                          "Satisfactory",
+                          "Fair",
+                          "Marginal",
+                          "Unsatisfactory",
+                        ][v - 1]
                         }
                       </div>
                       <div className="p-3">
@@ -1756,17 +1943,13 @@ export default function Likuiditas() {
 
                     {/* BARIS RATA-RATA TOTAL */}
                     <tr className="bg-[#c9daf8] font-semibold">
-                      <td
-                        colSpan={2}
-                        className="border px-3 py-2"
-                      ></td>
+                      <td colSpan={2} className="border px-3 py-2"></td>
                       <td
                         className="border px-3 py-2 text-center font-bold"
                         style={{ backgroundColor: "#93d150" }}
                       >
                         {(() => {
-                          if (!KPMR_groups || KPMR_groups.length === 0)
-                            return "";
+                          if (!KPMR_groups || KPMR_groups.length === 0) return "";
                           const perAspek = KPMR_groups
                             .map((g) => {
                               const vals = g.items
@@ -1775,9 +1958,7 @@ export default function Likuiditas() {
                                     ? null
                                     : Number(it.sectionSkor)
                                 )
-                                .filter(
-                                  (v) => v != null && !isNaN(v)
-                                );
+                                .filter((v) => v != null && !isNaN(v));
                               return vals.length
                                 ? vals.reduce(
                                   (a, b) => a + b,
@@ -1790,18 +1971,12 @@ export default function Likuiditas() {
                             );
                           return perAspek.length
                             ? (
-                              perAspek.reduce(
-                                (a, b) => a + b,
-                                0
-                              ) / perAspek.length
+                              perAspek.reduce((a, b) => a + b, 0) / perAspek.length
                             ).toFixed(2)
                             : "";
                         })()}
                       </td>
-                      <td
-                        colSpan={6}
-                        className="border px-3 py-2"
-                      ></td>
+                      <td colSpan={6} className="border px-3 py-2"></td>
                     </tr>
                   </tbody>
                 </table>
