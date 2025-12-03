@@ -204,7 +204,7 @@ const Sidebar = () => {
                   Dashboard
                 </Link>
 
-                <Link to="#" className={navItemClass(isActive('/dashboard/ras'))}>
+                <Link to="/dashboard/ras-form" className={navItemClass(isActive('/dashboard/ras-form'))}>
                   Risk Appetite Statement
                 </Link>
                 <div className="space-y-1">

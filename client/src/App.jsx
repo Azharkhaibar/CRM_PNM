@@ -26,6 +26,7 @@ import ProfilePage from './features/Dashboard/pages/profile/pages/userprofile.js
 import NotificationPage from './features/Dashboard/pages/notification/pages/notification.jsx';
 import { useAuth } from './features/auth/hooks/useAuth.hook.js';
 import { AuditLog } from './features/Dashboard/pages/audit-log/pages/audit-log-page.jsx';
+import RASPage from './features/Dashboard/pages/ras/pages/Ras.jsx';
 function App() {
   const { user, loading } = useAuth();
 
@@ -73,9 +74,9 @@ function App() {
           <Route
             path="/dashboard/*"
             element={
-              <ProtectedRoute>
+              // <ProtectedRoute>
                 <DashboardLayout />
-              </ProtectedRoute>
+              // </ProtectedRoute>
             }
           >
             <Route index element={<Dashboard />} />
@@ -93,6 +94,7 @@ function App() {
             <Route path="notification" element={<NotificationPage />} />
             <Route path='audit-log' element={<AuditLog />} />
             <Route path="settings" element={<Settings />} />
+            <Route path="ras-form" element={<RASPage />} />
           </Route>
 
           <Route path="/" element={user ? <Navigate to="/dashboard" replace /> : <Mainpage />} />
