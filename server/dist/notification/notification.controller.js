@@ -19,11 +19,14 @@ const notification_service_1 = require("./notification.service");
 const create_notification_dto_1 = require("./dto/create-notification.dto");
 const update_notification_dto_1 = require("./dto/update-notification.dto");
 const user_status_dto_1 = require("./dto/user-status.dto");
+const notification_gateway_1 = require("./notification.gateway");
 let NotificationController = NotificationController_1 = class NotificationController {
     notificationService;
+    notificationGateway;
     logger = new common_1.Logger(NotificationController_1.name);
-    constructor(notificationService) {
+    constructor(notificationService, notificationGateway) {
         this.notificationService = notificationService;
+        this.notificationGateway = notificationGateway;
     }
     async findAll() {
         this.logger.log('Fetching all notifications');
@@ -69,6 +72,11 @@ let NotificationController = NotificationController_1 = class NotificationContro
     async createMultiple(createNotificationDtos) {
         this.logger.log(`Creating ${createNotificationDtos.length} notifications`);
         return await this.notificationService.createMultiple(createNotificationDtos);
+    }
+    async broadcast(dto) {
+        const saved = await this.notificationService.create(dto);
+        this.notificationGateway.sendNotificationToAll(saved);
+        return saved;
     }
     async userStatusNotification(userStatusDto) {
         this.logger.log(`User status change: ${userStatusDto.userName} is ${userStatusDto.status}`);
@@ -178,6 +186,13 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], NotificationController.prototype, "createMultiple", null);
 __decorate([
+    (0, common_1.Post)('broadcast'),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [create_notification_dto_1.CreateNotificationDto]),
+    __metadata("design:returntype", Promise)
+], NotificationController.prototype, "broadcast", null);
+__decorate([
     (0, common_1.Post)('user-status'),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
@@ -230,6 +245,7 @@ __decorate([
 exports.NotificationController = NotificationController = NotificationController_1 = __decorate([
     (0, common_1.Controller)('notifications'),
     (0, common_1.UsePipes)(new common_1.ValidationPipe({ whitelist: true, transform: true })),
-    __metadata("design:paramtypes", [notification_service_1.NotificationService])
+    __metadata("design:paramtypes", [notification_service_1.NotificationService,
+        notification_gateway_1.NotificationGateway])
 ], NotificationController);
 //# sourceMappingURL=notification.controller.js.map

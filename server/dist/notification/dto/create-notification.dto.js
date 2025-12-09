@@ -14,7 +14,7 @@ const class_validator_1 = require("class-validator");
 const class_transformer_1 = require("class-transformer");
 const notification_entity_1 = require("../entities/notification.entity");
 class CreateNotificationDto {
-    userId;
+    user_id;
     type = notification_entity_1.NotificationType.SYSTEM;
     title;
     message;
@@ -27,8 +27,8 @@ __decorate([
     (0, class_validator_1.IsNumber)(),
     (0, class_validator_1.IsOptional)(),
     (0, class_transformer_1.Type)(() => Number),
-    __metadata("design:type", Number)
-], CreateNotificationDto.prototype, "userId", void 0);
+    __metadata("design:type", Object)
+], CreateNotificationDto.prototype, "user_id", void 0);
 __decorate([
     (0, class_validator_1.IsEnum)(notification_entity_1.NotificationType),
     __metadata("design:type", String)

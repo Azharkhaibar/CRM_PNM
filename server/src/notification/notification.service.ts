@@ -13,6 +13,7 @@ import { CreateNotificationDto } from './dto/create-notification.dto';
 import { UpdateNotificationDto } from './dto/update-notification.dto';
 import type { INotificationGateway } from './interface/notification-gateway.interface';
 import { NotificationGateway } from './notification.gateway';
+import { User } from 'src/users/entities/user.entity';
 export interface FindByUserOptions {
   unreadOnly?: boolean;
   limit?: number;
@@ -34,7 +35,7 @@ export class NotificationService {
     private readonly notificationRepository: Repository<Notification>,
 
     @Inject(forwardRef(() => NotificationGateway))
-    private readonly gateway: INotificationGateway,
+    private readonly gateway: NotificationGateway,
   ) {}
 
   async findAll(): Promise<Notification[]> {
@@ -75,59 +76,42 @@ export class NotificationService {
     userName: string,
     status: 'online' | 'offline',
   ): Promise<Notification> {
-    try {
-      const notification = await this.create({
-        // ❗ JANGAN kirim userId untuk broadcast notification
-        type: NotificationType.SYSTEM,
-        title: `User Status Update`,
-        message: `${userName} is now ${status}`,
-        category: 'user-status',
-        metadata: { userId, userName, status, timestamp: new Date() },
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-      });
-
-      // Notifikasi sudah otomatis dikirim via create() method
-      this.logger.log(
-        `User status notification created for ${userName} (${status})`,
-      );
-
-      return notification;
-    } catch (error) {
-      this.logger.error('Failed to create user status notification', error);
-      throw new InternalServerErrorException(
-        'Failed to create status notification',
-      );
-    }
+    return this.create({
+      user_id: null,
+      type: NotificationType.SYSTEM,
+      title: 'User Status Update',
+      message: `${userName} is now ${status}`,
+      category: 'user-status',
+      metadata: {
+        userId,
+        userName,
+        status,
+        timestamp: new Date(),
+        isStatusUpdate: true,
+      },
+      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+    });
   }
 
-  async create(createDto: CreateNotificationDto): Promise<Notification> {
+  async create(dto: CreateNotificationDto): Promise<Notification> {
     try {
       const notification = this.notificationRepository.create({
-        ...createDto,
-        user_id: createDto.userId ? Number(createDto.userId) : null,
-        expires_at: createDto.expiresAt ?? null,
+        ...dto,
+        user_id: dto.user_id ?? null,
+        expires_at: dto.expiresAt ?? null,
       });
 
-      const savedNotification =
-        await this.notificationRepository.save(notification);
+      const saved = await this.notificationRepository.save(notification);
 
-      if (savedNotification.user_id) {
-        this.gateway.sendNotificationToUser(
-          savedNotification.user_id,
-          savedNotification,
-        );
+      if (saved.user_id !== null) {
+        this.gateway.sendNotificationToUser(saved.user_id, saved);
       } else {
-        this.gateway.sendNotificationToAll(savedNotification);
+        this.gateway.sendNotificationToAll(saved);
       }
 
-      this.logger.log(
-        savedNotification.user_id
-          ? `Notification created for user ${savedNotification.user_id}`
-          : `Broadcast notification created`,
-      );
-      return savedNotification;
+      return saved;
     } catch (error) {
-      this.logger.error('Failed to create notification', error);
+      this.logger.error(error);
       throw new InternalServerErrorException('Failed to create notification');
     }
   }
@@ -204,9 +188,9 @@ export class NotificationService {
       this.logger.log(`Found ${notifications.length} broadcast notifications`);
       return { notifications, total };
     } catch (error) {
-      this.logger.error('Failed to find broadcast notifications', error);
+      this.logger.error('tidak menemukan notif broadcast', error);
       throw new InternalServerErrorException(
-        'Failed to retrieve broadcast notifications',
+        'anda gagal menerima notif broadcast',
       );
     }
   }
@@ -330,7 +314,7 @@ export class NotificationService {
     try {
       const notificationsData = createDtos.map((dto) => ({
         ...dto,
-        user_id: dto.userId ? Number(dto.userId) : null,
+        user_id: dto.user_id ? Number(dto.user_id) : null,
         expires_at: dto.expiresAt ?? null,
       }));
 
@@ -371,6 +355,14 @@ export class NotificationService {
         'Failed to retrieve user notifications',
       );
     }
+  }
+
+  async findByUserId(userId: number) {
+    return await this.notificationRepository.manager
+      .getRepository(User)
+      .findOne({
+        where: { user_id: userId },
+      });
   }
 
   async getRecentUserNotifications(

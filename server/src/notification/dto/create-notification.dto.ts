@@ -12,7 +12,7 @@ export class CreateNotificationDto {
   @IsNumber()
   @IsOptional()
   @Type(() => Number)
-  userId?: number; // ✅ tipe number agar cocok dengan entity.user_id
+  user_id?: number | null;
 
   @IsEnum(NotificationType)
   type: NotificationType = NotificationType.SYSTEM;
@@ -25,6 +25,7 @@ export class CreateNotificationDto {
 
   @IsOptional()
   metadata?: Record<string, any>;
+  
 
   @IsOptional()
   @IsString()

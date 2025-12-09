@@ -5,12 +5,14 @@ import { AxiosError } from 'axios';
 import { NotificationService } from '../../Dashboard/pages/notification/services/notification.services';
 import { ProfileService } from '../../Dashboard/pages/profile/services/profile.services';
 import { useNotificationStore } from '../../Dashboard/pages/notification/stores/notification.stores';
+import { userInfo } from 'os';
 
 interface AuthUser {
-  userID: string;
+  userID: string; // username login
+  username: string; // pastikan ini string, bukan optional
+  user_id: number; // pastikan ini number, bukan optional
   role?: string;
   email?: string;
-  user_id?: number;
 }
 
 export const useAuth = () => {
@@ -26,90 +28,54 @@ export const useAuth = () => {
     userRef.current = user;
   }, [user]);
 
-  const createLoginNotification = useCallback(async (userId: number, userID: string) => {
-    const notificationId = `login-${userId}-${Date.now()}`;
-    console.log(`🔔 [${notificationId}] Starting login notification creation for user:`, { userId, userID });
+  const createLoginNotification = useCallback(async () => {
+    if (!user || !user.user_id || !user.username || loginNotificationSentRef.current) return;
+
+    loginNotificationSentRef.current = true;
 
     try {
-      console.log(`🔔 [${notificationId}] Creating user-specific login notification...`);
-      await NotificationService.createLoginNotification(userId, userID);
-      console.log(`✅ [${notificationId}] User-specific login notification created successfully`);
+      // ✅ TypeScript aman karena sudah dicek
+      await NotificationService.createLoginNotification(user.user_id, user.username);
 
-      console.log(`🔔 [${notificationId}] Creating broadcast login notification...`);
-      await NotificationService.createUserStatusBroadcast(userId, userID, 'login');
-      console.log(`✅ [${notificationId}] Broadcast login notification created successfully`);
-
-      console.log(`🎉 [${notificationId}] All login notifications completed for user: ${userID}`);
-    } catch (error) {
-      console.error(`❌ [${notificationId}] Failed to create login notifications:`, error);
+      await NotificationService.createUserStatusBroadcast(user.user_id, user.username, 'login');
+    } catch (err) {
+      console.error('Login notification failed:', err);
     }
-  }, []);
+  }, [user]);
 
-  const createLogoutNotification = useCallback(async (userId: number, userID: string, accessToken?: string) => {
-    const notificationId = `logout-${userId}-${Date.now()}`;
-    console.log(`🔔 [${notificationId}] Starting logout notification creation for user:`, { userId, userID });
-
-    loginNotificationSentRef.current = false;
+  const createLogoutNotification = useCallback(async (userId: number, userID: string, accessToken?: string): Promise<boolean> => {
+    if (!userId || !userID) return false;
 
     try {
-      console.log(`🔔 [${notificationId}] Creating user-specific logout notification...`);
-
+      // coba kirim ke backend dulu
       if (accessToken) {
-        try {
-          await NotificationService.createLogoutNotification(userId, userID);
-          console.log(`✅ [${notificationId}] Backend logout notification created successfully for user: ${userID}`);
-          return true;
-        } catch (backendError) {
-          console.error(`❌ [${notificationId}] Backend logout notification failed:`, backendError);
-          // Lanjut ke fallback
-        }
+        await NotificationService.createLogoutNotification(userId, userID);
+        return true;
       }
+    } catch (err) {
+      console.warn('Backend logout notification failed:', err);
+    }
 
-      // ✅ FALLBACK: Buat local notification
-      console.log(`🔄 [${notificationId}] Creating local logout notification...`);
+    // fallback local store
+    try {
       const store = useNotificationStore.getState();
       store.addNotification({
-        userId: userId.toString(),
+        userId: String(userId),
         type: 'info',
         title: 'Logout Successful',
-        message: `You have successfully logged out. See you soon, ${userID}!`,
+        message: `See you soon, ${userID}!`,
         category: 'security',
         metadata: {
-          logout_time: new Date().toISOString(),
           activity_type: 'logout',
+          logout_time: new Date().toISOString(),
           user_id: userId,
-          username: userID,
           is_local: true,
-          notification_id: notificationId,
         },
       });
-      console.log(`✅ [${notificationId}] Local logout notification created`);
       return true;
-    } catch (error) {
-      console.error(`❌ [${notificationId}] Failed to create logout notification:`, error);
-
-      // ✅ ULTIMATE FALLBACK: Coba buat local notification sederhana
-      try {
-        const store = useNotificationStore.getState();
-        store.addNotification({
-          userId: userId.toString(),
-          type: 'info',
-          title: 'Logout Successful',
-          message: `You have logged out successfully.`,
-          category: 'security',
-          metadata: {
-            logout_time: new Date().toISOString(),
-            activity_type: 'logout',
-            user_id: userId,
-            is_fallback: true,
-          },
-        });
-        console.log(`✅ [${notificationId}] Ultimate fallback notification created`);
-        return true;
-      } catch (fallbackError) {
-        console.error(`[${notificationId}] All notification attempts failed:`, fallbackError);
-        return false;
-      }
+    } catch (fallbackErr) {
+      console.error('Local logout notification failed:', fallbackErr);
+      return false;
     }
   }, []);
 
@@ -162,45 +128,25 @@ export const useAuth = () => {
 
   const login = useCallback(
     async (userID: string, password: string) => {
-      const loginId = `login-${Date.now()}`;
-      console.log(`🔐 [${loginId}] Starting login process for user:`, userID);
-
       setError(null);
       setLoading(true);
 
       try {
-        console.log(`🔐 [${loginId}] Authenticating user...`);
         const token = await AuthService.login({ userID, password });
-        console.log(`✅ [${loginId}] Authentication successful, token received`);
-
         localStorage.setItem('access_token', token);
 
-        console.log(`🔐 [${loginId}] Fetching user profile...`);
         const res = await RIMS_API.get('/auth/me', {
           headers: { Authorization: `Bearer ${token}` },
         });
 
-        const userData = res.data;
-        console.log(`✅ [${loginId}] User profile fetched:`, {
-          userID: userData.userID,
-          user_id: userData.user_id,
-        });
+        setUser(res.data);
 
-        setUser(userData);
-
-        if (userData.user_id) {
-          console.log(`🔐 [${loginId}] Creating login notifications...`);
-          await createLoginNotification(userData.user_id, userData.userID);
-          localStorage.setItem(`last_login_${userData.user_id}`, new Date().toDateString());
+        if (res.data.user_id) {
+          await createLoginNotification(res.data.user_id, res.data.userID);
+          localStorage.setItem(`last_login_${res.data.user_id}`, new Date().toDateString());
         }
 
-        console.log(`🎉 [${loginId}] Login process completed successfully for user: ${userID}`);
         return token;
-      } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : 'Login failed';
-        console.error(`❌ [${loginId}] Login failed:`, errorMessage);
-        setError(errorMessage);
-        throw err;
       } finally {
         setLoading(false);
       }
@@ -282,53 +228,24 @@ export const useAuth = () => {
   }, []);
 
   const logout = useCallback(async () => {
-    const logoutId = `logout-${Date.now()}`;
-    console.log(`🚪 [${logoutId}] Starting logout process...`);
+    const userData = userRef.current;
 
-    const currentUser = userRef.current;
-    const userId = currentUser?.user_id;
-    const userID = currentUser?.userID;
-
-    console.log(`🚪 [${logoutId}] Current user data:`, { userId, userID });
-
-    if (!userId || !userID) {
-      console.log(`⚠️ [${logoutId}] No user data found, clearing auth data only`);
-      localStorage.removeItem('access_token');
+    if (!userData?.user_id) {
+      localStorage.clear();
       setUser(null);
-      console.log(`✅ [${logoutId}] Logout completed (no user data)`);
       return;
     }
 
-    const accessToken = localStorage.getItem('access_token');
+    const { user_id, userID } = userData;
+    const token = localStorage.getItem('access_token');
 
-    console.log(`🚪 [${logoutId}] Clearing authentication data immediately...`);
     localStorage.removeItem('access_token');
-    if (userId) {
-      localStorage.removeItem(`last_login_${userId}`);
-    }
+    localStorage.removeItem(`last_login_${user_id}`);
     setUser(null);
 
-    console.log(`✅ [${logoutId}] Auth data cleared, user logged out`);
-
-    
-    console.log(`🚪 [${logoutId}] Creating logout notifications asynchronously...`);
-
-    setTimeout(async () => {
-      try {
-        console.log(`🚪 [${logoutId}] Executing async logout notification...`);
-        const notificationSuccess = await createLogoutNotification(userId, userID, accessToken || undefined);
-
-        if (!notificationSuccess) {
-          console.log(`⚠️ [${logoutId}] Logout notifications failed, but user already logged out`);
-        } else {
-          console.log(`✅ [${logoutId}] Logout notifications completed successfully`);
-        }
-      } catch (error) {
-        console.error(`[${logoutId}] Error in async logout notification:`, error);
-      }
+    setTimeout(() => {
+      createLogoutNotification(user_id, userID, token || undefined);
     }, 0);
-
-    console.log(`🎉 [${logoutId}] Logout process completed successfully for user: ${userID}`);
   }, [createLogoutNotification]);
 
   const quickLogout = useCallback(() => {

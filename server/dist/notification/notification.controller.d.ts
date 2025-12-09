@@ -2,10 +2,12 @@ import { NotificationService } from './notification.service';
 import { CreateNotificationDto } from './dto/create-notification.dto';
 import { UpdateNotificationDto } from './dto/update-notification.dto';
 import { UserStatusDto } from './dto/user-status.dto';
+import { NotificationGateway } from './notification.gateway';
 export declare class NotificationController {
     private readonly notificationService;
+    private readonly notificationGateway;
     private readonly logger;
-    constructor(notificationService: NotificationService);
+    constructor(notificationService: NotificationService, notificationGateway: NotificationGateway);
     findAll(): Promise<import("./entities/notification.entity").Notification[]>;
     findByUser(user_id: number, unreadOnly?: string, limit?: number, page?: number): Promise<{
         notifications: import("./entities/notification.entity").Notification[];
@@ -25,6 +27,7 @@ export declare class NotificationController {
     findOne(id: number): Promise<import("./entities/notification.entity").Notification>;
     create(createNotificationDto: CreateNotificationDto): Promise<import("./entities/notification.entity").Notification>;
     createMultiple(createNotificationDtos: CreateNotificationDto[]): Promise<import("./entities/notification.entity").Notification[]>;
+    broadcast(dto: CreateNotificationDto): Promise<import("./entities/notification.entity").Notification>;
     userStatusNotification(userStatusDto: UserStatusDto): Promise<import("./entities/notification.entity").Notification>;
     update(id: number, updateNotificationDto: UpdateNotificationDto): Promise<import("./entities/notification.entity").Notification>;
     markAsRead(id: number): Promise<import("./entities/notification.entity").Notification>;

@@ -28,29 +28,43 @@ let NotificationGateway = NotificationGateway_1 = class NotificationGateway {
         this.notificationService = notificationService;
     }
     handleConnection(client) {
+        const userId = Number(client.handshake.query.userId);
+        if (userId) {
+            this.registerUserSocket(userId, client);
+        }
         this.logger.log(`Client connected: ${client.id}`);
     }
     handleDisconnect(client) {
-        this.logger.log(`Client disconnected: ${client.id}`);
         for (const [userId, sockets] of this.userSockets.entries()) {
             const index = sockets.indexOf(client);
-            if (index > -1) {
+            if (index !== -1) {
                 sockets.splice(index, 1);
                 if (sockets.length === 0) {
                     this.userSockets.delete(userId);
+                    void this.triggerUserOfflineNotification(userId);
                 }
+                break;
             }
+        }
+        this.logger.log(`Client Disconnected: ${client.id}`);
+    }
+    async getUsername(userId) {
+        const user = await this.notificationService.findByUserId(userId);
+        return user?.userID ?? `User-${userId}`;
+    }
+    async triggerUserOfflineNotification(userId) {
+        try {
+            await this.notificationService.notifyUserStatusChange(userId, await this.getUsername(userId), 'offline');
+            this.logger.log(`Offline notification triggered for user ${userId}`);
+        }
+        catch (error) {
+            this.logger.error(`Failed to trigger offline notification for user ${userId}`, error);
         }
     }
     registerUserSocket(userId, client) {
-        if (!this.userSockets.has(userId)) {
-            this.userSockets.set(userId, []);
-        }
-        const userSockets = this.userSockets.get(userId);
-        if (userSockets) {
-            userSockets.push(client);
-        }
-        this.logger.log(`User ${userId} registered with socket ${client.id}`);
+        const sockets = this.userSockets.get(userId) ?? [];
+        sockets.push(client);
+        this.userSockets.set(userId, sockets);
     }
     async handleGetUserNotifications(client, data) {
         try {
@@ -63,23 +77,22 @@ let NotificationGateway = NotificationGateway_1 = class NotificationGateway {
         }
     }
     sendNotificationToUser(userId, notification) {
-        const userSockets = this.userSockets.get(userId);
-        if (userSockets && userSockets.length > 0) {
-            userSockets.forEach((socket) => {
-                socket.emit('notification', notification);
-            });
-            this.logger.log(`📩 Sent notification to user ${userId} (${userSockets.length} sockets)`);
-        }
-        else {
-            this.logger.log(`📩 No active sockets for user ${userId}`);
-        }
+        const sockets = this.userSockets.get(userId);
+        if (!sockets)
+            return;
+        sockets.forEach((s) => s.emit('notification', notification));
     }
     sendNotificationToAll(notification) {
-        this.server.emit('notification', notification);
-        this.logger.log('📢 Broadcast notification to all connected clients');
+        this.server.emit('notification:broadcast', notification);
     }
-    handleAuthenticate(client, userId) {
+    async handleAuthenticate(client, userId) {
         this.registerUserSocket(userId, client);
+        try {
+            await this.notificationService.notifyUserStatusChange(userId, await this.getUsername(userId), 'online');
+        }
+        catch (error) {
+            this.logger.error('Failed to send online notification', error);
+        }
         client.emit('authenticated', { success: true });
         this.logger.log(`User ${userId} authenticated with socket ${client.id}`);
     }
@@ -91,6 +104,17 @@ let NotificationGateway = NotificationGateway_1 = class NotificationGateway {
         catch (error) {
             this.logger.error('Failed to create notification', error);
             client.emit('error', { message: 'Failed to create notification' });
+        }
+    }
+    async handleUserLogout(client, userId) {
+        try {
+            await this.notificationService.notifyUserStatusChange(userId, await this.getUsername(userId), 'offline');
+            client.emit('logoutSuccess', { success: true });
+            this.logger.log(`Manual logout notification for user ${userId}`);
+        }
+        catch (error) {
+            this.logger.error('Failed to send logout notification', error);
+            client.emit('error', { message: 'Failed to process logout' });
         }
     }
     async handleUpdateNotification(client, data) {
@@ -139,7 +163,7 @@ __decorate([
     (0, websockets_1.SubscribeMessage)('authenticate'),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [socket_io_1.Socket, Number]),
-    __metadata("design:returntype", void 0)
+    __metadata("design:returntype", Promise)
 ], NotificationGateway.prototype, "handleAuthenticate", null);
 __decorate([
     (0, websockets_1.SubscribeMessage)('createNotification'),
@@ -147,6 +171,12 @@ __decorate([
     __metadata("design:paramtypes", [socket_io_1.Socket, create_notification_dto_1.CreateNotificationDto]),
     __metadata("design:returntype", Promise)
 ], NotificationGateway.prototype, "handleCreateNotification", null);
+__decorate([
+    (0, websockets_1.SubscribeMessage)('userLogout'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [socket_io_1.Socket, Number]),
+    __metadata("design:returntype", Promise)
+], NotificationGateway.prototype, "handleUserLogout", null);
 __decorate([
     (0, websockets_1.SubscribeMessage)('updateNotification'),
     __metadata("design:type", Function),

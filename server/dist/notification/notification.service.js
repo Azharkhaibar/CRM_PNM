@@ -19,6 +19,7 @@ const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 const notification_entity_1 = require("./entities/notification.entity");
 const notification_gateway_1 = require("./notification.gateway");
+const user_entity_1 = require("../users/entities/user.entity");
 let NotificationService = NotificationService_1 = class NotificationService {
     notificationRepository;
     gateway;
@@ -55,44 +56,40 @@ let NotificationService = NotificationService_1 = class NotificationService {
         }
     }
     async notifyUserStatusChange(userId, userName, status) {
-        try {
-            const notification = await this.create({
-                type: notification_entity_1.NotificationType.SYSTEM,
-                title: `User Status Update`,
-                message: `${userName} is now ${status}`,
-                category: 'user-status',
-                metadata: { userId, userName, status, timestamp: new Date() },
-                expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-            });
-            this.logger.log(`User status notification created for ${userName} (${status})`);
-            return notification;
-        }
-        catch (error) {
-            this.logger.error('Failed to create user status notification', error);
-            throw new common_1.InternalServerErrorException('Failed to create status notification');
-        }
+        return this.create({
+            user_id: null,
+            type: notification_entity_1.NotificationType.SYSTEM,
+            title: 'User Status Update',
+            message: `${userName} is now ${status}`,
+            category: 'user-status',
+            metadata: {
+                userId,
+                userName,
+                status,
+                timestamp: new Date(),
+                isStatusUpdate: true,
+            },
+            expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        });
     }
-    async create(createDto) {
+    async create(dto) {
         try {
             const notification = this.notificationRepository.create({
-                ...createDto,
-                user_id: createDto.userId ? Number(createDto.userId) : null,
-                expires_at: createDto.expiresAt ?? null,
+                ...dto,
+                user_id: dto.user_id ?? null,
+                expires_at: dto.expiresAt ?? null,
             });
-            const savedNotification = await this.notificationRepository.save(notification);
-            if (savedNotification.user_id) {
-                this.gateway.sendNotificationToUser(savedNotification.user_id, savedNotification);
+            const saved = await this.notificationRepository.save(notification);
+            if (saved.user_id !== null) {
+                this.gateway.sendNotificationToUser(saved.user_id, saved);
             }
             else {
-                this.gateway.sendNotificationToAll(savedNotification);
+                this.gateway.sendNotificationToAll(saved);
             }
-            this.logger.log(savedNotification.user_id
-                ? `Notification created for user ${savedNotification.user_id}`
-                : `Broadcast notification created`);
-            return savedNotification;
+            return saved;
         }
         catch (error) {
-            this.logger.error('Failed to create notification', error);
+            this.logger.error(error);
             throw new common_1.InternalServerErrorException('Failed to create notification');
         }
     }
@@ -147,8 +144,8 @@ let NotificationService = NotificationService_1 = class NotificationService {
             return { notifications, total };
         }
         catch (error) {
-            this.logger.error('Failed to find broadcast notifications', error);
-            throw new common_1.InternalServerErrorException('Failed to retrieve broadcast notifications');
+            this.logger.error('tidak menemukan notif broadcast', error);
+            throw new common_1.InternalServerErrorException('anda gagal menerima notif broadcast');
         }
     }
     async findAllForUser(user_id, options = {}) {
@@ -233,7 +230,7 @@ let NotificationService = NotificationService_1 = class NotificationService {
         try {
             const notificationsData = createDtos.map((dto) => ({
                 ...dto,
-                user_id: dto.userId ? Number(dto.userId) : null,
+                user_id: dto.user_id ? Number(dto.user_id) : null,
                 expires_at: dto.expiresAt ?? null,
             }));
             const notifications = this.notificationRepository.create(notificationsData);
@@ -265,6 +262,13 @@ let NotificationService = NotificationService_1 = class NotificationService {
             throw new common_1.InternalServerErrorException('Failed to retrieve user notifications');
         }
     }
+    async findByUserId(userId) {
+        return await this.notificationRepository.manager
+            .getRepository(user_entity_1.User)
+            .findOne({
+            where: { user_id: userId },
+        });
+    }
     async getRecentUserNotifications(user_id, hours = 24) {
         try {
             const since = new Date();
@@ -287,6 +291,7 @@ exports.NotificationService = NotificationService = NotificationService_1 = __de
     (0, common_1.Injectable)(),
     __param(0, (0, typeorm_1.InjectRepository)(notification_entity_1.Notification)),
     __param(1, (0, common_1.Inject)((0, common_1.forwardRef)(() => notification_gateway_1.NotificationGateway))),
-    __metadata("design:paramtypes", [typeorm_2.Repository, Object])
+    __metadata("design:paramtypes", [typeorm_2.Repository,
+        notification_gateway_1.NotificationGateway])
 ], NotificationService);
 //# sourceMappingURL=notification.service.js.map

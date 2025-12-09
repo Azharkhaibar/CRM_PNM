@@ -1,7 +1,11 @@
 import { DataSource } from 'typeorm';
-import { User } from '../users/entities/user.entity';
-import { Auth } from '../auth/entities/auth.entity';
+import { User } from 'src/users/entities/user.entity';
+import { Auth } from 'src/auth/entities/auth.entity';
 import { config } from 'dotenv';
+
+import { Notification } from 'src/notification/entities/notification.entity';
+import { Divisi } from 'src/divisi/entities/divisi.entity';
+import { AuditLog } from 'src/audit-log/entities/audit-log.entity';
 config();
 
 export const AppDataSource = new DataSource({
@@ -13,5 +17,6 @@ export const AppDataSource = new DataSource({
   database: process.env.DB_NAME,
   synchronize: false,
   logging: true,
-  entities: [User, Auth],
+  entities: [User, Auth, Notification, AuditLog, Divisi],
+  migrations: ['src/migrations/*.ts'],
 });

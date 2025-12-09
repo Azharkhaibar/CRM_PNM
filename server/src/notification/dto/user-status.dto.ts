@@ -1,7 +1,12 @@
-import { IsNumber, IsString, IsEnum } from 'class-validator';
+import { IsNumber, IsString, IsEnum, IsInstance, IsIn } from 'class-validator';
 
 export class UserStatusDto {
-  @IsNumber() userId: number;
-  @IsString() userName: string;
-  @IsEnum(['online', 'offline']) status: 'online' | 'offline';
+  @IsNumber()
+  userId: number;
+
+  @IsString()
+  userName: string;
+
+  @IsIn(['online', 'offline'])
+  status: 'online' | 'offline';
 }

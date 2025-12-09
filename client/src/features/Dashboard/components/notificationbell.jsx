@@ -23,19 +23,16 @@ export const NotificationBell = () => {
         setVisibleNotifications(new Set());
       }
     };
-    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('click', handleClickOutside);
+
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   useEffect(() => {
-    if (isOpen) {
-      const interval = setInterval(() => {
-        refreshNotifications();
-      }, 10000);
-
-      return () => clearInterval(interval);
-    }
-  }, [isOpen, refreshNotifications]);
+    if (!isOpen) return;
+    const interval = setInterval(refreshNotifications, 10000);
+    return () => clearInterval(interval);
+  }, [isOpen]);
 
   const handleNotificationVisible = (id) => {
     if (!visibleNotifications.has(id)) {
@@ -131,8 +128,7 @@ export const NotificationBell = () => {
   const viewAllButtonClass = `w-full text-center text-sm font-medium py-2 transition-colors ${darkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-500 hover:text-blue-600'}`;
 
   // Filter notifications
-  const filteredNotifications = notifications.filter((notif) => true);
-  const recentNotifications = filteredNotifications.slice(0, 8);
+  const recentNotifications = notifications.slice(0, 8);
 
   return (
     <div className="relative" ref={dropdownRef}>
@@ -201,7 +197,6 @@ export const NotificationBell = () => {
               ) : (
                 <div className={dividerClass}>
                   {recentNotifications.map((notif) => (
-                  
                     <div
                       key={notif.id}
                       className={`p-4 transition-all duration-150 flex gap-3 border-l-4 ${getNotificationColor(notif.type, notif.metadata)} ${notif.read ? 'opacity-75' : 'opacity-100'}`}

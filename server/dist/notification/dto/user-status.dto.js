@@ -26,7 +26,7 @@ __decorate([
     __metadata("design:type", String)
 ], UserStatusDto.prototype, "userName", void 0);
 __decorate([
-    (0, class_validator_1.IsEnum)(['online', 'offline']),
+    (0, class_validator_1.IsIn)(['online', 'offline']),
     __metadata("design:type", String)
 ], UserStatusDto.prototype, "status", void 0);
 //# sourceMappingURL=user-status.dto.js.map

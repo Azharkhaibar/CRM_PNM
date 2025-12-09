@@ -19,6 +19,7 @@ let Auth = class Auth {
     refresh_token;
     reset_password_token;
     user;
+    sessions;
 };
 exports.Auth = Auth;
 __decorate([

@@ -15,14 +15,25 @@ const app_service_1 = require("./app.service");
 const auth_module_1 = require("./auth/auth.module");
 const users_module_1 = require("./users/users.module");
 const db_config_1 = require("./config/db.config");
-const investasi_module_1 = require("./investasi/investasi/investasi.module");
-const pasar_module_1 = require("./pasar/pasar.module");
-const likuiditas_module_1 = require("./likuiditas/likuiditas.module");
-const operasional_module_1 = require("./operasional/operasional.module");
+const pasar_module_1 = require("./pasar/pasar/pasar.module");
+const likuiditas_module_1 = require("./likuiditas/likuiditas/likuiditas.module");
+const operasional_module_1 = require("./operasional/operasional/operasional.module");
 const divisi_module_1 = require("./divisi/divisi.module");
 const notification_module_1 = require("./notification/notification.module");
 const kpmr_investasi_module_1 = require("./investasi/kpmr-investasi/kpmr-investasi.module");
 const audit_log_module_1 = require("./audit-log/audit-log.module");
+const kpmr_pasar_module_1 = require("./pasar/kpmr-pasar/kpmr-pasar.module");
+const kpmr_likuiditas_module_1 = require("./likuiditas/kpmr-likuiditas/kpmr-likuiditas.module");
+const new_investasi_module_1 = require("./investasi/new-investasi/new-investasi.module");
+const hukum_module_1 = require("./hukum/hukum/hukum.module");
+const kpmr_hukum_module_1 = require("./hukum/kpmr-hukum/kpmr-hukum.module");
+const stratejik_module_1 = require("./stratejik/stratejik/stratejik.module");
+const kpmr_stratejik_module_1 = require("./stratejik/kpmr-stratejik/kpmr-stratejik.module");
+const kpmr_operasional_module_1 = require("./operasional/kpmr-operasional/kpmr-operasional.module");
+const kepatuhan_module_1 = require("./kepatuhan/kepatuhan/kepatuhan.module");
+const kpmr_kepatuhan_module_1 = require("./kepatuhan/kpmr-kepatuhan/kpmr-kepatuhan.module");
+const reputasi_module_1 = require("./reputasi/reputasi/reputasi.module");
+const kpmr_reputasi_module_1 = require("./reputasi/kpmr-reputasi/kpmr-reputasi.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -37,7 +48,6 @@ exports.AppModule = AppModule = __decorate([
             }),
             auth_module_1.AuthModule,
             users_module_1.UsersModule,
-            investasi_module_1.InvestasiModule,
             pasar_module_1.PasarModule,
             likuiditas_module_1.LikuiditasModule,
             operasional_module_1.OperasionalModule,
@@ -45,6 +55,18 @@ exports.AppModule = AppModule = __decorate([
             notification_module_1.NotificationModule,
             kpmr_investasi_module_1.KpmrInvestasiModule,
             audit_log_module_1.AuditLogModule,
+            kpmr_pasar_module_1.KpmrPasarModule,
+            kpmr_likuiditas_module_1.KpmrLikuiditasModule,
+            new_investasi_module_1.NewInvestasiModule,
+            hukum_module_1.HukumModule,
+            kpmr_hukum_module_1.KpmrHukumModule,
+            stratejik_module_1.StratejikModule,
+            kpmr_stratejik_module_1.KpmrStratejikModule,
+            kpmr_operasional_module_1.KpmrOperasionalModule,
+            kepatuhan_module_1.KepatuhanModule,
+            kpmr_kepatuhan_module_1.KpmrKepatuhanModule,
+            reputasi_module_1.ReputasiModule,
+            kpmr_reputasi_module_1.KpmrReputasiModule,
         ],
         controllers: [app_controller_1.AppController],
         providers: [app_service_1.AppService],

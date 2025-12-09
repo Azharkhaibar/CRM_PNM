@@ -84,7 +84,7 @@ export const useNotificationStore = create<NotificationState>()(
           ...notification,
           id: validId,
           userId: validUserId,
-          timestamp: new Date(),
+          timestamp: new Date().toISOString(),
           read: false,
         };
 
@@ -104,7 +104,7 @@ export const useNotificationStore = create<NotificationState>()(
           const newNotifications = [newNotification, ...state.notifications];
           const limitedNotifications = newNotifications.slice(0, 200);
 
-          const unreadCount = limitedNotifications.filter((n) => !n.read).length;
+          const unreadCount = limitedNotifications.filter((n: { read: boolean; }) => n.read === false).length;
 
           return {
             notifications: limitedNotifications,
@@ -212,8 +212,8 @@ export const useNotificationStore = create<NotificationState>()(
         });
       },
 
-      getNotificationsByUser: (userId: string) => {
-        return get().notifications.filter((n) => n.userId === userId);
+      getNotificationsByUser: (userId) => {
+        return get().notifications.filter((n) => n.userId === userId || n.userId === 'broadcast');
       },
 
       getUnreadByUser: (userId: string) => {
@@ -233,7 +233,9 @@ export const useNotificationStore = create<NotificationState>()(
           const hasUnreadForUser = state.notifications.some((n) => n.userId === userId && !n.read);
           if (!hasUnreadForUser) return state;
 
-          const updated = state.notifications.map((n) => (n.userId === userId ? { ...n, read: true } : n));
+          const updated = state.notifications.map((n) => (n.userId === userId || n.userId === 'broadcast' ? {
+            ...n, read: true
+          }: n ));
           return {
             notifications: updated,
             unreadCount: updated.filter((n) => !n.read).length,
@@ -247,7 +249,7 @@ export const useNotificationStore = create<NotificationState>()(
           const hasNotificationsForUser = state.notifications.some((n) => n.userId === userId);
           if (!hasNotificationsForUser) return state;
 
-          const remaining = state.notifications.filter((n) => n.userId !== userId);
+          const remaining = state.notifications.filter((n) => !(n.userId === userId || n.userId === "broadcast"));
           return {
             notifications: remaining,
             unreadCount: remaining.filter((n) => !n.read).length,
@@ -325,7 +327,7 @@ export const useNotificationStore = create<NotificationState>()(
         });
 
         // ✅ CEK: Skip jika data backend kosong dan kita sudah punya data
-        if (backendNotifications.length === 0 && state.notifications.length > 0) {
+        if (!backendNotifications || backendNotifications.length === 0) {
           console.log(`⏭️ [SYNC-${syncId}] Skip - no backend data but we have local data`);
           return;
         }
@@ -359,7 +361,7 @@ export const useNotificationStore = create<NotificationState>()(
           const validNewNotifications = convertedNotifications.filter((n) => !n.id.includes('NaN') && n.id !== 'null' && n.id !== 'undefined');
 
           // Cari notifications baru yang belum ada
-          const existingIds = new Set(state.notifications.map((n) => n.id));
+          const existingIds = new Map(state.notifications.map((n) => [n.id, n]));
           const newNotifications = validNewNotifications.filter((n) => !existingIds.has(n.id));
 
           // ✅ CEK: Skip jika tidak ada notifications baru
@@ -370,7 +372,8 @@ export const useNotificationStore = create<NotificationState>()(
 
           console.log(`✅ [SYNC-${syncId}] Adding ${newNotifications.length} new notifications`);
 
-          const mergedNotifications = [...newNotifications, ...state.notifications].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).slice(0, 200);
+          const mergedNotifications = [...state.notifications, ...validNewNotifications.filter(n => !existingIds.has(n.id))]
+          .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).slice(0, 200);
 
           return {
             notifications: mergedNotifications,
@@ -392,12 +395,12 @@ export const useNotificationStore = create<NotificationState>()(
     {
       name: 'notification-storage',
       partialize: (state) => ({
-        notifications: state.notifications.filter((n) => !n.id.includes('NaN') && n.id !== 'null' && n.id !== 'undefined'),
-        unreadCount: state.unreadCount,
-        lastUpdated: state.lastUpdated,
-        _syncCounter: state._syncCounter,
+      notifications: state.notifications,
+      unreadCount: state.unreadCount,
+      lastUpdated: state.lastUpdated,
       }),
-      version: 5, // ✅ Increment version
+
+      version: 5, 
       migrate: (persistedState: any, version: number) => {
         console.log(`🔄 Migrating notification store from version ${version} to 5`);
         if (version < 5) {

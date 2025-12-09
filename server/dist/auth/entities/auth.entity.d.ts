@@ -6,4 +6,5 @@ export declare class Auth {
     refresh_token?: string;
     reset_password_token?: string;
     user: User;
+    sessions: any;
 }

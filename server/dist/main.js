@@ -5,7 +5,7 @@ const app_module_1 = require("./app.module");
 const common_1 = require("@nestjs/common");
 const swagger_1 = require("@nestjs/swagger");
 async function bootstrap() {
-    const app = await core_1.NestFactory.create(app_module_1.AppModule, { cors: true });
+    const app = await core_1.NestFactory.create(app_module_1.AppModule);
     app.enableCors({
         origin: [
             'http://localhost:5173',
@@ -14,16 +14,25 @@ async function bootstrap() {
             'https://a070771a5176.ngrok-free.app',
         ],
         credentials: true,
+        methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE'],
+        allowedHeaders: ['Content-Type', 'Authorization'],
     });
     app.setGlobalPrefix('api/v1');
     app.useGlobalPipes(new common_1.ValidationPipe({
-        transform: true,
-        whitelist: true,
-        forbidNonWhitelisted: false,
+        transform: false,
+        whitelist: false,
+        forbidNonWhitelisted: true,
         transformOptions: { enableImplicitConversion: true },
         exceptionFactory: (errors) => {
-            console.error('❌ Validation Error:', errors);
-            return new common_1.BadRequestException(errors);
+            console.log('❌ Validation Error:', errors);
+            const messages = errors.map((error) => {
+                const constraints = Object.values(error.constraints || {});
+                return `${error.property}: ${constraints.join(', ')}`;
+            });
+            return new common_1.BadRequestException({
+                message: 'Validation failed',
+                errors: messages,
+            });
         },
     }));
     const configSwagger = new swagger_1.DocumentBuilder()
@@ -36,6 +45,8 @@ async function bootstrap() {
     const port = process.env.PORT ?? 5530;
     await app.listen(port, '0.0.0.0');
     console.log(`✅ Server running on http://localhost:${port}`);
+    console.log(`📚 Swagger: http://localhost:${port}/api`);
+    console.log(`🔍 Stratejik: http://localhost:${port}/api/v1/stratejik`);
 }
 bootstrap();
 //# sourceMappingURL=main.js.map

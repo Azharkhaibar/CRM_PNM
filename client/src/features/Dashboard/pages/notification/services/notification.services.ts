@@ -2,6 +2,7 @@
 import { Notification, useNotificationStore } from '../stores/notification.stores';
 
 export interface BackendNotification {
+  id: number;
   notification_id: number;
   user_id: number | null;
   type: 'info' | 'success' | 'warning' | 'error';
@@ -72,7 +73,7 @@ export class NotificationService {
       if (options?.limit) params.append('limit', options.limit.toString());
       if (options?.page) params.append('page', options.page.toString());
 
-      const url = `${this.baseUrl}/user/${userId}${params.toString() ? `?${params.toString()}` : ''}`;
+      const url = `${this.baseUrl}/user/${userId}?${params.toString()}`;
       const response = await fetch(url, {
         method: 'GET',
         headers: {
@@ -231,13 +232,13 @@ export class NotificationService {
 
       // ✅ Payload sesuai dengan backend CreateNotificationDto
       const payload = {
-        userId: notificationData.userId, // ✅ Sesuai backend (bisa null/undefined)
+        user_id: notificationData.userId ?? null,
         type: notificationData.type,
         title: notificationData.title,
         message: notificationData.message,
-        category: notificationData.category,
-        metadata: notificationData.metadata,
-        expiresAt: notificationData.expiresAt?.toISOString(), // ✅ Sesuai backend
+        category: notificationData.category ?? null,
+        metadata: notificationData.metadata ?? null,
+        expires_at: notificationData.expiresAt ? notificationData.expiresAt.toISOString() : null,
       };
 
       const response = await fetch(this.baseUrl, {
@@ -306,7 +307,7 @@ export class NotificationService {
       this.debugLog('createLogoutNotification', { userId, username });
 
       const notificationData: CreateNotificationDto = {
-        userId: userId, // ✅ Personal notification
+        userId: userId,
         type: 'info',
         title: 'Logout Successful',
         message: `You have successfully logged out. See you soon, ${username}!`,
@@ -336,17 +337,17 @@ export class NotificationService {
     }
   }
 
-  static async createUserStatusBroadcast(userId: number, username: string, status: 'online' | 'offline'): Promise<BackendNotification> {
+  static async createUserStatusBroadcast(userId: number, username: string, status: string): Promise<BackendNotification> {
     try {
       this.debugLog('createUserStatusBroadcast', { userId, username, status });
 
       const payload = {
-        userId: userId,
+        userId,
         userName: username,
-        status: status,
+        status,
       };
 
-      const response = await fetch(`${this.baseUrl}/user-status`, {
+      const response = await fetch(`/api/v1/notifications/user-status`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -370,7 +371,7 @@ export class NotificationService {
 
       const notificationData: CreateNotificationDto = {
         userId: null,
-        type: 'system',
+        type: 'info',
         title: 'User Status Update',
         message: `${username} is now ${status}`,
         category: 'user-status',
@@ -391,7 +392,7 @@ export class NotificationService {
       const store = useNotificationStore.getState();
 
       const fallbackNotification = {
-        userId: userId.toString(),
+        userId: String(userId),
         type: action === 'login' ? 'success' : ('info' as const),
         title: action === 'login' ? 'Login Successful' : 'Logout Successful',
         message: action === 'login' ? `Welcome back, ${username}! (Local Fallback)` : `You have successfully logged out. (Local Fallback)`,
@@ -565,7 +566,7 @@ export class NotificationService {
     try {
       this.debugLog('deleteAllUserNotifications', { userId });
 
-      const response = await fetch(`${this.baseUrl}/user/${userId}/delete-all`, {
+      const response = await fetch(`${this.baseUrl}/user/${userId}`, {
         method: 'DELETE',
         headers: {
           Authorization: `Bearer ${localStorage.getItem('access_token')}`,
@@ -632,6 +633,11 @@ export class NotificationService {
       this.debugLog('stopPolling', { userId });
     }
   }
+
+  // async private readonl (userId: string): void {
+  //   const intervalID = this.pollingIntervals.get(userId)
+  //   if (interval)
+  // }
 
   static stopAllPolling(): void {
     this.pollingIntervals.forEach((intervalId, userId) => {

@@ -17,13 +17,17 @@ import { NotificationService } from './notification.service';
 import { CreateNotificationDto } from './dto/create-notification.dto';
 import { UpdateNotificationDto } from './dto/update-notification.dto';
 import { UserStatusDto } from './dto/user-status.dto';
+import { NotificationGateway } from './notification.gateway';
 
 @Controller('notifications')
 @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
 export class NotificationController {
   private readonly logger = new Logger(NotificationController.name);
 
-  constructor(private readonly notificationService: NotificationService) {}
+  constructor(
+    private readonly notificationService: NotificationService,
+    private readonly notificationGateway: NotificationGateway,
+  ) {}
 
   @Get()
   async findAll() {
@@ -102,6 +106,16 @@ export class NotificationController {
     return await this.notificationService.createMultiple(
       createNotificationDtos,
     );
+  }
+
+  // broadcast
+
+  @Post('broadcast')
+  async broadcast(@Body() dto: CreateNotificationDto) {
+    const saved = await this.notificationService.create(dto);
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+    this.notificationGateway.sendNotificationToAll(saved);
+    return saved;
   }
 
   @Post('user-status')

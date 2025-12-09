@@ -1,0 +1,40 @@
+import { CreateHukumDto } from './dto/create-hukum.dto';
+import { UpdateHukumDto } from './dto/update-hukum.dto';
+import { Repository } from 'typeorm';
+import { Hukum, Quarter } from './entities/hukum.entity';
+import { HukumSection } from './entities/hukum-section.entity';
+import { CreateHukumSectionDto } from './dto/create-hukum-section.dto';
+import { UpdateHukumSectionDto } from './dto/update-hukum-section.dto';
+export declare class HukumService {
+    private hukumRepo;
+    private sectionRepo;
+    constructor(hukumRepo: Repository<Hukum>, sectionRepo: Repository<HukumSection>);
+    createSection(data: CreateHukumSectionDto): Promise<HukumSection>;
+    findAllSection(): Promise<HukumSection[]>;
+    findSectionById(id: number): Promise<HukumSection>;
+    updateSection(id: number, data: UpdateHukumSectionDto): Promise<HukumSection>;
+    deleteSection(id: number): Promise<void>;
+    findAll(): Promise<Hukum[]>;
+    findOne(id: number): Promise<Hukum>;
+    remove(id: number): Promise<void>;
+    findByPeriod(year: number, quarter: Quarter): Promise<Hukum[]>;
+    findById(id: number): Promise<Hukum>;
+    private calculateHasil;
+    private calculateWeight;
+    create(data: CreateHukumDto): Promise<Hukum>;
+    update(id: number, data: UpdateHukumDto): Promise<Hukum>;
+    delete(id: number): Promise<void>;
+    bulkCreate(data: CreateHukumDto[]): Promise<Hukum[]>;
+    findByYear(year: number): Promise<Hukum[]>;
+    getSummary(year: number, quarter: Quarter): Promise<{
+        year: number;
+        quarter: Quarter;
+        totalItems: number;
+        totalWeighted: number;
+        sections: unknown[];
+        items: Hukum[];
+    }>;
+    findBySection(sectionId: number, year?: number, quarter?: Quarter): Promise<Hukum[]>;
+    deleteByPeriod(year: number, quarter: Quarter): Promise<number>;
+    getStructuredData(year: number, quarter: Quarter): Promise<unknown[]>;
+}

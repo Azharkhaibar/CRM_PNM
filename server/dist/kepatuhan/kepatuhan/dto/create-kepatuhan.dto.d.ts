@@ -1,0 +1,31 @@
+import { CalculationMode, Quarter } from '../entities/kepatuhan.entity';
+export declare class CreateKepatuhanDto {
+    year: number;
+    quarter: Quarter;
+    sectionId: number;
+    no: string;
+    sectionLabel: string;
+    bobotSection: number;
+    subNo: string;
+    indikator: string;
+    bobotIndikator: number;
+    sumberRisiko?: string;
+    dampak?: string;
+    low?: string;
+    lowToModerate?: string;
+    moderate?: string;
+    moderateToHigh?: string;
+    high?: string;
+    mode?: CalculationMode;
+    pembilangLabel?: string;
+    pembilangValue?: number;
+    penyebutLabel?: string;
+    penyebutValue?: number;
+    formula?: string;
+    isPercent?: boolean;
+    hasil?: string;
+    hasilText?: string;
+    peringkat: number;
+    weighted?: number;
+    keterangan?: string;
+}

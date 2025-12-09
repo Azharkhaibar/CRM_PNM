@@ -1,53 +1,60 @@
-<!-- UDH SELESAI (OK) -->
+import { IsString, IsInt, IsNumber } from 'class-validator';
+import { Type } from 'class-transformer';
 
-entitas
+export class CreateInvestasiDto {
+  @IsInt()
+  @Type(() => Number)
+  sectionId: number;
 
-// divisi.entity.ts
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
-import { User } from '../users/user.entity';
+  @IsInt()
+  @Type(() => Number)
+  year: number;
 
-@Entity()
-export class Divisi {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @IsString()
+  quarter: string;
 
-  @Column()
-  name: string;
+  @IsString()
+  no: string;
 
-  @OneToMany(() => User, (user) => user.divisi)
-  users: User[];
+  @IsString()
+  subNo: string;
+
+  @IsString()
+  sectionLabel: string;
+
+  @Type(() => Number)
+  @IsNumber()
+  bobotSection: number;
+
+  @Type(() => Number)
+  @IsNumber()
+  bobotIndikator: number;
+
+  @IsString()
+  mode: string;
+
+  @IsString()
+  numeratorLabel: string;
+
+  @Type(() => Number)
+  @IsNumber()
+  numeratorValue: number;
+
+  @IsString()
+  denominatorLabel: string;
+
+  @Type(() => Number)
+  @IsNumber()
+  denominatorValue: number;
+
+  @Type(() => Number)
+  @IsNumber()
+  hasil: number;
+
+  @Type(() => Number)
+  @IsNumber()
+  weighted: number;
+
+  @IsString()
+  peringkat: string;
 }
-
-## -------------------------------------------------------------------
-
-// user.entity.ts
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
-import { Divisi } from '../divisi/divisi.entity';
-
-@Entity()
-export class User {
-  @PrimaryGeneratedColumn()
-  id: number;
-
-  @Column()
-  name: string;
-
-  // relasi ke divisi
-  @ManyToOne(() => Divisi, (divisi) => divisi.users, { nullable: true }) // nullable biar data lama tetap bisa ada
-  @JoinColumn({ name: 'divisi_id' })
-  divisi: Divisi;
-}
-
-## ------------------------------------------------------------
-
-export class CreateUserDto {
-  name: string;
-  divisiId?: number; // optional
-}
-
-
-## ----------------------------------------------------------------
-
-const divisi = await this.divisiRepository.findOne({ where: { id: dto.divisiId } });
-const user = this.userRepository.create({ ...dto, divisi });
-await this.userRepository.save(user);

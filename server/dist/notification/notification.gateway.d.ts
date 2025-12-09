@@ -13,6 +13,8 @@ export declare class NotificationGateway implements OnGatewayConnection, OnGatew
     constructor(notificationService: NotificationService);
     handleConnection(client: Socket): void;
     handleDisconnect(client: Socket): void;
+    private getUsername;
+    private triggerUserOfflineNotification;
     registerUserSocket(userId: number, client: Socket): void;
     handleGetUserNotifications(client: Socket, data: {
         user_id: number;
@@ -20,8 +22,9 @@ export declare class NotificationGateway implements OnGatewayConnection, OnGatew
     }): Promise<void>;
     sendNotificationToUser(userId: number, notification: Notification): void;
     sendNotificationToAll(notification: Notification): void;
-    handleAuthenticate(client: Socket, userId: number): void;
+    handleAuthenticate(client: Socket, userId: number): Promise<void>;
     handleCreateNotification(client: Socket, data: CreateNotificationDto): Promise<void>;
+    handleUserLogout(client: Socket, userId: number): Promise<void>;
     handleUpdateNotification(client: Socket, data: {
         notification_id: number;
         updates: UpdateNotificationDto;

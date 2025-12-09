@@ -72,14 +72,13 @@ export const useUserNotificationsWithSync = (): UseUserNotificationsWithSyncRetu
   const userNotifications = useMemo(() => {
     if (!userId) return [];
     return getAllNotificationsForUser(userId);
-  }, [notifications, userId, getAllNotificationsForUser]); 
+  }, [notifications, userId]);
 
   const userUnreadCount = useMemo(() => {
     if (!userId) return 0;
     return getUnreadByUser(userId);
-  }, [notifications, userId, getUnreadByUser]); 
+  }, [notifications, userId]);
 
- 
   const loginLogoutNotifications = useMemo(() => {
     if (!userId) return [];
 
@@ -96,7 +95,6 @@ export const useUserNotificationsWithSync = (): UseUserNotificationsWithSyncRetu
           activityType === 'logout' ||
           action === 'login' ||
           action === 'logout' ||
-
           title?.includes('login') ||
           title?.includes('logout') ||
           title?.includes('sign in') ||
@@ -105,7 +103,6 @@ export const useUserNotificationsWithSync = (): UseUserNotificationsWithSyncRetu
           message?.includes('logout') ||
           message?.includes('sign in') ||
           message?.includes('sign out') ||
-
           category === 'security' ||
           category === 'system' ||
           category === 'authentication' ||
@@ -166,7 +163,7 @@ export const useUserNotificationsWithSync = (): UseUserNotificationsWithSyncRetu
       last7DaysActivities: last7DaysActivities.length,
       loginActivities: loginActivities.length,
       logoutActivities: logoutActivities.length,
-      lastActivity: loginLogoutNotifications[0]?.timestamp || null,
+      lastActivity: loginLogoutNotifications[0] ? new Date(loginLogoutNotifications[0].timestamp) : null,
     };
   }, [loginLogoutNotifications]);
 
@@ -175,17 +172,11 @@ export const useUserNotificationsWithSync = (): UseUserNotificationsWithSyncRetu
     if (!userId) return;
 
     // ✅ PROTECTION 1: Prevent concurrent sync
-    if (syncInProgressRef.current) {
-      console.log('⏭️ Sync already in progress, skipping');
-      return;
-    }
+    if (syncInProgressRef.current) return;
 
     // ✅ PROTECTION 2: Rate limiting (minimal 10 detik antara sync)
     const now = Date.now();
-    if (now - lastSyncRef.current < 10000) {
-      console.log('⏭️ Sync too soon, skipping');
-      return;
-    }
+    if (now - lastSyncRef.current < 10000) return;
 
     syncInProgressRef.current = true;
     lastSyncRef.current = now;
@@ -220,9 +211,9 @@ export const useUserNotificationsWithSync = (): UseUserNotificationsWithSyncRetu
         console.log('⏭️ No notifications to sync');
       }
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to sync notifications';
-      setError(errorMessage);
-      console.warn('❌ Sync failed:', errorMessage);
+      const msg = err instanceof Error ? err.message : 'Failed to sync notifications';
+      setError(msg);
+      console.warn('❌ Sync failed:', msg);
     } finally {
       setIsLoading(false);
       syncInProgressRef.current = false;
@@ -283,8 +274,8 @@ export const useUserNotificationsWithSync = (): UseUserNotificationsWithSyncRetu
 
         return addNotification({
           ...notification,
-          userId: userId,
-          id: backendResult.notification_id.toString(),
+          userId,
+          id: (backendResult.id || backendResult.notification_id).toString(),
         });
       } catch (err) {
         console.error('Failed to create backend notification. Skipping entirely:', err);
@@ -460,7 +451,6 @@ export const useUserNotificationsWithSync = (): UseUserNotificationsWithSyncRetu
   }, [loginLogoutNotifications, activityStats]);
 
   return {
-
     notifications: userNotifications,
     unreadCount: userUnreadCount,
     hasNotifications: userNotifications.length > 0,

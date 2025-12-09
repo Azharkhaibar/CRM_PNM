@@ -15,3 +15,4 @@ interface KpmrInvestasi {
   level5: string; // unsatisfactory
   evidence: string;
 }
+

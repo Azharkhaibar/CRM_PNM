@@ -96,7 +96,7 @@ export const useUserNotifications = () => {
   useEffect(() => {
     const currentUserId = user?.user_id?.toString();
 
-    if (pollingRef.current && userIdRef.current) {
+    if (userIdRef.current) {
       NotificationService.stopPolling(userIdRef.current);
       pollingRef.current = null;
       userIdRef.current = null;
@@ -115,7 +115,7 @@ export const useUserNotifications = () => {
     console.log('🔔 Started notification polling for user:', currentUserId);
 
     return () => {
-      if (pollingRef.current && userIdRef.current) {
+      if (userIdRef.current) {
         NotificationService.stopPolling(userIdRef.current);
         pollingRef.current = null;
         userIdRef.current = null;
@@ -154,7 +154,8 @@ export const useUserNotifications = () => {
         console.error('Failed to create backend notification:', err);
         addNotification({
           ...notificationData,
-          userId: userId,
+          userId,
+          id: crypto.randomUUID(),
         });
       }
     },

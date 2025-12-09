@@ -15,4 +15,5 @@ export declare class User {
     created_at: Date;
     updated_at: Date;
     deleted_at: Date;
+    sessions: any;
 }

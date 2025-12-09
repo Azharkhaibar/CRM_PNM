@@ -28,6 +28,7 @@ let User = class User {
     created_at;
     updated_at;
     deleted_at;
+    sessions;
 };
 exports.User = User;
 __decorate([
