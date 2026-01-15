@@ -1,324 +1,419 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { Download, Search, ShieldAlert, Plus, Save, RotateCcw } from 'lucide-react';
-import RasTable from './components/RasTable';
-import RasForm from './components/RasForm';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { 
+  Download, Search, ShieldAlert, Plus, Check, X, Info, 
+  Upload, Calendar, BarChart3, Layers, LayoutList, Trash2, ChevronDown, ChevronUp, RotateCcw, AlertTriangle
+} from 'lucide-react';
 
-// --- Utils Sederhana untuk Waktu (Bisa ambil dari utils yang ada jika mau) ---
+import RasMonthlyTable from './components/RasMonthlyTable.jsx';
+import RasYearlyTable from './components/RasYearlyTable.jsx';
+import RasForm from './components/RasForm.jsx';
+import TindakLanjutModal from './components/TindakLanjut.jsx';
+import RiskAttitude from './components/RiskAttitude.jsx'; 
+import MultiMonthSelector from './components/MultiMonthSelector.jsx';
+
+// Import fungsi export
+import { exportRasMonthly, exportRasYearly } from './utils/exportExcel.js'; 
+import { parseExcelFile } from './utils/importExcel.js';
+import { MONTH_OPTIONS } from './utils/rasConstant.js';
+
 const getCurrentYear = () => new Date().getFullYear();
-const getCurrentQuarter = () => {
-  const month = new Date().getMonth() + 1;
-  if (month <= 3) return 'Q1';
-  if (month <= 6) return 'Q2';
-  if (month <= 9) return 'Q3';
-  return 'Q4';
+const getCurrentMonthIndex = () => new Date().getMonth();
+
+const MOCK_RAS_DATA = [];
+
+const YearInput = ({ selectedYear, onChange }) => {
+  return (
+    <div className="flex items-center bg-white rounded-xl border border-gray-300 px-3 py-2 shadow-sm h-[46px] w-[140px]">
+      <input 
+        type="number" 
+        value={selectedYear}
+        onChange={(e) => onChange(parseInt(e.target.value) || '')}
+        className="w-full text-sm font-medium text-black bg-transparent outline-none border-none p-0 focus:ring-0"
+        min="2000"
+        max="2100"
+      />
+    </div>
+  );
 };
 
-const MOCK_RAS_DATA = [
-  { 
-    id: 1, 
-    riskCategory: 'Investasi', 
-    no: 1, 
-    parameter: 'Maks. Outstanding Emiten Non-Investment Grade terhadap Total Aset', 
-    rkapTarget: 'N/A', 
-    dataTypeExplanation: 'Nilai % di akhir bulan periode', 
-    rasLimit: '0.05', 
-    riskStance: 'Strategis', 
-    statement: 'Selera Risiko Investasi berada pada level Strategis merupakan dampak dari upaya Perusahaan untuk mencapai pertumbuhan dan inovasi yang lebih besar dalam jangka panjang...', 
-    notes: 'RKAP 2025',
-    unitType: 'PERCENTAGE', 
-    manualQuarterValue: '0', 
-    hasNumeratorDenominator: false 
-  },
-  { 
-    id: 2, 
-    riskCategory: 'Pasar', 
-    no: 2, 
-    parameter: 'Maks. Unrealized Loss Dibandingkan Total Aset', 
-    rkapTarget: 'N/A', 
-    dataTypeExplanation: 'Nilai % di akhir bulan periode', 
-    rasLimit: '-0.05', 
-    riskStance: 'Strategis', 
-    statement: 'Selera Risiko Pasar berada pada level Strategis mengikuti kewajiban Perusahaan dalam memastikan kecukupan AUM produk dalam upaya meningkatkan pangsa pasar dan kepatuhan...', 
-    notes: 'Maks 3 Year',
-    unitType: 'PERCENTAGE', 
-    manualQuarterValue: '-0.02', 
-    hasNumeratorDenominator: true, 
-    numeratorLabel: 'Unrealized Loss', 
-    numeratorValue: -7483, 
-    denominatorLabel: 'Total Aset', 
-    denominatorValue: 258964 
-  },
-  { 
-    id: 3, 
-    riskCategory: 'Likuiditas', 
-    no: 3, 
-    parameter: 'Min. Current Ratio', 
-    rkapTarget: '39X', 
-    dataTypeExplanation: 'Nilai % di akhir bulan periode', 
-    rasLimit: '6X', 
-    riskStance: 'Moderat', 
-    statement: 'Selera Risiko Likuiditas berada pada level Moderat sebagai dampak pinjaman yang diterima Perusahaan dalam rangka penerbitan produk baru untuk meningkatkan AUM...', 
-    notes: '1.1x Treshold POJK',
-    unitType: 'X', 
-    manualQuarterValue: '68X', 
-    hasNumeratorDenominator: true, 
-    numeratorLabel: 'Aset Lancar', 
-    numeratorValue: 1500, 
-    denominatorLabel: 'Kewajiban Lancar', 
-    denominatorValue: 3254 
-  },
-  { 
-    id: 4, 
-    riskCategory: 'Operasional Non IT', 
-    no: 4, 
-    parameter: 'Maks. Kerugian Operasional terhadap Pendapatan Operasional', 
-    rkapTarget: '0', 
-    dataTypeExplanation: 'Jumlah akumulasi selama periode berjalan', 
-    rasLimit: '0,20%', 
-    riskStance: 'Tidak Toleran', 
-    statement: 'Selera Risiko Operasional- Non IT berada pada level Tidak Toleran Perusahaan tidak mentolerir terjadinya kasus hukum pada kegiatan usahanya...', 
-    notes: 'AVG 3 Year +1 STDev',
-    unitType: 'PERCENTAGE', 
-    manualQuarterValue: '0', 
-    hasNumeratorDenominator: false 
-  }
-];
-
-const YearInput = ({ value, onChange }) => (
-  <select 
-    value={value} 
-    onChange={(e) => onChange(Number(e.target.value))} 
-    className="rounded-xl border border-gray-300 px-4 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm text-black font-medium"
-  >
-    {[2023, 2024, 2025, 2026].map((y) => (
-      <option key={y} value={y}>{y}</option>
-    ))}
-  </select>
-);
-
-const QuarterSelect = ({ value, onChange }) => (
-  <select 
-    value={value} 
-    onChange={(e) => onChange(e.target.value)} 
-    className="rounded-xl border border-gray-300 px-4 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm text-black font-medium"
-  >
-    {['Q1', 'Q2', 'Q3', 'Q4'].map((q) => (
-      <option key={q} value={q}>{q}</option>
-    ))}
-  </select>
-);
-
-// Fallback form data kosong
-const rasFallbackEmpty = (year, quarter) => ({
-  year,
-  quarter,
-  riskCategory: '',
-  no: '',
-  parameter: '',
-  rkapTarget: '',
-  dataTypeExplanation: '',
-  rasLimit: '',
-  riskStance: 'Moderat',
-  statement: '',
-  notes: '',
-  actualValue: '',
-});
-
-export default function Ras() {
-  // State
+export default function RasPage() {
   const [viewYear, setViewYear] = useState(getCurrentYear());
-  const [viewQuarter, setViewQuarter] = useState(getCurrentQuarter());
-  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedMonths, setSelectedMonths] = useState([getCurrentMonthIndex()]); 
   
-  // Data State (Mocking DB)
-  const [dataList, setDataList] = useState(MOCK_RAS_DATA);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeTab, setActiveTab] = useState('monthly');
   const [showForm, setShowForm] = useState(false);
+  const [showRiskInfo, setShowRiskInfo] = useState(false); 
   const [editingData, setEditingData] = useState(null);
+  const fileInputRef = useRef(null);
 
-  // Filter Data
-  const filteredData = useMemo(() => {
-    return dataList.filter(item => {
-      // Filter sederhana berdasarkan search query
-      const matchSearch = 
-        item.parameter.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.riskCategory.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (item.statement && item.statement.toLowerCase().includes(searchQuery.toLowerCase()));
-      return matchSearch;
-    });
-  }, [dataList, searchQuery]);
+  const [showNumDenom, setShowNumDenom] = useState(true);
+  const [showDetailColumns, setShowDetailColumns] = useState(true);
 
-  // Mendapatkan list kategori unik untuk dropdown di form
-  const uniqueCategories = useMemo(() => {
-    return [...new Set(dataList.map(item => item.riskCategory))];
+  const [showFollowUp, setShowFollowUp] = useState(false);
+  const [followUpData, setFollowUpData] = useState(null);
+
+  const [dataList, setDataList] = useState(() => {
+    try {
+      const savedData = localStorage.getItem('RAS_DATA');
+      return savedData ? JSON.parse(savedData) : [];
+    } catch (e) {
+      console.error("Gagal load dari localStorage", e);
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('RAS_DATA', JSON.stringify(dataList));
   }, [dataList]);
 
-  // CRUD Handlers 
+  const filteredData = useMemo(() => {
+    return dataList.filter(item => {
+      const itemYear = item.year || 2025; 
+      if (itemYear !== viewYear) return false;
+
+      const matchSearch = 
+        (item.parameter?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+        (item.riskCategory?.toLowerCase() || '').includes(searchQuery.toLowerCase());
+      return matchSearch;
+    });
+  }, [dataList, searchQuery, viewYear]);
+
+  const uniqueCategories = useMemo(() => {
+    return [...new Set(filteredData.map(item => item.riskCategory))];
+  }, [filteredData]);
+
+  // --- SAVE HANDLER (LOGIC UPDATE: UNIQUE & SMART LINKING) ---
   const handleSave = (formData) => {
-    let newDataList = [...dataList];
+    const currentYear = viewYear;
+    const normalizedParamName = formData.parameter.trim();
+    
+    // 1. CEK DUPLIKASI (Hanya di tahun yang sama)
+    const isDuplicate = dataList.some(item => {
+      if (item.year !== currentYear) return false;
+      if (editingData && item.id === editingData.id) return false; // Abaikan diri sendiri saat edit
+      return item.parameter.trim().toLowerCase() === normalizedParamName.toLowerCase();
+    });
 
-    if (editingData) {
-      // Logic Update: Cari ID yang sama dan ganti datanya
-      newDataList = newDataList.map(item => item.id === editingData.id ? { ...formData, id: item.id } : item);
-    } else {
-      // Logic Create:
-      // 1. Buat ID baru
-      const newItem = { ...formData, id: Date.now() };
-      
-      // 2. Cari posisi insert agar tetap grouping per kategori
-      // (Kita cari index terakhir dari kategori yang sama)
-      const lastIndexInCategory = newDataList.findLastIndex(d => d.riskCategory === formData.riskCategory);
-      
-      let insertIndex;
-      if (lastIndexInCategory !== -1) {
-        insertIndex = lastIndexInCategory + 1;
-      } else {
-        // Kategori baru, taruh paling bawah
-        insertIndex = newDataList.length;
-      }
-
-      // 3. Masukkan item
-      newDataList.splice(insertIndex, 0, newItem);
+    if (isDuplicate) {
+      alert(`Gagal Simpan: Parameter "${normalizedParamName}" sudah ada di tahun ${currentYear}.`);
+      return; 
     }
 
-    // --- RE-INDEXING (Penomoran Otomatis 1, 2, 3...) ---
-    // Kita urutkan ulang berdasarkan urutan kategori, lalu beri nomor urut
-    const groups = {};
-    const categoriesOrder = [];
-    
-    // Grouping
-    newDataList.forEach(item => {
-      if (!groups[item.riskCategory]) {
-        groups[item.riskCategory] = [];
-        categoriesOrder.push(item.riskCategory);
+    let newDataList = [...dataList];
+    const category = formData.riskCategory;
+
+    // 2. TENTUKAN GROUP ID (SMART LINKING)
+    // Jika user edit, pakai groupId lama.
+    // Jika user create baru: Cek apakah nama ini pernah ada di tahun lalu? Jika ya, ambil groupId-nya.
+    let targetGroupId = formData.groupId;
+
+    if (!editingData && !targetGroupId) {
+       // Cari parameter dengan nama SAMA persis di seluruh database (tahun berapapun)
+       // Ambil yang paling baru dibuat
+       const existingHistory = dataList
+          .filter(d => d.parameter.trim().toLowerCase() === normalizedParamName.toLowerCase())
+          .sort((a, b) => b.year - a.year); // Sort tahun terbaru
+
+       if (existingHistory.length > 0) {
+          targetGroupId = existingHistory[0].groupId;
+          // Opsional: Beritahu user link ditemukan (bisa dihapus jika terlalu berisik)
+          // console.log("Smart Link: Menggunakan GroupID lama untuk", normalizedParamName);
+       } else {
+          // Benar-benar baru
+          targetGroupId = `GID-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+       }
+    }
+
+    if (editingData) {
+      // --- MODE EDIT ---
+      newDataList = newDataList.map(item => 
+        item.id === editingData.id 
+          ? { 
+              ...formData, 
+              id: item.id, 
+              year: item.year, 
+              groupId: item.groupId, // Keep existing ID
+              no: formData.no 
+            } 
+          : item
+      );
+    } else {
+      // --- MODE CREATE ---
+      let targetNo;
+      const sameContextItems = newDataList.filter(d => d.year === currentYear && d.riskCategory === category);
+      
+      if (!formData.no || String(formData.no).trim() === '') {
+        const maxNo = sameContextItems.reduce((max, item) => {
+            const num = parseInt(item.no);
+            return !isNaN(num) && num > max ? num : max;
+        }, 0);
+        targetNo = maxNo + 1;
+      } else {
+        targetNo = formData.no; 
       }
-      groups[item.riskCategory].push(item);
-    });
 
-    // Flattening & Numbering
-    let reindexedList = [];
-    let counter = 1;
+      const newItem = { 
+        ...formData, 
+        id: Date.now(), 
+        year: currentYear,
+        no: targetNo,
+        groupId: targetGroupId // Gunakan Smart ID atau New ID
+      };
+      
+      newDataList.push(newItem);
+    }
 
-    categoriesOrder.forEach(cat => {
-      const items = groups[cat];
-      items.forEach(item => {
-        reindexedList.push({ ...item, no: counter++ });
-      });
-    });
-
-    setDataList(reindexedList);
+    setDataList(newDataList);
     setShowForm(false);
     setEditingData(null);
   };
 
+  const handleResetData = () => {
+    if (window.confirm("PERINGATAN: Apakah Anda yakin ingin menghapus SELURUH data? Tindakan ini tidak dapat dibatalkan.")) {
+      localStorage.removeItem('RAS_DATA');
+      setDataList([]);
+      alert("Data berhasil direset bersih.");
+    }
+  };
+
+  const handleInlineUpdate = (id, field, value) => {
+    setDataList(prevList => prevList.map(item => {
+        if (item.id === id) {
+            return { ...item, [field]: value };
+        }
+        return item;
+    }));
+  };
+
+  const handleCellClick = (item) => {
+    setFollowUpData(item);
+    setShowFollowUp(true);
+  };
+
+  const handleSaveFollowUp = (id, followUpResult) => {
+    const newDataList = dataList.map(item => {
+        if (item.id === id) {
+            return { ...item, tindakLanjut: followUpResult };
+        }
+        return item;
+    });
+    setDataList(newDataList);
+    alert("Data Tindak Lanjut Berhasil Disimpan!");
+  };
+  
   const handleDelete = (id) => {
     if (window.confirm('Yakin ingin menghapus data ini?')) {
       const filtered = dataList.filter(item => item.id !== id);
-      
-      // Re-index setelah delete
-      const reindexed = filtered.map((item, index) => ({
-        ...item,
-        no: index + 1
-      }));
-      
-      setDataList(reindexed);
+      setDataList(filtered);
     }
   };
 
   const handleEdit = (item) => {
     setEditingData(item);
     setShowForm(true);
-    // Scroll ke atas agar form terlihat
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-const handleExport = () => {
-    alert("Fitur export belum diimplementasikan.");
+  const handleExport = () => {
+    if (activeTab === 'monthly') {
+      exportRasMonthly(filteredData, viewYear, selectedMonths);
+    } else {
+      exportRasYearly(filteredData, viewYear, dataList);
+    }
   };
 
-  // --- RENDER ---
+  const handleImportClick = () => {
+    fileInputRef.current.click();
+  };
+
+  const handleFileChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    try {
+      const importedData = await parseExcelFile(file);
+      const mergedList = [...dataList, ...importedData.map(d => ({ ...d, year: viewYear, id: Date.now() + Math.random(), groupId: `GID-IMP-${Date.now()}-${Math.random()}` }))];
+      setDataList(mergedList);
+      alert("Import berhasil.");
+    } catch (error) {
+      alert("Gagal import: " + error.message);
+    } finally {
+      e.target.value = '';
+    }
+  };
+
   return (
     <div className="space-y-6 mx-auto pb-12">
-      
-      {/* 1. HEADER & FILTER */}
-      <header className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl shadow-lg text-white p-6 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-white/20 rounded-xl backdrop-blur-sm">
-            <ShieldAlert className="w-6 h-6" />
+      <header className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl shadow-lg text-white p-6">
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-white/20 rounded-xl backdrop-blur-sm">
+              <ShieldAlert className="w-6 h-6" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold">Risk Appetite Statement</h1>
+              <p className="text-blue-100 text-sm">Monitoring Profil Risiko & RAS</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-2xl font-bold">Risk Appetite Statement</h1>
-            <p className="text-blue-100 text-sm">Monitoring Profil Risiko & RAS</p>
+
+          <div className="flex bg-white/10 p-1 rounded-xl backdrop-blur-sm border border-white/10">
+            <button
+              onClick={() => setActiveTab('monthly')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                activeTab === 'monthly' 
+                  ? 'bg-white text-blue-700 shadow-sm' 
+                  : 'text-white hover:bg-white/10'
+              }`}
+            >
+              <Calendar size={16} />
+              RAS (Bulan)
+            </button>
+            <button
+              onClick={() => setActiveTab('yearly')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                activeTab === 'yearly' 
+                  ? 'bg-white text-blue-700 shadow-sm' 
+                  : 'text-white hover:bg-white/10'
+              }`}
+            >
+              <BarChart3 size={16} />
+              RAS (Tahun)
+            </button>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
-          <YearInput value={viewYear} onChange={setViewYear} />
-          <QuarterSelect value={viewQuarter} onChange={setViewQuarter} />
-          <div className="relative group">
+        <div className="flex flex-wrap items-center gap-3 mt-6">
+          <YearInput selectedYear={viewYear} onChange={setViewYear} />
+          
+          {activeTab === 'monthly' && (
+            <MultiMonthSelector selectedMonths={selectedMonths} onChange={setSelectedMonths} />
+          )}
+          
+          <div className="relative group ml-auto">
             <input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Cari parameter..."
-              className="pl-10 pr-4 py-2.5 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/70 w-48 focus:w-64 transition-all backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-white/50"
+              className="pl-10 pr-4 py-2.5 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/70 w-48 focus:w-64 transition-all h-[46px]"
             />
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/70" />
           </div>
-          <button onClick={handleExport} className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 bg-white text-blue-600 font-semibold hover:bg-gray-100 transition-all shadow-lg">
-            <Download className="w-5 h-5" />
-            <span className="hidden sm:inline">Export</span>
-          </button>
+
+          <div className="flex gap-2">
+            <button onClick={handleResetData} className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 bg-red-500/80 text-white font-semibold hover:bg-red-600 transition-all shadow-lg h-[46px] border border-red-400/50" title="Reset Data">
+              <Trash2 className="w-5 h-5" />
+              <span className="hidden sm:inline">Reset</span>
+            </button>
+
+            <button onClick={handleExport} className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 bg-white text-blue-600 font-semibold hover:bg-gray-100 transition-all shadow-lg h-[46px]">
+              <Download className="w-5 h-5" />
+              <span className="hidden sm:inline">Export {activeTab === 'monthly' ? 'Bulanan' : 'Tahunan'}</span>
+            </button>
+
+            <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".xlsx, .xls" className="hidden" />
+            <button onClick={handleImportClick} className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 bg-green-500 text-white font-semibold hover:bg-green-600 transition-all shadow-lg h-[46px]">
+              <Upload className="w-5 h-5" />
+              <span className="hidden sm:inline">Import</span>
+            </button>
+          </div>
         </div>
       </header>
 
-      {/* 2. SUMMARY & BUTTON ADD */}
-      <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
-        <div className="flex items-center gap-3 text-sm">
-          <span className="text-gray-500">Periode Tampil:</span>
-          <span className="px-3 py-1 rounded-full bg-blue-50 text-blue-700 font-bold border border-blue-100">
-            {viewYear} - {viewQuarter}
-          </span>
-          <span className="text-gray-300">|</span>
-          <span className="text-gray-500">Total Data:</span>
-          <span className="font-bold text-gray-800">{filteredData.length}</span>
+      {/* --- CONTENT BASED ON TAB --- */}
+      
+      {activeTab === 'monthly' ? (
+        <div className="animate-fade-in">
+          <div className="flex flex-col gap-4 bg-white p-4 rounded-xl border border-gray-100 shadow-sm mb-6">
+            {/* Header Monthly */}
+            <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+                <div className="flex items-center gap-3 text-sm w-full sm:w-auto">
+                <span className="text-gray-500">Periode:</span>
+                <span className="px-3 py-1 rounded-full bg-blue-50 text-blue-700 font-bold border border-blue-100">
+                    {viewYear}
+                </span>
+                <span className="text-gray-300">|</span>
+                <span className="font-bold text-gray-800">{filteredData.length} Data</span>
+                </div>
+
+                <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+                  <button onClick={() => setShowRiskInfo(!showRiskInfo)} className={`flex items-center gap-2 px-4 py-2.5 rounded-xl shadow-sm border transition-all text-sm font-medium ${showRiskInfo ? 'bg-indigo-50 text-indigo-700 border-indigo-200 ring-2 ring-indigo-100' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}>
+                    {showRiskInfo ? <ChevronUp size={18} /> : <Info size={18} />}
+                    <span className="hidden sm:inline">{showRiskInfo ? 'Tutup Info' : 'Info Sikap'}</span>
+                  </button>
+
+                  {!showForm && (
+                    <button onClick={() => { setEditingData(null); setShowForm(true); }} className="flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-xl shadow-md hover:bg-blue-700 font-semibold text-sm transition-transform active:scale-95">
+                    <Plus size={18} /> <span className="hidden sm:inline">Tambah Data</span><span className="sm:hidden">Tambah</span>
+                    </button>
+                  )}
+                </div>
+            </div>
+
+            {showRiskInfo && (
+                <div className="animate-fade-in-up mt-4 bg-gray-50 rounded-xl border border-indigo-100 p-4 shadow-inner">
+                    <RiskAttitude />
+                </div>
+            )}
+
+             <div className="flex flex-wrap items-center gap-4 pt-3 border-t border-gray-100 mt-3">
+               <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Tampilan:</div>
+               <button onClick={() => setShowNumDenom(!showNumDenom)} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${showNumDenom ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-gray-50 border-gray-200 text-gray-500'}`}>
+                  {showNumDenom ? <Layers size={14} /> : <Layers size={14} className="opacity-50" />} {showNumDenom ? 'Sembunyikan Pembilang/Penyebut' : 'Tampilkan Pembilang/Penyebut'}
+               </button>
+               <button onClick={() => setShowDetailColumns(!showDetailColumns)} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${showDetailColumns ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-gray-50 border-gray-200 text-gray-500'}`}>
+                  {showDetailColumns ? <LayoutList size={14} /> : <LayoutList size={14} className="opacity-50" />} {showDetailColumns ? 'Sembunyikan Detail' : 'Tampilkan Detail'}
+               </button>
+             </div>
+          </div>
+
+          {showForm && (
+            <div className="animate-fade-in-down mb-8">
+              <RasForm existingCategories={uniqueCategories} onSubmit={handleSave} onCancel={() => { setShowForm(false); setEditingData(null); }} initialData={editingData} allData={dataList} />
+            </div>
+          )}
+
+          <section className="bg-white rounded-2xl shadow-lg border border-gray-200 mb-8">
+            <div className="p-1">
+              <RasMonthlyTable rows={filteredData} year={viewYear} selectedMonths={selectedMonths} onEdit={handleEdit} onDelete={handleDelete} onCellClick={handleCellClick} showNumDenom={showNumDenom} showDetailColumns={showDetailColumns} />
+            </div>
+          </section>
+
+          <TindakLanjutModal isOpen={showFollowUp} onClose={() => setShowFollowUp(false)} data={followUpData} onSave={handleSaveFollowUp} />
         </div>
+      ) : (
+        <div className="animate-fade-in">
+          {/* SOLUSI KEBINGUNGAN VIEW YEAR: Alert Banner Khusus Tahunan */}
+          <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 mb-6 shadow-sm flex items-start gap-3">
+             <div className="bg-orange-100 p-2 rounded-lg text-orange-600">
+               <AlertTriangle size={20} />
+             </div>
+             <div>
+               <h3 className="text-orange-900 font-bold text-sm">Mode Perencanaan RAS Tahunan</h3>
+               <p className="text-orange-800 text-xs mt-1">
+                 Anda sedang melihat dan merencanakan target untuk Tahun <b>{viewYear}</b>. 
+                 Data historis dan statistik diambil dari realisasi Tahun <b>{viewYear-1}</b> dan <b>{viewYear-2}</b>.
+               </p>
+             </div>
+          </div>
 
-        {!showForm && (
-          <button 
-            onClick={() => { setEditingData(null); setShowForm(true); }}
-            className="flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-xl shadow-md hover:bg-blue-700 transition-all transform active:scale-95 text-sm font-semibold"
-          >
-            <Plus size={18} /> Tambah Data
-          </button>
-        )}
-      </div>
+          <div className="flex items-center gap-3 text-sm bg-white p-4 rounded-xl border border-gray-100 shadow-sm mb-6">
+            <span className="text-gray-500">Target Tahun:</span>
+            <span className="px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 font-bold border border-indigo-100">
+              {viewYear}
+            </span>
+            <span className="text-gray-400 italic ml-auto text-xs">
+              *Statistik dihitung berdasarkan data historis yang tersedia (Group ID / Nama Parameter sama)
+            </span>
+          </div>
 
-      {/* 3. FORM SECTION (Conditional Rendering) */}
-      {showForm && (
-        <div className="animate-fade-in-down">
-          <RasForm 
-            existingCategories={uniqueCategories}
-            onSubmit={handleSave}
-            onCancel={() => { setShowForm(false); setEditingData(null); }}
-            initialData={editingData}
-          />
+          <section className="bg-white rounded-2xl shadow-lg border border-gray-200">
+            <div className="p-1">
+              <RasYearlyTable rows={filteredData} allData={dataList} year={viewYear} onUpdate={handleInlineUpdate} />
+            </div>
+          </section>
         </div>
       )}
-
-      {/* 4. TABLE SECTION (Selalu Muncul di Bawah Form) */}
-      <section className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
-        <div className="p-1">
-          {/* Mengirimkan props yang dibutuhkan oleh RasTable baru */}
-          <RasTable 
-            rows={filteredData} 
-            year={viewYear}
-            quarter={viewQuarter}
-            onEdit={handleEdit} 
-            onDelete={handleDelete} 
-          />
-        </div>
-      </section>
-
     </div>
   );
 }
-
