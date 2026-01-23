@@ -32,6 +32,16 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import Stratejik from './features/Dashboard/pages/RiskProfile/pages/stratejik/stratejik.jsx';
 import Ras from './features/Dashboard/pages/RAS/pages/ras.jsx';
 import Operational from './features/Dashboard/pages/RiskProfile/pages/operational/Operational.jsx';
+import PasarProduk from './features/Dashboard/pages/RiskProfile-OJK/pages/pasar-produk/PasarProduk.jsx';
+import LikuiditasProduk from './features/Dashboard/pages/RiskProfile-OJK/pages/likuiditas-produk/LikuiditasProduk';
+import KonsentrasiProduk from './features/Dashboard/pages/RiskProfile-OJK/pages/konsentrasi-produk/KonsentrasiProduk';
+import OperasionalRegulatory from './features/Dashboard/pages/RiskProfile-OJK/pages/operasional-regulatory/OperasionalRegulatory';
+import InvestasiRegulatory from './features/Dashboard/pages/RiskProfile-OJK/pages/investasi-regulatory/InvestasiRegulatory';
+import Ringkasan from './features/Dashboard/pages/RiskProfile-OJK/pages/ringkasan/ringkasan';
+import RekapData from './features/Dashboard/pages/RiskProfile-OJK/pages/rekap-data/RekapData';
+import RekapData1 from './features/Dashboard/pages/RiskProfile-OJK/pages/rekap-data-1/RekapData1';
+import RekapData2 from './features/Dashboard/pages/RiskProfile-OJK/pages/rekap-data-2/RekapData2';
+import PeringkatKomposit from './features/Dashboard/pages/RiskProfile-OJK/pages/peringkatkomposit/PeringkatKomposit';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -113,6 +123,20 @@ function App() {
               <Route path="risk-form/kepatuhan" element={<Kepatuhan />} />
               <Route path="risk-form/reputasi" element={<Reputasi />} />
               <Route path="profile" element={<ProfilePage />} />
+
+              <Route path="ojk-risk/pasar-produk" element={<PasarProduk/>} />
+              <Route path="ojk-risk/likuiditas-produk" element={<LikuiditasProduk/>} />
+
+              <Route path="ojk-risk/konsentrasi-produk" element={<KonsentrasiProduk/>} />
+              <Route path="ojk-risk/operasional-regulatory" element={<OperasionalRegulatory/>} />
+              <Route path="ojk-risk/investasi-regulatory" element={<InvestasiRegulatory/>} />
+
+              <Route path="ojk-risk/ringkasan" element={<Ringkasan/>} />
+              <Route path="ojk-risk/rekap-data" element={<RekapData/>} />
+              <Route path="ojk-risk/rekap-data1" element={<RekapData1/>} />
+              <Route path="ojk-risk/rekap-data2" element={<RekapData2/>} />
+              <Route path="ojk-risk/peringkat-komposit" element={<PeringkatKomposit/>} />
+
               <Route path="report" element={<Report />} />
               <Route path="ras" element={<Ras />} />
               <Route path="notification" element={<NotificationPage />} />
