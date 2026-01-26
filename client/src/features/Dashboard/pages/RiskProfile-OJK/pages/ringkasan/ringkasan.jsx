@@ -21,9 +21,7 @@ import {
 import { loadInherent } from "../../utils/storage/riskStorageNilai";
 import { computeDerived } from "@/features/Dashboard/pages/RiskProfile-OJK/utils/compute/computeDerived";
 
-/* ======================================================================
-   CONSTANT & CONFIGURATION
-====================================================================== */
+
 
 const CATEGORIES = [
   { id: "pasar-produk", label: "Pasar Produk", code: "PSR", Icon: StoreIcon },
@@ -72,17 +70,14 @@ const KATEGORI_OPTIONS = {
   ],
 };
 
-/* ======================================================================
-   UTILITY FUNCTIONS
-====================================================================== */
 
 // Fungsi untuk mendapatkan warna berdasarkan risk level
 const getRiskColor = (level) => {
-  if (level >= 0 && level < 2) return "bg-[#2ECC71] text-white"; // Hijau
-  if (level >= 2 && level < 3) return "bg-[#A3E635] text-black"; // Hijau muda
-  if (level >= 3 && level < 4) return "bg-[#FACC15] text-black"; // Kuning
-  if (level >= 4 && level < 5) return "bg-[#F97316] text-black"; // Oranye
-  if (level >= 5) return "bg-[#FF0000] text-white"; // Merah
+  if (level >= 0 && level < 2) return "bg-[#2ECC71] text-white"; 
+  if (level >= 2 && level < 3) return "bg-[#A3E635] text-black"; 
+  if (level >= 3 && level < 4) return "bg-[#FACC15] text-black"; 
+  if (level >= 4 && level < 5) return "bg-[#F97316] text-black"; 
+  if (level >= 5) return "bg-[#FF0000] text-white"; 
   return "bg-gray-200 text-gray-700";
 };
 
@@ -99,8 +94,7 @@ const getRiskIndicator = (level) => {
 // Fungsi untuk format angka
 const formatNumber = (value) => {
   if (value === null || value === undefined || value === "") return "-";
-  
-  // Jika sudah string (mungkin sudah diformat), return langsung
+
   if (typeof value === 'string') {
     return value;
   }
@@ -144,7 +138,7 @@ const calculateTotalWeighted = (data) => {
   return count > 0 ? totalWeighted / count : 0;
 };
 
-// Fungsi untuk normalisasi dan menghitung derived values seperti di halaman lain
+
 const normalizeAndComputeDerived = (rows) => {
   if (!Array.isArray(rows)) return [];
   
@@ -606,11 +600,8 @@ export default function Ringkasan() {
             quarter: activeQuarter,
           });
 
-          // PERUBAHAN PENTING: Normalize dan hitung derived values seperti di halaman lain
           rows = normalizeAndComputeDerived(rows);
 
-          // PERUBAHAN: Jika tidak ada data sama sekali, tetap masukkan dengan rows kosong
-          // agar bisa ditampilkan "data tidak ditemukan"
           if (!Array.isArray(rows) || rows.length === 0) {
             data.push({
               no: pageIndex + 1,
@@ -619,7 +610,7 @@ export default function Ringkasan() {
               categoryCode: CATEGORIES.find(c => c.id === categoryId)?.code || "UNK",
               rows: [],
               totalWeighted: 0,
-              hasData: false // Flag untuk menandai tidak ada data
+              hasData: false 
             });
             return;
           }
@@ -629,12 +620,12 @@ export default function Ringkasan() {
             const kategori = param.kategori || {};
             let shouldInclude = true;
             
-            // Filter model - PERBAIKAN: include "tanpa_model"
+            // Filter model 
             if (kategoriFilter.model && kategori.model !== kategoriFilter.model) {
               shouldInclude = false;
             }
             
-            // Filter prinsip - PERBAIKAN: untuk "tanpa_model", prinsip tidak perlu diperiksa
+            // Filter prinsip 
             if (kategoriFilter.prinsip && kategori.model !== "tanpa_model") {
               if (kategori.prinsip !== kategoriFilter.prinsip) {
                 shouldInclude = false;
@@ -749,7 +740,6 @@ const renderDataRows = () => {
   summaryData.forEach((pageData, pageIndex) => {
     const { no, categoryLabel, categoryCode, rows } = pageData;
 
-    // PERUBAHAN: Jika tidak ada data untuk halaman ini, tampilkan "data tidak ditemukan"
     if (!Array.isArray(rows) || rows.length === 0) {
       allRows.push(
         <tr key={`${categoryCode}-no-data`}>
@@ -768,7 +758,7 @@ const renderDataRows = () => {
 
     // Hitung total rowspan untuk halaman ini
     let totalRowSpanForPage = 0;
-    let hasSearchResults = false; // Untuk tracking apakah ada data yang sesuai dengan search
+    let hasSearchResults = false; 
 
     rows.forEach((param) => {
       if (param.nilaiList && Array.isArray(param.nilaiList) && param.nilaiList.length > 0) {
@@ -796,7 +786,7 @@ const renderDataRows = () => {
           hasSearchResults = true;
         }
       } else {
-        totalRowSpanForPage += 1; // Setidaknya 1 baris untuk parameter tanpa nilaiList
+        totalRowSpanForPage += 1; 
         hasSearchResults = true;
       }
     });
@@ -864,12 +854,11 @@ const renderDataRows = () => {
       }
 
       // Untuk setiap nilai dalam parameter
-      let itemAddedInParam = false; // Track jika ada item yang ditambahkan untuk parameter ini
+      let itemAddedInParam = false; 
       
       param.nilaiList.forEach((item, itemIndex) => {
         const derived = item?.derived || {};
-        
-        // PERUBAHAN PENTING: Ambil hasil assessment dari derived.hasilDisplay
+
         const hasilAssessment = derived.hasilDisplay !== undefined ? derived.hasilDisplay : 
                               (derived.weighted !== undefined ? derived.weighted : 0);
         
@@ -882,8 +871,7 @@ const renderDataRows = () => {
         
         // Hanya ambil j.text untuk Indikator/Risiko Inheren
         const indikatorInheren = item?.judul?.text || "-";
-        
-        // PERUBAHAN: Gunakan nomor dari nilai jika ada, jika tidak gunakan nomor parameter
+
         const nilaiNomor = item?.nomor || parameterNumber;
         const indeks = `R.${categoryCode}.${nilaiNomor}`;
         
@@ -893,7 +881,7 @@ const renderDataRows = () => {
               !parameterName.toLowerCase().includes(searchLower) &&
               !categoryLabel.toLowerCase().includes(searchLower) &&
               !indeks.toLowerCase().includes(searchLower)) {
-            return; // Skip jika tidak cocok
+            return; 
           }
         }
         
@@ -927,7 +915,7 @@ const renderDataRows = () => {
               </td>
             )}
             
-            {/* PERUBAHAN: Indeks - sekarang ditampilkan per item dan menggunakan nomor nilai */}
+            {/* Indeks ditampilkan per item dan menggunakan nomor nilai */}
             <td className="border border-gray-950 px-2 py-2 text-center font-mono bg-[#E8F5FA]">
               {indeks}
             </td>
@@ -941,7 +929,7 @@ const renderDataRows = () => {
               {formatPercent(item.bobot)}
             </td>
             
-            {/* PERUBAHAN: Hasil Assessment - ambil dari derived.hasilDisplay */}
+            {/* Hasil Assessment ambil dari derived.hasilDisplay */}
             <td className="border border-gray-950 px-2 py-2 text-center font-bold">
               {formatNumber(hasilAssessment)}
             </td>
@@ -1086,12 +1074,12 @@ const renderDataRows = () => {
                   Parameter
                 </th>
                 
-                {/* PERUBAHAN: Indeks - format baru R.{categoryCode}.noparameter */}
+                {/*  R.{categoryCode}.noparameter */}
                 <th rowSpan={3} className="border border-gray-950 px-2 py-2 bg-blue-800 text-white min-w-[100px] max-w-[200px]">
                   Indeks
                 </th>
                 
-                {/* PERUBAHAN: Indikator/Risiko Inheren - diambil dari nilai di local storage */}
+                {/* Indikator/Risiko Inheren diambil dari nilai di local storage */}
                 <th rowSpan={3} className="border border-gray-950 px-2 py-2 bg-blue-800 text-white min-w-[250px] max-w-[250px]">
                   Indikator/Risiko Inheren
                 </th>

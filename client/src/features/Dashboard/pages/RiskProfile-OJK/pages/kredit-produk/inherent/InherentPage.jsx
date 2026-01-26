@@ -891,7 +891,7 @@ const handleConfirmDelete = useCallback(() => {
               <div className="w-[10%]">
                 <label className="font-semibold text-sm ml-2 text-slate-200">No</label>
                 <Input
-                  placeholder="5."
+                  placeholder="3."
                   value={parameter.nomor}
                   onChange={(e) => handleChangeParameter("nomor", e.target.value)}
                   className="bg-white text-slate-950 border border-black "
@@ -1761,19 +1761,6 @@ const handleDeleteNilai = useCallback(() => {
                     placeholder="max 100%"
                   />
                 </div>
-
-                <div className="w-[78%]">
-                  <label className="font-semibold text-sm text-slate-200">
-                   Keterangan
-                  </label>
-                  <Input
-                    className="h-8 bg-white text-sm border border-black "
-                    value={currentNilai.keterangan ?? ""}
-                    onChange={(e) => handleChangeNilaiField("keterangan", e.target.value)}
-                    disabled={loading || (safeActiveIndex >= 0 && !editModeNilai)}
-                    placeholder="masukan keterangan"
-                  />
-                </div>
               </div>
 
               <div className="mt-3">
@@ -1800,6 +1787,19 @@ const handleDeleteNilai = useCallback(() => {
                     />
                   ))}
                 </div>
+              </div>
+
+              <div className="mt-2 text-slate-800">
+                <label className="text-slate-200 font-semibold text-sm">
+                  Keterangan
+                </label>
+                <Textarea
+                  className="min-h-[40px] text-sm bg-white border border-black "
+                  value={currentNilai.keterangan ?? ""}
+                  onChange={(e) => handleChangeNilaiField("keterangan", e.target.value)}
+                  disabled={loading || (safeActiveIndex >= 0 && !editModeNilai)}
+                  placeholder="masukan keterangan"
+                />
               </div>
             </>
           )}
@@ -2154,7 +2154,7 @@ function TableInherent({ rows = [], activeQuarter }) {
     <div className="w-full">
       <div className="flex justify-between mb-2 pr-2">
         <div>
-          <h1 className="text-2xl font-semibold">Data Operasional - Inherent</h1>
+          <h1 className="text-2xl font-semibold">Data Kredit Produk - Inherent</h1>
           <div className="text-sm text-gray-600">
             Quarter Aktif: <span className="font-bold bg-blue-100 px-2 py-1 rounded">{activeQuarter?.toUpperCase()}</span>
           </div>
@@ -2199,9 +2199,8 @@ function TableInherent({ rows = [], activeQuarter }) {
                 <th className="border border-black   -black px-2 py-2 bg-blue-900 text-white w-42">Parameter</th>
 
                 <th className="border border-black   px-2 py-2 bg-blue-900 text-white w-10">No</th>
-                <th className="border border-black   px-2 py-2 bg-blue-900 text-white w-64">Indikator</th>
+                <th className="border border-black   px-2 py-2 bg-blue-900 text-white w-64">Nilai</th>
                 <th className="border border-black   px-2 py-2 bg-blue-900 text-white w-16">Bobot</th>
-                <th className="border border-black   px-2 py-2 bg-blue-900 text-white w-64">Keterangan</th>
 
                 <th className="border border-black   py-2 bg-[#2ECC71] text-white w-32">Low</th>
                 <th className="border border-black   py-2 bg-[#A3E635] text-black w-32">Low To Moderate</th>
@@ -2212,6 +2211,7 @@ function TableInherent({ rows = [], activeQuarter }) {
                 <th className="border border-black   px-2 py-2 bg-blue-950 text-white w-32">Hasil</th>
                 <th className="border border-black   px-2 py-2 bg-blue-950 text-white w-32">Peringkat</th>
                 <th className="border border-black   px-2 py-2 bg-blue-950 text-white w-32">Weighted</th>
+                <th className="border border-black   px-2 py-2 bg-blue-900 text-white w-64">Keterangan</th>
               </tr>
             </thead>
 
@@ -2323,10 +2323,6 @@ function TableInherent({ rows = [], activeQuarter }) {
                           {isMainRow ? formatPercent(nilai.bobot) : ""}
                         </td>
 
-                        <td className={`border border-black   px-2 py-2 text-center ${isMainRow ? 'bg-[#E8F5FA]' : 'bg-white'} break-words max-w-[180px]`}>
-                          {isMainRow ? nilai.keterangan ?? "-" : ""}
-                        </td>
-
                         {["low", "lowToModerate", "moderate", "moderateToHigh", "high"].map((rk) => (
                           <td
                             key={rk}
@@ -2358,6 +2354,12 @@ function TableInherent({ rows = [], activeQuarter }) {
                             >
                               {weightedDisplay || ""}
                             </td>
+                            <td
+                              rowSpan={rowsForThisNilai}
+                              className="border border-black   px-2 py-2 text-center align-middle bg-white break-words max-w-[200px]"
+                            >
+                              {nilai.keterangan ?? ""}
+                            </td>
                           </>
                         ) : null}
                       </tr>
@@ -2369,7 +2371,7 @@ function TableInherent({ rows = [], activeQuarter }) {
               })}
               
               <tr>
-                <td colSpan={12} className="border border-black -0 bg-white"></td>
+                <td colSpan={11} className="border border-black -0 bg-white"></td>
                 <td colSpan={2} className="border border-black   px-2 py-2 text-center font-semibold text-white bg-blue-900">
                   Summary
                 </td>
@@ -2378,6 +2380,7 @@ function TableInherent({ rows = [], activeQuarter }) {
                     ? globalSummary.totalWeighted.toFixed(2)
                     : "-"}
                 </td>
+                <td className="border border-black -0 bg-white"></td>
               </tr>
             </tbody>
           </table>

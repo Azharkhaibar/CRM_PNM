@@ -39,7 +39,7 @@ const CATEGORIES = [
   { id: "tatakelola-regulatory", label: "Tata Kelola", Icon: Earth },
 ];
 
-// INHERENT Risk Indicators - Diperbarui sesuai rentang baru
+
 const INHERENT_RISK_INDICATORS = [
   { label: "Low", value: "low", color: "#2ECC71", min: 0, max: 1.49, score: 1 },
   { label: "Low To Moderate", value: "lowToModerate", color: "#A3E635", min: 1.50, max: 2.49, score: 2 },
@@ -48,7 +48,7 @@ const INHERENT_RISK_INDICATORS = [
   { label: "High", value: "high", color: "#FF0000", min: 4.50, max: 5, score: 5 },
 ];
 
-// KPMR Risk Indicators - Diperbarui sesuai rentang baru
+
 const KPMR_RISK_INDICATORS = [
   { label: "Strong", value: "strong", color: "#2ECC71", min: 0, max: 1.49, score: 1 },
   { label: "Satisfactory", value: "satisfactory", color: "#A3E635", min: 1.50, max: 2.49, score: 2 },
@@ -57,7 +57,7 @@ const KPMR_RISK_INDICATORS = [
   { label: "Unsatisfactory", value: "unsatisfactory", color: "#FF0000", min: 4.50, max: 5, score: 5 },
 ];
 
-// Matriks Risiko - DIUBAH sesuai permintaan
+
 const RISK_MATRIX = [
   // Strong (1), Satisfactory (2), Fair (3), Marginal (4), Unsatisfactory (5)
   [1, 1, 2, 3, 3],     // Low (1)
@@ -67,10 +67,10 @@ const RISK_MATRIX = [
   [3, 3, 4, 5, 5],     // High (5)
 ];
 
-// Fungsi untuk mendapatkan angka indikator berdasarkan skor
+
 const getIndicatorNumber = (score) => {
   if (score === undefined || score === null || isNaN(score)) {
-    return 5; // Default ke angka 5 jika tidak valid
+    return 5; 
   }
   
   if (score >= 0 && score <= 1.5) return 1;      // Low
@@ -120,7 +120,7 @@ const getMatrixValue = (inherentScore, kpmrScore) => {
     return RISK_MATRIX[inherentIndex][kpmrIndex];
   }
   
-  return 3; // Default ke nilai tengah
+  return 3;
 };
 
 function useGlobalSummaryAdapter() {
@@ -235,7 +235,7 @@ export default function RekapData2() {
   }, [filteredData]);
 
   const peringkatKomposit = useMemo(() => {
-    if (summaryPerHalaman.length === 0) { // <- Gunakan summaryPerHalaman
+    if (summaryPerHalaman.length === 0) { 
       return {
         inherentValue: 0,
         kpmrValue: 0,
@@ -273,7 +273,7 @@ export default function RekapData2() {
       kpmrValue: avgKpmr,
       matrixValue: avgMatrix,
     };
-  }, [summaryPerHalaman]); // <- Dependensi ke summaryPerHalaman
+  }, [summaryPerHalaman]); 
 
   const footerDisplay = useMemo(() => {
     const inherentDisplay = peringkatKomposit.inherentValue;
@@ -301,13 +301,12 @@ const IndicatorCell = ({ indicator, size = "normal" }) => {
   const widthClass = size === "normal" ? "w-[220px]" : "w-[120px]";
   const textClass = size === "small" ? "text-sm" : "text-base";
   const paddingClass = size === "small" ? "px-3 py-2" : "px-4 py-2.5";
-  
-  // Ambil score dari indicator (1-5)
+
   const score = safeIndicator.score || 5;
   
   return (
     <div className="flex flex-col items-center justify-center">
-      {/* Indikator - tampilkan angka saja */}
+      {/* Indikator */}
       <div 
         className={`rounded-full ${paddingClass} font-bold ${textClass} ${widthClass} flex items-center justify-center whitespace-nowrap min-h-[40px] ${score >= 4 ? "text-black" : "text-black"}`}
         style={{ 
@@ -331,7 +330,7 @@ const FooterIndicatorCell = ({ indicator, size = "normal" }) => {
   
   return (
     <div className="flex flex-col items-center justify-center">
-      {/* Indikator - tampilkan angka saja */}
+      {/* Indikator */}
       <div 
         className={`rounded-full ${paddingClass} font-bold ${textClass} ${widthClass} flex items-center justify-center whitespace-nowrap text-black min-h-[40px]`}
         style={{ 
@@ -370,7 +369,7 @@ const FooterIndicatorCell = ({ indicator, size = "normal" }) => {
         </div>
              <table className="w-full border-collapse table-fixed">
   <colgroup>
-    <col style={{ width: "20%" }} /> {/* label inherent */}
+    <col style={{ width: "20%" }} /> 
     <col style={{ width: "23%" }} />
     <col style={{ width: "23%" }} />
     <col style={{ width: "23%"}} />
@@ -382,7 +381,7 @@ const FooterIndicatorCell = ({ indicator, size = "normal" }) => {
             
 
               <tr>
-                <th className="border p-2 bg-blue-800 text-sm font-medium w-16"></th>
+                <th className="border border-black p-2 bg-blue-800 text-sm font-medium w-16"></th>
                 <th className="border border-black p-2 bg-blue-800 text-white text-center text-sm font-medium">Strong<br/>
                 (1)</th>
                 <th className="border border-black p-2 bg-blue-800 text-white text-center text-[13px] font-bold">Satisfactory<br/>
@@ -416,7 +415,7 @@ const FooterIndicatorCell = ({ indicator, size = "normal" }) => {
                         
                       <td 
                         key={cellIndex} 
-                        className={`border p-3 text-center font-bold text-lg relative ${isActive ? 'ring-2 ring-blue-500 ring-offset-1' : ''}`}
+                        className={`border border-black p-3 text-center font-bold text-lg relative ${isActive ? 'ring-2 ring-blue-500 ring-offset-1' : ''}`}
                         style={{ backgroundColor: cellIndicator.color }}
                       >
                         {cell}
@@ -460,7 +459,7 @@ const FooterIndicatorCell = ({ indicator, size = "normal" }) => {
       {/* Layout utama dengan grid */}
       <div className="grid grid-cols-1 lg:grid-cols-10 gap-4 mt-6">
         
-        {/* Tabel - mengambil 2 kolom di desktop */}
+        {/* Tabel  */}
         <div className="lg:col-span-6">
           <div className="bg-white rounded-xl shadow-lg overflow-hidden">
             {/* Tabel Header - SEMUA COL-SPAN 3 */}
@@ -476,7 +475,7 @@ const FooterIndicatorCell = ({ indicator, size = "normal" }) => {
               </div>
             </div>
 
-            {/* Tabel Body dengan scroll - SEMUA COL-SPAN 3 */}
+            {/* Tabel Body dengan scroll */}
             <div className="divide-y max-h-[450px] overflow-y-auto">
 
               {tableData.map((item) => (
@@ -511,7 +510,7 @@ const FooterIndicatorCell = ({ indicator, size = "normal" }) => {
               ))}
             </div>
 
-            {/* Tabel Footer - SEMUA COL-SPAN 3 */}
+            {/* Tabel Footer */}
              <div className="bg-blue-900 border-t">
               <div className="grid grid-cols-12 p-3 text-white font-bold">
                 <div className="col-span-3 text-white flex items-center ml-5 text-lg">
@@ -538,7 +537,7 @@ const FooterIndicatorCell = ({ indicator, size = "normal" }) => {
           </div>
         </div>
 
-        {/* Matriks Risiko - mengambil 1 kolom di desktop */}
+        {/* Matriks Risiko */}
         <div className="lg:col-span-4">
           <RiskMatrix 
             inherentScore={footerDisplay.inherentScoreForMatrix} 

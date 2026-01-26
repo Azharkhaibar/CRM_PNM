@@ -46,29 +46,29 @@ const getIndicatorNumber = (score) => {
     return 5; // Default ke angka 5 jika tidak valid
   }
   
-  if (score >= 0 && score <= 1.5) return 1;      // Low/Strong
-  if (score > 1.5 && score <= 2.5) return 2;     // Low To Moderate/Satisfactory
-  if (score > 2.5 && score <= 3.5) return 3;     // Moderate/Fair
-  if (score > 3.5 && score <= 4.5) return 4;     // Moderate To High/Marginal
+  if (score >= 0 && score <= 1.49) return 1;      // Low/Strong
+  if (score > 1.50 && score <= 2.49) return 2;     // Low To Moderate/Satisfactory
+  if (score > 2.50 && score <= 3.49) return 3;     // Moderate/Fair
+  if (score > 3.50 && score <= 4.49) return 4;     // Moderate To High/Marginal
   return 5;                                       // High/Unsatisfactory
 };
 
 // INHERENT Risk Indicators - dengan score property
 const INHERENT_RISK_INDICATORS = [
-  { label: "Low", value: "low", color: "#2ECC71", min: 0, max: 1.5, score: 1 },
-  { label: "Low To Moderate", value: "lowToModerate", color: "#A3E635", min: 1.51, max: 2.5, score: 2 },
-  { label: "Moderate", value: "moderate", color: "#FACC15", min: 2.51, max: 3.5, score: 3 },
-  { label: "Moderate To High", value: "moderateToHigh", color: "#F97316", min: 3.51, max: 4.5, score: 4 },
-  { label: "High", value: "high", color: "#FF0000", min: 4.51, max: 5, score: 5 },
+  { label: "Low", value: "low", color: "#2ECC71", min: 0, max: 1.49, score: 1 },
+  { label: "Low To Moderate", value: "lowToModerate", color: "#A3E635", min: 1.50, max: 2.49, score: 2 },
+  { label: "Moderate", value: "moderate", color: "#FACC15", min: 2.50, max: 3.49, score: 3 },
+  { label: "Moderate To High", value: "moderateToHigh", color: "#F97316", min: 3.50, max: 4.49, score: 4 },
+  { label: "High", value: "high", color: "#FF0000", min: 4.50, max: 5, score: 5 },
 ];
 
 // KPMR Risk Indicators - dengan score property
 const KPMR_RISK_INDICATORS = [
-  { label: "Strong", value: "strong", color: "#2ECC71", min: 0, max: 1.5, score: 1 },
-  { label: "Satisfactory", value: "satisfactory", color: "#A3E635", min: 1.51, max: 2.5, score: 2 },
-  { label: "Fair", value: "fair", color: "#FACC15", min: 2.51, max: 3.5, score: 3 },
-  { label: "Marginal", value: "marginal", color: "#F97316", min: 3.51, max: 4.5, score: 4 },
-  { label: "Unsatisfactory", value: "unsatisfactory", color: "#FF0000", min: 4.51, max: 5, score: 5 },
+  { label: "Strong", value: "strong", color: "#2ECC71", min: 0, max: 1.49, score: 1 },
+  { label: "Satisfactory", value: "satisfactory", color: "#A3E635", min: 1.50, max: 2.49, score: 2 },
+  { label: "Fair", value: "fair", color: "#FACC15", min: 2.5, max: 3.49, score: 3 },
+  { label: "Marginal", value: "marginal", color: "#F97316", min: 3.5, max: 4.49, score: 4 },
+  { label: "Unsatisfactory", value: "unsatisfactory", color: "#FF0000", min: 4.5, max: 5, score: 5 },
 ];
 
 // Fungsi untuk mendapatkan risk indicator berdasarkan skor dan tipe
@@ -387,7 +387,7 @@ export default function PeringkatKomposit() {
         <div className="max-h-[calc(80vh-280px)] overflow-y-auto">
           <div className="divide-y relative">
             {/* Garis pemisah vertikal utama - full height */}
-            <div className="absolute left-[calc((4/16)*100%)] top-0 bottom-0 w-[2px] bg-gray-300 z-10"></div>
+            <div className="absolute left-[calc((4.04/16)*100%)] top-0 bottom-0 w-[2px] bg-gray-300 z-10"></div>
             
             {tableData.map((item) => (
               <div key={item.id} className="grid grid-cols-16 p-3 hover:bg-gray-50 transition-colors items-center relative">
@@ -403,7 +403,7 @@ export default function PeringkatKomposit() {
                   <span className="font-bold text-gray-800">{item.nama}</span>
                 </div>
 
-                    <div className="absolute left-[calc((5.9/16)*100%)] top-0 bottom-0 w-[2px] bg-gray-300 z-10"></div>
+                    <div className="absolute left-[calc((5.96/16)*100%)] top-0 bottom-0 w-[2px] bg-gray-300 z-10"></div>
 
                 {/* Kolom 2: BHz (Editable) */}
                 <div className="col-span-2 flex items-center justify-center">

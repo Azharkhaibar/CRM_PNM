@@ -27,11 +27,9 @@ import {
   notifyRiskUpdated,
 } from "../../utils/storage/riskStorageNilai";
 import { computeDerived } from "../../utils/compute/computeDerived";
-import UnsaveChangesModal from "../../components/PopUp/UnsaveChangesModal"; // Import komponen modal
+import UnsaveChangesModal from "../../components/PopUp/UnsaveChangesModal"; 
 
-/* ======================================================================
-   CONSTANT - DIPERBARUI SESUAI PASARPRODUK.JSX
-====================================================================== */
+
 
 const CATEGORIES = [
   { id: "pasar-produk", label: "Pasar Produk", Icon: StoreIcon },
@@ -48,10 +46,6 @@ const CATEGORIES = [
   { id: "permodalan-regulatory", label: "Permodalan", Icon: Sprout },
   { id: "tatakelola-regulatory", label: "Tata Kelola", Icon: Earth },
 ];
-
-/* ======================================================================
-   KATEGORI FILTER OPTIONS - DIPERBARUI DENGAN "TANPA_MODEL"
-====================================================================== */
 
 const KATEGORI_OPTIONS = {
   model: [
@@ -83,9 +77,6 @@ const KATEGORI_OPTIONS = {
   ],
 };
 
-/* ======================================================================
-   HELPER FUNCTIONS
-====================================================================== */
 
 // Fungsi untuk format persentase
 function formatPercent(value) {
@@ -93,10 +84,10 @@ function formatPercent(value) {
   return `${Number(value).toFixed(2)}%`;
 }
 
-// Fungsi untuk mengambil item list - HANYA nilaiList, TIDAK indicatorList
+// Fungsi untuk mengambil item list 
 function getItemList(param) {
   if (Array.isArray(param.nilaiList)) return param.nilaiList;
-  return []; // Abaikan indicatorList
+  return [];
 }
 
 function calculateGlobalSummary(dataMap, selectedPages, filterKategori = {}) {
@@ -150,7 +141,7 @@ function calculateGlobalSummary(dataMap, selectedPages, filterKategori = {}) {
 
       if (!shouldInclude) return;
 
-      const itemList = getItemList(param); // HANYA nilaiList
+      const itemList = getItemList(param); 
       itemList.forEach((item) => {
         const derived = item.derived;
         if (derived && derived.weighted && !isNaN(derived.weighted)) {
@@ -197,7 +188,7 @@ function normalizeItemWithDerived(item, param) {
       pembilang: judul?.pembilang ?? "",
       penyebut: judul?.penyebut ?? "",
       type: judul?.type || "",
-      value: judul?.value ?? judul?.valuePembilang ?? "", // Tambah field value
+      value: judul?.value ?? judul?.valuePembilang ?? "", 
       valuePembilang: judul?.valuePembilang ?? "",
       valuePenyebut: judul?.valuePenyebut ?? "",
     },
@@ -247,32 +238,54 @@ function normalizeInherentRowsWithDerived(rows) {
 }
 
 /* ======================================================================
-   KATEGORI FILTER COMPONENT - DIPERBARUI
+   KATEGORI FILTER COMPONENT 
 ====================================================================== */
 
-/* ======================================================================
-   KATEGORI FILTER COMPONENT - DIPERBARUI DENGAN LOGIKA YANG BENAR
-====================================================================== */
-
-function KategoriFilter({ filter, setFilter, onFilterChange }) {
+function KategoriFilter({ filter, setFilter }) {
   const [showUnderlyingDropdown, setShowUnderlyingDropdown] = useState(false);
   const underlyingDropdownRef = useRef(null);
-  const [isMounted, setIsMounted] = useState(false);
 
-  // Gunakan useMemo untuk mencegah re-render berlebihan
-  const isPrinsipDisabled = useMemo(() => {
-    return !filter.model || filter.model === "tanpa_model";
-  }, [filter.model]);
+  const handleFilterChange = (key, value) => {
+    setFilter(prev => {
+      const newFilter = { ...prev, [key]: value };
+      
+      // Reset dependent filters
+      if (key === "model") {
+        // Untuk "tanpa_model", reset semua filter lain
+        if (value === "tanpa_model") {
+          return { 
+            ...newFilter,
+            prinsip: "",
+            jenis: "",
+            underlying: []
+          };
+        }
+        // Untuk model lain, reset jenis dan underlying
+        return { 
+          ...newFilter,
+          jenis: "",
+          underlying: [],
+        };
+      }
+      
+      return newFilter;
+    });
+  };
 
-  const isJenisDisabled = useMemo(() => {
-    return filter.model !== "open_end";
-  }, [filter.model]);
+  // Handle multi-select untuk underlying
+  const handleUnderlyingToggle = (value) => {
+    setFilter(prev => {
+      const current = Array.isArray(prev.underlying) ? prev.underlying : [];
+      const newUnderlying = current.includes(value)
+        ? current.filter(v => v !== value)
+        : [...current, value];
+      
+      return { ...prev, underlying: newUnderlying };
+    });
+  };
 
-  const isUnderlyingDisabled = useMemo(() => {
-    return filter.model !== "terstruktur";
-  }, [filter.model]);
-
-  const getUnderlyingDisplayText = useMemo(() => {
+  // Untuk display text
+  const getUnderlyingDisplayText = () => {
     if (!filter.underlying || filter.underlying.length === 0) {
       return "Semua Underlying";
     }
@@ -282,45 +295,12 @@ function KategoriFilter({ filter, setFilter, onFilterChange }) {
     );
     
     return labels.join(", ");
-  }, [filter.underlying]);
-
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  const handleFilterChange = useCallback((key, value) => {
-    const newFilter = { ...filter };
-    
-    if (key === "model") {
-      newFilter.model = value;
-      newFilter.prinsip = "";
-      newFilter.jenis = "";
-      newFilter.underlying = [];
-    } else {
-      newFilter[key] = value;
-    }
-    
-    setFilter(newFilter);
-    if (onFilterChange) onFilterChange(newFilter);
-  }, [filter, onFilterChange]);
-
-  // Handle multi-select untuk underlying
-  const handleUnderlyingToggle = useCallback((value) => {
-    const current = Array.isArray(filter.underlying) ? filter.underlying : [];
-    const newUnderlying = current.includes(value)
-      ? current.filter(v => v !== value)
-      : [...current, value];
-    
-    const newFilter = { ...filter, underlying: newUnderlying };
-    setFilter(newFilter);
-    if (onFilterChange) onFilterChange(newFilter);
-  }, [filter, onFilterChange]);
+  };
 
   // Close dropdown ketika klik di luar
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (underlyingDropdownRef.current && 
-          !underlyingDropdownRef.current.contains(event.target)) {
+      if (underlyingDropdownRef.current && !underlyingDropdownRef.current.contains(event.target)) {
         setShowUnderlyingDropdown(false);
       }
     };
@@ -331,79 +311,17 @@ function KategoriFilter({ filter, setFilter, onFilterChange }) {
     };
   }, []);
 
-  // Optimize: Gunakan debounce untuk dropdown toggle
-  const handleUnderlyingButtonClick = useCallback(() => {
-    if (isUnderlyingDisabled) return;
-    
-    requestAnimationFrame(() => {
-      setShowUnderlyingDropdown(prev => !prev);
-    });
-  }, [isUnderlyingDisabled]);
-
-  // Component untuk dropdown underlying
-  const UnderlyingDropdown = useMemo(() => {
-    if (!showUnderlyingDropdown || isUnderlyingDisabled) return null;
-
-    return (
-      <div 
-        className="absolute z-50 mt-1 w-full bg-white rounded-md shadow-lg border border-gray-200 max-h-60 overflow-y-auto animate-fadeIn"
-        style={{
-          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-          transition: 'all 0.2s ease-out',
-          transformOrigin: 'top center'
-        }}
-      >
-        <div className="p-2 border-b">
-          <button
-            type="button"
-            className="w-full text-left px-2 py-1 text-xs text-blue-600 hover:bg-blue-50 rounded transition-colors"
-            onClick={() => {
-              const newFilter = { ...filter, underlying: [] };
-              setFilter(newFilter);
-              if (onFilterChange) onFilterChange(newFilter);
-              setShowUnderlyingDropdown(false);
-            }}
-          >
-            Pilih Semua
-          </button>
-        </div>
-        
-        {KATEGORI_OPTIONS.underlying
-          .filter(opt => opt.value !== "")
-          .map((opt) => {
-            const isSelected = filter.underlying?.includes(opt.value);
-            
-            return (
-              <div
-                key={opt.value}
-                className="flex items-center gap-2 px-3 py-2 hover:bg-blue-50 cursor-pointer transition-colors"
-                onClick={() => handleUnderlyingToggle(opt.value)}
-              >
-                <input
-                  type="checkbox"
-                  className="accent-blue-600 w-4 h-4"
-                  checked={isSelected}
-                  readOnly
-                />
-                <span className="text-sm">{opt.label}</span>
-              </div>
-            );
-          })}
-      </div>
-    );
-  }, [showUnderlyingDropdown, isUnderlyingDisabled, filter, handleUnderlyingToggle, onFilterChange]);
-
   return (
-    <div className="w-full bg-blue-50 p-4 rounded-lg border border-blue-200 transition-all duration-200">
+    <div className="w-full bg-blue-50 p-4 rounded-lg border border-blue-200">
       <h3 className="font-semibold mb-3 text-blue-800">Filter Kategori</h3>
       <div className="flex flex-wrap gap-4">
         {/* Model Produk */}
-        <div className="min-w-[500px] transition-all duration-200">
+        <div className="min-w-[500px]">
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Model Produk
           </label>
           <select
-            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+            className="w-full border border-gray-950 rounded-md px-3 py-2 text-sm bg-white"
             value={filter.model}
             onChange={(e) => handleFilterChange("model", e.target.value)}
           >
@@ -415,107 +333,153 @@ function KategoriFilter({ filter, setFilter, onFilterChange }) {
           </select>
         </div>
 
-        {/* Prinsip */}
-        <div className="min-w-[500px] transition-all duration-200">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Prinsip
-          </label>
-          <select
-            className={`w-full border rounded-md px-3 py-2 text-sm transition-all duration-200 focus:outline-none focus:ring-2 ${
-              isPrinsipDisabled 
-                ? "bg-gray-100 border-gray-300 cursor-not-allowed" 
-                : "bg-white border-gray-300 focus:ring-blue-500 focus:border-blue-500"
-            }`}
-            value={filter.prinsip}
-            onChange={(e) => handleFilterChange("prinsip", e.target.value)}
-            disabled={isPrinsipDisabled}
-          >
-            {KATEGORI_OPTIONS.prinsip.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Jenis Reksa Dana */}
-        <div className="min-w-[500px] transition-all duration-200">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Jenis Reksa Dana
-          </label>
-          <select
-            className={`w-full border rounded-md px-3 py-2 text-sm transition-all duration-200 focus:outline-none focus:ring-2 ${
-              isJenisDisabled 
-                ? "bg-gray-100 border-gray-300 cursor-not-allowed" 
-                : "bg-white border-gray-300 focus:ring-blue-500 focus:border-blue-500"
-            }`}
-            value={filter.jenis}
-            onChange={(e) => handleFilterChange("jenis", e.target.value)}
-            disabled={isJenisDisabled}
-          >
-            {KATEGORI_OPTIONS.jenis.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Aset Dasar */}
-        <div className="min-w-[500px] relative transition-all duration-200" ref={underlyingDropdownRef}>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Aset Dasar
-          </label>
-          <div className="relative">
-            <button
-              type="button"
-              className={`w-full border rounded-md px-3 py-2 text-sm text-left flex justify-between items-center transition-all duration-200 focus:outline-none focus:ring-2 ${
-                isUnderlyingDisabled 
-                  ? "bg-gray-100 border-gray-300 cursor-not-allowed" 
-                  : "bg-white border-gray-300 hover:border-blue-400 focus:ring-blue-500 focus:border-blue-500"
-              }`}
-              onClick={handleUnderlyingButtonClick}
-              disabled={isUnderlyingDisabled}
+        {/* Prinsip - Hanya tampil jika bukan "tanpa_model" */}
+        {filter.model !== "tanpa_model" && (
+          <div className="min-w-[500px]">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Prinsip
+            </label>
+            <select
+              className="w-full border border-gray-950 rounded-md px-3 py-2 text-sm bg-white"
+              value={filter.prinsip}
+              onChange={(e) => handleFilterChange("prinsip", e.target.value)}
             >
-              <span className="truncate">
-                {getUnderlyingDisplayText}
-              </span>
-              <span className={`ml-2 transition-transform duration-200 ${showUnderlyingDropdown ? 'rotate-180' : ''}`}>
-                ▾
-              </span>
-            </button>
-            
-            {UnderlyingDropdown}
+              {KATEGORI_OPTIONS.prinsip.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
           </div>
-        </div>
+        )}
+
+        {/* Jenis Reksa Dana (hanya untuk Open-End) */}
+        {filter.model === "open_end" && (
+          <div className="min-w-[500px]">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Jenis Reksa Dana
+            </label>
+            <select
+              className="w-full border border-gray-950 rounded-md px-3 py-2 text-sm bg-white"
+              value={filter.jenis}
+              onChange={(e) => handleFilterChange("jenis", e.target.value)}
+            >
+              {KATEGORI_OPTIONS.jenis.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {/* Aset Dasar (hanya untuk Terstruktur) - MULTI SELECT */}
+        {filter.model === "terstruktur" && (
+          <div className="min-w-[500px] relative" ref={underlyingDropdownRef}>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Aset Dasar
+            </label>
+            <div className="relative">
+              <button
+                type="button"
+                className="w-full border border-gray-950 rounded-md px-3 py-2 text-sm bg-white text-left flex justify-between items-center"
+                onClick={() => setShowUnderlyingDropdown(!showUnderlyingDropdown)}
+              >
+                <span className="truncate">
+                  {getUnderlyingDisplayText()}
+                </span>
+                <span className="ml-2">▾</span>
+              </button>
+              
+              {showUnderlyingDropdown && (
+                <div className="absolute z-10 mt-1 w-full bg-white rounded-md shadow-lg border border-gray-200 max-h-60 overflow-y-auto">
+                  <div className="p-2 border-b">
+                    <button
+                      type="button"
+                      className="w-full text-left px-2 py-1 text-xs text-blue-800 hover:bg-blue-50 rounded"
+                      onClick={() => {
+                        setFilter(prev => ({ ...prev, underlying: [] }));
+                        setShowUnderlyingDropdown(false);
+                      }}
+                    >
+                     Select All
+                    </button>
+                  </div>
+                  
+                  {KATEGORI_OPTIONS.underlying
+                    .filter(opt => opt.value !== "")
+                    .map((opt) => {
+                      const isSelected = filter.underlying?.includes(opt.value);
+                      
+                      return (
+                        <div
+                          key={opt.value}
+                          className="flex items-center gap-2 px-3 py-2 hover:bg-blue-50 cursor-pointer"
+                          onClick={() => handleUnderlyingToggle(opt.value)}
+                        >
+                          <input
+                            type="checkbox"
+                            className="accent-blue-800"
+                            checked={isSelected}
+                            onChange={(e) => {
+                              e.stopPropagation();
+                              handleUnderlyingToggle(opt.value);
+                            }}
+                          />
+                          <span className="text-sm">{opt.label}</span>
+                        </div>
+                      );
+                    })}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Tombol Reset */}
-        <div className="flex items-end transition-all duration-200">
+        <div className="flex items-end">
           <button
             type="button"
-            className="px-4 py-2 flex items-center bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-            onClick={() => {
-              const newFilter = { 
-                model: "", 
-                prinsip: "", 
-                jenis: "", 
-                underlying: []
-              };
-              setFilter(newFilter);
-              if (onFilterChange) onFilterChange(newFilter);
-              setShowUnderlyingDropdown(false);
-            }}
+            className="px-4 py-2 flex items-center bg-blue-800 text-white rounded-md text-sm font-medium hover:bg-blue-700 transition-colors"
+            onClick={() => setFilter({ 
+              model: "", 
+              prinsip: "", 
+              jenis: "", 
+              underlying: []
+            })}
           >
             <RefreshCcw className="h-4 w-4 mr-2"/>Reset Filter
           </button>
         </div>
       </div>
+      
+      {/* Info Filter Aktif */}
+      {(filter.model || (filter.model !== "tanpa_model" && filter.prinsip) || filter.jenis || 
+        (Array.isArray(filter.underlying) && filter.underlying.length > 0 && filter.model === "terstruktur")) && (
+        <div className="mt-3 text-sm text-gray-800">
+          Filter aktif: 
+          {[
+            filter.model && `Model: ${KATEGORI_OPTIONS.model.find(o => o.value === filter.model)?.label}`,
+            // Tampilkan prinsip hanya jika bukan "tanpa_model"
+            filter.prinsip && filter.model !== "tanpa_model" && 
+              `Prinsip: ${KATEGORI_OPTIONS.prinsip.find(o => o.value === filter.prinsip)?.label}`,
+            filter.jenis && `Jenis: ${KATEGORI_OPTIONS.jenis.find(o => o.value === filter.jenis)?.label}`,
+            Array.isArray(filter.underlying) && filter.underlying.length > 0 && 
+              filter.model === "terstruktur" &&
+              `Underlying: ${filter.underlying.map(v => 
+                KATEGORI_OPTIONS.underlying.find(o => o.value === v)?.label || v
+              ).join(", ")}`,
+          ]
+            .filter(Boolean)
+            .join(", ")}
+        </div>
+      )}
     </div>
   );
 }
 
 /* ======================================================================
-   SIMPLE TABLE (INLINE) - DIPERBARUI DENGAN LOGIKA "TANPA_MODEL"
+   SIMPLE TABLE
 ====================================================================== */
 
 function SimpleTable({ rows, onUpdateRawValue, filterKategori }) {
@@ -742,32 +706,32 @@ function SimpleTable({ rows, onUpdateRawValue, filterKategori }) {
             return (
               <tr key={`${idx}-${editKey}`}>
              {showCategory && (
-<td
-  rowSpan={categoryRowSpan[_categoryId]}
-  className="align-middle text-center p-2 bg-[#E8F5FA] font-semibold border-2 border-black tracking-widest"
-  style={{
-    writingMode: 'vertical-rl',
-    textOrientation: 'mixed',
-    transform: 'rotate(180deg)',
-  }}
->
-  <div className="flex items-center text-lg justify-center h-full">
-    {_categoryLabel}
-  </div>
-</td>
-)}
+                <td
+                  rowSpan={categoryRowSpan[_categoryId]}
+                  className="align-middle text-center p-2 bg-[#E8F5FA] font-semibold border-2 border-black tracking-widest"
+                  style={{
+                    writingMode: 'vertical-rl',
+                    textOrientation: 'mixed',
+                    transform: 'rotate(180deg)',
+                  }}
+                >
+                  <div className="flex items-center text-lg justify-center h-full">
+                    {_categoryLabel}
+                  </div>
+                </td>
+                )}
 
                 {showParam && (
                   <td
                     rowSpan={paramRowSpan[param.id]}
-                    className="border px-2 align-middle text-lg text-center bg-[#E8F5FA] font-semibold"
+                    className="border border-black px-2 align-middle text-lg text-center bg-[#E8F5FA] font-semibold"
                     style={{ verticalAlign: 'middle' }}
                   >
                     {param.judul || "-"}
                   </td>
                 )}
 
-                <td className={`border p-0 ${isMain ? 'bg-[#E8F5FA]' : ''}`}>
+                <td className={`border border-black p-0 ${isMain ? 'bg-[#E8F5FA]' : ''}`}>
                   <div className="w-full h-full flex items-center">
                     <div className={nilaiTextClass}>
                       <div className="px-2 w-full">{itemText}</div>
@@ -775,7 +739,7 @@ function SimpleTable({ rows, onUpdateRawValue, filterKategori }) {
                   </div>
                 </td>
 
-                <td className="border px-2 py-2">
+                <td className="border border-black px-2 py-2">
                   {/* LOGIKA RENDER BERDASARKAN JENIS DAN BARIS */}
                   {kind === "main" ? (
                     // BARIS UTAMA (main)
@@ -787,7 +751,7 @@ function SimpleTable({ rows, onUpdateRawValue, filterKategori }) {
                         </div>
                         <input
                           type="text"
-                          className="w-full bg-transparent text-center outline-none text-base border rounded"
+                          className="w-full bg-transparent text-center outline-none text-base border border-black rounded"
                           value={inputValue}
                           onChange={(e) => {
                             const value = e.target.value;
@@ -912,7 +876,7 @@ function SimpleTable({ rows, onUpdateRawValue, filterKategori }) {
 }
 
 /* ======================================================================
-   MAIN PAGE - DIPERBARUI DENGAN LOGIKA FILTER "TANPA_MODEL"
+   MAIN PAGE
 ====================================================================== */
 
 export default function RekapData() {

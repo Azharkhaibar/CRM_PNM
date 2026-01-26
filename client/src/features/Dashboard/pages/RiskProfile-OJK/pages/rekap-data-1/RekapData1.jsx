@@ -39,7 +39,7 @@ const CATEGORIES = [
   { id: "tatakelola-regulatory", label: "Tata Kelola", Icon: Earth },
 ];
 
-// INHERENT Risk Indicators (tetap sama)
+
 const INHERENT_RISK_INDICATORS = [
   { label: "Low", value: "low", color: "#2ECC71", min: 0, max: 1.49 },
   { label: "Low To Moderate", value: "lowToModerate", color: "#A3E635", min: 1.50, max: 2.49 },
@@ -59,9 +59,8 @@ const KPMR_RISK_INDICATORS = [
 
 
 const getIndicatorNumber = (score, isDataAvailable = true) => {
-  // Jika data tidak tersedia, kembalikan 0 untuk abu-abu
   if (!isDataAvailable) {
-    return 0; // Angka 0 untuk abu-abu
+    return 0; 
   }
   
   if (score === undefined || score === null || isNaN(score)) {
@@ -78,18 +77,17 @@ const getIndicatorNumber = (score, isDataAvailable = true) => {
 // Fungsi untuk mendapatkan warna berdasarkan angka indikator
 const getIndicatorColor = (number) => {
   switch(number) {
-    case 0: return "bg-gray-300";     // Data belum ada - Abu-abu
-    case 1: return "bg-green-500";    // Low - Hijau
-    case 2: return "bg-lime-500";     // Low To Moderate - Lime
-    case 3: return "bg-yellow-500";   // Moderate - Kuning
-    case 4: return "bg-orange-500";   // Moderate To High - Orange
-    case 5: return "bg-red-500";      // High - Merah
-    default: return "bg-gray-500";    // Default - Abu-abu gelap
+    case 0: return "bg-gray-300";     
+    case 1: return "bg-green-500";    
+    case 2: return "bg-lime-500";     
+    case 3: return "bg-yellow-500";   
+    case 4: return "bg-orange-500";   
+    case 5: return "bg-red-500";      
+    default: return "bg-gray-500";    
   }
 };
 
 
-// Fungsi untuk mendapatkan risk indicator berdasarkan skor dan tipe
 const getRiskIndicator = (score, type = "inherent") => {
   if (score === undefined || score === null) {
     return type === "kpmr" 
@@ -261,7 +259,7 @@ const tableData = useMemo(() => {
 }, [filteredData, bhzValues]);
 
 const peringkatKomposit = useMemo(() => {
-  if (summaryPerHalaman.length === 0) { // <- Gunakan summaryPerHalaman, bukan tableData
+  if (summaryPerHalaman.length === 0) { 
     return {
       inherentValue: 0,
       kpmrValue: 0,
@@ -274,7 +272,6 @@ const peringkatKomposit = useMemo(() => {
 
   // Hitung dari semua data, bukan yang sudah difilter
   summaryPerHalaman.forEach((item) => {
-    // Hitung ulang nilai-nilai yang diperlukan untuk footer
     const bvt = 100;
     const bhz = bhzValues[item.id] !== undefined 
       ? bhzValues[item.id] 
@@ -433,7 +430,7 @@ const footerDisplay = useMemo(() => {
     </div>
   </div>
 
-  {/* Tabel Body - BAGIAN ATAS (PER HALAMAN) dengan scroll */}
+  {/* Tabel Body */}
   <div className="divide-y max-h-[450px] overflow-y-auto">
     {tableData.map((item) => (
       <div key={item.id} className="grid grid-cols-12 p-4 hover:bg-gray-50 transition-colors">
@@ -498,7 +495,7 @@ const footerDisplay = useMemo(() => {
     ))}
   </div>
 
-  {/* Tabel Footer - DIKELUARKAN DARI AREA SCROLL */}
+  {/* Tabel Footer */}
   <div className="bg-blue-900 border-t">
     <div className="grid grid-cols-12 p-4 text-white font-bold">
       <div className="col-span-4 text-white flex items-center text-2xl">

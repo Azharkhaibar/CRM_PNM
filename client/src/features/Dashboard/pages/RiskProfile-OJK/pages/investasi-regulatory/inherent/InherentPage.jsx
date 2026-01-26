@@ -641,7 +641,7 @@ const handleConfirmDelete = useCallback(() => {
 
   return (
     <div className="w-full space-y-3">
-      <div className="bg-gradient-to-r from-blue-700 to-sky-600 text-white px-4 py-3 rounded-lg border border-slate-700">
+      <div className="bg-gradient-to-r from-blue-700 to-sky-600 text-white px-4 py-3 rounded-lg border border-black ">
         <div className="flex justify-between items-center">
           <div className="text-lg font-semibold">
             <h2 className="">Parameter</h2>
@@ -658,7 +658,7 @@ const handleConfirmDelete = useCallback(() => {
               size="sm"
               variant="outline"
               onClick={() => setShowParameterForm(!showParameterForm)}
-              className="bg-slate-700 text-slate-200 hover:bg-slate-600 text-sm px-3 border-slate-600"
+              className="bg-slate-700 text-slate-200 hover:bg-gray-100 text-sm px-3 border border-black "
               disabled={loading}
             >
               {showParameterForm ? (
@@ -747,7 +747,7 @@ const handleConfirmDelete = useCallback(() => {
                   Model Produk
                 </label>
                 <select
-                  className="bg-white text-slate-800 text-sm rounded px-2 py-1 border border-slate-300"
+                  className="bg-white text-slate-800 text-sm rounded px-2 py-1 border border-black"
                   value={parameter.kategori.model}
                   onChange={(e) =>
                     handleChangeKategori("model", e.target.value)
@@ -767,7 +767,7 @@ const handleConfirmDelete = useCallback(() => {
                     Jenis Reksa Dana
                   </label>
                   <select
-                    className="bg-white text-slate-800 text-sm rounded px-2 py-1 border border-slate-300"
+                    className="bg-white text-slate-800 text-sm rounded px-2 py-1 border border-black "
                     value={parameter.kategori.jenis}
                     onChange={(e) =>
                       handleChangeKategori("jenis", e.target.value)
@@ -794,7 +794,7 @@ const handleConfirmDelete = useCallback(() => {
                   <div className="relative">
                     <button
                       type="button"
-                      className="w-full bg-white text-slate-800 text-sm rounded px-2 py-1 flex justify-between items-center border border-slate-300"
+                      className="w-full bg-white text-slate-800 text-sm rounded px-2 py-1 flex justify-between items-center border border-black "
                       onClick={() => setOpenUnderlying((v) => !v)}
                       disabled={loading || (safeActiveParamIndex !== null && !editMode)}
                     >
@@ -807,7 +807,7 @@ const handleConfirmDelete = useCallback(() => {
                     </button>
 
                     {openUnderlying && (
-                      <div className="absolute z-50 mt-1 w-full bg-white rounded shadow-lg text-sm text-slate-800 border border-slate-200">
+                      <div className="absolute z-50 mt-1 w-full bg-white rounded shadow-lg text-sm text-slate-800 border border-black  ">
                         {[
                           { key:"indeks", label: "Indeks"},
                           { key: "eba", label: "Efek Beragun Aset(EBA)" },
@@ -891,10 +891,10 @@ const handleConfirmDelete = useCallback(() => {
               <div className="w-[10%]">
                 <label className="font-semibold text-sm ml-2 text-slate-200">No</label>
                 <Input
-                  placeholder="1."
+                  placeholder="10."
                   value={parameter.nomor}
                   onChange={(e) => handleChangeParameter("nomor", e.target.value)}
-                  className="bg-white text-slate-950 border-slate-300"
+                  className="bg-white text-slate-950 border border-black "
                   disabled={loading || (safeActiveParamIndex !== null && !editMode)}
                 />
               </div>
@@ -909,7 +909,7 @@ const handleConfirmDelete = useCallback(() => {
                   step="0.01"
                   value={parameter.bobot}
                   onChange={(e) => handleChangeParameter("bobot", e.target.value)}
-                  className="bg-white text-slate-950 border-slate-300"
+                  className="bg-white text-slate-950 border border-black "
                   disabled={loading || (safeActiveParamIndex !== null && !editMode)}
                 />
               </div>
@@ -925,7 +925,7 @@ const handleConfirmDelete = useCallback(() => {
                     (safeActiveParamIndex !== null && !editMode)
                   }
                   onChange={(e) => handleChangeParameter("judul", e.target.value)}
-                  className={`bg-white text-slate-950 border-slate-300 ${
+                  className={`bg-white text-slate-950 border border-black  ${
                     (parameter.kategori.model !== "tanpa_model" && isKategoriIncomplete(parameter)) || 
                     loading ||
                     (safeActiveParamIndex !== null && !editMode) ? "opacity-60 cursor-not-allowed" : ""
@@ -937,7 +937,7 @@ const handleConfirmDelete = useCallback(() => {
             <button
               ref={dropdownBtnRef}
               onClick={() => setOpenParamList((v) => !v)}
-              className="w-full mt-3 bg-white text-sm text-slate-800 px-3 py-2 rounded-md flex justify-between border border-slate-300 hover:bg-slate-50"
+              className="w-full mt-3 bg-white text-sm text-slate-800 px-3 py-2 rounded-md flex justify-between border border-black hover:bg-slate-50"
               disabled={loading}
             >
               <span className="truncate">
@@ -951,7 +951,7 @@ const handleConfirmDelete = useCallback(() => {
               createPortal(
                 <div
                   ref={dropdownListRef}
-                  className="fixed bg-white text-slate-800 rounded-md shadow-lg max-h-[220px] overflow-auto z-[9999] border border-slate-200"
+                  className="fixed bg-white text-slate-800 rounded-md shadow-lg max-h-[220px] overflow-auto z-[9999] border border-black  "
                   style={{
                     top: dropdownRect.top,
                     left: dropdownRect.left,
@@ -963,7 +963,7 @@ const handleConfirmDelete = useCallback(() => {
                       handleClearSelection();
                       setOpenParamList(false);
                     }}
-                    className="w-full text-left px-3 py-2 hover:bg-slate-50 text-slate-700 border-b border-slate-200"
+                    className="w-full text-left px-3 py-2 hover:bg-slate-50 text-slate-700 border border-b-black "
                   >
                     ← Kosongkan Pilihan
                   </button>
@@ -1527,7 +1527,7 @@ const handleDeleteNilai = useCallback(() => {
                   value={tempFormula}
                   onChange={(e) => setTempFormula(e.target.value)}
                   placeholder="contoh: pem / pen"
-                  className="bg-slate-50 hover:bg-slate-100 text-slate-950 border-slate-300"
+                  className="bg-slate-50 hover:bg-slate-100 text-slate-950 border border-black "
                   disabled={loading}
                 />
               </div>
@@ -1537,7 +1537,7 @@ const handleDeleteNilai = useCallback(() => {
                 onClick={() => setTempPercent(!tempPercent)}
                 disabled={loading}
                 className={
-                  "flex h-9 w-9 items-center justify-center rounded-md border text-lg font-semibold transition-colors duration-150 border-slate-300 " +
+                  "flex h-9 w-9 items-center justify-center rounded-md border border-black  text-lg font-semibold transition-colors duration-150 " +
                   (tempPercent
                     ? "bg-blue-900 text-white" 
                     : "bg-white text-slate-800") 
@@ -1550,7 +1550,7 @@ const handleDeleteNilai = useCallback(() => {
             <div className="flex justify-end gap-2 pt-2">
               <Button
                 variant="outline"
-                className="bg-white text-slate-800 border-slate-300 hover:bg-slate-50"
+                className="bg-white text-slate-800 border border-black  hover:bg-slate-50"
                 onClick={() => setFormulaOpen(false)}
                 disabled={loading}
               >
@@ -1568,7 +1568,7 @@ const handleDeleteNilai = useCallback(() => {
         </div>
       )}
 
-      <div className="w-full bg-gradient-to-r from-blue-700 to-sky-600 text-white px-4 pt-4 pb-3 border-t border-slate-700 flex items-center justify-between gap-4 rounded-t-lg">
+      <div className="w-full bg-gradient-to-r from-blue-700 to-sky-600 text-white px-4 pt-4 pb-3 border border-t-black border-l-black border-r-black flex items-center justify-between gap-4 rounded-t-lg">
         <div className="text-lg font-bold">Nilai Form</div>
 
         <div className="flex items-center gap-3">
@@ -1576,7 +1576,7 @@ const handleDeleteNilai = useCallback(() => {
             size="sm"
             variant="outline"
             onClick={() => setShowForm(!showForm)}
-            className="bg-slate-700 text-slate-200 hover:bg-slate-600 text-sm px-3 border-slate-600"
+            className="bg-slate-700 text-slate-200 hover:bg-gray-100 text-sm px-3 border border-black"
             disabled={loading}
           >
             {showForm ? (
@@ -1651,7 +1651,7 @@ const handleDeleteNilai = useCallback(() => {
       </div>
 
       {showForm && (
-        <div className="w-full bg-gradient-to-r from-blue-700 to-sky-600 text-white px-4 pb-4 border border-slate-700 space-y-4 rounded-b-lg">
+        <div className="w-full bg-gradient-to-r from-blue-700 to-sky-600 text-white px-4 pb-4 border border-slate-900 space-y-4 rounded-b-lg">
           <div className="w-full bg-slate-200 rounded-lg p-0.5 mt-2"/>
           
           <div className="space-y-2">
@@ -1662,7 +1662,7 @@ const handleDeleteNilai = useCallback(() => {
               <button
                 ref={dropdownNilaiBtnRef}
                 onClick={() => setOpenNilaiList((v) => !v)}
-                className="w-full bg-white text-slate-800 text-sm rounded px-3 py-2 flex justify-between items-center border border-slate-300 hover:bg-slate-50"
+                className="w-full bg-white text-slate-800 text-sm rounded px-3 py-2 flex justify-between items-center border border-black hover:bg-slate-50"
                 disabled={loading}
               >
                 <span className="truncate">
@@ -1677,7 +1677,7 @@ const handleDeleteNilai = useCallback(() => {
             {openNilaiList && dropdownNilaiRect && createPortal(
               <div
                 ref={dropdownNilaiListRef}
-                className="fixed bg-white text-slate-800 rounded-md shadow-lg max-h-[220px] overflow-auto z-[9999] border border-slate-200"
+                className="fixed bg-white text-slate-800 rounded-md shadow-lg max-h-[220px] overflow-auto z-[9999] border border-black"
                 style={{
                   top: dropdownNilaiRect.top,
                   left: dropdownNilaiRect.left,
@@ -1689,7 +1689,7 @@ const handleDeleteNilai = useCallback(() => {
                     handleClearNilaiSelection();
                     setOpenNilaiList(false);
                   }}
-                  className="w-full text-left px-3 py-2 hover:bg-slate-50 text-slate-700 border-b border-slate-200"
+                  className="w-full text-left px-3 py-2 hover:bg-slate-50 text-slate-700 border border-b-black"
                 >
                   ← Kosongkan Pilihan (Buat Baru)
                 </button>
@@ -1715,7 +1715,7 @@ const handleDeleteNilai = useCallback(() => {
               <div className="flex justify-end">
                 <Button
                   size="sm"
-                  className="bg-slate-100 text-slate-800 font-semibold hover:bg-slate-200 border border-slate-300"
+                  className="bg-slate-100 text-slate-800 font-semibold hover:bg-slate-200 border border-black "
                   onClick={openFormula}
                   disabled={loading}
                 >
@@ -1739,11 +1739,11 @@ const handleDeleteNilai = useCallback(() => {
                     nomor
                   </label>
                   <Input
-                    className="h-8 bg-white text-sm border-slate-300"
+                    className="h-8 bg-white text-sm border border-black"
                     value={currentNilai.nomor ?? ""}
                     onChange={(e) => handleChangeNilaiField("nomor", e.target.value)}
                     disabled={loading || (safeActiveIndex >= 0 && !editModeNilai)}
-                    placeholder="10."
+                    placeholder="1.1."
                   />
                 </div>
 
@@ -1752,7 +1752,7 @@ const handleDeleteNilai = useCallback(() => {
                     Bobot
                   </label>
                   <Input
-                    className="h-8 bg-white text-sm border-slate-300"
+                    className="h-8 bg-white text-sm border border-black "
                     value={currentNilai.bobot ?? ""}
                     onChange={(e) => handleChangeNilaiField("bobot", e.target.value)}
                     type="number"
@@ -1769,7 +1769,7 @@ const handleDeleteNilai = useCallback(() => {
                    Sumber Risiko
                   </label>
                   <Input
-                    className="h-8 bg-white text-sm border-slate-300"
+                    className="h-8 bg-white text-sm border border-black "
                     value={currentNilai.sumberRisiko ?? ""}
                     onChange={(e) => handleChangeNilaiField("sumberRisiko", e.target.value)}
                     disabled={loading || (safeActiveIndex >= 0 && !editModeNilai)}
@@ -1782,7 +1782,7 @@ const handleDeleteNilai = useCallback(() => {
                    Dampak
                   </label>
                   <Input
-                    className="h-8 bg-white text-sm border-slate-300"
+                    className="h-8 bg-white text-sm border border-black "
                     value={currentNilai.dampak ?? ""}
                     onChange={(e) => handleChangeNilaiField("dampak", e.target.value)}
                     disabled={loading || (safeActiveIndex >= 0 && !editModeNilai)}
@@ -1822,7 +1822,7 @@ const handleDeleteNilai = useCallback(() => {
                   Keterangan
                 </label>
                 <Textarea
-                  className="min-h-[40px] text-sm bg-white border-slate-300"
+                  className="min-h-[40px] text-sm bg-white border border-black "
                   value={currentNilai.keterangan ?? ""}
                   onChange={(e) => handleChangeNilaiField("keterangan", e.target.value)}
                   disabled={loading || (safeActiveIndex >= 0 && !editModeNilai)}
@@ -1845,13 +1845,13 @@ const handleDeleteNilai = useCallback(() => {
 function RiskItem({ label, value, onChange, color, loading = false }) {
   return (
     <div
-      className="rounded-lg px-3 py-3 flex flex-col gap-2 border border-slate-300 shadow-sm"
+      className="rounded-lg px-3 py-3 flex flex-col gap-2 border border-black shadow-sm"
       style={{ backgroundColor: color }}
     >
       <div className="text-sm font-bold uppercase text-black text-center">
         {label}
       </div>
-      <div className="bg-white/90 rounded border border-slate-300">
+      <div className="bg-white/90 rounded border border-black ">
         <Textarea
          className="min-h-[60px] text-xs bg-transparent text-slate-800 resize-none text-center p-2"
           value={value}
@@ -1944,7 +1944,7 @@ function NilaiJudulInput({ judul, onChange, onTypeChange, loading = false, editM
             onClick={() => updateType(m)}
             disabled={loading || !editMode}
             className={`
-              px-3 py-1 border text-xs transition border-slate-300
+              px-3 py-1 border border-black  text-xs transition 
               ${
                 localJudul.type === m
                   ? "bg-blue-900 text-white"
@@ -1965,7 +1965,7 @@ function NilaiJudulInput({ judul, onChange, onTypeChange, loading = false, editM
       <div className="space-y-1">
         <label className="font-semibold text-sm text-slate-200">Judul Nilai</label>
         <Input
-          className="text-slate-800 border-slate-300 bg-white"
+          className="text-slate-800 border border-black  bg-white"
           value={localJudul.text || ""}
           onChange={(e) => updateField("text", e.target.value)}
           disabled={loading || !editMode}
@@ -1977,7 +1977,7 @@ function NilaiJudulInput({ judul, onChange, onTypeChange, loading = false, editM
         <div className="space-y-1">
           <label className="font-semibold text-sm text-slate-200">Value</label>
           <Input
-            className="text-slate-800 border-slate-300 bg-white"
+            className="text-slate-800 border border-black  bg-white"
             value={localJudul.value ?? ""}
             onChange={(e) =>
               updateField("value", e.target.value === "" ? null : e.target.value)
@@ -1994,7 +1994,7 @@ function NilaiJudulInput({ judul, onChange, onTypeChange, loading = false, editM
             <div className="flex-1 space-y-1">
               <label className="font-semibold text-sm text-slate-200">Pembilang</label>
               <Input
-                className="text-slate-800 border-slate-300 bg-white"
+                className="text-slate-800 border border-black  bg-white"
                 value={localJudul.pembilang || ""}
                 onChange={(e) => updateField("pembilang", e.target.value)}
                 disabled={loading || !editMode}
@@ -2005,7 +2005,7 @@ function NilaiJudulInput({ judul, onChange, onTypeChange, loading = false, editM
             <div className="flex-1 space-y-1">
               <label className="font-semibold text-sm text-slate-200">Value Pembilang</label>
               <Input
-                className="text-slate-800 border-slate-300 bg-white"
+                className="text-slate-800 border border-black  bg-white"
                 value={localJudul.valuePembilang ?? ""}
                 onChange={(e) =>
                   updateField(
@@ -2027,7 +2027,7 @@ function NilaiJudulInput({ judul, onChange, onTypeChange, loading = false, editM
             <div className="flex-1 space-y-1">
               <label className="font-semibold text-sm text-slate-200">Pembilang</label>
               <Input
-                className="text-slate-800 border-slate-300 bg-white"
+                className="text-slate-800 border border-black  bg-white"
                 value={localJudul.pembilang || ""}
                 onChange={(e) => updateField("pembilang", e.target.value)}
                 disabled={loading || !editMode}
@@ -2038,7 +2038,7 @@ function NilaiJudulInput({ judul, onChange, onTypeChange, loading = false, editM
             <div className="flex-1 space-y-1">
               <label className="font-semibold text-sm text-slate-200">Value Pembilang</label>
               <Input
-                className="text-slate-800 border-slate-300 bg-white"
+                className="text-slate-800 border border-black  bg-white"
                 value={localJudul.valuePembilang ?? ""}
                 onChange={(e) =>
                   updateField(
@@ -2056,7 +2056,7 @@ function NilaiJudulInput({ judul, onChange, onTypeChange, loading = false, editM
             <div className="flex-1 space-y-1">
               <label className="font-semibold text-sm text-slate-200">Penyebut</label>
               <Input
-                className="text-slate-800 border-slate-300 bg-white"
+                className="text-slate-800 border border-black  bg-white"
                 value={localJudul.penyebut || ""}
                 onChange={(e) => updateField("penyebut", e.target.value)}
                 disabled={loading || !editMode}
@@ -2067,7 +2067,7 @@ function NilaiJudulInput({ judul, onChange, onTypeChange, loading = false, editM
             <div className="flex-1 space-y-1">
               <label className="font-semibold text-sm text-slate-200">Value Penyebut</label>
               <Input
-                className="text-slate-800 border-slate-300 bg-white"
+                className="text-slate-800 border border-black  bg-white"
                 value={localJudul.valuePenyebut ?? ""}
                 onChange={(e) =>
                   updateField(
@@ -2148,7 +2148,7 @@ function TableInherent({ rows = [], activeQuarter }) {
 
   if (!Array.isArray(rows) || rows.length === 0) {
     return (
-      <div className="flex items-center border rounded-xl justify-center gap-2 p-6 text-sm text-gray-500">
+      <div className="flex items-center border border-black  rounded-xl justify-center gap-2 p-6 text-sm text-gray-500">
         <FileWarning />
         <span>Belum ada data untuk ditampilkan</span>
       </div>
@@ -2217,31 +2217,31 @@ function TableInherent({ rows = [], activeQuarter }) {
         </div>
       </div>
 
-      <div className="w-full overflow-auto border shadow">
+      <div className="w-full overflow-auto border border-black  shadow">
         <div style={{ zoom: `${zoom}%` }}>
           <table className="min-w-max text-sm table-fixed">
             <thead>
               <tr>
-                <th className="border border-black px-2 py-2 bg-blue-900 text-white w-10">No</th>
-                <th className="border border-black px-2 py-2 bg-blue-900 text-white w-16">Bobot</th>
-                <th className="border border-black px-2 py-2 bg-blue-900 text-white w-42">Parameter</th>
+                <th className="border border-black   -black px-2 py-2 bg-blue-900 text-white w-10">No</th>
+                <th className="border border-black   -black px-2 py-2 bg-blue-900 text-white w-16">Bobot</th>
+                <th className="border border-black   -black px-2 py-2 bg-blue-900 text-white w-42">Parameter</th>
 
-                <th className="border border-black px-2 py-2 bg-blue-900 text-white w-10">No</th>
-                <th className="border border-black px-2 py-2 bg-blue-900 text-white w-64">Indikator</th>
-                <th className="border border-black px-2 py-2 bg-blue-900 text-white w-16">Bobot</th>
-                <th className="border border-black px-2 py-2 bg-blue-900 text-white w-64">Sumber Risiko</th>
-                <th className="border border-black px-2 py-2 bg-blue-900 text-white w-64">Dampak</th>
+                <th className="border border-black   px-2 py-2 bg-blue-900 text-white w-10">No</th>
+                <th className="border border-black   px-2 py-2 bg-blue-900 text-white w-64">Indikator</th>
+                <th className="border border-black   px-2 py-2 bg-blue-900 text-white w-16">Bobot</th>
+                <th className="border border-black   px-2 py-2 bg-blue-900 text-white w-32">Sumber Risiko</th>
+                <th className="border border-black   px-2 py-2 bg-blue-900 text-white w-32">Dampak</th>
 
-                <th className="border border-black py-2 bg-[#2ECC71] text-white w-32">Low</th>
-                <th className="border border-black py-2 bg-[#A3E635] text-black w-32">Low To Moderate</th>
-                <th className="border border-black py-2 bg-[#FACC15] text-black w-32">Moderate</th>
-                <th className="border border-black px-2 py-2 bg-[#F97316] text-black w-32">Moderate To High</th>
-                <th className="border border-black px-2 py-2 bg-[#FF0000] text-white w-32">High</th>
+                <th className="border border-black   py-2 bg-[#2ECC71] text-white w-32">Low</th>
+                <th className="border border-black   py-2 bg-[#A3E635] text-black w-32">Low To Moderate</th>
+                <th className="border border-black   py-2 bg-[#FACC15] text-black w-32">Moderate</th>
+                <th className="border border-black   px-2 py-2 bg-[#F97316] text-black w-32">Moderate To High</th>
+                <th className="border border-black   px-2 py-2 bg-[#FF0000] text-white w-32">High</th>
 
-                <th className="border border-black px-2 py-2 bg-blue-950 text-white w-32">Hasil</th>
-                <th className="border border-black px-2 py-2 bg-blue-950 text-white w-32">Peringkat</th>
-                <th className="border border-black px-2 py-2 bg-blue-950 text-white w-32">Weighted</th>
-                <th className="border border-black px-2 py-2 bg-blue-900 text-white w-64">Keterangan</th>
+                <th className="border border-black   px-2 py-2 bg-blue-950 text-white w-32">Hasil</th>
+                <th className="border border-black   px-2 py-2 bg-blue-950 text-white w-32">Peringkat</th>
+                <th className="border border-black   px-2 py-2 bg-blue-950 text-white w-32">Weighted</th>
+                <th className="border border-black   px-2 py-2 bg-blue-900 text-white w-64">Keterangan</th>
               </tr>
             </thead>
 
@@ -2252,18 +2252,18 @@ function TableInherent({ rows = [], activeQuarter }) {
                 if (nilaiList.length === 0) {
                   return (
                     <tr key={`empty-${pi}`}>
-                      <td className="border px-2 py-2 align-top bg-[#E8F5FA]">
+                      <td className="border border-black  px-2 py-2 align-top bg-[#E8F5FA]">
                         {param.nomor || "-"}
                       </td>
-                      <td className="border px-2 py-2 align-top bg-[#E8F5FA]">
+                      <td className="border border-black  px-2 py-2 align-top bg-[#E8F5FA]">
                         {formatPercent(param.bobot)}
                       </td>
-                      <td className="border px-2 py-2 align-top bg-[#E8F5FA] break-words max-w-[200px]">
+                      <td className="border border-black  px-2 py-2 align-top bg-[#E8F5FA] break-words max-w-[200px]">
                         {param.judul || "-"}
                       </td>
                       <td
                         colSpan={13}
-                        className="border px-2 py-2 text-center text-gray-400 bg-white"
+                        className="border border-black  px-2 py-2 text-center text-gray-400 bg-white"
                       >
                         Belum ada nilai
                       </td>
@@ -2320,57 +2320,57 @@ function TableInherent({ rows = [], activeQuarter }) {
                           <>
                             <td
                               rowSpan={totalRowsForParam}
-                              className="border px-2 py-2 align-middle bg-[#E8F5FA] text-center"
+                              className="border border-black   px-2 py-2 align-middle bg-[#E8F5FA] text-center"
                             >
                               {param.nomor || "-"}
                             </td>
                             <td
                               rowSpan={totalRowsForParam}
-                              className="border px-2 py-2 align-middle bg-[#E8F5FA] text-center"
+                              className="border border-black   px-2 py-2 align-middle bg-[#E8F5FA] text-center"
                             >
                               {formatPercent(param.bobot)}
                             </td>
                             <td
                               rowSpan={totalRowsForParam}
-                              className="border px-2 py-2 align-middle bg-[#E8F5FA] break-words max-w-[200px]"
+                              className="border border-black   px-2 py-2 align-middle bg-[#E8F5FA] break-words max-w-[200px]"
                             >
                               {param.judul || "-"}
                             </td>
                           </>
                         )}
 
-                        <td className={`border px-2 py-2 text-center ${isMainRow ? 'bg-[#E8F5FA]' : 'bg-white'}`}>
+                        <td className={`border border-black   px-2 py-2 text-center ${isMainRow ? 'bg-[#E8F5FA]' : 'bg-white'}`}>
                           {isMainRow ? nilai.nomor ?? "-" : ""}
                         </td>
 
-                        <td className={`border px-2 py-2 ${isMainRow ? 'bg-[#E8F5FA]' : 'bg-white'} break-words max-w-[180px]`}>
+                        <td className={`border border-black   px-2 py-2 ${isMainRow ? 'bg-[#E8F5FA]' : 'bg-white'} break-words max-w-[180px]`}>
                           <div className={isMainRow ? "text-sm font-semibold" : "text-xs"}>
                             {nilaiText}
                           </div>
                         </td>
 
-                        <td className={`border px-2 py-2 text-center ${isMainRow ? 'bg-[#E8F5FA]' : 'bg-white'}`}>
+                        <td className={`border border-black   px-2 py-2 text-center ${isMainRow ? 'bg-[#E8F5FA]' : 'bg-white'}`}>
                           {isMainRow ? formatPercent(nilai.bobot) : ""}
                         </td>
 
-                        <td className={`border px-2 py-2 text-center ${isMainRow ? 'bg-[#E8F5FA]' : 'bg-white'} break-words max-w-[180px]`}>
+                        <td className={`border border-black   px-2 py-2 text-center ${isMainRow ? 'bg-[#E8F5FA]' : 'bg-white'} break-words max-w-[180px]`}>
                           {isMainRow ? nilai.sumberRisiko ?? "-" : ""}
                         </td>
 
-                        <td className={`border px-2 py-2 text-center ${isMainRow ? 'bg-[#E8F5FA]' : 'bg-white'} break-words max-w-[180px]`}>
+                        <td className={`border border-black   px-2 py-2 text-center ${isMainRow ? 'bg-[#E8F5FA]' : 'bg-white'} break-words max-w-[180px]`}>
                           {isMainRow ? nilai.dampak ?? "-" : ""}
                         </td>
 
                         {["low", "lowToModerate", "moderate", "moderateToHigh", "high"].map((rk) => (
                           <td
                             key={rk}
-                            className={`border px-2 py-2 text-center ${isMainRow ? 'bg-[#D9EAD3]' : 'bg-white'} break-words max-w-[130px]`}
+                            className={`border border-black   px-2 py-2 text-center ${isMainRow ? 'bg-[#D9EAD3]' : 'bg-white'} break-words max-w-[130px]`}
                           >
                             {isMainRow ? nilai.riskindikator?.[rk] ?? "-" : ""}
                           </td>
                         ))}
 
-                        <td className={`border px-2 py-2 text-center ${isMainRow ? 'bg-white' : 'bg-[#D9EAD3]'} break-words max-w-[130px]`}>
+                        <td className={`border border-black   px-2 py-2 text-center ${isMainRow ? 'bg-white' : 'bg-[#D9EAD3]'} break-words max-w-[130px]`}>
                           <div className={isMainRow ? "text-sm font-semibold" : "text-xs"}>
                             {hasilText}
                           </div>
@@ -2380,7 +2380,7 @@ function TableInherent({ rows = [], activeQuarter }) {
                           <>
                             <td
                               rowSpan={rowsForThisNilai}
-                              className={`border px-2 py-2 align-middle text-center font-semibold ${
+                              className={`border border-black   px-2 py-2 align-middle text-center font-semibold ${
                                 peringkat ? rankBgMap[peringkat] : ""
                               }`}
                             >
@@ -2388,13 +2388,13 @@ function TableInherent({ rows = [], activeQuarter }) {
                             </td>
                             <td
                               rowSpan={rowsForThisNilai}
-                              className="border px-2 py-2 align-middle text-center bg-white"
+                              className="border border-black   px-2 py-2 align-middle text-center bg-white"
                             >
                               {weightedDisplay || ""}
                             </td>
                             <td
                               rowSpan={rowsForThisNilai}
-                              className="border px-2 py-2 text-center align-middle bg-white break-words max-w-[200px]"
+                              className="border border-black   px-2 py-2 text-center align-middle bg-white break-words max-w-[200px]"
                             >
                               {nilai.keterangan ?? ""}
                             </td>
@@ -2409,16 +2409,16 @@ function TableInherent({ rows = [], activeQuarter }) {
               })}
               
               <tr>
-                <td colSpan={13} className="border-0 bg-white"></td>
-                <td colSpan={2} className="border border-black px-2 py-2 text-center font-semibold text-white bg-blue-900">
+                <td colSpan={13} className="border border-black -0 bg-white"></td>
+                <td colSpan={2} className="border border-black   px-2 py-2 text-center font-semibold text-white bg-blue-900">
                   Summary
                 </td>
-                <td className={`border px-2 py-2 text-center font-semibold ${globalSummary.summaryBg}`}>
+                <td className={`border border-black   px-2 py-2 text-center font-semibold ${globalSummary.summaryBg}`}>
                   {Number.isFinite(globalSummary.totalWeighted)
                     ? globalSummary.totalWeighted.toFixed(2)
                     : "-"}
                 </td>
-                <td className="border-0 bg-white"></td>
+                <td className="border border-black -0 bg-white"></td>
               </tr>
             </tbody>
           </table>
@@ -2430,7 +2430,7 @@ function TableInherent({ rows = [], activeQuarter }) {
           <button
             type="button"
             onClick={scrollLeft}
-            className="h-8 w-8 flex items-center justify-center rounded-md border bg-white text-blue-600 font-bold hover:bg-blue-500 hover:text-white"
+            className="h-8 w-8 flex items-center justify-center rounded-md border border-black  bg-white text-blue-600 font-bold hover:bg-blue-500 hover:text-white"
           >
             <ArrowBigLeftDash />
           </button>
@@ -2468,10 +2468,10 @@ function TableInherent({ rows = [], activeQuarter }) {
                   type="button"
                   onClick={() => handlePageClick(page)}
                   className={
-                    "min-w-8 h-8 px-3 flex items-center justify-center rounded-md border text-sm font-semibold transition-colors duration-150 shrink-0 hover:bg-blue-600 hover:text-white " +
+                    "min-w-8 h-8 px-3 flex items-center justify-center rounded-md border border-black  text-sm font-semibold transition-colors duration-150 shrink-0 hover:bg-blue-600 hover:text-white " +
                     (isActive
-                      ? "bg-indigo-600 border-indigo-600 text-white"
-                      : "bg-white border-gray-300 text-blue-600")
+                      ? "border border-black bg-blue-600 text-white"
+                      : "bg-white border border-gray-600 text-black ")
                   }
                 >
                   {page}
@@ -2485,7 +2485,7 @@ function TableInherent({ rows = [], activeQuarter }) {
           <button
             type="button"
             onClick={scrollRight}
-            className="h-8 w-8 flex items-center justify-center rounded-md border bg-white text-blue-600 font-bold hover:bg-blue-500 hover:text-white"
+            className="h-8 w-8 flex items-center justify-center rounded-md border border-black  bg-white text-blue-600 font-bold hover:bg-blue-500 hover:text-white"
           >
             <ArrowBigRightDash />
           </button>

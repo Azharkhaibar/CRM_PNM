@@ -891,7 +891,7 @@ const handleConfirmDelete = useCallback(() => {
               <div className="w-[10%]">
                 <label className="font-semibold text-sm ml-2 text-slate-200">No</label>
                 <Input
-                  placeholder="5."
+                  placeholder="9."
                   value={parameter.nomor}
                   onChange={(e) => handleChangeParameter("nomor", e.target.value)}
                   className="bg-white text-slate-950 border border-black "
@@ -1120,7 +1120,8 @@ function NilaiPanel({
         percent: false,
       },
       bobot: "",
-      keterangan: "",
+      sumberRisiko: "",
+      dampak: "",
       riskindikator: {
         low: "",
         lowToModerate: "",
@@ -1745,7 +1746,7 @@ const handleDeleteNilai = useCallback(() => {
                   />
                 </div>
 
-                <div className="w-[12%]">
+                <div className="w-[10%]">
                   <label className="font-semibold text-sm text-slate-200">
                     Bobot
                   </label>
@@ -1762,16 +1763,29 @@ const handleDeleteNilai = useCallback(() => {
                   />
                 </div>
 
-                <div className="w-[78%]">
+                <div className="w-[40%]">
                   <label className="font-semibold text-sm text-slate-200">
-                   Keterangan
+                   Sumber Risiko
                   </label>
                   <Input
                     className="h-8 bg-white text-sm border border-black "
-                    value={currentNilai.keterangan ?? ""}
-                    onChange={(e) => handleChangeNilaiField("keterangan", e.target.value)}
+                    value={currentNilai.sumberRisiko ?? ""}
+                    onChange={(e) => handleChangeNilaiField("sumberRisiko", e.target.value)}
                     disabled={loading || (safeActiveIndex >= 0 && !editModeNilai)}
-                    placeholder="masukan keterangan"
+                    placeholder="masukan sumber risiko"
+                  />
+                </div>
+
+                <div className="w-[40%]">
+                  <label className="font-semibold text-sm text-slate-200">
+                   Dampak
+                  </label>
+                  <Input
+                    className="h-8 bg-white text-sm border border-black "
+                    value={currentNilai.dampak ?? ""}
+                    onChange={(e) => handleChangeNilaiField("dampak", e.target.value)}
+                    disabled={loading || (safeActiveIndex >= 0 && !editModeNilai)}
+                    placeholder="masukan dampak"
                   />
                 </div>
               </div>
@@ -2154,7 +2168,7 @@ function TableInherent({ rows = [], activeQuarter }) {
     <div className="w-full">
       <div className="flex justify-between mb-2 pr-2">
         <div>
-          <h1 className="text-2xl font-semibold">Data Operasional - Inherent</h1>
+          <h1 className="text-2xl font-semibold">Data Strategis - Inherent</h1>
           <div className="text-sm text-gray-600">
             Quarter Aktif: <span className="font-bold bg-blue-100 px-2 py-1 rounded">{activeQuarter?.toUpperCase()}</span>
           </div>
@@ -2201,7 +2215,8 @@ function TableInherent({ rows = [], activeQuarter }) {
                 <th className="border border-black   px-2 py-2 bg-blue-900 text-white w-10">No</th>
                 <th className="border border-black   px-2 py-2 bg-blue-900 text-white w-64">Indikator</th>
                 <th className="border border-black   px-2 py-2 bg-blue-900 text-white w-16">Bobot</th>
-                <th className="border border-black   px-2 py-2 bg-blue-900 text-white w-64">Keterangan</th>
+                <th className="border border-black   px-2 py-2 bg-blue-900 text-white w-32">Sumber Risiko</th>
+                <th className="border border-black   px-2 py-2 bg-blue-900 text-white w-32">Dampak</th>
 
                 <th className="border border-black   py-2 bg-[#2ECC71] text-white w-32">Low</th>
                 <th className="border border-black   py-2 bg-[#A3E635] text-black w-32">Low To Moderate</th>
@@ -2324,7 +2339,11 @@ function TableInherent({ rows = [], activeQuarter }) {
                         </td>
 
                         <td className={`border border-black   px-2 py-2 text-center ${isMainRow ? 'bg-[#E8F5FA]' : 'bg-white'} break-words max-w-[180px]`}>
-                          {isMainRow ? nilai.keterangan ?? "-" : ""}
+                          {isMainRow ? nilai.sumberRisiko ?? "-" : ""}
+                        </td>
+
+                        <td className={`border border-black   px-2 py-2 text-center ${isMainRow ? 'bg-[#E8F5FA]' : 'bg-white'} break-words max-w-[180px]`}>
+                          {isMainRow ? nilai.dampak ?? "-" : ""}
                         </td>
 
                         {["low", "lowToModerate", "moderate", "moderateToHigh", "high"].map((rk) => (
@@ -2369,7 +2388,7 @@ function TableInherent({ rows = [], activeQuarter }) {
               })}
               
               <tr>
-                <td colSpan={12} className="border border-black -0 bg-white"></td>
+                <td colSpan={13} className="border border-black -0 bg-white"></td>
                 <td colSpan={2} className="border border-black   px-2 py-2 text-center font-semibold text-white bg-blue-900">
                   Summary
                 </td>
