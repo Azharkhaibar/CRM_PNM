@@ -27,7 +27,7 @@ import {
   notifyRiskUpdated,
 } from "../../utils/storage/riskStorageNilai";
 import { computeDerived } from "../../utils/compute/computeDerived";
-import UnsaveChangesModal from "../../components/PopUp/UnsaveChangesModal"; 
+import UnsaveChangesModal from "../../components/PopUp/UnsaveChangesModal";
 
 
 
@@ -893,6 +893,10 @@ export default function RekapData() {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [showUnsaveModal, setShowUnsaveModal] = useState(false);
   const [pendingAction, setPendingAction] = useState(null);
+  
+  // STATE UNTUK NOTIFIKASI SUKSES
+  const [showSuccessNotification, setShowSuccessNotification] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
 
   const pageSize = 7;
 
@@ -1128,8 +1132,14 @@ export default function RekapData() {
     // Reset flag perubahan
     setHasUnsavedChanges(false);
 
-    // Tampilkan notifikasi sukses (opsional)
-    alert("Data berhasil disimpan!");
+    // Tampilkan notifikasi sukses
+    setSuccessMessage("Data berhasil disimpan!");
+    setShowSuccessNotification(true);
+    
+    // Sembunyikan notifikasi setelah 3 detik
+    setTimeout(() => {
+      setShowSuccessNotification(false);
+    }, 3000);
   };
 
   /* ====================== HANDLE FILTER CHANGE ====================== */
@@ -1320,11 +1330,48 @@ export default function RekapData() {
     setPendingAction(null);
   };
 
+  /* ====================== SUCCESS NOTIFICATION ====================== */
+
+  const SuccessNotification = () => {
+    if (!showSuccessNotification) return null;
+
+    return (
+      <div className="fixed top-4 right-4 z-50 animate-fade-in">
+        <div className="bg-green-50 border border-green-200 rounded-lg shadow-lg p-4 max-w-md">
+          <div className="flex items-center">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm font-medium text-green-800">{successMessage}</p>
+            </div>
+            <div className="ml-auto pl-3">
+              <button
+                onClick={() => setShowSuccessNotification(false)}
+                className="inline-flex text-green-400 hover:text-green-600 focus:outline-none"
+              >
+                <span className="sr-only">Close</span>
+                <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   /* ====================== UI ====================== */
 
   return (
     <div className="space-y-4">
       <Header title="Rekap Data" />
+
+      {/* SUCCESS NOTIFICATION */}
+      <SuccessNotification />
 
       <div className="bg-white rounded-lg p-4 shadow space-y-4">
         {/* CATEGORY SELECTION */}

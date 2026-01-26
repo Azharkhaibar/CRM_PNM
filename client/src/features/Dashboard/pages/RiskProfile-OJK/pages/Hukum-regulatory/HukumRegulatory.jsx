@@ -1,6 +1,5 @@
-import React, { useEffect, useState, useRef, useMemo, useCallback } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import Header from "../../components/header/Header";
-import RiskTabs from "../../components/tabs/RiskTabs";
 import InherentPage from "./inherent/InherentPage";
 import KpmrPage from "./kpmr/KpmrPage";
 import { useHeaderStore } from "../../store/headerStore";
@@ -14,9 +13,47 @@ import {
   notifyRiskUpdated,
 } from "../../utils/storage/riskStorageNilai";
 import { computeDerived } from "@/features/Dashboard/pages/RiskProfile-OJK/utils/compute/computeDerived";
-import { normalizeInherentRows} from "../../utils/normalize/normalizeInherentRows";
-import { normalizeKpmrRows} from "../../utils/normalize/normalizeKpmrRows";
+import { normalizeInherentRows } from "../../utils/normalize/normalizeInherentRows";
+import { normalizeKpmrRows } from "../../utils/normalize/normalizeKpmrRows";
 
+// Komponen tab untuk navigasi antara inherent dan KPMR
+function RiskTabs({ value, onChange }) {
+  return (
+    <div className="mb-6 border-b border-gray-200">
+      <nav className="flex space-x-8">
+        <button
+          onClick={() => onChange("inherent")}
+          className={`
+            py-3 px-1 border-b-2 font-medium text-sm transition-colors
+            ${
+              value === "inherent"
+                ? "border-blue-500 text-blue-600"
+                : "border-transparent text-gray-600 hover:text-gray-800 hover:border-gray-300"
+            }
+          `}
+        >
+          INHERENT
+        </button>
+
+        <button
+          onClick={() => onChange("kpmr")}
+          className={`
+            py-3 px-1 border-b-2 font-medium text-sm transition-colors
+            ${
+              value === "kpmr"
+                ? "border-blue-500 text-blue-600"
+                : "border-transparent text-gray-600 hover:text-gray-800 hover:border-gray-300"
+            }
+          `}
+        >
+          Kualitas Penerapan Manajemen Risiko
+        </button>
+      </nav>
+    </div>
+  );
+}
+
+// Membuat signature unik untuk mendeteksi perubahan data inherent
 function getInherentSignature(rows = []) {
   return JSON.stringify(
     rows.map((p) => ({
@@ -38,6 +75,7 @@ function getInherentSignature(rows = []) {
   );
 }
 
+// Menghitung snapshot dari data inherent untuk disimpan sebagai derived
 function computeInherentSnapshot(rows = []) {
   if (!Array.isArray(rows) || rows.length === 0) {
     return {
@@ -90,6 +128,7 @@ export default function HukumRegulatory() {
   const initialRowsRef = useRef([]);
   const saveTimeoutRef = useRef(null);
 
+  // Menyimpan data inherent dengan debouncing dan signature checking
   const saveInherentData = useCallback(() => {
     if (!isDataReady || !initialLoadDone || inherentRows.length === 0) {
       return false;
@@ -134,6 +173,7 @@ export default function HukumRegulatory() {
     }
   }, [inherentRows, isDataReady, year, activeQuarter, initialLoadDone, lastSavedSignature, isSaving]);
 
+  // Debounced save effect untuk inherent data
   useEffect(() => {
     if (!isDataReady || !initialLoadDone) return;
     
@@ -158,6 +198,7 @@ export default function HukumRegulatory() {
     };
   }, [inherentRows, activeTab, isDataReady, initialLoadDone, lastSavedSignature, saveInherentData]);
 
+  // Expose save function ke window object untuk external trigger
   useEffect(() => {
     if (activeTab === "inherent") {
       window.saveInherentData = () => {
@@ -175,6 +216,7 @@ export default function HukumRegulatory() {
     };
   }, [saveInherentData, activeTab, isSaving]);
 
+  // Load data saat tahun atau quarter berubah
   useEffect(() => {
     setIsDataReady(false);
     setInitialLoadDone(false);
@@ -202,6 +244,7 @@ export default function HukumRegulatory() {
     setInitialLoadDone(true);
   }, [year, activeQuarter]);
 
+  // Handle beforeunload untuk mencegah kehilangan data yang belum disimpan
   useEffect(() => {
     if (!didMountRef.current) {
       didMountRef.current = true;
@@ -227,6 +270,7 @@ export default function HukumRegulatory() {
     }
   }, [activeTab, inherentRows, lastSavedSignature, saveInherentData]);
 
+  // Handle export request dari header
   useEffect(() => {
     if (!exportRequestId || !isDataReady) return;
 
@@ -250,121 +294,125 @@ export default function HukumRegulatory() {
     resetExport,
   ]);
 
+  // Handler untuk perubahan tab dengan pengecekan perubahan data
   const handleTabChange = useCallback((tab) => {
     if (activeTab === "inherent" && inherentRows.length > 0) {
       const currentSignature = getInherentSignature(inherentRows);
       if (currentSignature !== lastSavedSignature) {
+
       }
     }
     
     setActiveTab(tab);
-  }, [activeTab, inherentRows, lastSavedSignature, saveInherentData]);
+  }, [activeTab, inherentRows, lastSavedSignature]);
+
+  // Expose save KPMR function ke window object
+  useEffect(() => {
+    if (activeTab === "kpmr") {
+      window.saveKpmrData = () => {
+        try {
+          saveKpmr({
+            categoryId: CATEGORY_ID,
+            year,
+            rows: kpmrRows,
+          });
+          return true;
+        } catch (error) {
+          console.error("Gagal menyimpan KPMR:", error);
+          return false;
+        }
+      };
+    }
+    
+    return () => {
+      delete window.saveKpmrData;
+    };
+  }, [kpmrRows, year, activeTab]);
+
+  // Immediate save function untuk KPMR data
+  const saveKpmrDataImmediate = useCallback((rowsToSave = null) => {
+    const rows = rowsToSave || kpmrRows;
+    
+    try {
+      saveKpmr({
+        categoryId: CATEGORY_ID,
+        year,
+        rows: rows,
+      });
+      return true;
+    } catch (error) {
+      console.error("Gagal menyimpan KPMR:", error);
+      return false;
+    }
+  }, [kpmrRows, year]);
+
+  // Immediate save function untuk inherent data dengan snapshot calculation
+  const saveInherentDataImmediate = useCallback((rowsToSave = null) => {
+    const rows = rowsToSave || inherentRows;
+    
+    if (!isDataReady || !initialLoadDone) {
+      console.log('Cannot save: data not ready');
+      return false;
+    }
+
+    console.log('Saving inherent data:', rows.length, 'parameters');
+    
+    setIsSaving(true);
+    
+    try {
+      saveInherent({
+        categoryId: CATEGORY_ID,
+        year,
+        quarter: activeQuarter,
+        rows: rows,
+      });
+
+      console.log('Saved to localStorage successfully');
+      
+      const derivedValues = rows.flatMap(param => 
+        (param.nilaiList || []).map(nilai => computeDerived(nilai, param))
+      );
+      
+      const snapshot = computeInherentSnapshot(rows);
+      
+      saveDerived({
+        categoryId: CATEGORY_ID,
+        year,
+        quarter: activeQuarter,
+        snapshot: snapshot,
+        values: derivedValues,
+      });
+
+      notifyRiskUpdated();
+      setLastSavedSignature(getInherentSignature(rows));
+      
+      return true;
+    } catch (error) {
+      console.error("Save failed:", error);
+      return false;
+    } finally {
+      setIsSaving(false);
+    }
+  }, [isDataReady, year, activeQuarter, initialLoadDone, inherentRows]);
 
 
   useEffect(() => {
-  if (activeTab === "kpmr") {
-    window.saveKpmrData = () => {
-      try {
-        saveKpmr({
-          categoryId: CATEGORY_ID,
-          year,
-          rows: kpmrRows,
-        });
-        return true;
-      } catch (error) {
-        console.error("Gagal menyimpan KPMR:", error);
-        return false;
-      }
+    if (activeTab === "inherent") {
+      window.saveInherentData = () => {
+        if (isSaving) {
+          console.log("Already saving, skipping...");
+          return false;
+        }
+        
+        const success = saveInherentDataImmediate();
+        return success;
+      };
+    }
+    
+    return () => {
+      delete window.saveInherentData;
     };
-  }
-  
-  return () => {
-    delete window.saveKpmrData;
-  };
-}, [kpmrRows, year, activeTab]);
-
-const saveKpmrDataImmediate = useCallback((rowsToSave = null) => {
-  const rows = rowsToSave || kpmrRows;
-  
-  try {
-    saveKpmr({
-      categoryId: CATEGORY_ID,
-      year,
-      rows: rows,
-    });
-    return true;
-  } catch (error) {
-    console.error("Gagal menyimpan KPMR:", error);
-    return false;
-  }
-}, [kpmrRows, year]);
-
-const saveInherentDataImmediate = useCallback((rowsToSave = null) => {
-  const rows = rowsToSave || inherentRows; // Menggunakan state langsung, bukan ref
-  
-  if (!isDataReady || !initialLoadDone) {
-    console.log('Cannot save: data not ready');
-    return false;
-  }
-
-  console.log('Saving inherent data:', rows.length, 'parameters');
-  
-  setIsSaving(true);
-  
-  try {
-    saveInherent({
-      categoryId: CATEGORY_ID,
-      year,
-      quarter: activeQuarter,
-      rows: rows,
-    });
-
-    console.log('Saved to localStorage successfully');
-    
-    const derivedValues = rows.flatMap(param => 
-      (param.nilaiList || []).map(nilai => computeDerived(nilai, param))
-    );
-    
-    const snapshot = computeInherentSnapshot(rows);
-    
-    saveDerived({
-      categoryId: CATEGORY_ID,
-      year,
-      quarter: activeQuarter,
-      snapshot: snapshot,
-      values: derivedValues,
-    });
-
-    notifyRiskUpdated();
-    setLastSavedSignature(getInherentSignature(rows));
-    
-    return true;
-  } catch (error) {
-    console.error("Save failed:", error);
-    return false;
-  } finally {
-    setIsSaving(false);
-  }
-}, [isDataReady, year, activeQuarter, initialLoadDone, inherentRows]); // Tambahkan inherentRows ke dependencies
-
-// Update useEffect untuk window.saveInherentData
-useEffect(() => {
-  if (activeTab === "inherent") {
-    window.saveInherentData = () => {
-      if (isSaving) {
-        console.log("Already saving, skipping...");
-        return false;
-      }
-      
-      const success = saveInherentDataImmediate();
-      return success;
-    };
-  }
-  
-  return () => {
-    delete window.saveInherentData;
-  };
-}, [saveInherentDataImmediate, activeTab, isSaving]);
+  }, [saveInherentDataImmediate, activeTab, isSaving]);
 
   return (
     <div className="w-full space-y-4">
@@ -373,10 +421,6 @@ useEffect(() => {
       <RiskTabs
         value={activeTab}
         onChange={handleTabChange}
-        tabs={[
-          { value: "inherent", label: "Inherent Risk" },
-          { value: "kpmr", label: "KPMR" },
-        ]}
       />
 
       <div className="w-full">
@@ -386,7 +430,7 @@ useEffect(() => {
             setRows={setInherentRows}
             search={search}
             active
-              onSaveData={saveInherentDataImmediate} 
+            onSaveData={saveInherentDataImmediate} 
           />
         )}
 
@@ -395,7 +439,7 @@ useEffect(() => {
             rows={kpmrRows}
             setRows={setKpmrRows}
             search={search}
-              onSaveData={saveKpmrDataImmediate}
+            onSaveData={saveKpmrDataImmediate}
           />
         )}
       </div>

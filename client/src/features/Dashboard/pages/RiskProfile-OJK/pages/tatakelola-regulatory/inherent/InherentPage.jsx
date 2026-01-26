@@ -32,7 +32,7 @@ export default function InherentPage({
   }, [rows, search]);
 
   return (
-    <div className="w-[1600px] space-y-6">
+    <div className="w-full space-y-6">
       <ParameterPanel rows={rows} setRows={setRows} active={active} onSaveData={onSaveData}/>
       <TableInherent rows={filteredRows} activeQuarter={activeQuarter} />
     </div>
@@ -44,26 +44,17 @@ function ParameterPanel({ rows, setRows, active, onSaveData }) {
   const [activeNilaiIndex, setActiveNilaiIndex] = useState(0);
   const [showParameterForm, setShowParameterForm] = useState(true);
   const [loading, setLoading] = useState(false);
+  
   const [editMode, setEditMode] = useState(false);
   const [originalParameter, setOriginalParameter] = useState(null);
+  const [draftParameter, setDraftParameter] = useState(null);
+  
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
   const [deleteContext, setDeleteContext] = useState({
-    type: '', // 'parameter' atau 'nilai'
+    type: '',
     paramIndex: null,
     nilaiIndex: null
-  });
-
-  const [draftParameter, setDraftParameter] = useState({
-    nomor: "",
-    judul: "",
-    bobot: "",
-    kategori: {
-      model: "",
-      prinsip: "",
-      jenis: "",
-      underlying: [],
-    },
   });
 
   const [openUnderlying, setOpenUnderlying] = useState(false);
@@ -119,22 +110,31 @@ function ParameterPanel({ rows, setRows, active, onSaveData }) {
   const safeActiveParam =
     safeActiveParamIndex !== null ? rows[safeActiveParamIndex] : null;
 
+  // Reset draft ketika parameter berubah di luar edit mode
   useEffect(() => {
-    if (safeActiveParamIndex !== null) {
-      setEditMode(false);
+    if (!editMode && safeActiveParam) {
+      setDraftParameter(null);
       setOriginalParameter(null);
     }
-  }, [safeActiveParamIndex]);
+  }, [safeActiveParamIndex, editMode]);
 
-  const parameter = editMode ? draftParameter : (safeActiveParam ?? draftParameter);
-
-  useEffect(() => {
-    setActiveNilaiIndex(0);
-  }, [safeActiveParamIndex]);
+  function createEmptyParameter() {
+    return {
+      nomor: "",
+      judul: "",
+      bobot: "",
+      kategori: {
+        model: "",
+        prinsip: "",
+        jenis: "",
+        underlying: [],
+      },
+    };
+  }
 
   useEffect(() => {
     if (safeActiveParam && !editMode) {
-      const newDraft = {
+      setDraftParameter({
         nomor: safeActiveParam.nomor ?? "",
         judul: safeActiveParam.judul ?? "",
         bobot: safeActiveParam.bobot ?? "",
@@ -146,54 +146,57 @@ function ParameterPanel({ rows, setRows, active, onSaveData }) {
             ? safeActiveParam.kategori.underlying
             : [],
         },
-      };
-
-      setDraftParameter((prev) =>
-        JSON.stringify(prev) === JSON.stringify(newDraft) ? prev : newDraft
-      );
-    } else if (!safeActiveParam && !editMode) {
-      setDraftParameter({
-        nomor: "",
-        judul: "",
-        bobot: "",
-        kategori: {
-          model: "",
-          prinsip: "",
-          jenis: "",
-          underlying: [],
-        },
       });
+    } else if (!safeActiveParam && !editMode) {
+      setDraftParameter(createEmptyParameter());
       setEditMode(false);
       setOriginalParameter(null);
     }
   }, [safeActiveParam, editMode]);
 
-  const handleChangeKategori = useCallback((key, value) => {
-    setDraftParameter((prev) => {
-      const next = {
-        ...prev,
-        kategori: {
-          ...prev.kategori,
-          [key]: value,
-        },
-      };
+  const currentParameter = draftParameter || createEmptyParameter();
 
+  // Handler untuk update kategori pada draft
+  const handleChangeKategori = useCallback((key, value) => {
+    if (!draftParameter) return;
+    
+    setDraftParameter(prev => {
+      if (!prev) return createEmptyParameter();
+      
+      const updatedDraft = { ...prev };
+      
       if (key === "model") {
+        updatedDraft.kategori = {
+          ...updatedDraft.kategori,
+          model: value,
+        };
+
         if (value === "open_end") {
-          next.kategori.underlying = [];
+          updatedDraft.kategori.underlying = [];
         }
         if (value === "terstruktur") {
-          next.kategori.jenis = "";
+          updatedDraft.kategori.jenis = "";
         }
+      } else {
+        updatedDraft.kategori = {
+          ...updatedDraft.kategori,
+          [key]: value,
+        };
       }
 
-      return next;
+      return updatedDraft;
     });
-  }, []);
+  }, [draftParameter]);
 
+  // Handler untuk update field parameter pada draft
   const handleChangeParameter = useCallback((key, value) => {
-    setDraftParameter((p) => ({ ...p, [key]: value }));
-  }, []);
+    if (!draftParameter) return;
+    
+    setDraftParameter(prev => ({ 
+      ...prev || createEmptyParameter(), 
+      [key]: value 
+    }));
+  }, [draftParameter]);
 
   const isKategoriIncomplete = useCallback((param) => {
     const k = param?.kategori || {};
@@ -234,12 +237,12 @@ function ParameterPanel({ rows, setRows, active, onSaveData }) {
     return false;
   }, [onSaveData]);
 
+  // Aktifkan edit mode untuk parameter yang sedang dipilih
   const handleEditParam = useCallback(() => {
     if (safeActiveParamIndex === null) return;
     
     const param = rows[safeActiveParamIndex];
     setOriginalParameter(structuredClone(param));
-    
     setDraftParameter({
       nomor: param.nomor ?? "",
       judul: param.judul ?? "",
@@ -253,12 +256,12 @@ function ParameterPanel({ rows, setRows, active, onSaveData }) {
           : [],
       },
     });
-    
     setEditMode(true);
   }, [safeActiveParamIndex, rows]);
 
+  // Update parameter dengan data dari draft
   const handleUpdateParam = useCallback(() => {
-    if (safeActiveParamIndex === null) {
+    if (!draftParameter || safeActiveParamIndex === null || !editMode) {
       return;
     }
     
@@ -303,13 +306,13 @@ function ParameterPanel({ rows, setRows, active, onSaveData }) {
       
       setEditMode(false);
       setOriginalParameter(null);
+      setDraftParameter(null);
       
       setTimeout(() => {
         if (typeof onSaveData === 'function') {
           const success = onSaveData();
           
-          if (success) {
-          } else {
+          if (!success) {
             alert("❌ Parameter berhasil diupdate tapi gagal disimpan!");
           }
           
@@ -321,9 +324,12 @@ function ParameterPanel({ rows, setRows, active, onSaveData }) {
       alert("❌ Gagal mengupdate parameter.");
       setLoading(false);
     }
-  }, [draftParameter, safeActiveParamIndex, rows, setRows, isKategoriIncomplete, onSaveData]);
+  }, [draftParameter, safeActiveParamIndex, rows, setRows, isKategoriIncomplete, onSaveData, editMode]);
 
+  // Tambah parameter baru dari draft
   const handleAddNewParameter = useCallback(() => {
+    if (!draftParameter) return;
+    
     const bobotNum = Number(draftParameter.bobot);
     if (isNaN(bobotNum) || bobotNum < 0 || bobotNum > 100) {
       alert("Bobot harus antara 0 dan 100.");
@@ -367,17 +373,8 @@ function ParameterPanel({ rows, setRows, active, onSaveData }) {
         return next;
       });
       
-      setDraftParameter({
-        nomor: "",
-        judul: "",
-        bobot: "",
-        kategori: {
-          model: "",
-          prinsip: "",
-          jenis: "",
-          underlying: [],
-        },
-      });
+      setDraftParameter(createEmptyParameter());
+      setEditMode(false);
       
       setTimeout(() => {
         if (typeof onSaveData === 'function') {
@@ -398,7 +395,14 @@ function ParameterPanel({ rows, setRows, active, onSaveData }) {
     }
   }, [draftParameter, isKategoriIncomplete, setRows, onSaveData]);
 
+  // Batalkan edit dan kembalikan ke state sebelumnya
   const handleCancelEdit = useCallback(() => {
+    const confirmed = window.confirm(
+      "Batalkan perubahan? Semua perubahan yang belum disimpan akan hilang."
+    );
+    
+    if (!confirmed) return;
+    
     if (originalParameter && safeActiveParamIndex !== null) {
       setRows((prev) =>
         prev.map((row, idx) =>
@@ -415,19 +419,10 @@ function ParameterPanel({ rows, setRows, active, onSaveData }) {
     
     setEditMode(false);
     setOriginalParameter(null);
-    setDraftParameter({
-      nomor: "",
-      judul: "",
-      bobot: "",
-      kategori: {
-        model: "",
-        prinsip: "",
-        jenis: "",
-        underlying: [],
-      },
-    });
-  }, [originalParameter, safeActiveParamIndex, setRows, onSaveData]);
+    setDraftParameter(safeActiveParam ? null : createEmptyParameter());
+  }, [originalParameter, safeActiveParamIndex, setRows, onSaveData, safeActiveParam]);
 
+  // Salin parameter yang sedang aktif
   const handleCopyParam = useCallback(() => {
     if (safeActiveParamIndex === null) return;
 
@@ -451,8 +446,6 @@ function ParameterPanel({ rows, setRows, active, onSaveData }) {
         const next = [...prev, copiedParam];
         setActiveParamIndex(next.length - 1);
         setActiveNilaiIndex(0);
-        setEditMode(false);
-        setOriginalParameter(null);
         return next;
       });
       
@@ -474,120 +467,110 @@ function ParameterPanel({ rows, setRows, active, onSaveData }) {
     }
   }, [safeActiveParamIndex, rows, setRows, onSaveData]);
 
-const handleDeleteParam = useCallback(() => {
-  if (safeActiveParamIndex === null) return;
+  // Tampilkan dialog konfirmasi hapus parameter
+  const handleDeleteParam = useCallback(() => {
+    if (safeActiveParamIndex === null) return;
 
-  const param = rows[safeActiveParamIndex];
-  
-  // Buka dialog konfirmasi dengan data lebih lengkap
-  setItemToDelete({
-    name: param.judul || 'parameter ini',
-    nomor: param.nomor || '-',
-    judul: param.judul || 'Tidak ada judul'
-  });
-  setDeleteContext({
-    type: 'parameter',
-    paramIndex: safeActiveParamIndex,
-    nilaiIndex: null
-  });
-  setDeleteDialogOpen(true);
-}, [safeActiveParamIndex, rows]);
-
-const handleConfirmDelete = useCallback(() => {
-  if (!itemToDelete || !deleteContext.type) return;
-
-  setLoading(true);
-  
-  if (deleteContext.type === 'parameter') {
-    const { paramIndex } = deleteContext;
+    const param = rows[safeActiveParamIndex];
     
-    if (paramIndex === null) {
-      setLoading(false);
-      setDeleteDialogOpen(false);
-      return;
-    }
-    
-    const updatedRows = rows.filter((_, idx) => idx !== paramIndex);
-    
-    setRows(updatedRows);
-    
-    const nextIndex = updatedRows.length > 0 ? 0 : null;
-    setActiveParamIndex(nextIndex);
-    setActiveNilaiIndex(0);
-    setEditMode(false);
-    setOriginalParameter(null);
-    
-    // Tutup popup SEKARANG
-    setDeleteDialogOpen(false);
-    setItemToDelete(null);
-    setDeleteContext({ type: '', paramIndex: null, nilaiIndex: null });
-    
-    // Simpan secara async
-    setTimeout(() => {
-      if (typeof onSaveData === 'function') {
-        const saveSuccess = onSaveData(updatedRows);
-        if (!saveSuccess) {
-          console.error("❌ Parameter berhasil dihapus tapi gagal menyimpan!");
-        }
-      }
-      setLoading(false);
-    }, 100);
-  } 
-  else if (deleteContext.type === 'nilai') {
-    const { paramIndex, nilaiIndex } = deleteContext;
-    
-    if (paramIndex === null || nilaiIndex === null) {
-      setLoading(false);
-      setDeleteDialogOpen(false);
-      return;
-    }
-    
-    const updatedRows = rows.map((row, ri) => {
-      if (ri !== paramIndex) return row;
-      
-      const updatedNilaiList = (row.nilaiList || []).filter((_, ni) => ni !== nilaiIndex);
-      
-      return {
-        ...row,
-        nilaiList: updatedNilaiList,
-      };
+    setItemToDelete({
+      name: param.judul || 'parameter ini',
+      nomor: param.nomor || '-',
+      judul: param.judul || 'Tidak ada judul'
     });
+    setDeleteContext({
+      type: 'parameter',
+      paramIndex: safeActiveParamIndex,
+      nilaiIndex: null
+    });
+    setDeleteDialogOpen(true);
+  }, [safeActiveParamIndex, rows]);
 
-    setRows(updatedRows);
+  // Eksekusi penghapusan setelah konfirmasi
+  const handleConfirmDelete = useCallback(() => {
+    if (!itemToDelete || !deleteContext.type) return;
+
+    setLoading(true);
     
-    const nextIndex = Math.max(0, nilaiIndex - 1);
-    setActiveNilaiIndex(nextIndex);
+    if (deleteContext.type === 'parameter') {
+      const { paramIndex } = deleteContext;
+      
+      if (paramIndex === null) {
+        setLoading(false);
+        setDeleteDialogOpen(false);
+        return;
+      }
+      
+      const updatedRows = rows.filter((_, idx) => idx !== paramIndex);
+      
+      setRows(updatedRows);
+      
+      const nextIndex = updatedRows.length > 0 ? 0 : null;
+      setActiveParamIndex(nextIndex);
+      setActiveNilaiIndex(0);
+      setEditMode(false);
+      setOriginalParameter(null);
+      setDraftParameter(null);
+      
+      setDeleteDialogOpen(false);
+      setItemToDelete(null);
+      setDeleteContext({ type: '', paramIndex: null, nilaiIndex: null });
+      
+      setTimeout(() => {
+        if (typeof onSaveData === 'function') {
+          const saveSuccess = onSaveData(updatedRows);
+          if (!saveSuccess) {
+            console.error("❌ Parameter berhasil dihapus tapi gagal menyimpan!");
+          }
+        }
+        setLoading(false);
+      }, 100);
+    } 
+    else if (deleteContext.type === 'nilai') {
+      const { paramIndex, nilaiIndex } = deleteContext;
+      
+      if (paramIndex === null || nilaiIndex === null) {
+        setLoading(false);
+        setDeleteDialogOpen(false);
+        return;
+      }
+      
+      const updatedRows = rows.map((row, ri) => {
+        if (ri !== paramIndex) return row;
+        
+        const updatedNilaiList = (row.nilaiList || []).filter((_, ni) => ni !== nilaiIndex);
+        
+        return {
+          ...row,
+          nilaiList: updatedNilaiList,
+        };
+      });
+
+      setRows(updatedRows);
+      
+      const nextIndex = Math.max(0, nilaiIndex - 1);
+      setActiveNilaiIndex(nextIndex);
+
+      setDeleteDialogOpen(false);
+      setItemToDelete(null);
+      setDeleteContext({ type: '', paramIndex: null, nilaiIndex: null });
+      
+      setTimeout(() => {
+        if (typeof onSaveData === 'function') {
+          const saveSuccess = onSaveData(updatedRows);
+          
+          if (!saveSuccess) {
+            console.error("❌ Parameter berhasil dihapus tapi gagal menyimpan!");
+          }
+        }
+        setLoading(false);
+      }, 100);
+    }
     
-    // HAPUS dua baris ini karena variabelnya tidak ada di ParameterPanel:
-    // setEditModeNilai(false); // HAPUS
-    // setOriginalNilai(null); // HAPUS
-    
-    // Tutup popup SEKARANG
     setDeleteDialogOpen(false);
     setItemToDelete(null);
     setDeleteContext({ type: '', paramIndex: null, nilaiIndex: null });
-    
-    // Simpan secara async tanpa mengganggu flow
-   setTimeout(() => {
-  if (typeof onSaveData === 'function') {
-    const saveSuccess = onSaveData(updatedRows);
-    
-    if (saveSuccess) {
-      // HAPUS alert ini atau ganti dengan notifikasi yang tidak blocking
-      // alert("✅ Parameter berhasil dihapus!");
-    } else {
-      console.error("❌ Parameter berhasil dihapus tapi gagal menyimpan!");
-    }
-  }
-  setLoading(false);
-}, 100);
-  }
-  
-  // Reset state untuk jaga-jaga
-  setDeleteDialogOpen(false);
-  setItemToDelete(null);
-  setDeleteContext({ type: '', paramIndex: null, nilaiIndex: null });
-}, [itemToDelete, deleteContext, rows, setRows, onSaveData]);
+  }, [itemToDelete, deleteContext, rows, setRows, onSaveData]);
 
   const formatLabel = useCallback((row) => {
     const k = row.kategori || {};
@@ -611,37 +594,35 @@ const handleConfirmDelete = useCallback(() => {
     setActiveNilaiIndex(0);
     setEditMode(false);
     setOriginalParameter(null);
-    setDraftParameter({
-      nomor: "",
-      judul: "",
-      bobot: "",
-      kategori: {
-        model: "",
-        prinsip: "",
-        jenis: "",
-        underlying: [],
-      },
-    });
+    setDraftParameter(createEmptyParameter());
     setOpenParamList(false);
   }, []);
 
- const handleOpenNilaiDeleteDialog = useCallback((nilai, nilaiIndex) => {
-  setItemToDelete({
-    name: nilai.judul?.text || 'nilai ini',
-    nomor: nilai.nomor || '-',
-    judul: nilai.judul?.text || 'Tidak ada judul'
-  });
-  setDeleteContext({
-    type: 'nilai',
-    paramIndex: safeActiveParamIndex,
-    nilaiIndex: nilaiIndex
-  });
-  setDeleteDialogOpen(true);
-}, [safeActiveParamIndex]);
+  const handleOpenNilaiDeleteDialog = useCallback((nilai, nilaiIndex) => {
+    setItemToDelete({
+      name: nilai.judul?.text || 'nilai ini',
+      nomor: nilai.nomor || '-',
+      judul: nilai.judul?.text || 'Tidak ada judul'
+    });
+    setDeleteContext({
+      type: 'nilai',
+      paramIndex: safeActiveParamIndex,
+      nilaiIndex: nilaiIndex
+    });
+    setDeleteDialogOpen(true);
+  }, [safeActiveParamIndex]);
+
+  // Tentukan apakah field input harus disabled
+  const isFieldDisabled = () => {
+    if (loading) return true;
+    if (!safeActiveParam && !editMode) return false;
+    if (editMode) return false;
+    return true;
+  };
 
   return (
     <div className="w-full space-y-3">
-      <div className="bg-gradient-to-r from-blue-700 to-sky-600 text-white px-4 py-3 rounded-lg border border-black ">
+      <div className="bg-gradient-to-r from-blue-700 to-sky-600 text-white px-4 py-3 rounded-lg border border-black">
         <div className="flex justify-between items-center">
           <div className="text-lg font-semibold">
             <h2 className="">Parameter</h2>
@@ -649,7 +630,7 @@ const handleConfirmDelete = useCallback(() => {
 
           <div className="flex items-center gap-2">
             {loading && (
-              <div className="text-xs bg-slate-700 text-slate-200 px-2 py-1 rounded">
+              <div className="text-sm bg-slate-700 text-slate-200 px-2 py-1 rounded">
                 Memproses...
               </div>
             )}
@@ -658,7 +639,7 @@ const handleConfirmDelete = useCallback(() => {
               size="sm"
               variant="outline"
               onClick={() => setShowParameterForm(!showParameterForm)}
-              className="bg-slate-700 text-slate-200 hover:bg-gray-100 text-sm px-3 border border-black "
+              className="bg-slate-900 text-white hover:bg-slate-800 text-md px-3 border border-black"
               disabled={loading}
             >
               {showParameterForm ? (
@@ -708,51 +689,55 @@ const handleConfirmDelete = useCallback(() => {
               {editMode ? <Save className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
             </Button>
 
-            <Button
-              size="icon"
-              onClick={handleCopyParam}
-              disabled={safeActiveParamIndex === null || loading}
-              className="bg-amber-600 hover:bg-amber-700"
-              title="Salin Parameter"
-            >
-              <Copy className="w-4 h-4" />
-            </Button>
+            {!editMode && safeActiveParamIndex !== null && (
+              <Button
+                size="icon"
+                onClick={handleCopyParam}
+                disabled={loading}
+                className="bg-amber-600 hover:bg-amber-700"
+                title="Salin Parameter"
+              >
+                <Copy className="w-4 h-4" />
+              </Button>
+            )}
 
-            <Button 
-              size="icon" 
-              onClick={handleDeleteParam} 
-              disabled={safeActiveParamIndex === null || loading} 
-              className="bg-rose-600 hover:bg-rose-700"
-              title="Hapus Parameter"
-            >
-              <Trash2 className="w-4 h-4" />
-            </Button>
+            {!editMode && safeActiveParamIndex !== null && (
+              <Button 
+                size="icon" 
+                onClick={handleDeleteParam} 
+                disabled={loading} 
+                className="bg-rose-600 hover:bg-rose-700"
+                title="Hapus Parameter"
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            )}
           </div>
         </div>
 
         {showParameterForm && (
           <>
-            {isKategoriIncomplete(parameter) && parameter.kategori.model !== "tanpa_model" ? (
+            {isKategoriIncomplete(currentParameter) && currentParameter.kategori.model !== "tanpa_model" ? (
               <div className="w-full mt-2 p-1 flex items-center gap-2 justify-center bg-amber-50 text-amber-700 rounded border border-amber-200">
                 <TriangleAlert className="w-4 h-4" />
-                <span className="text-xs">Kategori belum diselesaikan</span>
+                <span className="text-sm">Kategori belum diselesaikan</span>
               </div>
             ) : (
               <div className="w-full bg-slate-200 rounded p-0.5 mt-2" />
             )}
-
-            <div className="w-full flex gap-4 my-3 items-start">
-              <div className="w-[40%] flex flex-col">
-                <label className="font-semibold text-sm ml-1 mb-1 text-slate-200">
+              
+            <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 my-3 items-start">
+              <div className="flex flex-col">
+                <label className="font-semibold text-md ml-1 mb-1 text-slate-200">
                   Model Produk
                 </label>
                 <select
-                  className="bg-white text-slate-800 text-sm rounded px-2 py-1 border border-black"
-                  value={parameter.kategori.model}
+                  className="bg-white text-slate-800 text-md rounded px-2 py-1 border border-black"
+                  value={currentParameter.kategori.model}
                   onChange={(e) =>
                     handleChangeKategori("model", e.target.value)
                   }
-                  disabled={loading || (safeActiveParamIndex !== null && !editMode)}
+                  disabled={isFieldDisabled()}
                 >
                   <option value="">Pilih Model</option>
                   <option value="tanpa_model">Tanpa Model</option>
@@ -761,174 +746,223 @@ const handleConfirmDelete = useCallback(() => {
                 </select>
               </div>
 
-              {parameter.kategori.model === "open_end" && (
-                <div className="w-[50%] flex flex-col">
-                  <label className="font-semibold text-sm ml-1 mb-1 text-slate-200">
+              {currentParameter.kategori.model === "open_end" && (
+                <div className="flex flex-col lg:col-span-2">
+                  <label className="font-semibold text-md ml-1 mb-1 text-slate-200">
                     Jenis Reksa Dana
                   </label>
-                  <select
-                    className="bg-white text-slate-800 text-sm rounded px-2 py-1 border border-black "
-                    value={parameter.kategori.jenis}
-                    onChange={(e) =>
-                      handleChangeKategori("jenis", e.target.value)
-                    }
-                    disabled={loading || (safeActiveParamIndex !== null && !editMode)}
-                  >
-                    <option value="">Pilih Jenis</option>
-                    <option value="pasar_uang">Pasar Uang</option>
-                    <option value="pendapatan_tetap">Pendapatan Tetap</option>
-                    <option value="campuran">Campuran</option>
-                    <option value="saham">Saham</option>
-                    <option value="indeks">Indeks</option>
-                     <option value="terproteksi">Terproteksi</option>
-                  </select>
-                </div>
-              )}
 
-              {parameter.kategori.model === "terstruktur" && (
-                <div className="w-[50%] flex flex-col">
-                  <label className="font-semibold text-sm ml-1 mb-1 text-slate-200">
-                    Aset Dasar
-                  </label>
-
-                  <div className="relative">
-                    <button
-                      type="button"
-                      className="w-full bg-white text-slate-800 text-sm rounded px-2 py-1 flex justify-between items-center border border-black "
-                      onClick={() => setOpenUnderlying((v) => !v)}
-                      disabled={loading || (safeActiveParamIndex !== null && !editMode)}
+                  <div className="flex gap-4 items-center">
+                    <select
+                      className="flex-1 bg-white text-slate-800 text-md rounded px-2 py-1 border border-black"
+                      value={currentParameter.kategori.jenis}
+                      onChange={(e) =>
+                        handleChangeKategori("jenis", e.target.value)
+                      }
+                      disabled={isFieldDisabled()}
                     >
-                      <span className="truncate">
-                        {parameter.kategori.underlying.length > 0
-                          ? parameter.kategori.underlying.join(", ")
-                          : "Pilih Aset Dasar"}
-                      </span>
-                      <span>▾</span>
-                    </button>
+                      <option value="">Pilih Jenis</option>
+                      <option value="pasar_uang">Pasar Uang</option>
+                      <option value="pendapatan_tetap">Pendapatan Tetap</option>
+                      <option value="campuran">Campuran</option>
+                      <option value="saham">Saham</option>
+                      <option value="indeks">Indeks</option>
+                      <option value="terproteksi">Terproteksi</option>
+                    </select>
 
-                    {openUnderlying && (
-                      <div className="absolute z-50 mt-1 w-full bg-white rounded shadow-lg text-sm text-slate-800 border border-black  ">
-                        {[
-                          { key:"indeks", label: "Indeks"},
-                          { key: "eba", label: "Efek Beragun Aset(EBA)" },
-                          { key: "dinfra", label: "DinFra" },
-                          { key: "obligasi", label: "Obligasi" },
-                        ].map((u) => {
-                          const checked = parameter.kategori.underlying.includes(u.key);
+                    {currentParameter.kategori.model !== "tanpa_model" && (
+                      <div className="flex gap-4 shrink-0">
+                        <label className="flex items-center gap-2 text-md cursor-pointer select-none text-slate-200">
+                          <input
+                            type="checkbox"
+                            checked={currentParameter.kategori.prinsip === "syariah"}
+                            onChange={() =>
+                              handleChangeKategori(
+                                "prinsip",
+                                currentParameter.kategori.prinsip === "syariah"
+                                  ? ""
+                                  : "syariah"
+                              )
+                            }
+                            disabled={isFieldDisabled()}
+                            className="accent-emerald-500"
+                          />
+                          <span>Syariah</span>
+                        </label>
 
-                          return (
-                            <label
-                              key={u.key}
-                              className="flex items-center gap-2 px-3 py-2 hover:bg-slate-50 cursor-pointer"
-                            >
-                              <input
-                                type="checkbox"
-                                className="accent-slate-700"
-                                checked={checked}
-                                onChange={(e) => {
-                                  const next = e.target.checked
-                                    ? [...parameter.kategori.underlying, u.key]
-                                    : parameter.kategori.underlying.filter(
-                                        (x) => x !== u.key
-                                      );
-
-                                  handleChangeKategori("underlying", next);
-                                }}
-                                disabled={loading || (safeActiveParamIndex !== null && !editMode)}
-                              />
-                              <span>{u.label}</span>
-                            </label>
-                          );
-                        })}
+                        <label className="flex items-center gap-2 text-md cursor-pointer select-none text-slate-200">
+                          <input
+                            type="checkbox"
+                            checked={currentParameter.kategori.prinsip === "konvensional"}
+                            onChange={() =>
+                              handleChangeKategori(
+                                "prinsip",
+                                currentParameter.kategori.prinsip === "konvensional"
+                                  ? ""
+                                  : "konvensional"
+                              )
+                            }
+                            disabled={isFieldDisabled()}
+                            className="accent-slate-500"
+                          />
+                          <span>Konvensional</span>
+                        </label>
                       </div>
                     )}
                   </div>
                 </div>
               )}
 
-              {parameter.kategori.model !== "tanpa_model" && (
-                <div className="flex gap-4 mt-6">
-                  <label className="flex items-center gap-2 text-sm cursor-pointer select-none text-slate-200">
-                    <input
-                      type="checkbox"
-                      checked={parameter.kategori.prinsip === "syariah"}
-                      onChange={() =>
-                        handleChangeKategori(
-                          "prinsip",
-                          parameter.kategori.prinsip === "syariah"
-                            ? ""
-                            : "syariah"
-                        )
-                      }
-                      disabled={loading || (safeActiveParamIndex !== null && !editMode)}
-                      className="accent-emerald-500"
-                    />
-                    <span>Syariah</span>
+              {currentParameter.kategori.model === "terstruktur" && (
+                <div className="flex flex-col lg:col-span-2">
+                  <label className="font-semibold text-md ml-1 mb-1 text-slate-200">
+                    Aset Dasar
                   </label>
 
-                  <label className="flex items-center gap-2 text-sm cursor-pointer select-none text-slate-200">
-                    <input
-                      type="checkbox"
-                      checked={parameter.kategori.prinsip === "konvensional"}
-                      onChange={() =>
-                        handleChangeKategori(
-                          "prinsip",
-                          parameter.kategori.prinsip === "konvensional"
-                            ? ""
-                            : "konvensional"
-                        )
-                      }
-                      disabled={loading || (safeActiveParamIndex !== null && !editMode)}
-                      className="accent-slate-500"
-                    />
-                    <span>Konvensional</span>
-                  </label>
+                  <div className="flex gap-4 items-center">
+                    <div className="relative flex-1">
+                      <button
+                        type="button"
+                        className="w-full bg-white text-slate-800 text-md rounded px-2 py-1 flex justify-between items-center border border-black"
+                        onClick={() => setOpenUnderlying((v) => !v)}
+                        disabled={isFieldDisabled()}
+                      >
+                        <span className="truncate">
+                          {currentParameter.kategori.underlying.length > 0
+                            ? currentParameter.kategori.underlying.join(", ")
+                            : "Pilih Aset Dasar"}
+                        </span>
+                        <span>▾</span>
+                      </button>
+
+                      {openUnderlying && (
+                        <div className="absolute z-50 mt-1 w-full bg-white rounded shadow-lg text-md text-slate-800 border border-black">
+                          {[
+                            { key: "indeks", label: "Indeks" },
+                            { key: "eba", label: "Efek Beragun Aset(EBA)" },
+                            { key: "dinfra", label: "DinFra" },
+                            { key: "obligasi", label: "Obligasi" },
+                          ].map((u) => {
+                            const checked = currentParameter.kategori.underlying.includes(u.key);
+
+                            return (
+                              <label
+                                key={u.key}
+                                className="flex items-center gap-2 px-3 py-2 hover:bg-slate-50 cursor-pointer"
+                              >
+                                <input
+                                  type="checkbox"
+                                  className="accent-slate-700"
+                                  checked={checked}
+                                  onChange={(e) => {
+                                    if (isFieldDisabled()) return;
+                                    
+                                    const next = e.target.checked
+                                      ? [...currentParameter.kategori.underlying, u.key]
+                                      : currentParameter.kategori.underlying.filter(
+                                          (x) => x !== u.key
+                                        );
+
+                                    handleChangeKategori("underlying", next);
+                                  }}
+                                  disabled={isFieldDisabled()}
+                                />
+                                <span>{u.label}</span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+
+                    {currentParameter.kategori.model !== "tanpa_model" && (
+                      <div className="flex gap-4 shrink-0">
+                        <label className="flex items-center gap-2 text-md cursor-pointer select-none text-slate-200">
+                          <input
+                            type="checkbox"
+                            checked={currentParameter.kategori.prinsip === "syariah"}
+                            onChange={() =>
+                              handleChangeKategori(
+                                "prinsip",
+                                currentParameter.kategori.prinsip === "syariah"
+                                  ? ""
+                                  : "syariah"
+                              )
+                            }
+                            disabled={isFieldDisabled()}
+                            className="accent-emerald-500"
+                          />
+                          <span>Syariah</span>
+                        </label>
+
+                        <label className="flex items-center gap-2 text-md cursor-pointer select-none text-slate-200">
+                          <input
+                            type="checkbox"
+                            checked={currentParameter.kategori.prinsip === "konvensional"}
+                            onChange={() =>
+                              handleChangeKategori(
+                                "prinsip",
+                                currentParameter.kategori.prinsip === "konvensional"
+                                  ? ""
+                                  : "konvensional"
+                              )
+                            }
+                            disabled={isFieldDisabled()}
+                            className="accent-slate-500"
+                          />
+                          <span>Konvensional</span>
+                        </label>
+                      </div>
+                    )}
+                  </div>
                 </div>
+              )}
+
+              {currentParameter.kategori.model === "tanpa_model" && (
+                <div className="hidden md:block"></div>
               )}
             </div>
 
             <div className="w-full flex gap-2">
               <div className="w-[10%]">
-                <label className="font-semibold text-sm ml-2 text-slate-200">No</label>
+                <label className="font-semibold text-md ml-2 text-slate-200">No</label>
                 <Input
                   placeholder="13."
-                  value={parameter.nomor}
+                  value={currentParameter.nomor}
                   onChange={(e) => handleChangeParameter("nomor", e.target.value)}
-                  className="bg-white text-slate-950 border border-black "
-                  disabled={loading || (safeActiveParamIndex !== null && !editMode)}
+                  className="bg-white text-slate-950 border border-black"
+                  disabled={isFieldDisabled()}
                 />
               </div>
 
               <div className="w-[10%]">
-                <label className="font-semibold text-sm ml-2 text-slate-200">Bobot</label>
+                <label className="font-semibold text-md ml-2 text-slate-200">Bobot</label>
                 <Input
                   placeholder="max 100%"
                   type="number"
                   min="0"
                   max="100"
                   step="0.01"
-                  value={parameter.bobot}
+                  value={currentParameter.bobot}
                   onChange={(e) => handleChangeParameter("bobot", e.target.value)}
-                  className="bg-white text-slate-950 border border-black "
-                  disabled={loading || (safeActiveParamIndex !== null && !editMode)}
+                  className="bg-white text-slate-950 border border-black"
+                  disabled={isFieldDisabled()}
                 />
               </div>
 
               <div className="w-[80%]">
-                <label className="font-semibold text-sm ml-2 text-slate-200">Parameter</label>
+                <label className="font-semibold text-md ml-2 text-slate-200">Parameter</label>
                 <Input
                   placeholder="Reksa Dana"
-                  value={parameter.judul}
+                  value={currentParameter.judul}
                   disabled={
-                    (parameter.kategori.model !== "tanpa_model" && isKategoriIncomplete(parameter)) || 
-                    loading ||
-                    (safeActiveParamIndex !== null && !editMode)
+                    (currentParameter.kategori.model !== "tanpa_model" && isKategoriIncomplete(currentParameter)) || 
+                    isFieldDisabled()
                   }
                   onChange={(e) => handleChangeParameter("judul", e.target.value)}
-                  className={`bg-white text-slate-950 border border-black  ${
-                    (parameter.kategori.model !== "tanpa_model" && isKategoriIncomplete(parameter)) || 
-                    loading ||
-                    (safeActiveParamIndex !== null && !editMode) ? "opacity-60 cursor-not-allowed" : ""
+                  className={`bg-white text-slate-950 border border-black ${
+                    (currentParameter.kategori.model !== "tanpa_model" && isKategoriIncomplete(currentParameter)) || 
+                    isFieldDisabled() ? "opacity-60 cursor-not-allowed" : ""
                   }`}
                 />
               </div>
@@ -937,7 +971,7 @@ const handleConfirmDelete = useCallback(() => {
             <button
               ref={dropdownBtnRef}
               onClick={() => setOpenParamList((v) => !v)}
-              className="w-full mt-3 bg-white text-sm text-slate-800 px-3 py-2 rounded-md flex justify-between border border-black hover:bg-slate-50"
+              className="w-full mt-3 bg-white text-md text-slate-800 px-3 py-2 rounded-md flex justify-between border border-black hover:bg-slate-50"
               disabled={loading}
             >
               <span className="truncate">
@@ -951,7 +985,7 @@ const handleConfirmDelete = useCallback(() => {
               createPortal(
                 <div
                   ref={dropdownListRef}
-                  className="fixed bg-white text-slate-800 rounded-md shadow-lg max-h-[220px] overflow-auto z-[9999] border border-black  "
+                  className="fixed bg-white text-slate-800 rounded-md shadow-lg max-h-[220px] overflow-auto z-[9999] border border-black"
                   style={{
                     top: dropdownRect.top,
                     left: dropdownRect.left,
@@ -963,7 +997,7 @@ const handleConfirmDelete = useCallback(() => {
                       handleClearSelection();
                       setOpenParamList(false);
                     }}
-                    className="w-full text-left px-3 py-2 hover:bg-slate-50 text-slate-700 border border-b-black "
+                    className="w-full text-left px-3 py-2 hover:bg-slate-50 text-slate-700 border border-b-black"
                   >
                     ← Kosongkan Pilihan
                   </button>
@@ -974,6 +1008,9 @@ const handleConfirmDelete = useCallback(() => {
                       onClick={() => {
                         setActiveParamIndex(idx);
                         setOpenParamList(false);
+                        setEditMode(false);
+                        setDraftParameter(null);
+                        setOriginalParameter(null);
                       }}
                       className={`w-full text-left px-3 py-2 hover:bg-slate-50 ${
                         idx === safeActiveParamIndex ? "bg-blue-50 text-blue-700 font-medium" : "text-slate-700"
@@ -1009,24 +1046,24 @@ const handleConfirmDelete = useCallback(() => {
       )}
 
       <PopUpDelete
-  open={deleteDialogOpen}
-  onOpenChange={setDeleteDialogOpen}
-  title={`Hapus ${deleteContext.type === 'parameter' ? 'Parameter' : 'Nilai'}`}
-  description={`Apakah Anda yakin ingin menghapus ${deleteContext.type === 'parameter' ? 'parameter' : 'nilai'} ini? Tindakan ini tidak dapat dibatalkan.`}
-  itemName={itemToDelete?.name || ''}
-  itemNomor={itemToDelete?.nomor || ''}
-  itemJudul={itemToDelete?.judul || ''}
-  itemType={deleteContext.type === 'parameter' ? 'parameter' : 'nilai'}
-  onConfirm={handleConfirmDelete}
-  onCancel={() => {
-    setDeleteDialogOpen(false);
-    setItemToDelete(null);
-    setDeleteContext({ type: '', paramIndex: null, nilaiIndex: null });
-  }}
-  confirmText="Hapus"
-  cancelText="Batal"
-  isLoading={loading}
-/>
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title={`Hapus ${deleteContext.type === 'parameter' ? 'Parameter' : 'Nilai'}`}
+        description={`Apakah Anda yakin ingin menghapus ${deleteContext.type === 'parameter' ? 'parameter' : 'nilai'} ini? Tindakan ini tidak dapat dibatalkan.`}
+        itemName={itemToDelete?.name || ''}
+        itemNomor={itemToDelete?.nomor || ''}
+        itemJudul={itemToDelete?.judul || ''}
+        itemType={deleteContext.type === 'parameter' ? 'parameter' : 'nilai'}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => {
+          setDeleteDialogOpen(false);
+          setItemToDelete(null);
+          setDeleteContext({ type: '', paramIndex: null, nilaiIndex: null });
+        }}
+        confirmText="Hapus"
+        cancelText="Batal"
+        isLoading={loading}
+      />
     </div>
   );
 }
@@ -1048,6 +1085,7 @@ function NilaiPanel({
   const [formulaOpen, setFormulaOpen] = useState(false);
   const [tempFormula, setTempFormula] = useState("");
   const [tempPercent, setTempPercent] = useState(false);
+  
   const [editModeNilai, setEditModeNilai] = useState(false);
   const [originalNilai, setOriginalNilai] = useState(null);
   const [draftNilai, setDraftNilai] = useState(null);
@@ -1091,9 +1129,11 @@ function NilaiPanel({
   });
 
   useEffect(() => {
-    setEditModeNilai(false);
-    setOriginalNilai(null);
-    setDraftNilai(null);
+    if (!editModeNilai) {
+      setEditModeNilai(false);
+      setOriginalNilai(null);
+      setDraftNilai(null);
+    }
   }, [activeNilaiIndex]);
 
   const safeActiveIndex =
@@ -1101,9 +1141,8 @@ function NilaiPanel({
     activeNilaiIndex >= 0 &&
     activeNilaiIndex < nilaiList.length
       ? activeNilaiIndex
-      : -1; // -1 artinya mode draft/tidak ada yang dipilih
+      : -1;
 
-  // Fungsi untuk membuat draft nilai kosong
   function createEmptyDraftNilai() {
     return {
       id: crypto.randomUUID(),
@@ -1133,10 +1172,11 @@ function NilaiPanel({
     };
   }
 
-  // Tentukan nilai yang sedang aktif atau draft
-  const currentNilai = hasNilai && safeActiveIndex >= 0 
-    ? nilaiList[safeActiveIndex] 
-    : (draftNilai || createEmptyDraftNilai());
+  const currentNilai = editModeNilai 
+    ? draftNilai 
+    : (hasNilai && safeActiveIndex >= 0 
+        ? nilaiList[safeActiveIndex] 
+        : (draftNilai || createEmptyDraftNilai()));
 
   useEffect(() => {
     if (!hasNilai && activeNilaiIndex !== -1) {
@@ -1155,6 +1195,7 @@ function NilaiPanel({
     return `${nomor} – ${judul}${copyText}${bobot}`;
   }, []);
 
+  // Buka modal untuk mengatur formula
   const openFormula = () => {
     if (currentNilai?.judul) {
       setTempFormula(currentNilai.judul.formula || "");
@@ -1178,11 +1219,11 @@ function NilaiPanel({
       },
     };
     
-    // Jika dalam mode draft, update draft
-    if (safeActiveIndex === -1) {
+    if (editModeNilai) {
+      setDraftNilai(updatedNilai);
+    } else if (safeActiveIndex === -1) {
       setDraftNilai(updatedNilai);
     } else {
-      // Jika nilai yang dipilih, update di rows
       setRows((prev) =>
         prev.map((row, ri) => {
           if (ri !== paramIndex) return row;
@@ -1206,29 +1247,10 @@ function NilaiPanel({
     setFormulaOpen(false);
   };
 
+  // Update nilai field secara langsung (non-edit mode)
   const handleChangeNilaiField = useCallback((path, value) => {
-    if (paramIndex === null && safeActiveIndex !== -1) return;
+    if (paramIndex === null || safeActiveIndex === -1) return;
 
-    // Jika dalam mode draft (-1), update draftNilai
-    if (safeActiveIndex === -1) {
-      const updatedDraft = { ...draftNilai || createEmptyDraftNilai() };
-      const keys = path.split('.');
-      let current = updatedDraft;
-      
-      for (let i = 0; i < keys.length - 1; i++) {
-        const key = keys[i];
-        if (!current[key]) current[key] = {};
-        current = current[key];
-      }
-      
-      const lastKey = keys[keys.length - 1];
-      current[lastKey] = value;
-      
-      setDraftNilai(updatedDraft);
-      return;
-    }
-
-    // Jika nilai yang dipilih, update di rows
     setRows((prev) =>
       prev.map((row, ri) => {
         if (ri !== paramIndex) return row;
@@ -1256,24 +1278,12 @@ function NilaiPanel({
         };
       })
     );
-  }, [paramIndex, safeActiveIndex, setRows, draftNilai]);
+  }, [paramIndex, safeActiveIndex, setRows]);
 
+  // Update judul nilai secara langsung (non-edit mode)
   const handleChangeJudul = useCallback((judulPatch) => {
-    if (paramIndex === null && safeActiveIndex !== -1) return;
+    if (paramIndex === null || safeActiveIndex === -1) return;
 
-    // Jika dalam mode draft (-1), update draftNilai
-    if (safeActiveIndex === -1) {
-      setDraftNilai(prev => ({
-        ...prev || createEmptyDraftNilai(),
-        judul: {
-          ...(prev?.judul || createEmptyDraftNilai().judul),
-          ...judulPatch,
-        },
-      }));
-      return;
-    }
-
-    // Jika nilai yang dipilih, update di rows
     setRows((prev) =>
       prev.map((row, ri) => {
         if (ri !== paramIndex) return row;
@@ -1296,12 +1306,45 @@ function NilaiPanel({
     );
   }, [paramIndex, safeActiveIndex, setRows]);
 
+  // Update draft nilai saat dalam edit mode
+  const handleChangeDraftNilai = useCallback((path, value) => {
+    if (!draftNilai || !editModeNilai) return;
+    
+    const updatedDraft = { ...draftNilai };
+    const keys = path.split('.');
+    let current = updatedDraft;
+    
+    for (let i = 0; i < keys.length - 1; i++) {
+      const key = keys[i];
+      if (!current[key]) current[key] = {};
+      current = current[key];
+    }
+    
+    const lastKey = keys[keys.length - 1];
+    current[lastKey] = value;
+    
+    setDraftNilai(updatedDraft);
+  }, [draftNilai, editModeNilai]);
+
+  // Update judul draft saat dalam edit mode
+  const handleChangeDraftJudul = useCallback((judulPatch) => {
+    if (!draftNilai || !editModeNilai) return;
+    
+    setDraftNilai(prev => ({
+      ...prev,
+      judul: {
+        ...prev.judul,
+        ...judulPatch,
+      },
+    }));
+  }, [draftNilai, editModeNilai]);
+
+  // Tambah nilai baru dari draft
   const handleAddNilai = useCallback(() => {
     if (paramIndex === null) return;
 
     const nilaiToAdd = draftNilai || createEmptyDraftNilai();
     
-    // Validasi
     if (!nilaiToAdd.judul?.text?.trim()) {
       alert("Judul nilai tidak boleh kosong!");
       return;
@@ -1341,33 +1384,42 @@ function NilaiPanel({
     }, 100);
   }, [paramIndex, draftNilai, setRows, setActiveNilaiIndex, onSaveData]);
 
+  // Aktifkan edit mode untuk nilai yang dipilih
   const handleEditNilai = useCallback(() => {
-    if (safeActiveIndex >= 0 && currentNilai) {
+    if (safeActiveIndex >= 0 && currentNilai && !editModeNilai) {
       setOriginalNilai(structuredClone(currentNilai));
+      setDraftNilai(structuredClone(currentNilai));
       setEditModeNilai(true);
-      setDraftNilai(null);
     }
-  }, [safeActiveIndex, currentNilai]);
+  }, [safeActiveIndex, currentNilai, editModeNilai]);
 
+  // Simpan perubahan dari edit mode ke state utama
   const handleUpdateNilai = useCallback(() => {
-    if (safeActiveIndex === -1) {
-      // Mode draft: tambah nilai baru
-      handleAddNilai();
-      return;
-    }
+    if (!draftNilai || paramIndex === null || !editModeNilai) return;
     
-    if (!currentNilai || paramIndex === null) return;
-    
-    if (!currentNilai.judul?.text?.trim()) {
+    if (!draftNilai.judul?.text?.trim()) {
       alert("Judul nilai tidak boleh kosong!");
       return;
     }
     
-    const bobotNum = Number(currentNilai.bobot);
+    const bobotNum = Number(draftNilai.bobot);
     if (isNaN(bobotNum) || bobotNum < 0 || bobotNum > 100) {
       alert("Bobot nilai harus antara 0 dan 100!");
       return;
     }
+    
+    setRows((prev) =>
+      prev.map((row, ri) => {
+        if (ri !== paramIndex) return row;
+        
+        return {
+          ...row,
+          nilaiList: (row.nilaiList || []).map((n, ni) =>
+            ni === safeActiveIndex ? draftNilai : n
+          ),
+        };
+      })
+    );
     
     setEditModeNilai(false);
     setOriginalNilai(null);
@@ -1378,16 +1430,18 @@ function NilaiPanel({
         onSaveData();
       }
     }, 100);
-  }, [currentNilai, paramIndex, safeActiveIndex, onSaveData, handleAddNilai]);
+    
+  }, [draftNilai, paramIndex, safeActiveIndex, setRows, onSaveData, editModeNilai]);
 
+  // Batalkan edit dan kembalikan ke nilai asli
   const handleCancelEditNilai = useCallback(() => {
+    const confirmed = window.confirm(
+      "Batalkan perubahan? Semua perubahan yang belum disimpan akan hilang."
+    );
+    
+    if (!confirmed) return;
+    
     if (originalNilai && paramIndex !== null && safeActiveIndex >= 0) {
-      const confirmed = window.confirm(
-        "Batalkan perubahan? Semua perubahan yang belum disimpan akan hilang."
-      );
-      
-      if (!confirmed) return;
-      
       setRows((prev) =>
         prev.map((row, ri) => {
           if (ri !== paramIndex) return row;
@@ -1400,21 +1454,16 @@ function NilaiPanel({
           };
         })
       );
-      
-      setTimeout(() => {
-        if (typeof onSaveData === 'function') {
-          onSaveData();
-        }
-      }, 100);
     }
     
     setEditModeNilai(false);
     setOriginalNilai(null);
     setDraftNilai(null);
-  }, [originalNilai, paramIndex, safeActiveIndex, setRows, onSaveData]);
+  }, [originalNilai, paramIndex, safeActiveIndex, setRows]);
 
+  // Salin nilai yang sedang aktif
   const handleCopyNilai = useCallback(() => {
-    if (paramIndex === null || !currentNilai || safeActiveIndex === -1) return;
+    if (paramIndex === null || !currentNilai || safeActiveIndex === -1 || editModeNilai) return;
 
     const copiedNilai = {
       ...structuredClone(currentNilai),
@@ -1437,24 +1486,22 @@ function NilaiPanel({
     );
 
     setActiveNilaiIndex((row.nilaiList || []).length);
-    setEditModeNilai(false);
-    setOriginalNilai(null);
-    setDraftNilai(null);
     
     setTimeout(() => {
       if (typeof onSaveData === 'function') {
         onSaveData();
       }
     }, 100);
-  }, [paramIndex, currentNilai, safeActiveIndex, setRows, setActiveNilaiIndex, onSaveData]);
+  }, [paramIndex, currentNilai, safeActiveIndex, editModeNilai, setRows, setActiveNilaiIndex, onSaveData]);
 
-const handleDeleteNilai = useCallback(() => {
-  if (paramIndex === null || !currentNilai || safeActiveIndex === -1) return;
+  // Tampilkan dialog konfirmasi hapus nilai
+  const handleDeleteNilai = useCallback(() => {
+    if (paramIndex === null || !currentNilai || safeActiveIndex === -1 || editModeNilai) return;
 
-  if (onOpenDeleteDialog) {
-    onOpenDeleteDialog(currentNilai, safeActiveIndex);
-  }
-}, [paramIndex, currentNilai, safeActiveIndex, onOpenDeleteDialog]);
+    if (onOpenDeleteDialog) {
+      onOpenDeleteDialog(currentNilai, safeActiveIndex);
+    }
+  }, [paramIndex, currentNilai, safeActiveIndex, editModeNilai, onOpenDeleteDialog]);
 
   const handleSelectNilai = (index) => {
     setActiveNilaiIndex(index);
@@ -1466,21 +1513,16 @@ const handleDeleteNilai = useCallback(() => {
 
   const handleClearNilaiSelection = useCallback(() => {
     setActiveNilaiIndex(-1);
-    setEditModeNilai(false);
+    setEditModeNilai(true); // MASUK KE EDIT MODE AGAR BISA NGETIK!
     setOriginalNilai(null);
     setDraftNilai(createEmptyDraftNilai());
     setOpenNilaiList(false);
   }, []);
 
-  const handleDraftNilaiChange = useCallback((updates) => {
-    setDraftNilai(prev => ({
-      ...prev || createEmptyDraftNilai(),
-      ...updates,
-    }));
-  }, []);
-
-  // Update judul draft ketika type berubah
+  // Update draft ketika tipe judul berubah
   const updateDraftJudulType = useCallback((type) => {
+    if (!editModeNilai && safeActiveIndex !== -1) return;
+    
     setDraftNilai(prev => {
       const current = prev || createEmptyDraftNilai();
       return {
@@ -1488,7 +1530,6 @@ const handleDeleteNilai = useCallback(() => {
         judul: {
           ...current.judul,
           type: type,
-          // Reset fields berdasarkan type
           ...(type === "Tanpa Faktor" ? {
             pembilang: "",
             valuePembilang: null,
@@ -1501,7 +1542,57 @@ const handleDeleteNilai = useCallback(() => {
         }
       };
     });
-  }, []);
+  }, [editModeNilai, safeActiveIndex]);
+
+  // Tentukan apakah field input harus disabled
+  const isFieldDisabled = () => {
+    if (loading) return true;
+    
+    // Jika tidak ada nilai yang dipilih (membuat nilai baru), field harus ENABLED
+    if (safeActiveIndex === -1) return false;
+    
+    // Jika dalam mode edit, field harus ENABLED
+    if (editModeNilai) return false;
+    
+    // Default: disabled
+    return true;
+  };
+
+  // Tentukan editMode untuk komponen child
+  const isEditModeForComponents = editModeNilai || safeActiveIndex === -1;
+
+  // Tentukan config tombol utama
+  const getMainButtonConfig = () => {
+    // Jika edit mode DAN safeActiveIndex = -1 (mode buat baru)
+    if (editModeNilai && safeActiveIndex === -1) {
+      return {
+        onClick: handleAddNilai,
+        title: "Tambah Nilai Baru",
+        icon: <Plus className="w-4 h-4" />,
+        className: "bg-emerald-600 hover:bg-emerald-700"
+      };
+    }
+    // Jika edit mode untuk nilai yang sudah ada
+    else if (editModeNilai) {
+      return {
+        onClick: handleUpdateNilai,
+        title: "Simpan Perubahan",
+        icon: <Save className="w-4 h-4" />,
+        className: "bg-green-600 hover:bg-green-700"
+      };
+    }
+    // Default: tambah nilai baru
+    else {
+      return {
+        onClick: handleAddNilai,
+        title: "Tambah Nilai Baru",
+        icon: <Plus className="w-4 h-4" />,
+        className: "bg-emerald-600 hover:bg-emerald-700"
+      };
+    }
+  };
+
+  const mainButtonConfig = getMainButtonConfig();
 
   return (
     <div className="w-full relative">
@@ -1522,12 +1613,12 @@ const handleDeleteNilai = useCallback(() => {
 
             <div className="flex items-end gap-2">
               <div className="flex flex-col flex-1">
-                <label className="text-sm font-semibold mb-1">Formula</label>
+                <label className="text-md font-semibold mb-1">Formula</label>
                 <Input
                   value={tempFormula}
                   onChange={(e) => setTempFormula(e.target.value)}
                   placeholder="contoh: pem / pen"
-                  className="bg-slate-50 hover:bg-slate-100 text-slate-950 border border-black "
+                  className="bg-slate-50 hover:bg-slate-100 text-slate-950 border border-black"
                   disabled={loading}
                 />
               </div>
@@ -1537,7 +1628,7 @@ const handleDeleteNilai = useCallback(() => {
                 onClick={() => setTempPercent(!tempPercent)}
                 disabled={loading}
                 className={
-                  "flex h-9 w-9 items-center justify-center rounded-md border border-black  text-lg font-semibold transition-colors duration-150 " +
+                  "flex h-9 w-9 items-center justify-center rounded-md border border-black text-lg font-semibold transition-colors duration-150 " +
                   (tempPercent
                     ? "bg-blue-900 text-white" 
                     : "bg-white text-slate-800") 
@@ -1550,7 +1641,7 @@ const handleDeleteNilai = useCallback(() => {
             <div className="flex justify-end gap-2 pt-2">
               <Button
                 variant="outline"
-                className="bg-white text-slate-800 border border-black  hover:bg-slate-50"
+                className="bg-white text-slate-800 border border-black hover:bg-slate-50"
                 onClick={() => setFormulaOpen(false)}
                 disabled={loading}
               >
@@ -1576,7 +1667,7 @@ const handleDeleteNilai = useCallback(() => {
             size="sm"
             variant="outline"
             onClick={() => setShowForm(!showForm)}
-            className="bg-slate-700 text-slate-200 hover:bg-gray-100 text-sm px-3 border border-black"
+            className="bg-slate-900 text-white hover:bg-slate-800 text-md px-3 border border-black"
             disabled={loading}
           >
             {showForm ? (
@@ -1586,7 +1677,7 @@ const handleDeleteNilai = useCallback(() => {
               </>
             ) : (
               <>
-                <ChevronDown className="w-4 h-4 " />
+                <ChevronDown className="w-4 h-4" />
                 Tampilkan
               </>
             )}
@@ -1619,33 +1710,37 @@ const handleDeleteNilai = useCallback(() => {
           <div className="flex items-center gap-1">
             <Button
               size="icon"
-              className="h-8 w-8 rounded-full bg-emerald-600 hover:bg-emerald-700"
-              onClick={editModeNilai || safeActiveIndex === -1 ? handleUpdateNilai : handleAddNilai}
-              title={editModeNilai ? "Update Nilai" : (safeActiveIndex === -1 ? "Tambah Nilai" : "Tambah Nilai Baru")}
+              className={`h-8 w-8 rounded-full ${mainButtonConfig.className}`}
+              onClick={mainButtonConfig.onClick}
+              title={mainButtonConfig.title}
               disabled={loading}
             >
-              {editModeNilai ? <Save className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+              {mainButtonConfig.icon}
             </Button>
 
-            <Button
-              size="icon"
-              className="h-8 w-8 rounded-full bg-amber-600 hover:bg-amber-700"
-              onClick={handleCopyNilai}
-              disabled={safeActiveIndex === -1 || loading}
-              title="Salin Nilai"
-            >
-              <Copy className="w-4 h-4" />
-            </Button>
+            {!editModeNilai && safeActiveIndex >= 0 && hasNilai && (
+              <Button
+                size="icon"
+                className="h-8 w-8 rounded-full bg-amber-600 hover:bg-amber-700"
+                onClick={handleCopyNilai}
+                disabled={loading}
+                title="Salin Nilai"
+              >
+                <Copy className="w-4 h-4" />
+              </Button>
+            )}
 
-            <Button
-              size="icon"
-              className="h-8 w-8 rounded-full bg-rose-600 hover:bg-rose-700"
-              onClick={handleDeleteNilai}
-              disabled={safeActiveIndex === -1 || loading}
-              title="Hapus Nilai"
-            >
-              <Trash2 className="w-4 h-4" />
-            </Button>
+            {!editModeNilai && safeActiveIndex >= 0 && hasNilai && (
+              <Button
+                size="icon"
+                className="h-8 w-8 rounded-full bg-rose-600 hover:bg-rose-700"
+                onClick={handleDeleteNilai}
+                disabled={loading}
+                title="Hapus Nilai"
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            )}
           </div>
         </div>
       </div>
@@ -1656,13 +1751,13 @@ const handleDeleteNilai = useCallback(() => {
           
           <div className="space-y-2">
             <div className="flex flex-col">
-              <label className="font-semibold text-sm ml-1 mb-1 text-slate-200">
+              <label className="font-semibold text-md ml-1 mb-1 text-slate-200">
                 Pilih Nilai
               </label>
               <button
                 ref={dropdownNilaiBtnRef}
                 onClick={() => setOpenNilaiList((v) => !v)}
-                className="w-full bg-white text-slate-800 text-sm rounded px-3 py-2 flex justify-between items-center border border-black hover:bg-slate-50"
+                className="w-full bg-white text-md text-slate-800 px-3 py-2 rounded-md flex justify-between items-center border border-black hover:bg-slate-50"
                 disabled={loading}
               >
                 <span className="truncate">
@@ -1715,7 +1810,7 @@ const handleDeleteNilai = useCallback(() => {
               <div className="flex justify-end">
                 <Button
                   size="sm"
-                  className="bg-slate-100 text-slate-800 font-semibold hover:bg-slate-200 border border-black "
+                  className="bg-slate-100 text-slate-800 font-semibold hover:bg-slate-200 border border-black"
                   onClick={openFormula}
                   disabled={loading}
                 >
@@ -1725,74 +1820,68 @@ const handleDeleteNilai = useCallback(() => {
 
               <NilaiJudulInput
                 judul={currentNilai.judul}
-                onChange={safeActiveIndex === -1 ? 
-                  (judulPatch) => handleDraftNilaiChange({ judul: { ...currentNilai.judul, ...judulPatch } }) : 
-                  handleChangeJudul}
-                onTypeChange={safeActiveIndex === -1 ? updateDraftJudulType : undefined}
+                onChange={(newJudul) => {
+                  if (isEditModeForComponents) {
+                    handleChangeDraftJudul(newJudul);
+                  } else {
+                    handleChangeJudul(newJudul);
+                  }
+                }}
+                onTypeChange={isEditModeForComponents ? updateDraftJudulType : undefined}
                 loading={loading}
-                editMode={safeActiveIndex === -1 ? true : editModeNilai}
+                editMode={isEditModeForComponents}
+                nomor={currentNilai.nomor}
+                bobot={currentNilai.bobot}
+                onNomorChange={(value) => 
+                  isEditModeForComponents
+                    ? handleChangeDraftNilai("nomor", value)
+                    : handleChangeNilaiField("nomor", value)
+                }
+                onBobotChange={(value) => 
+                  isEditModeForComponents
+                    ? handleChangeDraftNilai("bobot", value)
+                    : handleChangeNilaiField("bobot", value)
+                }
               />
 
-              <div className="w-full flex gap-2 text-slate-800">
-                <div className="w-[10%]">
-                  <label className="font-semibold text-sm text-slate-200">
-                    nomor
-                  </label>
-                  <Input
-                    className="h-8 bg-white text-sm border border-black"
-                    value={currentNilai.nomor ?? ""}
-                    onChange={(e) => handleChangeNilaiField("nomor", e.target.value)}
-                    disabled={loading || (safeActiveIndex >= 0 && !editModeNilai)}
-                    placeholder="1.1."
-                  />
-                </div>
+              <div className="flex gap-2">
+                 <div className="w-[50%] text-slate-800">
+                <label className="font-semibold text-md text-slate-200">
+                  Sumber Risiko
+                </label>
+                <Input
+                  className="h-8 bg-white text-md border border-black w-full"
+                  value={currentNilai.sumberRisiko ?? ""}
+                  onChange={(e) => 
+                    isEditModeForComponents
+                      ? handleChangeDraftNilai("sumberRisiko", e.target.value)
+                      : handleChangeNilaiField("sumberRisiko", e.target.value)
+                  }
+                  disabled={isFieldDisabled()}
+                  placeholder="masukan sumber risiko"
+                />
+              </div>
 
-                <div className="w-[10%]">
-                  <label className="font-semibold text-sm text-slate-200">
-                    Bobot
-                  </label>
-                  <Input
-                    className="h-8 bg-white text-sm border border-black "
-                    value={currentNilai.bobot ?? ""}
-                    onChange={(e) => handleChangeNilaiField("bobot", e.target.value)}
-                    type="number"
-                    min="0"
-                    max="100"
-                    step="0.01"
-                    disabled={loading || (safeActiveIndex >= 0 && !editModeNilai)}
-                    placeholder="max 100%"
-                  />
-                </div>
-
-                <div className="w-[40%]">
-                  <label className="font-semibold text-sm text-slate-200">
-                   Sumber Risiko
-                  </label>
-                  <Input
-                    className="h-8 bg-white text-sm border border-black "
-                    value={currentNilai.sumberRisiko ?? ""}
-                    onChange={(e) => handleChangeNilaiField("sumberRisiko", e.target.value)}
-                    disabled={loading || (safeActiveIndex >= 0 && !editModeNilai)}
-                    placeholder="masukan sumber risiko"
-                  />
-                </div>
-
-                <div className="w-[40%]">
-                  <label className="font-semibold text-sm text-slate-200">
-                   Dampak
-                  </label>
-                  <Input
-                    className="h-8 bg-white text-sm border border-black "
-                    value={currentNilai.dampak ?? ""}
-                    onChange={(e) => handleChangeNilaiField("dampak", e.target.value)}
-                    disabled={loading || (safeActiveIndex >= 0 && !editModeNilai)}
-                    placeholder="masukan dampak"
-                  />
-                </div>
+              <div className="w-[50%] text-slate-800">
+                <label className="font-semibold text-md text-slate-200">
+                  Dampak
+                </label>
+                <Input
+                  className="h-8 bg-white text-md border border-black w-full"
+                  value={currentNilai.dampak ?? ""}
+                  onChange={(e) => 
+                    isEditModeForComponents
+                      ? handleChangeDraftNilai("dampak", e.target.value)
+                      : handleChangeNilaiField("dampak", e.target.value)
+                  }
+                  disabled={isFieldDisabled()}
+                  placeholder="masukan dampak"
+                />
+              </div>
               </div>
 
               <div className="mt-3">
-                <div className="text-sm font-semibold py-2 text-slate-200">
+                <div className="text-md font-semibold py-2 text-slate-200">
                   Risk Indicator
                 </div>
 
@@ -1809,23 +1898,31 @@ const handleDeleteNilai = useCallback(() => {
                       label={label}
                       color={color}
                       value={currentNilai.riskindikator?.[key] ?? ""}
-                      onChange={(v) => handleChangeNilaiField(`riskindikator.${key}`, v)}
+                      onChange={(v) => 
+                        isEditModeForComponents
+                          ? handleChangeDraftNilai(`riskindikator.${key}`, v)
+                          : handleChangeNilaiField(`riskindikator.${key}`, v)
+                      }
                       loading={loading}
-                      editMode={safeActiveIndex === -1 ? true : editModeNilai}
+                      editMode={isEditModeForComponents}
                     />
                   ))}
                 </div>
               </div>
 
               <div className="mt-2 text-slate-800">
-                <label className="text-slate-200 font-semibold text-sm">
+                <label className="text-slate-200 font-semibold text-md">
                   Keterangan
                 </label>
                 <Textarea
-                  className="min-h-[40px] text-sm bg-white border border-black "
+                  className="min-h-[40px] text-md bg-white border border-black"
                   value={currentNilai.keterangan ?? ""}
-                  onChange={(e) => handleChangeNilaiField("keterangan", e.target.value)}
-                  disabled={loading || (safeActiveIndex >= 0 && !editModeNilai)}
+                  onChange={(e) => 
+                    isEditModeForComponents
+                      ? handleChangeDraftNilai("keterangan", e.target.value)
+                      : handleChangeNilaiField("keterangan", e.target.value)
+                  }
+                  disabled={isFieldDisabled()}
                   placeholder="masukan keterangan"
                 />
               </div>
@@ -1841,24 +1938,22 @@ const handleDeleteNilai = useCallback(() => {
   );
 }
 
-// Komponen untuk input risk indicator
-function RiskItem({ label, value, onChange, color, loading = false }) {
+function RiskItem({ label, value, onChange, color, loading = false, editMode = false }) {
   return (
     <div
       className="rounded-lg px-3 py-3 flex flex-col gap-2 border border-black shadow-sm"
       style={{ backgroundColor: color }}
     >
-      <div className="text-sm font-bold uppercase text-black text-center">
+      <div className="text-md font-bold uppercase text-black text-center">
         {label}
       </div>
-      <div className="bg-white/90 rounded border border-black ">
+      <div className="bg-white/90 rounded border border-black">
         <Textarea
-         className="min-h-[60px] text-xs bg-transparent text-slate-800 resize-none text-center p-2"
+          className="min-h-[60px] text-sm bg-transparent text-slate-800 resize-none text-center p-2"
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          disabled={loading}
+          disabled={loading || !editMode}
           placeholder="masukan angka atau huruf"
-          
         />
       </div>
     </div>
@@ -1866,18 +1961,13 @@ function RiskItem({ label, value, onChange, color, loading = false }) {
 }
 
 
-function NilaiJudulInput({ judul, onChange, onTypeChange, loading = false, editMode = false }) {
-  const [localJudul, setLocalJudul] = useState(judul);
-
-  useEffect(() => {
-    setLocalJudul(judul);
-  }, [judul]);
-
+function NilaiJudulInput({ judul, onChange, onTypeChange, loading = false, editMode = false, nomor, bobot, onNomorChange, onBobotChange }) {
+  // Handler untuk mengubah tipe nilai (Tanpa Faktor/Satu Faktor/Dua Faktor)
   const updateType = (newType) => {
     if (loading || !editMode) return;
     
     let updated = {
-      ...localJudul,
+      ...judul,
       type: newType,
     };
 
@@ -1912,28 +2002,26 @@ function NilaiJudulInput({ judul, onChange, onTypeChange, loading = false, editM
       };
     }
 
-    setLocalJudul(updated);
     onChange(updated);
     
-    // Panggil callback onTypeChange jika ada
     if (onTypeChange) {
       onTypeChange(newType);
     }
   };
 
+  // Update field judul berdasarkan key
   const updateField = (key, value) => {
     if (loading || !editMode) return;
     
     const updated = {
-      ...localJudul,
+      ...judul,
       [key]: value,
     };
 
-    setLocalJudul(updated);
     onChange(updated);
   };
 
-  if (!localJudul) return null;
+  if (!judul) return null;
 
   return (
     <div className="space-y-4">
@@ -1944,9 +2032,9 @@ function NilaiJudulInput({ judul, onChange, onTypeChange, loading = false, editM
             onClick={() => updateType(m)}
             disabled={loading || !editMode}
             className={`
-              px-3 py-1 border border-black  text-xs transition 
+              px-3 py-1 border border-black text-sm transition 
               ${
-                localJudul.type === m
+                judul.type === m
                   ? "bg-blue-900 text-white"
                   : "bg-slate-100 text-slate-800"
               }
@@ -1962,23 +2050,51 @@ function NilaiJudulInput({ judul, onChange, onTypeChange, loading = false, editM
         ))}
       </div>
 
-      <div className="space-y-1">
-        <label className="font-semibold text-sm text-slate-200">Judul Nilai</label>
-        <Input
-          className="text-slate-800 border border-black  bg-white"
-          value={localJudul.text || ""}
-          onChange={(e) => updateField("text", e.target.value)}
-          disabled={loading || !editMode}
-          placeholder="masukan judul"
-        />
+      <div className="grid grid-cols-16 gap-2">
+        <div className="col-span-1 space-y-1">
+          <label className="font-semibold text-md text-slate-200">No</label>
+          <Input
+            className="text-slate-800 border border-black bg-white w-full"
+            value={nomor || ""}
+            onChange={(e) => onNomorChange && onNomorChange(e.target.value)}
+            disabled={loading || !editMode}
+            placeholder="1.1."
+          />
+        </div>
+
+        <div className="col-span-1 space-y-1">
+          <label className="font-semibold text-md text-slate-200">Bobot</label>
+          <Input
+            className="text-slate-800 border border-black bg-white w-full"
+            value={bobot || ""}
+            onChange={(e) => onBobotChange && onBobotChange(e.target.value)}
+            type="number"
+            min="0"
+            max="100"
+            step="0.01"
+            disabled={loading || !editMode}
+            placeholder="max 100%"
+          />
+        </div>
+
+        <div className="col-span-14 space-y-1">
+          <label className="font-semibold text-md text-slate-200">Judul Nilai</label>
+          <Input
+            className="text-slate-800 border border-black bg-white w-full"
+            value={judul.text || ""}
+            onChange={(e) => updateField("text", e.target.value)}
+            disabled={loading || !editMode}
+            placeholder="masukan judul"
+          />
+        </div>
       </div>
 
-      {localJudul.type === "Tanpa Faktor" && (
+      {judul.type === "Tanpa Faktor" && (
         <div className="space-y-1">
-          <label className="font-semibold text-sm text-slate-200">Value</label>
+          <label className="font-semibold text-md text-slate-200">Value</label>
           <Input
-            className="text-slate-800 border border-black  bg-white"
-            value={localJudul.value ?? ""}
+            className="text-slate-800 border border-black bg-white w-full"
+            value={judul.value ?? ""}
             onChange={(e) =>
               updateField("value", e.target.value === "" ? null : e.target.value)
             }
@@ -1988,25 +2104,25 @@ function NilaiJudulInput({ judul, onChange, onTypeChange, loading = false, editM
         </div>
       )}
 
-      {localJudul.type === "Satu Faktor" && (
+      {judul.type === "Satu Faktor" && (
         <div className="space-y-4">
-          <div className="flex gap-3">
-            <div className="flex-1 space-y-1">
-              <label className="font-semibold text-sm text-slate-200">Pembilang</label>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <label className="font-semibold text-md text-slate-200">Pembilang</label>
               <Input
-                className="text-slate-800 border border-black  bg-white"
-                value={localJudul.pembilang || ""}
+                className="text-slate-800 border border-black bg-white w-full"
+                value={judul.pembilang || ""}
                 onChange={(e) => updateField("pembilang", e.target.value)}
                 disabled={loading || !editMode}
                 placeholder="masukan pembilang"
               />
             </div>
 
-            <div className="flex-1 space-y-1">
-              <label className="font-semibold text-sm text-slate-200">Value Pembilang</label>
+            <div className="space-y-1">
+              <label className="font-semibold text-md text-slate-200">Value Pembilang</label>
               <Input
-                className="text-slate-800 border border-black  bg-white"
-                value={localJudul.valuePembilang ?? ""}
+                className="text-slate-800 border border-black bg-white w-full"
+                value={judul.valuePembilang ?? ""}
                 onChange={(e) =>
                   updateField(
                     "valuePembilang",
@@ -2021,25 +2137,25 @@ function NilaiJudulInput({ judul, onChange, onTypeChange, loading = false, editM
         </div>
       )}
 
-      {localJudul.type === "Dua Faktor" && (
+      {judul.type === "Dua Faktor" && (
         <div className="space-y-4">
-          <div className="flex gap-3">
-            <div className="flex-1 space-y-1">
-              <label className="font-semibold text-sm text-slate-200">Pembilang</label>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <label className="font-semibold text-md text-slate-200">Pembilang</label>
               <Input
-                className="text-slate-800 border border-black  bg-white"
-                value={localJudul.pembilang || ""}
+                className="text-slate-800 border border-black bg-white w-full"
+                value={judul.pembilang || ""}
                 onChange={(e) => updateField("pembilang", e.target.value)}
                 disabled={loading || !editMode}
                 placeholder="masukan pembilang"
               />
             </div>
 
-            <div className="flex-1 space-y-1">
-              <label className="font-semibold text-sm text-slate-200">Value Pembilang</label>
+            <div className="space-y-1">
+              <label className="font-semibold text-md text-slate-200">Value Pembilang</label>
               <Input
-                className="text-slate-800 border border-black  bg-white"
-                value={localJudul.valuePembilang ?? ""}
+                className="text-slate-800 border border-black bg-white w-full"
+                value={judul.valuePembilang ?? ""}
                 onChange={(e) =>
                   updateField(
                     "valuePembilang",
@@ -2052,23 +2168,23 @@ function NilaiJudulInput({ judul, onChange, onTypeChange, loading = false, editM
             </div>
           </div>
 
-          <div className="flex gap-3">
-            <div className="flex-1 space-y-1">
-              <label className="font-semibold text-sm text-slate-200">Penyebut</label>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <label className="font-semibold text-md text-slate-200">Penyebut</label>
               <Input
-                className="text-slate-800 border border-black  bg-white"
-                value={localJudul.penyebut || ""}
+                className="text-slate-800 border border-black bg-white w-full"
+                value={judul.penyebut || ""}
                 onChange={(e) => updateField("penyebut", e.target.value)}
                 disabled={loading || !editMode}
                 placeholder="masukan penyebut"
               />
             </div>
 
-            <div className="flex-1 space-y-1">
-              <label className="font-semibold text-sm text-slate-200">Value Penyebut</label>
+            <div className="space-y-1">
+              <label className="font-semibold text-md text-slate-200">Value Penyebut</label>
               <Input
-                className="text-slate-800 border border-black  bg-white"
-                value={localJudul.valuePenyebut ?? ""}
+                className="text-slate-800 border border-black bg-white w-full"
+                value={judul.valuePenyebut ?? ""}
                 onChange={(e) =>
                   updateField(
                     "valuePenyebut",
@@ -2091,11 +2207,12 @@ function TableInherent({ rows = [], activeQuarter }) {
   const [currentPage, setCurrentPage] = useState(1);
   const paginationRef = useRef(null);
   
-  const minZoom = 75;
-  const maxZoom = 120;
+  const minZoom = 100;
+  const maxZoom = 150;
   const stepZoom = 5;
   const pageSize = 7; 
 
+  // Tentukan warna background berdasarkan nilai total
   const getSummaryBgByValue = (total) => {
     if (!Number.isFinite(total)) return "";
 
@@ -2122,6 +2239,7 @@ function TableInherent({ rows = [], activeQuarter }) {
     return rows.slice(start, end);
   }, [rows, currentPage]);
 
+  // Hitung summary global dari semua data
   const globalSummary = useMemo(() => {
     const totalWeighted = rows.reduce((sumParam, param) => {
       const nilaiList = Array.isArray(param.nilaiList) ? param.nilaiList : [];
@@ -2148,7 +2266,7 @@ function TableInherent({ rows = [], activeQuarter }) {
 
   if (!Array.isArray(rows) || rows.length === 0) {
     return (
-      <div className="flex items-center border border-black  rounded-xl justify-center gap-2 p-6 text-sm text-gray-500">
+      <div className="flex items-center border border-black rounded-xl justify-center gap-2 p-6 text-md text-gray-500">
         <FileWarning />
         <span>Belum ada data untuk ditampilkan</span>
       </div>
@@ -2183,7 +2301,7 @@ function TableInherent({ rows = [], activeQuarter }) {
       <div className="flex justify-between mb-2 pr-2">
         <div>
           <h1 className="text-2xl font-semibold">Data Tata kelola - Inherent</h1>
-          <div className="text-sm text-gray-600">
+          <div className="text-md text-gray-600">
             Quarter Aktif: <span className="font-bold bg-blue-100 px-2 py-1 rounded">{activeQuarter?.toUpperCase()}</span>
           </div>
         </div>
@@ -2191,12 +2309,12 @@ function TableInherent({ rows = [], activeQuarter }) {
           <button
             type="button"
             onClick={handleZoomOut}
-            className="flex h-8 w-8 items-center justify-center rounded-md bg-blue-900 text-white text-xl font-bold shadow"
+            className="flex h-8 w-8 items-center justify-center rounded-md bg-blue-900 text-white text-xl font-bold shadow hover:bg-blue-800"
           >
             −
           </button>
           <div className="flex flex-col items-center">
-            <span className="text-xs font-medium mb-1">{zoom}%</span>
+            <span className="text-sm font-medium mb-1">{zoom}%</span>
             <input
               type="range"
               min={minZoom}
@@ -2210,38 +2328,65 @@ function TableInherent({ rows = [], activeQuarter }) {
           <button
             type="button"
             onClick={handleZoomIn}
-            className="flex h-8 w-8 items-center justify-center rounded-md bg-blue-900 text-white text-xl font-bold shadow"
+            className="flex h-8 w-8 items-center justify-center rounded-md bg-blue-900 text-white text-xl font-bold shadow hover:bg-blue-800"
           >
             +
           </button>
         </div>
       </div>
 
-      <div className="w-full overflow-auto border border-black  shadow">
-        <div style={{ zoom: `${zoom}%` }}>
-          <table className="min-w-max text-sm table-fixed">
+      <div className="w-full overflow-auto border border-black shadow">
+        <div 
+          style={{ 
+            transform: `scale(${zoom / 100})`,
+            transformOrigin: 'top left',
+            width: "100%",
+            display: "block"
+          }}
+        >
+          <table className="text-sm table-auto w-full">
+            <colgroup>
+              <col style={{ width: "3%" }} />
+              <col style={{ width: "4%" }} />
+              <col style={{ width: "15%" }} />
+              <col style={{ width: "3%" }} />
+              <col style={{ width: "15%" }} />
+              <col style={{ width: "4%" }} />
+              <col style={{ width: "5%" }} />
+              <col style={{ width: "5%" }} />
+              <col style={{ width: "8%" }} />
+              <col style={{ width: "8%" }} />
+              <col style={{ width: "8%" }} />
+              <col style={{ width: "8%" }} />
+              <col style={{ width: "8%" }} />
+              <col style={{ width: "8%" }} />
+              <col style={{ width: "8%" }} />
+              <col style={{ width: "8%" }} />
+              <col style={{ width: "15%" }} />
+            </colgroup>
+            
             <thead>
               <tr>
-                <th className="border border-black   -black px-2 py-2 bg-blue-900 text-white w-10">No</th>
-                <th className="border border-black   -black px-2 py-2 bg-blue-900 text-white w-16">Bobot</th>
-                <th className="border border-black   -black px-2 py-2 bg-blue-900 text-white w-42">Parameter</th>
+                <th className="border border-black px-2 py-2 bg-blue-900 text-white text-center">No</th>
+                <th className="border border-black px-2 py-2 bg-blue-900 text-white text-center">Bobot</th>
+                <th className="border border-black px-2 py-2 bg-blue-900 text-white text-center">Parameter</th>
 
-                <th className="border border-black   px-2 py-2 bg-blue-900 text-white w-10">No</th>
-                <th className="border border-black   px-2 py-2 bg-blue-900 text-white w-64">Indikator</th>
-                <th className="border border-black   px-2 py-2 bg-blue-900 text-white w-16">Bobot</th>
-                <th className="border border-black   px-2 py-2 bg-blue-900 text-white w-32">Sumber Risiko</th>
-                <th className="border border-black   px-2 py-2 bg-blue-900 text-white w-32">Dampak</th>
+                <th className="border border-black px-2 py-2 bg-blue-900 text-white text-center">No</th>
+                <th className="border border-black px-2 py-2 bg-blue-900 text-white text-center">Indikator</th>
+                <th className="border border-black px-2 py-2 bg-blue-900 text-white text-center">Bobot</th>
+                <th className="border border-black px-2 py-2 bg-blue-900 text-white text-center">Sumber Risiko</th>
+                <th className="border border-black px-2 py-2 bg-blue-900 text-white text-center">% Kepemilikan</th>
 
-                <th className="border border-black   py-2 bg-[#2ECC71] text-white w-32">Low</th>
-                <th className="border border-black   py-2 bg-[#A3E635] text-black w-32">Low To Moderate</th>
-                <th className="border border-black   py-2 bg-[#FACC15] text-black w-32">Moderate</th>
-                <th className="border border-black   px-2 py-2 bg-[#F97316] text-black w-32">Moderate To High</th>
-                <th className="border border-black   px-2 py-2 bg-[#FF0000] text-white w-32">High</th>
+                <th className="border border-black px-2 py-2 bg-[#2ECC71] text-white text-center">Low</th>
+                <th className="border border-black px-2 py-2 bg-[#A3E635] text-black text-center">Low To Moderate</th>
+                <th className="border border-black px-2 py-2 bg-[#FACC15] text-black text-center">Moderate</th>
+                <th className="border border-black px-2 py-2 bg-[#F97316] text-black text-center">Moderate To High</th>
+                <th className="border border-black px-2 py-2 bg-[#FF0000] text-white text-center">High</th>
 
-                <th className="border border-black   px-2 py-2 bg-blue-950 text-white w-32">Hasil</th>
-                <th className="border border-black   px-2 py-2 bg-blue-950 text-white w-32">Peringkat</th>
-                <th className="border border-black   px-2 py-2 bg-blue-950 text-white w-32">Weighted</th>
-                <th className="border border-black   px-2 py-2 bg-blue-900 text-white w-64">Keterangan</th>
+                <th className="border border-black px-2 py-2 bg-blue-950 text-white text-center">Hasil</th>
+                <th className="border border-black px-2 py-2 bg-blue-950 text-white text-center">Peringkat</th>
+                <th className="border border-black px-2 py-2 bg-blue-950 text-white text-center">Weighted</th>
+                <th className="border border-black px-2 py-2 bg-blue-900 text-white text-center">Keterangan</th>
               </tr>
             </thead>
 
@@ -2252,18 +2397,18 @@ function TableInherent({ rows = [], activeQuarter }) {
                 if (nilaiList.length === 0) {
                   return (
                     <tr key={`empty-${pi}`}>
-                      <td className="border border-black  px-2 py-2 align-top bg-[#E8F5FA]">
+                      <td className="border border-black px-2 py-2 align-top bg-[#E8F5FA] text-center">
                         {param.nomor || "-"}
                       </td>
-                      <td className="border border-black  px-2 py-2 align-top bg-[#E8F5FA]">
+                      <td className="border border-black px-2 py-2 align-top bg-[#E8F5FA] text-center">
                         {formatPercent(param.bobot)}
                       </td>
-                      <td className="border border-black  px-2 py-2 align-top bg-[#E8F5FA] break-words max-w-[200px]">
+                      <td className="border border-black px-2 max-w-[180px] py-2 align-top bg-[#E8F5FA] wrap-break-words">
                         {param.judul || "-"}
                       </td>
                       <td
                         colSpan={13}
-                        className="border border-black  px-2 py-2 text-center text-gray-400 bg-white"
+                        className="border border-black px-2 py-2 text-center text-gray-400 bg-white"
                       >
                         Belum ada nilai
                       </td>
@@ -2273,6 +2418,7 @@ function TableInherent({ rows = [], activeQuarter }) {
 
                 const derivedByIndex = nilaiList.map((nv) => computeDerived(nv, param));
                 
+                // Hitung total baris untuk parameter ini
                 const totalRowsForParam = nilaiList.reduce((total, nilai) => {
                   const j = nilai.judul || { type: "Tanpa Faktor" };
                   if (j.type === "Satu Faktor") return total + 2;
@@ -2280,7 +2426,10 @@ function TableInherent({ rows = [], activeQuarter }) {
                   return total + 1;
                 }, 0);
 
-                return nilaiList.map((nilai, ni) => {
+                // Buat array untuk semua baris dalam parameter ini
+                const allRowsInParam = [];
+                
+                nilaiList.forEach((nilai, ni) => {
                   const derived = derivedByIndex[ni] || {};
                   const { hasilDisplay, hasilRows, peringkat, weightedDisplay } = derived;
                   const j = nilai.judul || { type: "Tanpa Faktor" };
@@ -2289,10 +2438,8 @@ function TableInherent({ rows = [], activeQuarter }) {
                   if (j.type === "Satu Faktor") rowsForThisNilai = 2;
                   if (j.type === "Dua Faktor") rowsForThisNilai = 3;
 
-                  const rows = [];
-                  
                   for (let subIndex = 0; subIndex < rowsForThisNilai; subIndex++) {
-                    const isFirstRowOfParam = ni === 0 && subIndex === 0;
+                    const isFirstRowOfParam = allRowsInParam.length === 0;
                     const isMainRow = subIndex === 0;
                     
                     let nilaiText = "-";
@@ -2314,183 +2461,217 @@ function TableInherent({ rows = [], activeQuarter }) {
                       }
                     }
 
-                    rows.push(
-                      <tr key={`${param.id}-${nilai.id}-${subIndex}`}>
-                        {isFirstRowOfParam && (
-                          <>
-                            <td
-                              rowSpan={totalRowsForParam}
-                              className="border border-black   px-2 py-2 align-middle bg-[#E8F5FA] text-center"
-                            >
-                              {param.nomor || "-"}
-                            </td>
-                            <td
-                              rowSpan={totalRowsForParam}
-                              className="border border-black   px-2 py-2 align-middle bg-[#E8F5FA] text-center"
-                            >
-                              {formatPercent(param.bobot)}
-                            </td>
-                            <td
-                              rowSpan={totalRowsForParam}
-                              className="border border-black   px-2 py-2 align-middle bg-[#E8F5FA] break-words max-w-[200px]"
-                            >
-                              {param.judul || "-"}
-                            </td>
-                          </>
-                        )}
-
-                        <td className={`border border-black   px-2 py-2 text-center ${isMainRow ? 'bg-[#E8F5FA]' : 'bg-white'}`}>
-                          {isMainRow ? nilai.nomor ?? "-" : ""}
-                        </td>
-
-                        <td className={`border border-black   px-2 py-2 ${isMainRow ? 'bg-[#E8F5FA]' : 'bg-white'} break-words max-w-[180px]`}>
-                          <div className={isMainRow ? "text-sm font-semibold" : "text-xs"}>
-                            {nilaiText}
-                          </div>
-                        </td>
-
-                        <td className={`border border-black   px-2 py-2 text-center ${isMainRow ? 'bg-[#E8F5FA]' : 'bg-white'}`}>
-                          {isMainRow ? formatPercent(nilai.bobot) : ""}
-                        </td>
-
-                        <td className={`border border-black   px-2 py-2 text-center ${isMainRow ? 'bg-[#E8F5FA]' : 'bg-white'} break-words max-w-[180px]`}>
-                          {isMainRow ? nilai.sumberRisiko ?? "-" : ""}
-                        </td>
-
-                        <td className={`border border-black   px-2 py-2 text-center ${isMainRow ? 'bg-[#E8F5FA]' : 'bg-white'} break-words max-w-[180px]`}>
-                          {isMainRow ? nilai.dampak ?? "-" : ""}
-                        </td>
-
-                        {["low", "lowToModerate", "moderate", "moderateToHigh", "high"].map((rk) => (
-                          <td
-                            key={rk}
-                            className={`border border-black   px-2 py-2 text-center ${isMainRow ? 'bg-[#D9EAD3]' : 'bg-white'} break-words max-w-[130px]`}
-                          >
-                            {isMainRow ? nilai.riskindikator?.[rk] ?? "-" : ""}
-                          </td>
-                        ))}
-
-                        <td className={`border border-black   px-2 py-2 text-center ${isMainRow ? 'bg-white' : 'bg-[#D9EAD3]'} break-words max-w-[130px]`}>
-                          <div className={isMainRow ? "text-sm font-semibold" : "text-xs"}>
-                            {hasilText}
-                          </div>
-                        </td>
-
-                        {subIndex === 0 ? (
-                          <>
-                            <td
-                              rowSpan={rowsForThisNilai}
-                              className={`border border-black   px-2 py-2 align-middle text-center font-semibold ${
-                                peringkat ? rankBgMap[peringkat] : ""
-                              }`}
-                            >
-                              {Number.isFinite(peringkat) ? peringkat : "-"}
-                            </td>
-                            <td
-                              rowSpan={rowsForThisNilai}
-                              className="border border-black   px-2 py-2 align-middle text-center bg-white"
-                            >
-                              {weightedDisplay || ""}
-                            </td>
-                            <td
-                              rowSpan={rowsForThisNilai}
-                              className="border border-black   px-2 py-2 text-center align-middle bg-white break-words max-w-[200px]"
-                            >
-                              {nilai.keterangan ?? ""}
-                            </td>
-                          </>
-                        ) : null}
-                      </tr>
-                    );
+                    allRowsInParam.push({
+                      key: `${param.id}-${nilai.id}-${subIndex}`,
+                      isFirstRowOfParam,
+                      isMainRow,
+                      nilaiText,
+                      hasilText,
+                      nilai,
+                      j,
+                      subIndex,
+                      rowsForThisNilai,
+                      derived,
+                      peringkat,
+                      weightedDisplay,
+                    });
                   }
-                  
-                  return rows;
-                }).flat();
+                });
+
+                // Render semua baris dalam parameter
+                return allRowsInParam.map((rowData, rowIndex) => {
+                  const {
+                    key,
+                    isFirstRowOfParam,
+                    isMainRow,
+                    nilaiText,
+                    hasilText,
+                    nilai,
+                    j,
+                    subIndex,
+                    rowsForThisNilai,
+                    derived,
+                    peringkat,
+                    weightedDisplay,
+                  } = rowData;
+
+                  return (
+                    <tr key={key}>
+                      {isFirstRowOfParam && (
+                        <>
+                          <td
+                            rowSpan={totalRowsForParam}
+                            className="border border-black px-2 py-2 align-middle bg-[#E8F5FA] text-center"
+                          >
+                            {param.nomor || "-"}
+                          </td>
+                          <td
+                            rowSpan={totalRowsForParam}
+                            className="border border-black px-2 py-2 align-middle bg-[#E8F5FA] text-center"
+                          >
+                            {formatPercent(param.bobot)}
+                          </td>
+                          <td 
+                            rowSpan={totalRowsForParam}
+                            className="border border-black px-2 py-2 align-middle bg-[#E8F5FA] break-words"
+                            style={{ maxWidth: '200px', wordBreak: 'break-word' }}
+                          >
+                            {param.judul || "-"}
+                          </td>
+                        </>
+                      )}
+
+                      {isMainRow ? (
+                        <>
+                          <td className="border border-black px-2 py-2 text-center bg-[#E8F5FA]">
+                            {nilai.nomor ?? "-"}
+                          </td>
+                          <td className="border border-black max-w-[180px] px-2 py-2 bg-[#E8F5FA] break-words">
+                            <div className="text-md font-semibold">
+                              {nilaiText}
+                            </div>
+                          </td>
+                          <td className="border border-black px-2 py-2 text-center bg-[#E8F5FA]">
+                            {formatPercent(nilai.bobot)}
+                          </td>
+                          <td className="border border-black px-2 py-2 max-w-[120px] text-center bg-[#E8F5FA] break-words">
+                            {nilai.sumberRisiko?? "-"}
+                          </td>
+
+                          <td className="border border-black px-2 py-2 max-w-[120px] text-center bg-[#E8F5FA] break-words">
+                            {nilai.dampak ?? "-"}
+                          </td>
+                        </>
+                      ) : (
+                        <>
+                          <td className="border border-black px-2 py-2 text-center bg-white"></td>
+                          <td className="border border-black max-w-[180px] px-2 py-2 bg-white break-words">
+                            <div className="text-sm">
+                              {nilaiText}
+                            </div>
+                          </td>
+                          <td className="border border-black px-2 py-2 text-center bg-white"></td>
+                          <td className="border border-black px-2 py-2 text-center bg-white"></td>
+                        </>
+                      )}
+
+                      {["low", "lowToModerate", "moderate", "moderateToHigh", "high"].map((rk) => (
+                        <td
+                          key={rk}
+                          className={`border border-black px-2 py-2 max-w-[100px] text-center ${
+                            isMainRow ? 'bg-[#D9EAD3]' : 'bg-white'
+                          } break-words`}
+                        >
+                          {isMainRow ? nilai.riskindikator?.[rk] ?? "-" : ""}
+                        </td>
+                      ))}
+
+                      <td className={`border border-black px-2 py-2 max-w-[150px] text-center ${
+                        isMainRow ? 'bg-white' : 'bg-[#D9EAD3]'
+                      } break-words`}>
+                        <div className={isMainRow ? "text-md font-semibold" : "text-sm"}>
+                          {hasilText}
+                        </div>
+                      </td>
+
+                      {subIndex === 0 ? (
+                        <>
+                          <td
+                            rowSpan={rowsForThisNilai}
+                            className={`border border-black px-2 py-2 align-middle text-center font-semibold ${
+                              peringkat ? rankBgMap[peringkat] : ""
+                            }`}
+                          >
+                            {Number.isFinite(peringkat) ? peringkat : "-"}
+                          </td>
+                          <td
+                            rowSpan={rowsForThisNilai}
+                            className="border border-black px-2 py-2 align-middle text-center bg-white"
+                          >
+                            {weightedDisplay || ""}
+                          </td>
+                          <td
+                            rowSpan={rowsForThisNilai}
+                            className="border border-black px-2 max-w-[200px] py-2 align-middle bg-white break-words"
+                          >
+                            {nilai.keterangan ?? ""}
+                          </td>
+                        </>
+                      ) : null}
+                    </tr>
+                  );
+                });
               })}
               
               <tr>
-                <td colSpan={13} className="border border-black -0 bg-white"></td>
-                <td colSpan={2} className="border border-black   px-2 py-2 text-center font-semibold text-white bg-blue-900">
+                <td colSpan={13} className="border border-black bg-white"></td>
+                <td colSpan={2} className="border border-black px-2 py-2 text-center font-semibold text-white bg-blue-900">
                   Summary
                 </td>
-                <td className={`border border-black   px-2 py-2 text-center font-semibold ${globalSummary.summaryBg}`}>
+                <td className={`border border-black px-2 py-2 text-center font-semibold ${globalSummary.summaryBg}`}>
                   {Number.isFinite(globalSummary.totalWeighted)
                     ? globalSummary.totalWeighted.toFixed(2)
                     : "-"}
                 </td>
-                <td className="border border-black -0 bg-white"></td>
+                <td className="border border-black bg-white"></td>
               </tr>
             </tbody>
           </table>
         </div>
       </div>
 
-      <div className="mt-3 flex justify-center items-center gap-2">
-        {totalPages > 7 && (
-          <button
-            type="button"
-            onClick={scrollLeft}
-            className="h-8 w-8 flex items-center justify-center rounded-md border border-black  bg-white text-blue-600 font-bold hover:bg-blue-500 hover:text-white"
-          >
-            <ArrowBigLeftDash />
-          </button>
-        )}
+      {totalPages > 1 && (
+        <div className="mt-3 flex justify-center items-center gap-2">
+          {totalPages > 7 && (
+            <button
+              type="button"
+              onClick={scrollLeft}
+              className="h-8 w-8 flex items-center justify-center rounded-md border border-black bg-white text-blue-600 font-bold hover:bg-blue-500 hover:text-white"
+            >
+              <ArrowBigLeftDash className="w-4 h-4" />
+            </button>
+          )}
 
-        <div 
-          className="max-w-[420px] overflow-x-hidden"
-          onWheel={(e) => {
-            e.preventDefault();
-            
-            const container = paginationRef.current;
-            if (container) {
-              container.scrollLeft += e.deltaY * 2;
-            }
-          }}
-          style={{ cursor: 'grab' }}
-          onMouseEnter={() => {
-            document.body.style.overflowY = 'hidden';
-          }}
-          onMouseLeave={() => {
-            document.body.style.overflowY = 'auto';
-          }}
-        >
-          <div
+          <div 
+            className="max-w-[420px] overflow-x-auto"
             ref={paginationRef}
-            className="flex gap-2 px-2 py-1 overflow-x-auto scroll-smooth"
+            style={{ cursor: 'grab' }}
           >
-            {Array.from({ length: totalPages }, (_, i) => {
-              const page = i + 1;
-              const isActive = page === currentPage;
+            <div className="flex gap-2 px-2 py-1">
+              {Array.from({ length: totalPages }, (_, i) => {
+                const page = i + 1;
+                const isActive = page === currentPage;
 
-              return (
-                <button
-                  key={page}
-                  type="button"
-                  onClick={() => handlePageClick(page)}
-                  className={
-                    "min-w-8 h-8 px-3 flex items-center justify-center rounded-md border border-black  text-sm font-semibold transition-colors duration-150 shrink-0 hover:bg-blue-600 hover:text-white " +
-                    (isActive
-                      ? "border border-black bg-blue-600 text-white"
-                      : "bg-white border border-gray-600 text-black ")
-                  }
-                >
-                  {page}
-                </button>
-              );
-            })}
+                return (
+                  <button
+                    key={page}
+                    type="button"
+                    onClick={() => handlePageClick(page)}
+                    className={
+                      "min-w-8 h-8 px-3 flex items-center justify-center rounded-md border border-black text-md font-semibold transition-colors duration-150 shrink-0 hover:bg-blue-600 hover:text-white " +
+                      (isActive
+                        ? "border border-black bg-blue-600 text-white"
+                        : "bg-white border border-gray-600 text-black")
+                    }
+                  >
+                    {page}
+                  </button>
+                );
+              })}
+            </div>
           </div>
-        </div>
 
-        {totalPages > 7 && (
-          <button
-            type="button"
-            onClick={scrollRight}
-            className="h-8 w-8 flex items-center justify-center rounded-md border border-black  bg-white text-blue-600 font-bold hover:bg-blue-500 hover:text-white"
-          >
-            <ArrowBigRightDash />
-          </button>
-        )}
-      </div>
+          {totalPages > 7 && (
+            <button
+              type="button"
+              onClick={scrollRight}
+              className="h-8 w-8 flex items-center justify-center rounded-md border border-black bg-white text-blue-600 font-bold hover:bg-blue-500 hover:text-white"
+            >
+              <ArrowBigRightDash className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

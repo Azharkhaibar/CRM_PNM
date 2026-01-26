@@ -11,7 +11,6 @@ import { normalizeKpmrRows, normalizeKpmrAspek, normalizeKpmrPertanyaan } from "
 import { useDropdownPortal } from "@/features/Dashboard/pages/RiskProfile-OJK/hooks/useDropdownPortal";
 import PopUpDelete from "../../../components/PopUp/PopUpDelete";
 
-// Komponen untuk menampilkan item indicator dengan memoization
 const IndicatorItem = React.memo(({ label, value, onChange, color, loading = false, editMode = false }) => (
   <div className="rounded-xl px-2 py-2 text-white" style={{ backgroundColor: color }}>
     <div className="text-xs font-bold text-center mb-1">{label}</div>
@@ -27,7 +26,6 @@ const IndicatorItem = React.memo(({ label, value, onChange, color, loading = fal
 
 IndicatorItem.displayName = "IndicatorItem";
 
-// Komponen panel untuk mengelola pertanyaan dalam aspek
 function PertanyaanPanel({
   aspekIndex,
   pertanyaanList = [],
@@ -50,7 +48,7 @@ function PertanyaanPanel({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
   const [deleteContext, setDeleteContext] = useState({
-    type: '', // 'aspek' atau 'pertanyaan'
+    type: '',
     aspekIndex: null,
     pertanyaanIndex: null
   });
@@ -66,7 +64,7 @@ function PertanyaanPanel({
   const hasPertanyaan = Array.isArray(pertanyaanList) && pertanyaanList.length > 0;
   const [showPertanyaanForm, setShowPertanyaanForm] = useState(true);
 
-  // Setup position dropdown pertanyaan saat terbuka
+  // Setup dropdown positioning when opened
   useEffect(() => {
     if (!openPertanyaanList || !dropdownPertanyaanBtnRef.current) return;
 
@@ -96,13 +94,13 @@ function PertanyaanPanel({
     containerRef: dropdownPertanyaanListRef,
   });
 
-  // Reset edit mode saat pertanyaan aktif berubah
+  // Reset edit mode when active question changes
   useEffect(() => {
     setEditModePertanyaan(false);
     setOriginalPertanyaan(null);
   }, [activePertanyaanIndex]);
 
-  // Format label untuk dropdown pertanyaan
+  // Format question label for dropdown display
   const formatPertanyaanLabel = useCallback((pertanyaan) => {
     if (!pertanyaan) return "Pilih atau Tambah Pertanyaan Baru";
     
@@ -113,7 +111,7 @@ function PertanyaanPanel({
     return `${nomor} – ${pertanyaanText.substring(0, 50)}${pertanyaanText.length > 50 ? "..." : ""}${copyText}`;
   }, []);
 
-  // Handle perubahan field pertanyaan
+  // Update specific field in the active question
   const handleChangePertanyaanField = useCallback((path, value) => {
     if (aspekIndex === null || safeActivePertanyaanIndex === null) return;
 
@@ -146,7 +144,7 @@ function PertanyaanPanel({
     );
   }, [aspekIndex, safeActivePertanyaanIndex, setRows]);
 
-  // Handle perubahan skor
+  // Update score for the active quarter
   const handleSkorChange = useCallback((value) => {
     if (aspekIndex === null || safeActivePertanyaanIndex === null) return;
 
@@ -169,7 +167,7 @@ function PertanyaanPanel({
     );
   }, [aspekIndex, safeActivePertanyaanIndex, activeQuarter, setRows]);
 
-  // Save data ke storage
+  // Persist data to storage
   const saveDataToStorage = useCallback(() => {
     if (typeof onSaveData === 'function') {
       return onSaveData();
@@ -188,7 +186,7 @@ function PertanyaanPanel({
     return false;
   }, [onSaveData]);
 
-  // Masuk mode edit pertanyaan
+  // Enter question edit mode
   const handleEditPertanyaan = useCallback(() => {
     if (safeActivePertanyaanIndex === null) return;
     
@@ -197,7 +195,7 @@ function PertanyaanPanel({
     setEditModePertanyaan(true);
   }, [safeActivePertanyaanIndex, pertanyaanList]);
 
-  // Update pertanyaan
+  // Save updated question
   const handleUpdatePertanyaan = useCallback(() => {
     if (aspekIndex === null || safeActivePertanyaanIndex === null) return;
     
@@ -206,7 +204,6 @@ function PertanyaanPanel({
       return;
     }
 
-    // Validasi skor
     const q = activeQuarter.toUpperCase();
     const skorValue = currentPertanyaan?.skor?.[q];
     if (skorValue !== undefined && skorValue !== null && skorValue !== "") {
@@ -220,19 +217,17 @@ function PertanyaanPanel({
     setEditModePertanyaan(false);
     setOriginalPertanyaan(null);
     
-    // Simpan ke localStorage
     setTimeout(() => {
       if (typeof onSaveData === 'function') {
         const success = onSaveData();
-        if (success) {
-        } else {
+        if (!success) {
           alert("⚠️ Pertanyaan berhasil diupdate tapi gagal disimpan!");
         }
       }
     }, 100);
   }, [aspekIndex, safeActivePertanyaanIndex, currentPertanyaan, activeQuarter, onSaveData]);
 
-  // Tambah pertanyaan baru
+  // Add new question
   const handleAddNewPertanyaan = useCallback(() => {
     if (aspekIndex === null) return;
 
@@ -252,19 +247,17 @@ function PertanyaanPanel({
     setEditModePertanyaan(false);
     setOriginalPertanyaan(null);
     
-    // Simpan ke localStorage
     setTimeout(() => {
       if (typeof onSaveData === 'function') {
         const saveSuccess = onSaveData(updatedRows);
-        if (saveSuccess) {
-        } else {
+        if (!saveSuccess) {
           alert("⚠️ Pertanyaan berhasil ditambah tapi gagal disimpan!");
         }
       }
     }, 100);
   }, [aspekIndex, pertanyaanList.length, rows, setRows, setActivePertanyaanIndex, onSaveData]);
 
-  // Batal edit pertanyaan
+  // Cancel question editing
   const handleCancelEditPertanyaan = useCallback(() => {
     if (originalPertanyaan && aspekIndex !== null && safeActivePertanyaanIndex !== null) {
       setRows((prev) =>
@@ -291,7 +284,7 @@ function PertanyaanPanel({
     setOriginalPertanyaan(null);
   }, [originalPertanyaan, aspekIndex, safeActivePertanyaanIndex, setRows, onSaveData]);
 
-  // Salin pertanyaan
+  // Duplicate current question
   const handleCopyPertanyaan = useCallback(() => {
     if (aspekIndex === null || safeActivePertanyaanIndex === null || !currentPertanyaan) return;
 
@@ -317,19 +310,17 @@ function PertanyaanPanel({
     setEditModePertanyaan(false);
     setOriginalPertanyaan(null);
     
-    // Simpan ke localStorage
     setTimeout(() => {
       if (typeof onSaveData === 'function') {
         const saveSuccess = onSaveData(updatedRows);
-        if (saveSuccess) {
-        } else {
+        if (!saveSuccess) {
           alert("⚠️ Pertanyaan berhasil disalin tapi gagal disimpan!");
         }
       }
     }, 100);
   }, [aspekIndex, safeActivePertanyaanIndex, currentPertanyaan, pertanyaanList.length, rows, setRows, setActivePertanyaanIndex, onSaveData]);
 
-  // Buka dialog hapus pertanyaan
+  // Open delete confirmation dialog for question
  const handleOpenPertanyaanDeleteDialog = useCallback(() => {
   if (aspekIndex === null || safeActivePertanyaanIndex === null || !currentPertanyaan) return;
   
@@ -348,7 +339,7 @@ function PertanyaanPanel({
   setDeleteDialogOpen(true);
 }, [aspekIndex, safeActivePertanyaanIndex, currentPertanyaan, rows]);
 
-  // Handle konfirmasi hapus
+  // Handle delete confirmation
   const handleConfirmDelete = useCallback(() => {
     if (!itemToDelete || !deleteContext.type) return;
 
@@ -379,17 +370,14 @@ function PertanyaanPanel({
       const nextIndex = Math.max(0, pertanyaanIndex - 1);
       setActivePertanyaanIndex(pertanyaanIndex > 0 ? nextIndex : null);
       
-      // Tutup popup SEKARANG
       setDeleteDialogOpen(false);
       setItemToDelete(null);
       setDeleteContext({ type: '', aspekIndex: null, pertanyaanIndex: null });
       
-      // Simpan ke localStorage secara async
       setTimeout(() => {
         if (typeof onSaveData === 'function') {
           const saveSuccess = onSaveData(updatedRows);
-          if (saveSuccess) {
-          } else {
+          if (!saveSuccess) {
             console.error("⚠️ Pertanyaan berhasil dihapus tapi gagal menyimpan!");
           }
         }
@@ -397,13 +385,12 @@ function PertanyaanPanel({
       }, 100);
     }
     
-    // Reset state untuk jaga-jaga
     setDeleteDialogOpen(false);
     setItemToDelete(null);
     setDeleteContext({ type: '', aspekIndex: null, pertanyaanIndex: null });
   }, [itemToDelete, deleteContext, rows, setRows, setActivePertanyaanIndex, onSaveData]);
 
-  // Batalkan pilihan pertanyaan
+  // Clear question selection
   const handleClearPertanyaanSelection = useCallback(() => {
     setActivePertanyaanIndex(null);
     setEditModePertanyaan(false);
@@ -649,33 +636,31 @@ function PertanyaanPanel({
         <div className="w-full" />
       )}
 
-      {/* Popup Delete untuk Pertanyaan */}
-<PopUpDelete
-  open={deleteDialogOpen}
-  onOpenChange={setDeleteDialogOpen}
-  title="Hapus Pertanyaan"
-  description="Apakah Anda yakin ingin menghapus pertanyaan ini? Tindakan ini tidak dapat dibatalkan."
-  itemName={itemToDelete?.name || ''}
-  itemNomor={itemToDelete?.nomor || ''}
-  itemJudul={itemToDelete?.judul || ''}
-  itemAspekNomor={itemToDelete?.aspekNomor || ''}
-  itemAspekJudul={itemToDelete?.aspekJudul || ''}
-  itemType="pertanyaan"
-  onConfirm={handleConfirmDelete}
-  onCancel={() => {
-    setDeleteDialogOpen(false);
-    setItemToDelete(null);
-    setDeleteContext({ type: '', aspekIndex: null, pertanyaanIndex: null });
-  }}
-  confirmText="Hapus"
-  cancelText="Batal"
-  isLoading={loading}
-/>
+      <PopUpDelete
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title="Hapus Pertanyaan"
+        description="Apakah Anda yakin ingin menghapus pertanyaan ini? Tindakan ini tidak dapat dibatalkan."
+        itemName={itemToDelete?.name || ''}
+        itemNomor={itemToDelete?.nomor || ''}
+        itemJudul={itemToDelete?.judul || ''}
+        itemAspekNomor={itemToDelete?.aspekNomor || ''}
+        itemAspekJudul={itemToDelete?.aspekJudul || ''}
+        itemType="pertanyaan"
+        onConfirm={handleConfirmDelete}
+        onCancel={() => {
+          setDeleteDialogOpen(false);
+          setItemToDelete(null);
+          setDeleteContext({ type: '', aspekIndex: null, pertanyaanIndex: null });
+        }}
+        confirmText="Hapus"
+        cancelText="Batal"
+        isLoading={loading}
+      />
     </div>
   );
 }
 
-// Komponen panel utama untuk mengelola aspek KPMR
 function AspekPanel({ rows = [], setRows, activeQuarter, onSaveData }) {
   const [activeAspekIndex, setActiveAspekIndex] = useState(null);
   const [activePertanyaanIndex, setActivePertanyaanIndex] = useState(null);
@@ -691,19 +676,16 @@ function AspekPanel({ rows = [], setRows, activeQuarter, onSaveData }) {
   const dropdownAspekListRef = useRef(null);
   const [dropdownAspekRect, setDropdownAspekRect] = useState(null);
 
-  // State untuk popup delete
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
   const [deleteContext, setDeleteContext] = useState({
-    type: '', // 'aspek' atau 'pertanyaan'
+    type: '',
     aspekIndex: null,
     pertanyaanIndex: null
   });
 
-  // Normalize rows
   const normalizedRows = useMemo(() => normalizeKpmrRows(rows), [rows]);
 
-  // Pastikan indeks aspek aktif valid
   const safeActiveAspekIndex =
     activeAspekIndex !== null && activeAspekIndex >= 0 && activeAspekIndex < normalizedRows.length
       ? activeAspekIndex
@@ -712,7 +694,7 @@ function AspekPanel({ rows = [], setRows, activeQuarter, onSaveData }) {
   const safeActiveAspek = safeActiveAspekIndex !== null ? normalizedRows[safeActiveAspekIndex] : null;
   const aspek = editModeAspek ? draftAspek : (safeActiveAspek ?? draftAspek);
 
-  // Setup position dropdown aspek saat terbuka
+  // Setup dropdown positioning for aspect selection
   useEffect(() => {
     if (!openAspekList || !dropdownAspekBtnRef.current) return;
 
@@ -742,13 +724,13 @@ function AspekPanel({ rows = [], setRows, activeQuarter, onSaveData }) {
     containerRef: dropdownAspekListRef,
   });
 
-  // Reset indeks pertanyaan saat aspek berubah
+  // Reset question selection when aspect changes
   useEffect(() => {
     setActivePertanyaanIndex(null);
     setEditModePertanyaan(false);
   }, [safeActiveAspekIndex]);
 
-  // Sync draft aspek dengan data aspek aktif
+  // Sync draft aspect with active aspect data
   useEffect(() => {
     if (safeActiveAspek && !editModeAspek) {
       const newDraft = {
@@ -771,22 +753,22 @@ function AspekPanel({ rows = [], setRows, activeQuarter, onSaveData }) {
     }
   }, [safeActiveAspek, editModeAspek]);
 
-  // Format label untuk dropdown aspek
+  // Format aspect label for dropdown display
   const formatAspekLabel = useCallback((row) => 
     row ? `${row.nomor} – ${row.judul} (Bobot: ${row.bobot}%)` : "-", 
   []);
 
-  // Handle perubahan field aspek
+  // Update aspect field in draft
   const handleChangeAspek = useCallback((key, value) => {
     setDraftAspek((p) => ({ ...p, [key]: value }));
   }, []);
 
-  // Cek kelengkapan aspek
+  // Validate aspect completeness
   const isAspekIncomplete = useCallback((aspekData) => {
     return !aspekData?.judul?.trim() || Number(aspekData?.bobot) <= 0;
   }, []);
 
-  // Save data ke storage
+  // Save data to persistent storage
   const saveDataToStorage = useCallback(() => {
     if (typeof onSaveData === 'function') {
       return onSaveData();
@@ -805,7 +787,7 @@ function AspekPanel({ rows = [], setRows, activeQuarter, onSaveData }) {
     return false;
   }, [onSaveData]);
 
-  // Masuk mode edit aspek
+  // Enter aspect edit mode
   const handleEditAspek = useCallback(() => {
     if (safeActiveAspekIndex === null) return;
     
@@ -821,7 +803,7 @@ function AspekPanel({ rows = [], setRows, activeQuarter, onSaveData }) {
     setEditModeAspek(true);
   }, [safeActiveAspekIndex, rows]);
 
-  // Update aspek
+  // Save updated aspect
   const handleUpdateAspek = useCallback(() => {
     if (safeActiveAspekIndex === null) return;
     
@@ -854,12 +836,10 @@ function AspekPanel({ rows = [], setRows, activeQuarter, onSaveData }) {
       setEditModeAspek(false);
       setOriginalAspek(null);
       
-      // Simpan ke localStorage
       setTimeout(() => {
         if (typeof onSaveData === 'function') {
           const success = onSaveData(updatedRows);
-          if (success) {
-          } else {
+          if (!success) {
             alert("⚠️ Aspek berhasil diupdate tapi gagal disimpan!");
           }
         }
@@ -872,7 +852,7 @@ function AspekPanel({ rows = [], setRows, activeQuarter, onSaveData }) {
     }
   }, [draftAspek, safeActiveAspekIndex, rows, setRows, isAspekIncomplete, onSaveData]);
 
-  // Tambah aspek baru
+  // Add new aspect
   const handleAddNewAspek = useCallback(() => {
     if (isAspekIncomplete(draftAspek)) {
       alert("Lengkapi data aspek sebelum menambah.");
@@ -895,32 +875,26 @@ function AspekPanel({ rows = [], setRows, activeQuarter, onSaveData }) {
         bobot: bobotNum,
       };
       
-      // Buat updated rows
       const updatedRows = [...rows, newAspek];
       
-      // Update state
       setRows(updatedRows);
       
-      // Set active index
       const newIndex = updatedRows.length - 1;
       setActiveAspekIndex(newIndex);
       setActivePertanyaanIndex(null);
       
-      // Reset draft
       setDraftAspek({
         nomor: "",
         judul: "",
         bobot: "",
       });
       
-      // Simpan ke localStorage dengan delay untuk memastikan state sudah update
       setTimeout(() => {
         if (typeof onSaveData === 'function') {
           try {
             const saveSuccess = onSaveData(updatedRows);
             
-            if (saveSuccess === true || saveSuccess === undefined) {
-            } else if (saveSuccess === false) {
+            if (!saveSuccess) {
               alert("⚠️ Aspek berhasil ditambah tapi gagal disimpan ke storage!");
             }
           } catch (error) {
@@ -929,7 +903,7 @@ function AspekPanel({ rows = [], setRows, activeQuarter, onSaveData }) {
           }
         }
         setLoading(false);
-      }, 150); // Tambah delay sedikit lebih lama
+      }, 150);
     } catch (error) {
       console.error("Error adding aspek:", error);
       alert("❌ Gagal menambah aspek.");
@@ -937,7 +911,7 @@ function AspekPanel({ rows = [], setRows, activeQuarter, onSaveData }) {
     }
   }, [draftAspek, isAspekIncomplete, rows, setRows, onSaveData]);
 
-  // Batal edit aspek
+  // Cancel aspect editing
   const handleCancelEditAspek = useCallback(() => {
     if (originalAspek && safeActiveAspekIndex !== null) {
       setRows((prev) =>
@@ -962,7 +936,7 @@ function AspekPanel({ rows = [], setRows, activeQuarter, onSaveData }) {
     });
   }, [originalAspek, safeActiveAspekIndex, setRows, onSaveData]);
 
-  // Salin aspek
+  // Duplicate current aspect
   const handleCopyAspek = useCallback(() => {
     if (safeActiveAspekIndex === null) return;
 
@@ -989,12 +963,10 @@ function AspekPanel({ rows = [], setRows, activeQuarter, onSaveData }) {
       setEditModeAspek(false);
       setOriginalAspek(null);
       
-      // Simpan ke localStorage
       setTimeout(() => {
         if (typeof onSaveData === 'function') {
           const saveSuccess = onSaveData(updatedRows);
-          if (saveSuccess) {
-          } else {
+          if (!saveSuccess) {
             alert("⚠️ Aspek berhasil disalin tapi gagal disimpan!");
           }
         }
@@ -1006,7 +978,7 @@ function AspekPanel({ rows = [], setRows, activeQuarter, onSaveData }) {
     }
   }, [safeActiveAspekIndex, rows, setRows, onSaveData]);
 
-  // Buka dialog hapus aspek
+  // Open delete confirmation dialog for aspect
 const handleOpenAspekDeleteDialog = useCallback(() => {
   if (safeActiveAspekIndex === null) return;
 
@@ -1026,7 +998,7 @@ const handleOpenAspekDeleteDialog = useCallback(() => {
   setDeleteDialogOpen(true);
 }, [safeActiveAspekIndex, rows]);
 
-  // Handle konfirmasi hapus aspek
+  // Handle aspect deletion confirmation
   const handleConfirmDeleteAspek = useCallback(() => {
     if (!itemToDelete || !deleteContext.type) return;
 
@@ -1051,17 +1023,14 @@ const handleOpenAspekDeleteDialog = useCallback(() => {
       setEditModeAspek(false);
       setOriginalAspek(null);
       
-      // Tutup popup SEKARANG
       setDeleteDialogOpen(false);
       setItemToDelete(null);
       setDeleteContext({ type: '', aspekIndex: null, pertanyaanIndex: null });
       
-      // Simpan secara async
       setTimeout(() => {
         if (typeof onSaveData === 'function') {
           const saveSuccess = onSaveData(updatedRows);
-          if (saveSuccess) {
-          } else {
+          if (!saveSuccess) {
             console.error("⚠️ Aspek berhasil dihapus tapi gagal menyimpan!");
           }
         }
@@ -1069,13 +1038,12 @@ const handleOpenAspekDeleteDialog = useCallback(() => {
       }, 100);
     }
     
-    // Reset state untuk jaga-jaga
     setDeleteDialogOpen(false);
     setItemToDelete(null);
     setDeleteContext({ type: '', aspekIndex: null, pertanyaanIndex: null });
   }, [itemToDelete, deleteContext, rows, setRows, setActiveAspekIndex, setActivePertanyaanIndex, onSaveData]);
 
-  // Batalkan pilihan aspek
+  // Clear aspect selection
   const handleClearAspekSelection = useCallback(() => {
     setActiveAspekIndex(null);
     setActivePertanyaanIndex(null);
@@ -1294,27 +1262,26 @@ const handleOpenAspekDeleteDialog = useCallback(() => {
         />
       )}
 
-      {/* Popup Delete untuk Aspek */}
- <PopUpDelete
-  open={deleteDialogOpen}
-  onOpenChange={setDeleteDialogOpen}
-  title="Hapus Aspek"
-  description="Apakah Anda yakin ingin menghapus aspek ini? Tindakan ini tidak dapat dibatalkan."
-  itemName={itemToDelete?.name || ''}
-  itemNomor={itemToDelete?.nomor || ''}
-  itemJudul={itemToDelete?.judul || ''}
-  itemBobot={itemToDelete?.bobot || ''}
-  itemType="aspek"
-  onConfirm={handleConfirmDeleteAspek}
-  onCancel={() => {
-    setDeleteDialogOpen(false);
-    setItemToDelete(null);
-    setDeleteContext({ type: '', aspekIndex: null, pertanyaanIndex: null });
-  }}
-  confirmText="Hapus"
-  cancelText="Batal"
-  isLoading={loading}
-/>
+      <PopUpDelete
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title="Hapus Aspek"
+        description="Apakah Anda yakin ingin menghapus aspek ini? Tindakan ini tidak dapat dibatalkan."
+        itemName={itemToDelete?.name || ''}
+        itemNomor={itemToDelete?.nomor || ''}
+        itemJudul={itemToDelete?.judul || ''}
+        itemBobot={itemToDelete?.bobot || ''}
+        itemType="aspek"
+        onConfirm={handleConfirmDeleteAspek}
+        onCancel={() => {
+          setDeleteDialogOpen(false);
+          setItemToDelete(null);
+          setDeleteContext({ type: '', aspekIndex: null, pertanyaanIndex: null });
+        }}
+        confirmText="Hapus"
+        cancelText="Batal"
+        isLoading={loading}
+      />
     </div> 
   );
 }
@@ -1322,7 +1289,7 @@ const handleOpenAspekDeleteDialog = useCallback(() => {
 function TableKpmr({ rows = [], activeQuarter }) {
   const [zoom, setZoom] = useState(100);
   const [currentPage, setCurrentPage] = useState(1);
-  const [selectedQuarters, setSelectedQuarters] = useState(["Q1", "Q2", "Q3", "Q4"]); // Default: semua quarter terpilih
+  const [selectedQuarters, setSelectedQuarters] = useState(["Q1", "Q2", "Q3", "Q4"]);
   const paginationRef = useRef(null);
 
   const minZoom = 100;
@@ -1330,42 +1297,31 @@ function TableKpmr({ rows = [], activeQuarter }) {
   const stepZoom = 5;
   const pageSize = 7;
 
-  // Normalize rows
   const normalizedRows = useMemo(() => normalizeKpmrRows(rows), [rows]);
 
-  // Handler untuk toggle quarter
+  // Toggle quarter selection for display
   const toggleQuarter = (quarter) => {
     setSelectedQuarters(prev => {
       if (prev.includes(quarter)) {
-        // Jika quarter sudah dipilih, hapus dari list
         return prev.filter(q => q !== quarter);
       } else {
-        // Jika quarter belum dipilih, tambahkan ke list
         return [...prev, quarter];
       }
     });
   };
 
-  // Handler untuk select semua quarter
   const selectAllQuarters = () => {
     setSelectedQuarters(["Q1", "Q2", "Q3", "Q4"]);
   };
 
-  // Handler untuk clear semua quarter
   const clearAllQuarters = () => {
     setSelectedQuarters([]);
   };
 
-  // Cek apakah semua quarter terpilih
   const allQuartersSelected = selectedQuarters.length === 4;
-
-  // Cek apakah ada quarter yang terpilih
   const hasSelectedQuarters = selectedQuarters.length > 0;
-
-  // Hitung total halaman
   const totalPages = Math.max(1, Math.ceil(normalizedRows.length / pageSize));
 
-  // Fungsi scroll pagination
   const scrollLeft = () => {
     paginationRef.current?.scrollBy({ left: -200, behavior: "smooth" });
   };
@@ -1374,10 +1330,9 @@ function TableKpmr({ rows = [], activeQuarter }) {
     paginationRef.current?.scrollBy({ left: 200, behavior: "smooth" });
   };
 
-  // Data untuk halaman aktif
   const pagedRows = normalizedRows.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
-  // Tentukan warna background berdasarkan skor
+  // Determine background color based on score value
   const skorBg = (skor) => {
     const num = Number(skor);
     if (num >= 4.5) return "bg-red-500 text-white";
@@ -1388,7 +1343,7 @@ function TableKpmr({ rows = [], activeQuarter }) {
     return "bg-gray-100 text-gray-500";
   };
 
-  // Hitung rata-rata skor per quarter untuk aspek
+  // Calculate average score per quarter for an aspect
   const getQuarterAvg = (aspek, quarter) => {
     const list = aspek.pertanyaanList || [];
     if (list.length === 0) return "-";
@@ -1410,7 +1365,7 @@ function TableKpmr({ rows = [], activeQuarter }) {
     return avg.toFixed(2);
   };
 
-  // Ambil semua rata-rata quarter untuk aspek (hanya yang dipilih)
+  // Get averages for selected quarters only
   const getSelectedQuarterAvgs = (aspek) => {
     const result = {};
     selectedQuarters.forEach(quarter => {
@@ -1419,7 +1374,7 @@ function TableKpmr({ rows = [], activeQuarter }) {
     return result;
   };
 
-  // Hitung global summary per quarter dari semua aspek (hanya yang dipilih)
+  // Calculate global summary across all aspects for selected quarters
   const calculateGlobalSummary = () => {
     const summary = { Q1: [], Q2: [], Q3: [], Q4: [] };
 
@@ -1447,13 +1402,11 @@ function TableKpmr({ rows = [], activeQuarter }) {
 
   const globalSummary = calculateGlobalSummary();
 
-  // Handler zoom
   const handleZoomIn = () => setZoom((z) => Math.min(maxZoom, z + stepZoom));
   const handleZoomOut = () => setZoom((z) => Math.max(minZoom, z - stepZoom));
   const handleSliderChange = (e) => setZoom(Number(e.target.value));
   const handlePageClick = (page) => setCurrentPage(page);
 
-  // Tampilkan pesan jika tidak ada data
   if (!Array.isArray(normalizedRows) || normalizedRows.length === 0) {
     return (
       <div className="flex items-center border rounded-xl justify-center gap-2 p-6 text-sm text-gray-500">
@@ -1465,7 +1418,6 @@ function TableKpmr({ rows = [], activeQuarter }) {
 
   return (
     <div className="w-full">
-      {/* Header dengan kontrol zoom dan tombol quarter */}
       <div className="flex justify-between mb-2 pr-2">
         <div>
           <h1 className="text-2xl font-semibold">Data Hukum - KPMR</h1>
@@ -1479,7 +1431,6 @@ function TableKpmr({ rows = [], activeQuarter }) {
           </div>
         </div>
         <div className="flex items-center gap-4">
-          {/* Tombol Quarter Selection */}
           <div className="flex items-center gap-1">
             <div className="flex flex-col">
               <div className="flex gap-1">
@@ -1505,7 +1456,6 @@ function TableKpmr({ rows = [], activeQuarter }) {
             </div>
           </div>
 
-          {/* Kontrol Zoom */}
           <div className="flex items-center gap-2">
             <button 
               type="button" 
@@ -1537,7 +1487,6 @@ function TableKpmr({ rows = [], activeQuarter }) {
         </div>
       </div>
 
-      {/* Warning jika tidak ada quarter yang dipilih */}
       {!hasSelectedQuarters && (
         <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
           <div className="flex items-center gap-2 text-yellow-700">
@@ -1547,7 +1496,6 @@ function TableKpmr({ rows = [], activeQuarter }) {
         </div>
       )}
 
-      {/* Container tabel dengan zoom */}
       <div className="w-full overflow-auto border shadow">
         <div style={{ transform: `scale(${zoom / 100})`, transformOrigin: "top left", display: "block", width: "100%" }}>
           <table className="table-fixed text-sm w-full border-collapse">
@@ -1570,7 +1518,6 @@ function TableKpmr({ rows = [], activeQuarter }) {
               <tr>
                 <th colSpan={2} className="border border-black px-2 py-2 bg-blue-900 text-white text-left">Kualitas Penerapan Manajemen Risiko</th>
                 
-                {/* Header untuk quarter yang dipilih */}
                 {hasSelectedQuarters ? (
                   selectedQuarters.map((quarter) => (
                     <th key={quarter} className="border border-black px-2 py-2 bg-blue-900 text-white text-center">
@@ -1595,13 +1542,11 @@ function TableKpmr({ rows = [], activeQuarter }) {
 
                 return (
                   <React.Fragment key={`aspek-${ai}`}>
-                    {/* Baris header aspek */}
                     <tr className="bg-gray-100 font-semibold">
                       <td colSpan={2} className="border border-black px-2 py-2 align-top whitespace-normal break-words">
                         Aspek {aspek.nomor} : {aspek.judul} (Bobot: {aspek.bobot}%)
                       </td>
 
-                      {/* Cell rata-rata per quarter yang dipilih */}
                       {hasSelectedQuarters ? (
                         selectedQuarters.map((quarter) => (
                           <td key={quarter} className={`border border-black px-2 py-2 text-center font-bold align-top ${quarterAvgs[quarter] !== "-" ? skorBg(quarterAvgs[quarter]) : ""}`}>
@@ -1612,7 +1557,6 @@ function TableKpmr({ rows = [], activeQuarter }) {
                         <td className="border border-black px-2 py-2 text-center align-top">-</td>
                       )}
 
-                      {/* Header indicator */}
                       <td className="border border-black px-2 py-2 bg-blue-950 text-white text-center">1 (Strong)</td>
                       <td className="border border-black px-2 py-2 bg-blue-950 text-white text-center">2 (Satisfactory)</td>
                       <td className="border border-black px-2 py-2 bg-blue-950 text-white text-center">3 (Fair)</td>
@@ -1621,7 +1565,6 @@ function TableKpmr({ rows = [], activeQuarter }) {
                       <td className="border border-black px-2 py-2 bg-blue-900 text-white text-center">Evidence</td>
                     </tr>
 
-                    {/* Baris pertanyaan */}
                     {list.length === 0 ? (
                       <tr>
                         <td colSpan={hasSelectedQuarters ? selectedQuarters.length + 8 : 9} className="border px-2 py-2 text-center text-gray-400">
@@ -1634,7 +1577,6 @@ function TableKpmr({ rows = [], activeQuarter }) {
                           <td className="border border-black px-2 py-2 text-center align-top">{q.nomor || qi + 1}</td>
                           <td className="border border-black px-2 py-2 align-top whitespace-normal break-words">{q.pertanyaan || "-"}</td>
 
-                          {/* Cell skor per quarter yang dipilih */}
                           {hasSelectedQuarters ? (
                             selectedQuarters.map((quarter) => {
                               const skorValue = q.skor?.[quarter] || q.skor?.[quarter.toLowerCase()];
@@ -1650,7 +1592,6 @@ function TableKpmr({ rows = [], activeQuarter }) {
                             <td className="border border-black px-2 py-2 text-center align-top">-</td>
                           )}
 
-                          {/* Cell indicator */}
                           <td className="border border-black px-2 py-2 align-top whitespace-normal break-words text-center">{q.indicator?.strong || "-"}</td>
                           <td className="border border-black px-2 py-2 align-top whitespace-normal break-words text-center">{q.indicator?.satisfactory || "-"}</td>
                           <td className="border border-black px-2 py-2 align-top whitespace-normal break-words text-center">{q.indicator?.fair || "-"}</td>
@@ -1664,7 +1605,6 @@ function TableKpmr({ rows = [], activeQuarter }) {
                 );
               })}
 
-              {/* Baris global summary */}
               {hasSelectedQuarters && (
                 <tr className="font-bold">
                   <td colSpan={2}>
@@ -1691,10 +1631,8 @@ function TableKpmr({ rows = [], activeQuarter }) {
         </div>
       </div>
 
-      {/* Pagination */}
       {totalPages > 1 && (
         <div className="mt-3 flex justify-center items-center gap-2">
-          {/* Tombol scroll kiri */}
           {totalPages > 7 && (
             <button
               type="button"
@@ -1705,7 +1643,6 @@ function TableKpmr({ rows = [], activeQuarter }) {
             </button>
           )}
 
-          {/* List halaman */}
           <div className="max-w-[420px] overflow-x-hidden">
             <div
               ref={paginationRef}
@@ -1734,7 +1671,6 @@ function TableKpmr({ rows = [], activeQuarter }) {
             </div>
           </div>
 
-          {/* Tombol scroll kanan */}
           {totalPages > 7 && (
             <button
               type="button"
@@ -1750,11 +1686,10 @@ function TableKpmr({ rows = [], activeQuarter }) {
   );
 }
 
-// Komponen utama halaman KPMR
 export default function KpmrPage({ rows, setRows, search, onSaveData }) {
   const { activeQuarter } = useHeaderStore();
 
-  // Filter baris berdasarkan pencarian
+  // Filter rows based on search input
   const filteredRows = useMemo(() => {
     return rows.filter((aspek) => {
       if (!search) return true;
@@ -1770,8 +1705,7 @@ export default function KpmrPage({ rows, setRows, search, onSaveData }) {
   }, [rows, search]);
 
   return (
-    <div className="w-[1600px] space-y-6">
-      {/* Panel aspek untuk input data */}
+    <div className="w-full space-y-6">
       <AspekPanel 
         rows={rows} 
         setRows={setRows}  
@@ -1779,7 +1713,6 @@ export default function KpmrPage({ rows, setRows, search, onSaveData }) {
         onSaveData={onSaveData}
       />
 
-      {/* Tabel untuk menampilkan data */}
       <TableKpmr 
         rows={filteredRows} 
         activeQuarter={activeQuarter} 
