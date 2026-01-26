@@ -42,6 +42,13 @@ import RekapData from './features/Dashboard/pages/RiskProfile-OJK/pages/rekap-da
 import RekapData1 from './features/Dashboard/pages/RiskProfile-OJK/pages/rekap-data-1/RekapData1';
 import RekapData2 from './features/Dashboard/pages/RiskProfile-OJK/pages/rekap-data-2/RekapData2';
 import PeringkatKomposit from './features/Dashboard/pages/RiskProfile-OJK/pages/peringkatkomposit/PeringkatKomposit';
+import KreditProduk from './features/Dashboard/pages/RiskProfile-OJK/pages/kredit-produk/KreditProduk';
+import HukumRegulatory from './features/Dashboard/pages/RiskProfile-OJK/pages/Hukum-regulatory/HukumRegulatory';
+import ReputasiRegulatory from './features/Dashboard/pages/RiskProfile-OJK/pages/reputasi-regulatory/ReputasiRegulatory';
+import KepatuhanRegulatory from './features/Dashboard/pages/RiskProfile-OJK/pages/kepatuhan-regulatory/KepatuhanRegulatory';
+import RentabilitasRegulatory from './features/Dashboard/pages/RiskProfile-OJK/pages/rentabilitas-regulatory/RentabilitasRegulatory';
+import PermodalanRegulatory from './features/Dashboard/pages/RiskProfile-OJK/pages/permodalan-regulatory/PermodalanRegulatory';
+import TatakelolaRegulatory from './features/Dashboard/pages/RiskProfile-OJK/pages/tatakelola-regulatory/TatakelolaRegulatory';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -126,10 +133,16 @@ function App() {
 
               <Route path="ojk-risk/pasar-produk" element={<PasarProduk/>} />
               <Route path="ojk-risk/likuiditas-produk" element={<LikuiditasProduk/>} />
-
+              <Route path="ojk-risk/kredit-produk" element={<KreditProduk/>} />
               <Route path="ojk-risk/konsentrasi-produk" element={<KonsentrasiProduk/>} />
               <Route path="ojk-risk/operasional-regulatory" element={<OperasionalRegulatory/>} />
+              <Route path="ojk-risk/hukum-regulatory" element={<HukumRegulatory/>} />
+              <Route path="ojk-risk/kepatuhan-regulatory" element={<KepatuhanRegulatory/>} />
+              <Route path="ojk-risk/reputasi-regulatory" element={<ReputasiRegulatory/>} />
               <Route path="ojk-risk/investasi-regulatory" element={<InvestasiRegulatory/>} />
+              <Route path="ojk-risk/rentabilitas-regulatory" element={<RentabilitasRegulatory/>} />
+              <Route path="ojk-risk/permodalan-regulatory" element={<PermodalanRegulatory/>} />
+              <Route path="ojk-risk/tatakelola-regulatory" element={<TatakelolaRegulatory/>} />
 
               <Route path="ojk-risk/ringkasan" element={<Ringkasan/>} />
               <Route path="ojk-risk/rekap-data" element={<RekapData/>} />

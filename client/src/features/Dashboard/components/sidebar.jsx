@@ -35,10 +35,27 @@ const Sidebar = () => {
   const riskItems = ['investasi', 'pasar', 'likuiditas', 'operasional', 'hukum', 'stratejik', 'kepatuhan', 'reputasi'];
 
   const ojkRiskItems = [
-    { name: 'Laporan Triwulanan', path: '#' },
-    { name: 'Laporan Tahunan', path: '#' },
-    { name: 'Risk Assessment', path: '#' },
-    { name: 'Compliance Report', path: '#' },
+    { name: 'Pasar Produk', path: '/dashboard/ojk-risk/pasar-produk' },
+    { name: 'Likuiditas Produk', path: '/dashboard/ojk-risk/likuiditas-produk' },
+    { name: 'Kredit Produk', path: '/dashboard/ojk-risk/kredit-produk' },
+    { name: 'Konsentrasi Produk', path: '/dashboard/ojk-risk/konsentrasi-produk' },
+    { name: 'Operasional', path: '/dashboard/ojk-risk/operasional-regulatory' },
+    { name: 'Hukum', path: '/dashboard/ojk-risk/hukum-regulatory' },
+    { name: 'Kepatuhan', path: '/dashboard/ojk-risk/kepatuhan-regulatory' },
+    { name: 'Reputasi', path: '/dashboard/ojk-risk/reputasi-regulatory' },
+    { name: 'Strategis', path: '/dashboard/ojk-risk/strategis-regulatory' },
+    { name: 'Investasi', path: '/dashboard/ojk-risk/investasi-regulatory' },
+    { name: 'Rentabilitas', path: '/dashboard/ojk-risk/rentabilitas-regulatory' },
+    { name: 'Permodalan', path: '/dashboard/ojk-risk/permodalan-regulatory' },
+    { name: 'Tata Kelola', path: '/dashboard/ojk-risk/tatakelola-regulatory' },
+
+    { name: 'Ringkasan', path: '/dashboard/ojk-risk/ringkasan' },
+    { name: 'Rekap Data', path: '/dashboard/ojk-risk/rekap-data' },
+    { name: 'Rekap Data 1', path: '/dashboard/ojk-risk/rekap-data1' },
+    { name: 'Rekap Data 2', path: '/dashboard/ojk-risk/rekap-data2' },
+    { name: 'Komposit', path: '/dashboard/ojk-risk/peringkat-komposit' },
+
+    
   ];
 
   useEffect(() => {
