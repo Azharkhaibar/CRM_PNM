@@ -1,31 +1,28 @@
-import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import { calculateRasValue, formatRasDisplayValue, getMonthName } from './rasUtils.js';
 import ExcelJS from 'exceljs'; 
 
+// --- HELPER: Formatting Data ---
 const getFormattedValue = (val, unit) => {
   if (val === null || val === undefined || val === '') return '-';
   return formatRasDisplayValue(val, unit);
 };
 
-// --- UPDATED: Hapus Ketergantungan NO ---
+// --- HELPER: Get Historical Data ---
 const getHistoricalItem = (allData, currentItem, targetYear) => {
   if (!allData) return null;
-  
   if (currentItem.groupId) {
       const found = allData.find(d => d.year === targetYear && d.groupId === currentItem.groupId);
       if (found) return found;
   }
-  
-  // Fallback ke Parameter Name + Category jika groupId gagal/tidak ada
   return allData.find(d => 
     d.year === targetYear && 
-    d.riskCategory === currentItem.riskCategory &&
-    d.parameter.trim().toLowerCase() === currentItem.parameter.trim().toLowerCase()
+    d.riskCategory === currentItem.riskCategory && 
+    d.no === currentItem.no
   );
 };
 
-// --- UPDATED: Calculate Stats dengan NORMALISASI ---
+// --- HELPER: Calculate Stats ---
 const calculateStats = (allData, currentItem, currentYear) => {
     const yearsToCheck = [currentYear - 3, currentYear - 2, currentYear - 1];
     let allValues = [];
@@ -34,19 +31,9 @@ const calculateStats = (allData, currentItem, currentYear) => {
       const histItem = getHistoricalItem(allData, currentItem, y);
       if (histItem && histItem.monthlyValues) {
         Object.values(histItem.monthlyValues).forEach(mVal => {
-          let val = calculateRasValue(mVal.num, mVal.den, histItem.unitType, mVal.man);
-          
+          const val = calculateRasValue(mVal.num, mVal.den, histItem.unitType, mVal.man);
           if (val !== null && val !== undefined && val !== '') {
-            val = parseFloat(val);
-
-            // --- NORMALISASI UNIT ---
-            if (currentItem.unitType === 'X' && histItem.unitType === 'PERCENTAGE') {
-                val = val / 100;
-            } else if (currentItem.unitType === 'PERCENTAGE' && histItem.unitType === 'X') {
-                val = val * 100;
-            }
-
-            allValues.push(val);
+            allValues.push(parseFloat(val));
           }
         });
       }
@@ -76,180 +63,487 @@ const calculateStats = (allData, currentItem, currentYear) => {
     };
 };
 
-const HEADER_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F4E79' } }; 
-const HEADER_FONT = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FFFFFFFF' } }; 
+// --- STYLE GENERATORS ---
+const getFontMain = (isBold = false, isItalic = false, colorHex = 'FF000000') => ({
+    name: 'Aptos Narrow',
+    size: 11,
+    bold: isBold,
+    italic: isItalic,
+    color: { argb: colorHex }
+});
+
+const getFontHeader = (colorHex = 'FF000000', size = 16) => ({
+    name: 'Aptos Narrow',
+    size: size,
+    bold: true,
+    color: { argb: colorHex }
+});
+
+const getFill = (colorHex) => ({
+    type: 'pattern',
+    pattern: 'solid',
+    fgColor: { argb: colorHex }
+});
+
+const COLORS = {
+    // Colors for Monthly
+    HEADER_MAIN: 'FFFFC000',
+    HEADER_RKAP: 'FF002060',
+    HEADER_MONTH: 'FFC0E6F5',
+    CELL_GENERAL: 'FFDAE9F8',
+    CELL_TARGET: 'FFF1A983',
+    CELL_NOTES: 'FF83CCEB',
+    CELL_ALERT: 'FFFBE2D5',
+    
+    // Colors for Yearly (New Logic)
+    YEARLY_TITLE_BG: 'FF0070C0', // Blue Title
+    YEARLY_RKAP_HEADER: 'FFFFFF00', // Yellow
+    YEARLY_RAS_HEADER: 'FFFFC000', // Orange
+    YEARLY_RAS_SUB: 'FF66CCFF', // Light Blue
+    YEARLY_STAT_BG: 'FFDDEBF7', // Very Light Blue
+    YEARLY_STAT_SUB_BG: 'FFE2EFDA', // Very Light Green
+    
+    YEARLY_CELL_N: 'FFFFFFFF', // White (Year n)
+    YEARLY_CELL_N_PLUS_1: 'FF99FFCC', // Light Green (Year n+1)
+
+    CELL_WHITE: 'FFFFFFFF',
+    TEXT_BLACK: 'FF000000',
+    TEXT_WHITE: 'FFFFFFFF'
+};
+
 const BORDER_ALL = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
 const ALIGN_CENTER = { horizontal: 'center', vertical: 'middle', wrapText: true };
+const ALIGN_LEFT = { horizontal: 'left', vertical: 'middle', wrapText: true };
 
+const STANCE_CONFIG = {
+    'Strategis': { bg: 'FF3C7D22', fontColor: COLORS.TEXT_WHITE, bold: true },
+    'Moderat': { bg: 'FF92D050', fontColor: COLORS.TEXT_BLACK, bold: true },
+    'Konservatif': { bg: 'FFFFFF00', fontColor: COLORS.TEXT_BLACK, bold: true },
+    'Tidak Toleran': { bg: 'FFFF0000', fontColor: COLORS.TEXT_WHITE, bold: true }
+};
+
+// ==========================================
+// EXPORT 1: RAS BULANAN (MONTHLY)
+// ==========================================
 export const exportRasMonthly = async (rows, year, selectedMonths) => {
   if (!rows || rows.length === 0) return alert("Tidak ada data untuk diexport");
 
   const workbook = new ExcelJS.Workbook();
-  const sheet = workbook.addWorksheet('RAS Bulanan');
+  const sheet = workbook.addWorksheet('RAS Bulanan', { views: [{ state: 'normal' }] });
 
+  // 1. SETUP COLUMNS
   const columns = [
-    { header: 'Risiko', key: 'risk', width: 25 },
-    { header: 'No', key: 'no', width: 8, style: { alignment: { horizontal: 'center' } } },
-    { header: 'Parameter', key: 'param', width: 50 },
-    { header: `RKAP ${year}`, key: 'rkap', width: 15, style: { alignment: { horizontal: 'center' } } },
-    { header: 'Penjelasan Tipe Data', key: 'dataType', width: 25, outlineLevel: 1, hidden: true },
-    { header: 'Limit RAS', key: 'limit', width: 15, style: { font: { color: { argb: 'FFFF0000' }, bold: true }, alignment: { horizontal: 'center' } } },
-    { header: 'Sikap Risiko', key: 'stance', width: 20, style: { alignment: { horizontal: 'center' } } },
-    { header: 'Statement', key: 'statement', width: 40, outlineLevel: 1, hidden: true },
-    { header: 'Keterangan', key: 'notes', width: 30, outlineLevel: 1, hidden: true },
+    { key: 'risk', width: 25 },
+    { key: 'no', width: 8 },
+    { key: 'param', width: 50, style: { alignment: { wrapText: true, vertical: 'middle', horizontal: 'left' } } },
+    { key: 'rkap', width: 20 },
+    { key: 'dataType', width: 25, outlineLevel: 1 }, 
+    { key: 'limit', width: 20 },
+    { key: 'stance', width: 25 },
+    { key: 'statement', width: 60, outlineLevel: 1, style: { alignment: { wrapText: true, vertical: 'middle', horizontal: 'left' } } },
+    { key: 'notes', width: 35, outlineLevel: 1 }
   ];
-
   selectedMonths.forEach(mIdx => {
-      columns.push({ 
-          header: getMonthName(mIdx), 
-          key: `m_${mIdx}`, 
-          width: 18,
-          style: { alignment: { horizontal: 'center' } }
-      });
+      columns.push({ key: `m_${mIdx}`, width: 20 });
   });
-
   sheet.columns = columns;
 
-  const headerRow = sheet.getRow(1);
-  headerRow.height = 30;
-  headerRow.eachCell((cell) => {
-      cell.fill = HEADER_FILL;
-      cell.font = HEADER_FONT;
-      cell.alignment = ALIGN_CENTER;
-      cell.border = BORDER_ALL;
+  // 2. BUILD HEADERS
+  const row1 = sheet.getRow(1);
+  const row2 = sheet.getRow(2);
+  row1.height = 20.30;
+  row2.height = 38.20;
+
+  // Values
+  sheet.getCell('A1').value = 'Risiko';
+  sheet.getCell('B1').value = 'No';
+  sheet.getCell('C1').value = 'Parameter';
+  sheet.getCell('D1').value = `RKAP ${year}`;
+  sheet.getCell('E1').value = 'Penjelasan Tipe Data';
+  sheet.getCell('F1').value = `RAS ${year}`;
+  sheet.getCell('I1').value = 'Keterangan';
+  sheet.getCell('F2').value = 'Limit';
+  sheet.getCell('G2').value = 'Sikap Thd Risiko';
+  sheet.getCell('H2').value = 'Statement';
+
+  selectedMonths.forEach((mIdx, i) => {
+      sheet.getCell(1, 10 + i).value = getMonthName(mIdx);
   });
 
-  const sortedRows = [...rows].sort((a, b) => (Number(a.no) || 0) - (Number(b.no) || 0));
-  let lastCategory = '';
+  // Header Merges
+  sheet.mergeCells('A1:A2');
+  sheet.mergeCells('B1:B2');
+  sheet.mergeCells('C1:C2');
+  sheet.mergeCells('D1:D2');
+  sheet.mergeCells('E1:E2');
+  sheet.mergeCells('F1:H1');
+  sheet.mergeCells('I1:I2');
+  selectedMonths.forEach((_, i) => {
+      const colIdx = 10 + i;
+      sheet.mergeCells(1, colIdx, 2, colIdx); 
+  });
 
-  sortedRows.forEach(item => {
-    const rowValues = {
-        risk: item.riskCategory !== lastCategory ? item.riskCategory : '',
-        no: item.no,
-        param: item.parameter,
-        rkap: getFormattedValue(item.rkapTarget, item.unitType),
-        dataType: item.dataTypeExplanation,
-        limit: getFormattedValue(item.rasLimit, item.unitType),
-        stance: item.riskStance,
-        statement: item.statement,
-        notes: item.notes
-    };
+  // Header Styles
+  const totalCols = 9 + selectedMonths.length;
+  for (let r = 1; r <= 2; r++) {
+      for (let c = 1; c <= totalCols; c++) {
+          const cell = sheet.getCell(r, c);
+          cell.border = BORDER_ALL;
+          cell.alignment = ALIGN_CENTER;
+          if (c === 4) { 
+              cell.fill = getFill(COLORS.HEADER_RKAP);
+              cell.font = getFontHeader(COLORS.TEXT_WHITE);
+          } else if (c >= 10) { 
+              cell.fill = getFill(COLORS.HEADER_MONTH);
+              cell.font = getFontHeader(COLORS.TEXT_BLACK);
+          } else {
+              cell.fill = getFill(COLORS.HEADER_MAIN);
+              cell.font = getFontHeader(COLORS.TEXT_BLACK);
+          }
+      }
+  }
 
-    selectedMonths.forEach(mIdx => {
+  // 3. DATA ROWS
+  // SORTING: Updated to sort ONLY by No
+  const sortedRows = [...rows].sort((a, b) => {
+      const noA = a.no ? Number(a.no) : Number.MAX_SAFE_INTEGER;
+      const noB = b.no ? Number(b.no) : Number.MAX_SAFE_INTEGER;
+      return noA - noB;
+  });
+
+  for (let i = 0; i < sortedRows.length; i++) {
+    const item = sortedRows[i];
+    
+    // --- ROW DATA GENERATION ---
+    const rowValues = [];
+    rowValues[1] = item.riskCategory; 
+    rowValues[2] = item.no;
+    rowValues[3] = item.parameter;
+    rowValues[4] = getFormattedValue(item.rkapTarget, item.unitType);
+    rowValues[5] = item.dataTypeExplanation;
+    rowValues[6] = getFormattedValue(item.rasLimit, item.unitType);
+    rowValues[7] = item.riskStance;
+    rowValues[8] = item.statement;
+    rowValues[9] = item.notes;
+
+    selectedMonths.forEach((mIdx, monthI) => {
         const mVal = item.monthlyValues?.[mIdx];
         const val = calculateRasValue(mVal?.num, mVal?.den, item.unitType, mVal?.man);
-        rowValues[`m_${mIdx}`] = getFormattedValue(val, item.unitType);
+        rowValues[10 + monthI] = getFormattedValue(val, item.unitType);
     });
 
     const mainRow = sheet.addRow(rowValues);
-    mainRow.alignment = { vertical: 'top', wrapText: true };
-    mainRow.eachCell(cell => { cell.border = BORDER_ALL; });
-    if (rowValues.risk) mainRow.getCell(1).font = { bold: true };
+    const mainRowNum = mainRow.number;
 
-    if (item.hasNumeratorDenominator) {
-        const numRow = sheet.addRow({ risk: '', no: '', param: `(Pembilang) ${item.numeratorLabel || ''}` });
-        const denRow = sheet.addRow({ risk: '', no: '', param: `(Penyebut) ${item.denominatorLabel || ''}` });
+    // --- MAIN ROW STYLING ---
+    mainRow.eachCell({ includeEmpty: true }, (cell, colNum) => {
+        cell.font = getFontMain(false, false); 
+        cell.border = BORDER_ALL;
+        
+        // Alignment
+        if (colNum === 3 || colNum === 8) {
+             cell.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
+        } else {
+             cell.alignment = ALIGN_CENTER;
+        }
 
-        [numRow, denRow].forEach(r => {
-            r.outlineLevel = 1; r.hidden = true; r.font = { italic: true, color: { argb: 'FF666666' } };
-            r.getCell(3).alignment = { indent: 2 };
-            r.eachCell(cell => { cell.border = BORDER_ALL; });
-            selectedMonths.forEach((_, i) => { r.getCell(10 + i).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF2F2F2' } }; });
-        });
-        selectedMonths.forEach((mIdx, i) => {
+        // Colors
+        if (colNum === 4 || colNum === 6) cell.fill = getFill(COLORS.CELL_TARGET);
+        else if (colNum === 9) cell.fill = getFill(COLORS.CELL_NOTES);
+        else if (colNum === 7) { 
+            const conf = STANCE_CONFIG[item.riskStance];
+            if (conf) {
+                cell.fill = getFill(conf.bg);
+                cell.font = getFontMain(conf.bold, false, conf.fontColor);
+            } else cell.fill = getFill(COLORS.CELL_GENERAL);
+        } else if (colNum >= 10) { 
+            const mIdx = selectedMonths[colNum - 10];
             const mVal = item.monthlyValues?.[mIdx];
-            numRow.getCell(10 + i).value = mVal?.num || '-';
-            denRow.getCell(10 + i).value = mVal?.den || '-';
+            const rawVal = calculateRasValue(mVal?.num, mVal?.den, item.unitType, mVal?.man);
+            const limitVal = parseFloat(item.rasLimit);
+            cell.fill = getFill(COLORS.CELL_GENERAL);
+            if (rawVal !== null && !isNaN(rawVal) && !isNaN(limitVal)) {
+                if (limitVal > rawVal) cell.fill = getFill(COLORS.CELL_ALERT);
+            }
+        } else {
+            cell.fill = getFill(COLORS.CELL_GENERAL);
+        }
+    });
+
+    if (rowValues[1]) mainRow.getCell(1).font = getFontMain(true, false); // Bold Risk
+
+    // --- SUB ROWS HANDLING ---
+    if (item.hasNumeratorDenominator) {
+        const numRowValues = [];
+        numRowValues[3] = `${item.numeratorLabel || ''}`; 
+        const denRowValues = [];
+        denRowValues[3] = `${item.denominatorLabel || ''}`; 
+
+        selectedMonths.forEach((mIdx, monthI) => {
+            const mVal = item.monthlyValues?.[mIdx];
+            numRowValues[10 + monthI] = mVal?.num || '-';
+            denRowValues[10 + monthI] = mVal?.den || '-';
+        });
+
+        const numRow = sheet.addRow(numRowValues);
+        const denRow = sheet.addRow(denRowValues);
+        
+        // Style Sub Rows
+        [numRow, denRow].forEach(r => {
+            r.outlineLevel = 1;
+            r.hidden = true;
+            r.eachCell({ includeEmpty: true }, (cell, colNum) => {
+                cell.border = BORDER_ALL;
+                cell.font = getFontMain(false, true); // Italic
+                
+                if (colNum === 3) {
+                    cell.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true, indent: 2 };
+                } else {
+                    cell.alignment = ALIGN_CENTER;
+                }
+                
+                if (colNum === 3 || colNum >= 10) cell.fill = getFill(COLORS.CELL_WHITE);
+            });
+        });
+
+        // Simple Vertical Merge for Labels
+        const colsToMerge = [2, 4, 5, 6, 7, 8, 9];
+        colsToMerge.forEach(c => {
+            const colChar = sheet.getColumn(c).letter;
+            sheet.mergeCells(`${colChar}${mainRowNum}:${colChar}${denRow.number}`);
         });
     }
-    lastCategory = item.riskCategory;
-  });
+  }
 
+  sheet.properties.outlineProperties = { summaryBelow: false, summaryRight: true };
   const buffer = await workbook.xlsx.writeBuffer();
   const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
   saveAs(blob, `RAS_Bulanan_${year}.xlsx`);
 };
 
+// ==========================================
+// EXPORT 2: RAS TAHUNAN (YEARLY) - REVISED
+// ==========================================
 export const exportRasYearly = async (rows, year, allData) => {
   if (!rows || rows.length === 0) return alert("Tidak ada data untuk diexport");
 
   const workbook = new ExcelJS.Workbook();
-  const sheet = workbook.addWorksheet('RAS Tahunan');
+  const sheet = workbook.addWorksheet('RAS Tahunan', { views: [{ state: 'normal' }] }); 
 
+  // --- 1. SETUP COLUMNS & WIDTHS ---
   const columns = [
-    { header: 'Jenis Risiko', key: 'risk', width: 25 },
-    { header: 'No', key: 'no', width: 8, style: { alignment: { horizontal: 'center' } } },
-    { header: 'Statement', key: 'statement', width: 50 },
-    { header: 'Formulasi', key: 'formulasi', width: 40 },
-    { header: 'Tipe Data', key: 'dataType', width: 20 },
-    { header: `RKAP ${year-2}`, key: `rkap_${year-2}`, width: 15, style: { alignment: { horizontal: 'center' } } },
-    { header: `RAS ${year-2}`, key: `ras_${year-2}`, width: 15, style: { alignment: { horizontal: 'center' } } },
-    { header: `RKAP ${year-1}`, key: `rkap_${year-1}`, width: 15, style: { alignment: { horizontal: 'center' } } },
-    { header: `RAS ${year-1}`, key: `ras_${year-1}`, width: 15, style: { alignment: { horizontal: 'center' } } },
-    { header: 'AVG 3Y', key: 'avg', width: 12, outlineLevel: 1, hidden: true, style: { fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDDEBF7' } } } },
-    { header: 'STDEV', key: 'stdev', width: 12, outlineLevel: 1, hidden: true, style: { fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDDEBF7' } } } },
-    { header: 'AVG-1SD', key: 'avg_min1', width: 12, outlineLevel: 1, hidden: true, style: { fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDDEBF7' } } } },
-    { header: 'AVG+1SD', key: 'avg_plus1', width: 12, outlineLevel: 1, hidden: true, style: { fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDDEBF7' } } } },
-    { header: 'AVG+2SD', key: 'avg_plus2', width: 12, outlineLevel: 1, hidden: true, style: { fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDDEBF7' } } } },
-    { header: 'AVG+3SD', key: 'avg_plus3', width: 12, outlineLevel: 1, hidden: true, style: { fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDDEBF7' } } } },
-    { header: 'MIN', key: 'min', width: 12, outlineLevel: 1, hidden: true, style: { fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDDEBF7' } } } },
-    { header: 'MAX', key: 'max', width: 12, outlineLevel: 1, hidden: true, style: { fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDDEBF7' } } } },
-    { header: `RKAP ${year}`, key: `rkap_${year}`, width: 15, style: { font: { color: { argb: 'FF0000FF' }, bold: true }, alignment: { horizontal: 'center' } } },
-    { header: `RAS ${year}`, key: `ras_${year}`, width: 15, style: { font: { color: { argb: 'FFFF0000' }, bold: true }, alignment: { horizontal: 'center' } } },
+    { key: 'risk', width: 25 },
+    { key: 'no', width: 8 },
+    { key: 'statement', width: 50, style: { alignment: { wrapText: true, horizontal: 'left', vertical: 'middle' } } },
+    { key: 'formulasi', width: 40 },
+    { key: 'dataType', width: 20 },
+    
+    // History X-2
+    { key: `rkap_${year-2}`, width: 15 },
+    { key: `ras_${year-2}`, width: 15 },
+    // History X-1
+    { key: `rkap_${year-1}`, width: 15 },
+    { key: `ras_${year-1}`, width: 15 },
+
+    // Stats
+    { key: 'avg', width: 12, outlineLevel: 1, hidden: true },
+    { key: 'stdev', width: 12, outlineLevel: 1, hidden: true },
+    { key: 'avg_min1', width: 12, outlineLevel: 1, hidden: true },
+    { key: 'avg_plus1', width: 12, outlineLevel: 1, hidden: true },
+    { key: 'avg_plus2', width: 12, outlineLevel: 1, hidden: true },
+    { key: 'avg_plus3', width: 12, outlineLevel: 1, hidden: true },
+    { key: 'min', width: 12, outlineLevel: 1, hidden: true },
+    { key: 'max', width: 12, outlineLevel: 1, hidden: true },
+
+    // Current Year
+    { key: `rkap_${year}`, width: 15 },
+    { key: `ras_${year}`, width: 15 },
   ];
 
   sheet.columns = columns;
-  const headerRow = sheet.getRow(1);
-  headerRow.height = 30;
-  headerRow.eachCell((cell) => { cell.fill = HEADER_FILL; cell.font = HEADER_FONT; cell.alignment = ALIGN_CENTER; cell.border = BORDER_ALL; });
 
-  const sortedRows = [...rows].sort((a, b) => (Number(a.no) || 0) - (Number(b.no) || 0));
-  let lastCategory = '';
+  // --- 2. BUILD HEADER (TITLE & COLUMNS) ---
+  // Row 1 & 2: Titles
+  const titleRow1 = sheet.getRow(1);
+  titleRow1.height = 24.80;
+  sheet.mergeCells('A1:S1'); // Merge across all columns roughly
+  const titleCell1 = sheet.getCell('A1');
+  titleCell1.value = 'RISK APPETITE STATEMENT (RAS)';
+  titleCell1.fill = getFill(COLORS.YEARLY_TITLE_BG);
+  titleCell1.font = getFontHeader(COLORS.TEXT_WHITE, 18);
+  titleCell1.alignment = ALIGN_CENTER;
 
-  sortedRows.forEach(item => {
+  const titleRow2 = sheet.getRow(2);
+  titleRow2.height = 30.00;
+  sheet.mergeCells('A2:S2');
+  const titleCell2 = sheet.getCell('A2');
+  titleCell2.value = `PT PNM INVESTMENT MANAGEMENT - ${year}`;
+  titleCell2.fill = getFill(COLORS.YEARLY_TITLE_BG);
+  titleCell2.font = getFontHeader(COLORS.TEXT_WHITE, 16);
+  titleCell2.alignment = ALIGN_CENTER;
+
+  // Row 3: Column Headers (Starts at index 3)
+  const headerRow = sheet.getRow(3);
+  headerRow.height = 40; // Default header height
+
+  const headerValues = [
+      'Jenis Risiko', 'No', 'Statement', 'Formulasi', 'Tipe Data',
+      `RKAP ${year-2}`, `RAS ${year-2}`, // F, G
+      `RKAP ${year-1}`, `RAS ${year-1}`, // H, I
+      'AVG 3Y', 'STDEV', 'AVG-1SD', 'AVG+1SD', 'AVG+2SD', 'AVG+3SD', 'MIN', 'MAX', // J-Q
+      `RKAP ${year}`, `RAS ${year}` // R, S
+  ];
+  
+  // Assign values manually due to exceljs quirks with getRow and array
+  headerValues.forEach((val, idx) => {
+      const colIdx = idx + 1;
+      const cell = sheet.getCell(3, colIdx);
+      cell.value = val;
+      cell.border = BORDER_ALL;
+      cell.alignment = ALIGN_CENTER;
+      cell.font = getFontHeader(COLORS.TEXT_BLACK, 12); // Slightly smaller header for table
+
+      // Color Logic for Headers
+      if (val.includes('RKAP')) {
+          cell.fill = getFill(COLORS.YEARLY_RKAP_HEADER); // Yellow
+      } else if (val.includes('RAS')) {
+          cell.fill = getFill(COLORS.YEARLY_RAS_HEADER); // Orange
+      } else if (['AVG', 'STDEV', 'MIN', 'MAX'].some(k => val.includes(k))) {
+          cell.fill = getFill(COLORS.YEARLY_STAT_BG); // Light Blue Stat
+      } else {
+          cell.fill = getFill(COLORS.YEARLY_TITLE_BG); // Blue for General
+          cell.font = getFontHeader(COLORS.TEXT_WHITE, 12);
+      }
+  });
+
+  // --- 3. DATA ROWS ---
+  // SORTING: By No Only
+  const sortedRows = [...rows].sort((a, b) => {
+      const noA = a.no ? Number(a.no) : Number.MAX_SAFE_INTEGER;
+      const noB = b.no ? Number(b.no) : Number.MAX_SAFE_INTEGER;
+      return noA - noB;
+  });
+
+  sortedRows.forEach((item, index) => {
     const histYear2 = getHistoricalItem(allData, item, year - 2);
     const histYear1 = getHistoricalItem(allData, item, year - 1);
     const stats = calculateStats(allData, item, year);
 
-    const rowValues = {
-        risk: item.riskCategory !== lastCategory ? item.riskCategory : '',
-        no: item.no,
-        statement: item.parameter, 
-        formulasi: item.formulasi || item.statement || '-',
-        dataType: item.dataTypeExplanation,
-        [`rkap_${year-2}`]: getFormattedValue(histYear2?.rkapTarget, item.unitType),
-        [`ras_${year-2}`]: getFormattedValue(histYear2?.rasLimit, item.unitType),
-        [`rkap_${year-1}`]: getFormattedValue(histYear1?.rkapTarget, item.unitType),
-        [`ras_${year-1}`]: getFormattedValue(histYear1?.rasLimit, item.unitType),
-        avg: stats ? getFormattedValue(stats.avg, item.unitType) : '-',
-        stdev: stats ? getFormattedValue(stats.stdev, item.unitType) : '-',
-        avg_min1: stats ? getFormattedValue(stats.avg_min_1sd, item.unitType) : '-',
-        avg_plus1: stats ? getFormattedValue(stats.avg_plus_1sd, item.unitType) : '-',
-        avg_plus2: stats ? getFormattedValue(stats.avg_plus_2sd, item.unitType) : '-',
-        avg_plus3: stats ? getFormattedValue(stats.avg_plus_3sd, item.unitType) : '-',
-        min: stats ? getFormattedValue(stats.min, item.unitType) : '-',
-        max: stats ? getFormattedValue(stats.max, item.unitType) : '-',
-        [`rkap_${year}`]: getFormattedValue(item.rkapTarget, item.unitType),
-        [`ras_${year}`]: getFormattedValue(item.rasLimit, item.unitType),
-    };
+    const rowValues = [];
+    rowValues[1] = item.riskCategory;
+    rowValues[2] = item.no;
+    rowValues[3] = item.parameter; // Statement = Parameter
+    rowValues[4] = item.formulasi || '-';
+    rowValues[5] = item.dataTypeExplanation;
+    
+    // History
+    rowValues[6] = getFormattedValue(histYear2?.rkapTarget, item.unitType);
+    rowValues[7] = getFormattedValue(histYear2?.rasLimit, item.unitType);
+    rowValues[8] = getFormattedValue(histYear1?.rkapTarget, item.unitType);
+    rowValues[9] = getFormattedValue(histYear1?.rasLimit, item.unitType);
+    
+    // Stats
+    rowValues[10] = stats ? getFormattedValue(stats.avg, item.unitType) : '-';
+    rowValues[11] = stats ? getFormattedValue(stats.stdev, item.unitType) : '-';
+    rowValues[12] = stats ? getFormattedValue(stats.avg_min_1sd, item.unitType) : '-';
+    rowValues[13] = stats ? getFormattedValue(stats.avg_plus_1sd, item.unitType) : '-';
+    rowValues[14] = stats ? getFormattedValue(stats.avg_plus_2sd, item.unitType) : '-';
+    rowValues[15] = stats ? getFormattedValue(stats.avg_plus_3sd, item.unitType) : '-';
+    rowValues[16] = stats ? getFormattedValue(stats.min, item.unitType) : '-';
+    rowValues[17] = stats ? getFormattedValue(stats.max, item.unitType) : '-';
+    
+    // Current
+    rowValues[18] = getFormattedValue(item.rkapTarget, item.unitType);
+    rowValues[19] = getFormattedValue(item.rasLimit, item.unitType);
 
     const mainRow = sheet.addRow(rowValues);
-    mainRow.alignment = { vertical: 'top', wrapText: true };
-    mainRow.eachCell(cell => { cell.border = BORDER_ALL; });
-    if (rowValues.risk) mainRow.getCell(1).font = { bold: true };
+    
+    // Logic Alternate Color based on Year [n] logic from user request is vague
+    // "cell isi [n] warna putih, cell isi [n+1] warna #99FFCC"
+    // I interpret this as Columns related to [n] vs [n+1], but likely refers to History Years?
+    // Let's apply specific background logic requested.
+    
+    // Base Color for Main Row
+    const baseColor = COLORS.YEARLY_CELL_N; // White default
 
+    mainRow.eachCell({ includeEmpty: true }, (cell, colNum) => {
+        cell.font = getFontMain(false, false);
+        cell.border = BORDER_ALL;
+        
+        // Alignment
+        if (colNum === 3) { // Statement / Param
+             cell.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
+        } else {
+             cell.alignment = ALIGN_CENTER;
+        }
+
+        // Coloring Logic
+        // History X-2 (Year n) -> White?
+        // History X-1 (Year n+1) -> Green?
+        // Let's assume X-2 is n (2023), X-1 is n+1 (2024)
+        if (colNum === 6 || colNum === 7) { // X-2
+             cell.fill = getFill(COLORS.YEARLY_CELL_N);
+        } else if (colNum === 8 || colNum === 9) { // X-1
+             cell.fill = getFill(COLORS.YEARLY_CELL_N_PLUS_1); // Green
+        } else if (colNum >= 10 && colNum <= 17) { // Stats
+             cell.fill = getFill(COLORS.YEARLY_STAT_BG); // Light Blue
+        } else if (colNum === 19) { // RAS Current
+             cell.fill = getFill(COLORS.YEARLY_RAS_SUB); // Light Blue for RAS content
+        } else {
+             cell.fill = getFill(baseColor);
+        }
+    });
+
+    // Sub Rows
     if (item.hasNumeratorDenominator) {
-        const numRow = sheet.addRow({ risk: '', no: '', statement: `(Pembilang) ${item.numeratorLabel || ''}` });
-        const denRow = sheet.addRow({ risk: '', no: '', statement: `(Penyebut) ${item.denominatorLabel || ''}` });
-        [numRow, denRow].forEach(r => { r.outlineLevel = 1; r.hidden = true; r.font = { italic: true, color: { argb: 'FF666666' } }; r.getCell(3).alignment = { indent: 2 }; r.eachCell(cell => { cell.border = BORDER_ALL; }); });
+        const numRowValues = [];
+        numRowValues[3] = `${item.numeratorLabel || ''}`;
+        const denRowValues = [];
+        denRowValues[3] = `${item.denominatorLabel || ''}`;
+
+        const numRow = sheet.addRow(numRowValues);
+        const denRow = sheet.addRow(denRowValues);
+
+        [numRow, denRow].forEach(r => {
+            r.outlineLevel = 1;
+            r.hidden = true;
+            r.eachCell({ includeEmpty: true }, (cell, colNum) => {
+                cell.border = BORDER_ALL;
+                cell.font = getFontMain(false, true);
+                
+                if (colNum === 3) {
+                    cell.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true, indent: 2 };
+                } else {
+                    cell.alignment = ALIGN_CENTER;
+                }
+
+                // Stats coloring for sub rows
+                if (colNum >= 10 && colNum <= 17) {
+                    cell.fill = getFill(COLORS.YEARLY_STAT_SUB_BG); // Greenish for stats sub
+                } else {
+                    cell.fill = getFill(COLORS.CELL_WHITE);
+                }
+            });
+        });
+        
+        // Merge Main Columns
+        // Merge: Risk, No, Formulasi, DataType, History, Current
+        const colsToMerge = [1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19];
+        colsToMerge.forEach(c => {
+            const colChar = sheet.getColumn(c).letter;
+            sheet.mergeCells(`${colChar}${mainRow.number}:${colChar}${denRow.number}`);
+        });
     }
-    lastCategory = item.riskCategory;
   });
 
   const buffer = await workbook.xlsx.writeBuffer();
   const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
   saveAs(blob, `RAS_Tahunan_${year}.xlsx`);
 };
+
+// ==========================================
+// EXPORT 3: Tindak Lanjut
+// ==========================================
 
 export const exportTindakLanjut = async (item) => {
     if (!item) return;
@@ -306,4 +600,4 @@ export const exportTindakLanjut = async (item) => {
     const buffer = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     saveAs(blob, `Tindak_Lanjut_${data?.riskCategory}.xlsx`);
-};
+};  
