@@ -1,4 +1,3 @@
-// useDropdownPortal.js
 import { useEffect } from "react";
 
 export function useDropdownPortal({

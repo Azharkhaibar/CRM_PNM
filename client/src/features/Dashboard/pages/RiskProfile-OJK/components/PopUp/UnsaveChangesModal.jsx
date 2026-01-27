@@ -14,7 +14,7 @@ const UnsaveChangesModal = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/5 backdrop-blur-xs">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
         <div className="p-6">
           <div className="flex items-center mb-4">

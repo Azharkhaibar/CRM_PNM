@@ -1841,6 +1841,8 @@ function NilaiPanel({
                     ? handleChangeDraftNilai("bobot", value)
                     : handleChangeNilaiField("bobot", value)
                 }
+                // Tambahkan param hanya jika ada
+                param={param || undefined}
               />
 
               <div className="flex gap-2">
@@ -1943,7 +1945,18 @@ function RiskItem({ label, value, onChange, color, loading = false, editMode = f
 }
 
 
-function NilaiJudulInput({ judul, onChange, onTypeChange, loading = false, editMode = false, nomor, bobot, onNomorChange, onBobotChange }) {
+function NilaiJudulInput({ 
+  judul, 
+  onChange, 
+  onTypeChange, 
+  loading = false, 
+  editMode = false, 
+  nomor, 
+  bobot, 
+  onNomorChange, 
+  onBobotChange,
+  param // Tambahkan prop param untuk perhitungan
+}) {
   // Handler untuk mengubah tipe nilai (Tanpa Faktor/Satu Faktor/Dua Faktor)
   const updateType = (newType) => {
     if (loading || !editMode) return;
@@ -2003,7 +2016,108 @@ function NilaiJudulInput({ judul, onChange, onTypeChange, loading = false, editM
     onChange(updated);
   };
 
+  // Hitung hasil menggunakan computeDerived seperti di table
+  const calculateHasilDisplay = (judulObj) => {
+    if (!judulObj || !param) return "";
+    
+    try {
+      // Buat objek nilai sementara untuk computeDerived
+      const tempNilai = {
+        id: "temp",
+        nomor: nomor || "",
+        judul: judulObj,
+        bobot: Number(bobot) || 0,
+        portofolio: "",
+        keterangan: "",
+        riskindikator: {
+          low: "",
+          lowToModerate: "",
+          moderate: "",
+          moderateToHigh: "",
+          high: "",
+        }
+      };
+
+      const derived = computeDerived(tempNilai, param);
+      
+      // DEBUG: Tampilkan derived untuk troubleshooting
+      console.log("Derived result:", {
+        type: judulObj.type,
+        hasilDisplay: derived.hasilDisplay,
+        hasilRows: derived.hasilRows,
+        formula: judulObj.formula,
+        valuePembilang: judulObj.valuePembilang,
+        valuePenyebut: judulObj.valuePenyebut
+      });
+      
+      // Untuk hasil di form, kita ambil hasil yang sesuai
+      // Berdasarkan tabel, hasil utama adalah hasilDisplay
+      // Untuk semua tipe, tampilkan hasilDisplay
+      return derived.hasilDisplay || "";
+      
+    } catch (error) {
+      console.error("Error calculating hasil:", error);
+      return "";
+    }
+  };
+
+  // Format hasil untuk ditampilkan
+  const formatHasil = (value) => {
+    if (value === null || value === undefined || value === "") return "";
+    
+    try {
+      // Jika sudah dalam format yang benar (dari computeDerived)
+      if (typeof value === 'string') {
+        // Cek apakah mengandung % atau sudah diformat
+        if (value.includes('%')) {
+          return value;
+        }
+        
+        // Coba parse sebagai angka
+        const num = Number(value);
+        if (!isNaN(num)) {
+          // Format dengan 2 desimal untuk hasil perhitungan
+          return num.toFixed(2);
+        }
+      }
+      
+      return String(value);
+    } catch (error) {
+      return String(value);
+    }
+  };
+
+  // Fungsi untuk menghitung preview rumus jika ada
+  const calculateFormulaPreview = () => {
+    if (!judul.formula) return "";
+    
+    try {
+      // Evaluasi formula sederhana
+      let formula = judul.formula.toLowerCase();
+      
+      // Ganti placeholder dengan nilai sebenarnya
+      formula = formula.replace(/pem|pembilang/g, judul.valuePembilang || '0');
+      formula = formula.replace(/pen|penyebut/g, judul.valuePenyebut || '1');
+      formula = formula.replace(/val|value/g, judul.value || '0');
+      
+      // Evaluasi ekspresi matematika sederhana
+      // HATI-HATI: jangan gunakan eval() di production!
+      // Ini hanya untuk preview
+      const result = eval(formula); // Hanya untuk development
+      
+      if (judul.percent) {
+        return `${(result * 100).toFixed(2)}%`;
+      }
+      return result.toFixed(2);
+    } catch (error) {
+      return "";
+    }
+  };
+
   if (!judul) return null;
+
+  const hasilDisplay = calculateHasilDisplay(judul);
+  const formulaPreview = judul.formula ? calculateFormulaPreview() : "";
 
   return (
     <div className="space-y-4">
@@ -2072,24 +2186,35 @@ function NilaiJudulInput({ judul, onChange, onTypeChange, loading = false, editM
       </div>
 
       {judul.type === "Tanpa Faktor" && (
-        <div className="space-y-1">
-          <label className="font-semibold text-md text-slate-200">Value</label>
-          <Input
-            className="text-slate-800 border border-black bg-white w-full"
-            value={judul.value ?? ""}
-            onChange={(e) =>
-              updateField("value", e.target.value === "" ? null : e.target.value)
-            }
-            disabled={loading || !editMode}
-            placeholder="masukan value"
-          />
+        <div className="grid grid-cols-4 gap-4">
+          <div className="space-y-1 col-span-3">
+            <label className="font-semibold text-md text-slate-200">Value</label>
+            <Input
+              className="text-slate-800 border border-black bg-white w-full"
+              value={judul.value ?? ""}
+              onChange={(e) =>
+                updateField("value", e.target.value === "" ? null : e.target.value)
+              }
+              disabled={loading || !editMode}
+              placeholder="masukan value"
+            />
+          </div>
+          <div className="space-y-1 col-span-1">
+            <label className="font-semibold text-md text-slate-200">Hasil</label>
+            <Input
+              className="text-slate-800 border border-black bg-gray-100 w-full cursor-default"
+              value={formatHasil(hasilDisplay) || (formulaPreview && `Formula: ${formulaPreview}`) || ""}
+              readOnly
+              placeholder="hasil"
+            />
+          </div>
         </div>
       )}
 
       {judul.type === "Satu Faktor" && (
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1">
+          <div className="grid grid-cols-6 gap-4">
+            <div className="space-y-1 col-span-3">
               <label className="font-semibold text-md text-slate-200">Pembilang</label>
               <Input
                 className="text-slate-800 border border-black bg-white w-full"
@@ -2100,8 +2225,8 @@ function NilaiJudulInput({ judul, onChange, onTypeChange, loading = false, editM
               />
             </div>
 
-            <div className="space-y-1">
-              <label className="font-semibold text-md text-slate-200">Value Pembilang</label>
+            <div className="space-y-1 col-span-2">
+              <label className="font-semibold  text-md text-slate-200">Value Pembilang</label>
               <Input
                 className="text-slate-800 border border-black bg-white w-full"
                 value={judul.valuePembilang ?? ""}
@@ -2113,6 +2238,16 @@ function NilaiJudulInput({ judul, onChange, onTypeChange, loading = false, editM
                 }
                 disabled={loading || !editMode}
                 placeholder="masukan value pembilang"
+              />
+            </div>
+            
+            <div className="space-y-1 col-span-1">
+              <label className="font-semibold text-md text-slate-200">Hasil</label>
+              <Input
+                className="text-slate-800 border border-black bg-gray-100 w-full cursor-default"
+                value={formatHasil(hasilDisplay) || (formulaPreview && `Formula: ${formulaPreview}`) || ""}
+                readOnly
+                placeholder="hasil"
               />
             </div>
           </div>
@@ -2121,8 +2256,8 @@ function NilaiJudulInput({ judul, onChange, onTypeChange, loading = false, editM
 
       {judul.type === "Dua Faktor" && (
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1">
+          <div className="grid grid-cols-6 gap-4">
+            <div className="space-y-1 col-span-3">
               <label className="font-semibold text-md text-slate-200">Pembilang</label>
               <Input
                 className="text-slate-800 border border-black bg-white w-full"
@@ -2133,7 +2268,7 @@ function NilaiJudulInput({ judul, onChange, onTypeChange, loading = false, editM
               />
             </div>
 
-            <div className="space-y-1">
+            <div className="space-y-1 col-span-3">
               <label className="font-semibold text-md text-slate-200">Value Pembilang</label>
               <Input
                 className="text-slate-800 border border-black bg-white w-full"
@@ -2150,8 +2285,8 @@ function NilaiJudulInput({ judul, onChange, onTypeChange, loading = false, editM
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1">
+          <div className="grid grid-cols-6 gap-4">
+            <div className="space-y-1m col-span-3">
               <label className="font-semibold text-md text-slate-200">Penyebut</label>
               <Input
                 className="text-slate-800 border border-black bg-white w-full"
@@ -2162,7 +2297,7 @@ function NilaiJudulInput({ judul, onChange, onTypeChange, loading = false, editM
               />
             </div>
 
-            <div className="space-y-1">
+            <div className="space-y-1 col-span-2">
               <label className="font-semibold text-md text-slate-200">Value Penyebut</label>
               <Input
                 className="text-slate-800 border border-black bg-white w-full"
@@ -2175,6 +2310,16 @@ function NilaiJudulInput({ judul, onChange, onTypeChange, loading = false, editM
                 }
                 disabled={loading || !editMode}
                 placeholder="masukan value penyebut"
+              />
+            </div>
+            
+            <div className="space-y-1 col-span-1">
+              <label className="font-semibold text-md text-slate-200">Hasil</label>
+              <Input
+                className="text-slate-800 border border-black bg-gray-100 w-full cursor-default"
+                value={formatHasil(hasilDisplay) || (formulaPreview && `Formula: ${formulaPreview}`) || ""}
+                readOnly
+                placeholder="hasil"
               />
             </div>
           </div>
