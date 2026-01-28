@@ -29,7 +29,7 @@ const CATEGORIES = [
   { id: "likuiditas-produk", label: "Likuiditas Produk", Icon: HandCoins },
   { id: "kredit-produk", label: "Kredit Produk", Icon: BanknoteArrowUp },
   { id: "konsentrasi-produk", label: "Konsentrasi Produk", Icon: BrainCircuit },
-  { id: "operasional", label: "Operasional", Icon: Cog },
+  { id: "operasional-regulatory", label: "Operasional", Icon: Cog },
   { id: "hukum-regulatory", label: "Hukum", Icon: Scale },
   { id: "kepatuhan-regulatory", label: "Kepatuhan", Icon: ClipboardCheck },
   { id: "reputasi-regulatory", label: "Reputasi", Icon: CircleStar },
@@ -55,19 +55,19 @@ const getIndicatorNumber = (score) => {
 
 // INHERENT Risk Indicators - dengan score property
 const INHERENT_RISK_INDICATORS = [
-  { label: "Low", value: "low", color: "#2ECC71", min: 0, max: 1.49, score: 1 },
+  { label: "Low", value: "low", color: "#00B050", min: 0, max: 1.49, score: 1 },
   { label: "Low To Moderate", value: "lowToModerate", color: "#A3E635", min: 1.50, max: 2.49, score: 2 },
-  { label: "Moderate", value: "moderate", color: "#FACC15", min: 2.50, max: 3.49, score: 3 },
-  { label: "Moderate To High", value: "moderateToHigh", color: "#F97316", min: 3.50, max: 4.49, score: 4 },
+  { label: "Moderate", value: "moderate", color: "#EEFF00", min: 2.50, max: 3.49, score: 3 },
+  { label: "Moderate To High", value: "moderateToHigh", color: "#FFC000", min: 3.50, max: 4.49, score: 4 },
   { label: "High", value: "high", color: "#FF0000", min: 4.50, max: 5, score: 5 },
 ];
 
 // KPMR Risk Indicators - dengan score property
 const KPMR_RISK_INDICATORS = [
-  { label: "Strong", value: "strong", color: "#2ECC71", min: 0, max: 1.49, score: 1 },
+  { label: "Strong", value: "strong", color: "#00B050", min: 0, max: 1.49, score: 1 },
   { label: "Satisfactory", value: "satisfactory", color: "#A3E635", min: 1.50, max: 2.49, score: 2 },
-  { label: "Fair", value: "fair", color: "#FACC15", min: 2.5, max: 3.49, score: 3 },
-  { label: "Marginal", value: "marginal", color: "#F97316", min: 3.5, max: 4.49, score: 4 },
+  { label: "Fair", value: "fair", color: "#FFFF00", min: 2.5, max: 3.49, score: 3 },
+  { label: "Marginal", value: "marginal", color: "#FFC000", min: 3.5, max: 4.49, score: 4 },
   { label: "Unsatisfactory", value: "unsatisfactory", color: "#FF0000", min: 4.5, max: 5, score: 5 },
 ];
 
@@ -168,7 +168,7 @@ export default function PeringkatKomposit() {
     const defaults = {};
     
     CATEGORIES.forEach((category) => {
-      if (category.id === "operasional" || category.id === "strategis-regulatory") {
+      if (category.id === "operasional-regulatory" || category.id === "strategis-regulatory") {
         defaults[category.id] = 20;
       } else {
         defaults[category.id] = 10;
@@ -196,7 +196,7 @@ export default function PeringkatKomposit() {
       if (bhzValues[item.id] !== undefined) {
         bhz = bhzValues[item.id];
       } else {
-        bhz = (item.id === "operasional" || item.id === "strategis-regulatory") ? 20 : 10;
+        bhz = (item.id === "operasional-regulatory" || item.id === "strategis-regulatory") ? 20 : 10;
       }
       
       const inherentSummary = item.inherentSummary || 0;
@@ -314,15 +314,14 @@ export default function PeringkatKomposit() {
       {/* Tabel Container */}
       <div className="mt-6 bg-white rounded-xl shadow-lg overflow-hidden">
         {/* Tabel Header - SEDERHANA 1 BARIS */}
-        <div className="sticky top-0 z-10 bg-gradient-to-r from-blue-600 to-blue-800 text-white">
+        <div className="sticky top-0 z-10 bg-blue-700 text-white">
           <div className="grid grid-cols-16 p-4 font-bold text-lg relative">
             {/* Garis pemisah antara INHERENT dan KPMR */}
             <div className="absolute left-[calc((4/16)*100%)] top-0 bottom-0 w-[2px] bg-white/50 z-20"></div>
             
             {/* Kolom 1: Jenis Risiko */}
             <div className="col-span-4 flex items-center justify-center  border-blue-500">
-              <div className="flex gap-2 items-center">
-                <FileText className="w-5 h-5 mb-1" />
+              <div className="flex gap-2 uppercase items-center">
                 <span>Jenis Risiko</span>
               </div>
             </div>
@@ -358,25 +357,37 @@ export default function PeringkatKomposit() {
             <div className="col-span-2"></div>
             
             {/* Kolom 3-5: INHERENT Sub-header */}
-            <div className="col-span-3 text-center border-r border-blue-400">
+            <div className="col-span-3 text-center border-blue-400">
               Indicator
             </div>
-            <div className="col-span-1 text-center border-r border-blue-400">
+
+            <div className="absolute left-[calc((9/16)*100%)] top-0 bottom-0 w-[2px] bg-white/50 z-20"></div>
+
+            <div className="col-span-1 text-center border-blue-400">
               Skor
             </div>
-            <div className="col-span-1 text-center border-blue-400">
+
+            <div className="absolute left-[calc((10/16)*100%)] top-0 bottom-0 w-[2px] bg-white/50 z-20"></div>
+
+            <div className="col-span-1 text-center mr-7 border-blue-400">
               Nilai
             </div>
 
             <div className="absolute left-[calc((10.8/16)*100%)] top-0 bottom-0 w-[2px] bg-white/50 z-20"></div>
             
             {/* Kolom 6-8: KPMR Sub-header */}
-            <div className="col-span-3 text-center border-r border-blue-400">
+            <div className="col-span-3 text-center ">
               Indicator
             </div>
-            <div className="col-span-1 text-center border-r border-blue-400">
+
+            <div className="absolute left-[calc((14/16)*100%)] top-0 bottom-0 w-[3px] bg-white/50 z-20"></div>
+
+            <div className="col-span-1 text-center border-blue-400">
               Skor
             </div>
+
+            <div className="absolute left-[calc((15/16)*100%)] top-0 bottom-0 w-[2px] bg-white/50 z-20"></div>
+
             <div className="col-span-1 text-center">
               Nilai
             </div>
@@ -429,7 +440,7 @@ export default function PeringkatKomposit() {
                 </div>
                 
                 {/* Kolom 4: Skor */}
-                <div className="col-span-1 flex items-center justify-center">
+                <div className="col-span-1 ml-5 flex items-center justify-center">
                   <ScoreCell value={item.inherentSkor} />
                 </div>
                 
@@ -445,12 +456,12 @@ export default function PeringkatKomposit() {
                 </div>
                 
                 {/* Kolom 7: Skor */}
-                <div className="col-span-1 flex items-center justify-center">
+                <div className="col-span-1 ml-10 flex items-center justify-center">
                   <ScoreCell value={item.kpmrSkor} />
                 </div>
                 
                 {/* Kolom 8: Nilai (KPMR Skor × BHz) */}
-                <div className="col-span-1 flex items-center justify-center">
+                <div className="col-span-1 ml-10 flex items-center justify-center">
                   <ScoreCell value={item.kpmrNilai} />
                 </div>
               </div>
@@ -479,18 +490,18 @@ export default function PeringkatKomposit() {
             
             {/* Kolom 3-5: INHERENT SECTION */}
             {/* Kolom 3: Indicator */}
-            <div className="col-span-3 flex items-center justify-center">
+            <div className="col-span-3 -ml-0.5 mr-4 flex items-center justify-center">
               <IndicatorCell indicator={footerData.IndicatoravgInherentNilai}  />
             </div>
 
-            <div className="col-span-1 flex items-center justify-end">
+            <div className="col-span-1 mr-4 flex items-center justify-end">
               <h4>Avg Nilai :</h4>
             </div>
             
             {/* Kolom 4: Skor (avg nilai) */}
-            <div className="col-span-1 flex items-center justify-center">
+            <div className="col-span-1 flex mr-5 items-center justify-center">
               <div className="flex flex-col items-center justify-center space-y-1">
-                <div className="font-bold text-white">
+                <div className="font-bold text-lg text-white">
                   {footerData.avgInherentNilai.toFixed(2)}
                 </div>
               </div>
@@ -500,18 +511,18 @@ export default function PeringkatKomposit() {
   
             {/* Kolom 6-8: KPMR SECTION */}
             {/* Kolom 6: Indicator */}
-            <div className="col-span-3 flex items-center justify-center">
+            <div className="col-span-3 mr-4 -ml-2 flex items-center justify-center">
               <IndicatorCell indicator={footerData.IndicatoravgkpmrNilai}  />
             </div>
 
-            <div className="col-span-1 flex items-center justify-end">
+            <div className="col-span-1 mr-2 flex items-center justify-end">
               <h4>Avg Nilai :</h4>
             </div>
             
             {/* Kolom 7: Skor - AVG nilai */}
              <div className="col-span-1 flex items-center justify-center">
               <div className="flex flex-col items-center justify-center space-y-1">
-                <div className="font-bold text-white">
+                <div className="font-bold text-lg text-white">
                   {footerData.avgKpmrNilai.toFixed(2)}
                 </div>
               </div>
@@ -523,33 +534,33 @@ export default function PeringkatKomposit() {
       <div className="mt-6 rounded-lg border border-gray-200 bg-white p-3">
         <div className="flex flex-col gap-3">
           <div className="flex flex-wrap items-center gap-3">
-            <span className="text-xs font-semibold text-gray-700">
-              Inherent:
+            <span className="text-base font-semibold text-gray-950">
+              INHERENT :
             </span>
             {INHERENT_RISK_INDICATORS.map((i, idx) => (
-              <div key={idx} className="flex items-center gap-1.5 text-xs">
+              <div key={idx} className="flex items-center gap-1.5 text-base font-semibold">
                 <span
-                  className="w-3 h-3 rounded border"
+                  className="w-5 h-5 rounded border"
                   style={{ backgroundColor: i.color }}
                 />
-                <span className="text-gray-600">
+                <span className="text-gray-950">
                   {i.label} ({i.min.toFixed(2)}–{i.max.toFixed(2)})
                 </span>
               </div>
             ))}
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="text-xs font-semibold text-gray-700">
-              KPMR:
+          <div className="flex flex-wrap items-center gap-5">
+            <span className="text-base font-semibold text-gray-950">
+              KPMR :
             </span>
             {KPMR_RISK_INDICATORS.map((i, idx) => (
-              <div key={idx} className="flex items-center gap-1.5 text-xs">
+              <div key={idx} className="flex items-center gap-1.5 text-base font-semibold">
                 <span
-                  className="w-3 h-3 rounded border"
+                  className="w-5 h-5 rounded border"
                   style={{ backgroundColor: i.color }}
                 />
-                <span className="text-gray-600">
+                <span className="text-gray-950">
                   {i.label} ({i.min.toFixed(2)}–{i.max.toFixed(2)})
                 </span>
               </div>

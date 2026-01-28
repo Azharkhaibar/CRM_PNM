@@ -1,10 +1,10 @@
-import { normalizeInherentRows, normalizeInherentParameter } from "../../utils/normalize/normalizeInherentRows";
-import { normalizeKpmrRows, normalizeKpmrAspek, normalizeKpmrPertanyaan } from "../../utils/normalize/normalizeKpmrRows";
+import { normalizeInherentRows, normalizeInherentParameter } from "../normalize/normalizeInherentRows";
+import { normalizeKpmrRows, normalizeKpmrAspek, normalizeKpmrPertanyaan } from "../normalize/normalizeKpmrRows";
 
 export function buildRiskKeys({ categoryId, year, quarter }) {
   return {
     inherentKey: `risk:${categoryId}:inherent:${year}:${quarter}`,
-    derivedKey: `derived_${categoryId}_${year}_${quarter}`,
+     derivedKey: `derived:${categoryId}:${year}:${quarter}`,
     kpmrKey: `risk:${categoryId}:kpmr:${year}`,
   };
 }

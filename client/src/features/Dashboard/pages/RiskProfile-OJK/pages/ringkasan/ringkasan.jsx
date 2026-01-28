@@ -28,7 +28,7 @@ const CATEGORIES = [
   { id: "likuiditas-produk", label: "Likuiditas Produk", code: "LKD", Icon: HandCoins },
   { id: "kredit-produk", label: "Kredit Produk", code: "KRD", Icon: BanknoteArrowUp },
   { id: "konsentrasi-produk", label: "Konsentrasi Produk", code: "KTS", Icon: BrainCircuit },
-  { id: "operasional", label: "Operasional", code: "OPS", Icon: Cog },
+  { id: "operasional-regulatory", label: "Operasional", code: "OPS", Icon: Cog },
   { id: "hukum-regulatory", label: "Hukum", code: "HKM", Icon: Scale },
   { id: "kepatuhan-regulatory", label: "Kepatuhan", code: "KTH", Icon: ClipboardCheck },
   { id: "reputasi-regulatory", label: "Reputasi", code: "RTS", Icon: CircleStar },
@@ -291,15 +291,15 @@ function KategoriFilter({ filter, setFilter }) {
 
   return (
     <div className="w-full bg-blue-50 p-4 rounded-lg border border-blue-200">
-      <h3 className="font-semibold mb-3 text-blue-800">Filter Kategori</h3>
-      <div className="flex flex-wrap gap-4">
+      <h3 className="font-semibold text-2xl tracking-wide mb-3 text-blue-800">Filter Kategori</h3>
+      <div className="grid grid-cols-7  gap-4">
         {/* Model Produk */}
-        <div className="min-w-[500px]">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+        <div className="col-span-2">
+          <label className="block text-base ml-2 font-semibold tracking-wide text-gray-700 mb-1">
             Model Produk
           </label>
           <select
-            className="w-full border border-gray-950 rounded-md px-3 py-2 text-sm bg-white"
+            className="w-full border border-gray-950 rounded-md px-3 py-2 text-base bg-white"
             value={filter.model}
             onChange={(e) => handleFilterChange("model", e.target.value)}
           >
@@ -313,12 +313,12 @@ function KategoriFilter({ filter, setFilter }) {
 
         {/* Prinsip - Hanya tampil jika bukan "tanpa_model" */}
         {filter.model !== "tanpa_model" && (
-          <div className="min-w-[500px]">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+          <div className="col-span-2">
+            <label className="block text-base ml-2 font-semibold tracking-wide text-gray-700 mb-1">
               Prinsip
             </label>
             <select
-              className="w-full border border-gray-950 rounded-md px-3 py-2 text-sm bg-white"
+              className="w-full border border-gray-950 rounded-md px-3 py-2 text-base bg-white"
               value={filter.prinsip}
               onChange={(e) => handleFilterChange("prinsip", e.target.value)}
             >
@@ -333,12 +333,12 @@ function KategoriFilter({ filter, setFilter }) {
 
         {/* Jenis Reksa Dana (hanya untuk Open-End) */}
         {filter.model === "open_end" && (
-          <div className="min-w-[500px]">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+          <div className="col-span-2">
+            <label className="block text-base ml-2 tracking-wide font-semibold text-gray-700 mb-1">
               Jenis Reksa Dana
             </label>
             <select
-              className="w-full border border-gray-950 rounded-md px-3 py-2 text-sm bg-white"
+              className="w-full border border-gray-950 rounded-md px-3 py-2 text-base bg-white"
               value={filter.jenis}
               onChange={(e) => handleFilterChange("jenis", e.target.value)}
             >
@@ -353,14 +353,14 @@ function KategoriFilter({ filter, setFilter }) {
 
         {/* Aset Dasar (hanya untuk Terstruktur) - MULTI SELECT */}
         {filter.model === "terstruktur" && (
-          <div className="min-w-[500px] relative" ref={underlyingDropdownRef}>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+          <div className="col-span-2 relative" ref={underlyingDropdownRef}>
+            <label className="block text-base ml-2 font-semibold tracking-wide text-gray-700 mb-1">
               Aset Dasar
             </label>
             <div className="relative">
               <button
                 type="button"
-                className="w-full border border-gray-950 rounded-md px-3 py-2 text-sm bg-white text-left flex justify-between items-center"
+                className="w-full border border-gray-950 rounded-md px-3 py-1.5 text-base bg-white text-left flex justify-between items-center"
                 onClick={() => setShowUnderlyingDropdown(!showUnderlyingDropdown)}
               >
                 <span className="truncate">
@@ -374,7 +374,7 @@ function KategoriFilter({ filter, setFilter }) {
                   <div className="p-2 border-b">
                     <button
                       type="button"
-                      className="w-full text-left px-2 py-1 text-xs text-blue-800 hover:bg-blue-50 rounded"
+                      className="w-full text-left px-2 py-1 text-base text-blue-800 hover:bg-blue-50 rounded"
                       onClick={() => {
                         setFilter(prev => ({ ...prev, underlying: [] }));
                         setShowUnderlyingDropdown(false);
@@ -434,8 +434,8 @@ function KategoriFilter({ filter, setFilter }) {
       {/* Info Filter Aktif */}
       {(filter.model || (filter.model !== "tanpa_model" && filter.prinsip) || filter.jenis || 
         (Array.isArray(filter.underlying) && filter.underlying.length > 0 && filter.model === "terstruktur")) && (
-        <div className="mt-3 text-sm text-gray-800">
-          Filter aktif: 
+        <div className="mt-3 text-base font-semibold text-gray-800">
+          Filter aktif :<br/>
           {[
             filter.model && `Model: ${KATEGORI_OPTIONS.model.find(o => o.value === filter.model)?.label}`,
             // Tampilkan prinsip hanya jika bukan "tanpa_model"
@@ -979,67 +979,49 @@ const renderDataRows = () => {
       <Header title="Ringkasan Risk Assessment" />
 
       <div className="bg-white rounded-lg p-4 shadow space-y-4">
-        {/* CATEGORY SELECTION */}
-        <div>
-          <div className="flex justify-between items-center mb-2">
-            <h3 className="font-semibold">Kategori Halaman</h3>
-            <div className="flex gap-2">
-              
-              <button
-                onClick={toggleAllPages}
-                className="px-3 py-1.5 text-xs bg-sky-700 text-white rounded-md hover:bg-sky-900 transition-colors"
-              >
-                {selectedPages.length === CATEGORIES.length ? 'Deselect All' : 'Select All'}
-              </button>
-            </div>
-          </div>
-          
-          <div className="bg-gradient-to-r from-blue-700 to-sky-600 p-2 rounded-lg">
-            <div className="max-w-[1560px] mx-auto">
-              <div 
-                ref={kategoriScrollRef}
-                className="flex gap-4 overflow-x-auto pb-2 cursor-grab scrollbar-thin scrollbar-thumb-blue-400 scrollbar-track-blue-200"
-                style={{ 
-                  scrollBehavior: 'smooth',
-                  WebkitOverflowScrolling: 'touch'
-                }}
-                onMouseDown={handleMouseDown}
-                onMouseLeave={() => {
-                  if (isDragging) {
-                    setIsDragging(false);
-                    if (kategoriScrollRef.current) {
-                      kategoriScrollRef.current.style.cursor = 'grab';
-                    }
-                  }
-                }}
-              >
-                {CATEGORIES.map((c) => {
-                  const Icon = c.Icon;
-                  const active = selectedPages.includes(c.id);
-                  return (
-                    <Button
-                      key={c.id}
-                      onClick={() => togglePage(c.id)}
-                      className={
-                        active
-                          ? "bg-blue-900 text-white flex-shrink-0 hover:bg-gray-300 hover:text-black"
-                          : "bg-white text-black flex-shrink-0 hover:bg-blue-900 hover:text-white"
-                      }
-                    >
-                      <Icon className="w-4 h-4 mr-2" />
-                      {c.label}
-                    </Button>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-          
-          {/* Info jumlah yang terpilih */}
-          <div className="mt-2 text-sm text-gray-600">
-            {selectedPages.length} dari {CATEGORIES.length} kategori terpilih
-          </div>
-        </div>
+{/* CATEGORY SELECTION */}
+<div>
+  <div className="flex justify-between items-center mb-2">
+    <h3 className="font-semibold">Kategori Halaman</h3>
+    <div className="flex gap-2">
+      <button
+        onClick={toggleAllPages}
+        className="px-3 py-1.5 text-xs bg-sky-700 text-white rounded-md hover:bg-sky-900 transition-colors"
+      >
+        {selectedPages.length === CATEGORIES.length ? 'Deselect All' : 'Select All'}
+      </button>
+    </div>
+  </div>
+  
+  <div className="bg-gradient-to-r from-blue-700 to-sky-600 p-4 rounded-lg">
+    {/* HAPUS semua scroll logic dan ganti dengan flex-wrap */}
+    <div className="flex flex-wrap gap-3">
+      {CATEGORIES.map((c) => {
+        const Icon = c.Icon;
+        const active = selectedPages.includes(c.id);
+        return (
+          <Button
+            key={c.id}
+            onClick={() => togglePage(c.id)}
+            className={
+              active
+                ? "bg-blue-900 text-white flex-shrink-0 hover:bg-gray-300 hover:text-black"
+                : "bg-white text-black flex-shrink-0 hover:bg-blue-900 hover:text-white"
+            }
+          >
+            <Icon className="w-4 h-4 mr-2" />
+            {c.label}
+          </Button>
+        );
+      })}
+    </div>
+  </div>
+  
+  {/* Info jumlah yang terpilih */}
+  <div className="mt-2 text-sm text-gray-600">
+    {selectedPages.length} dari {CATEGORIES.length} kategori terpilih
+  </div>
+</div>
 
         {/* KATEGORI FILTER */}
         {selectedPages.length > 0 && (

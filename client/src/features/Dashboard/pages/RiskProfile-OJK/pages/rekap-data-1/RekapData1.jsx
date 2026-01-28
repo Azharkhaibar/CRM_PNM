@@ -28,7 +28,7 @@ const CATEGORIES = [
   { id: "likuiditas-produk", label: "Likuiditas Produk", Icon: HandCoins },
   { id: "kredit-produk", label: "Kredit Produk", Icon: BanknoteArrowUp },
   { id: "konsentrasi-produk", label: "Konsentrasi Produk", Icon: BrainCircuit },
-  { id: "operasional", label: "Operasional", Icon: Cog },
+  { id: "operasional-regulatory", label: "Operasional", Icon: Cog },
   { id: "hukum-regulatory", label: "Hukum", Icon: Scale },
   { id: "kepatuhan-regulatory", label: "Kepatuhan", Icon: ClipboardCheck },
   { id: "reputasi-regulatory", label: "Reputasi", Icon: CircleStar },
@@ -124,6 +124,8 @@ function useGlobalSummaryAdapter() {
           year,
           quarter: activeQuarter,
         });
+
+          console.log(`Derived data for ${category.id}:`, derivedData);
 
         const inherentSummary =
           typeof derivedData?.summary === "number"
@@ -416,17 +418,16 @@ const footerDisplay = useMemo(() => {
 {/* Tabel Container */}
 <div className="mt-6 bg-white rounded-xl shadow-lg overflow-hidden">
   {/* Tabel Header */}
-  <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white">
+  <div className="bg-blue-700 text-white">
     <div className="grid grid-cols-12 p-4 font-bold text-lg">
-      <div className="col-span-2 flex items-center gap-2">
-        <FileText className="w-5 h-5" />
-        <span>Jenis Risiko</span>
+      <div className="col-span-2 ml-13 flex items-center gap-2">
+        <span>JENIS RISIKO</span>
       </div>
-      <div className="col-span-2 text-center">BVt</div>
-      <div className="col-span-2 text-center">BHz</div>
-      <div className="col-span-2 text-center">INHERENT</div>
-      <div className="col-span-2 text-center">KPMR</div>
-      <div className="col-span-2 text-center">Peringkat Tingkat Komposit</div>
+      <div className="col-span-2 mr-3 text-center">BVt</div>
+      <div className="col-span-2 mr-4 text-center">BHz</div>
+      <div className="col-span-2 mr-5 text-center">INHERENT</div>
+      <div className="col-span-2 mr-6 text-center">KPMR</div>
+      <div className="col-span-2 mr-10 text-center">Peringkat Tingkat Komposit</div>
     </div>
   </div>
 
@@ -443,7 +444,7 @@ const footerDisplay = useMemo(() => {
               <FileText className="w-5 h-5 text-blue-600" />
             )}
           </div>
-          <span className="font-bold text-lg text-gray-800">{item.nama}</span>
+          <span className="font-bold text-lg tracking-wide text-gray-800">{item.nama}</span>
         </div>
 
         {/* BVt (Fixed) */}
@@ -498,14 +499,15 @@ const footerDisplay = useMemo(() => {
   {/* Tabel Footer */}
   <div className="bg-blue-900 border-t">
     <div className="grid grid-cols-12 p-4 text-white font-bold">
-      <div className="col-span-4 text-white flex items-center text-2xl">
+      <div className="col-span-2"></div>
+      <div className="col-span-2 text-white flex tracking-wider items-center text-2xl">
         Peringkat Komposit
       </div>
       <div className="col-span-1 text-center text-gray-500 flex items-center justify-center"></div>
       <div className="col-span-1 text-center text-gray-500 flex items-center justify-center"></div>
       
       {/* Inherent Footer */}
-      <div className="col-span-2 flex items-center justify-center">
+      <div className="col-span-2 mr-8  flex items-center justify-center">
         <ScoreCell 
           value={footerDisplay.inherentDisplay} 
           indicator={footerDisplay.inherentIndicator}
@@ -514,7 +516,7 @@ const footerDisplay = useMemo(() => {
       </div>
       
       {/* KPMR Footer */}
-      <div className="col-span-2 flex items-center justify-center">
+      <div className="col-span-2 mr-8  flex items-center justify-center">
         <ScoreCell 
           value={footerDisplay.kpmrDisplay} 
           indicator={footerDisplay.kpmrIndicator}
@@ -523,7 +525,7 @@ const footerDisplay = useMemo(() => {
       </div>
       
       {/* PTK Footer */}
-      <div className="col-span-2 flex items-center justify-center">
+      <div className="col-span-2 mr-8 flex items-center justify-center">
         <ScoreCell 
           value={footerDisplay.ptkDisplay} 
           indicator={footerDisplay.ptkIndicator}
@@ -535,45 +537,43 @@ const footerDisplay = useMemo(() => {
 </div>
 
 
-<div className="mt-6 rounded-lg border border-gray-200 bg-white p-3">
-  <div className="flex flex-col gap-3">
+      <div className="mt-6 rounded-lg border border-gray-200 bg-white p-3">
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="text-base font-semibold text-gray-950">
+              INHERENT :
+            </span>
+            {INHERENT_RISK_INDICATORS.map((i, idx) => (
+              <div key={idx} className="flex items-center gap-1.5 text-base font-semibold">
+                <span
+                  className="w-5 h-5 rounded border"
+                  style={{ backgroundColor: i.color }}
+                />
+                <span className="text-gray-950">
+                  {i.label} ({i.min.toFixed(2)}–{i.max.toFixed(2)})
+                </span>
+              </div>
+            ))}
+          </div>
 
-    <div className="flex flex-wrap items-center gap-3">
-      <span className="text-xs font-semibold text-gray-700">
-        Inherent:
-      </span>
-      {INHERENT_RISK_INDICATORS.map((i, idx) => (
-        <div key={idx} className="flex items-center gap-1.5 text-xs">
-          <span
-            className="w-3 h-3 rounded border"
-            style={{ backgroundColor: i.color }}
-          />
-          <span className="text-gray-600">
-            {i.label} ({i.min.toFixed(2)}–{i.max.toFixed(2)})
-          </span>
+          <div className="flex flex-wrap items-center gap-5">
+            <span className="text-base font-semibold text-gray-950">
+              KPMR :
+            </span>
+            {KPMR_RISK_INDICATORS.map((i, idx) => (
+              <div key={idx} className="flex items-center gap-1.5 text-base font-semibold">
+                <span
+                  className="w-5 h-5 rounded border"
+                  style={{ backgroundColor: i.color }}
+                />
+                <span className="text-gray-950">
+                  {i.label} ({i.min.toFixed(2)}–{i.max.toFixed(2)})
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
-      ))}
-    </div>
-
-    <div className="flex flex-wrap items-center gap-3">
-      <span className="text-xs font-semibold text-gray-700">
-        KPMR:
-      </span>
-      {KPMR_RISK_INDICATORS.map((i, idx) => (
-        <div key={idx} className="flex items-center gap-1.5 text-xs">
-          <span
-            className="w-3 h-3 rounded border"
-            style={{ backgroundColor: i.color }}
-          />
-          <span className="text-gray-600">
-            {i.label} ({i.min.toFixed(2)}–{i.max.toFixed(2)})
-          </span>
-        </div>
-      ))}
-    </div>
-
-  </div>
-</div>
+      </div>
 
       
     </div>

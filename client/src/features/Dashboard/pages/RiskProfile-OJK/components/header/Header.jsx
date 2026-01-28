@@ -73,13 +73,13 @@ export default function Header({ title }) {
   ];
 
   return (
-    <div className="w-full bg-gradient-to-r from-blue-700 to-sky-600 text-white p-6 rounded-xl flex items-center justify-between">
+    <div className="w-full bg-linear-to-r from-blue-600 to-indigo-600  text-white p-6 rounded-xl flex items-center justify-between">
       {/* TITLE */}
       <div>
-        <h1 className="text-2xl font-semibold whitespace-nowrap">
+        <h1 className="text-3xl font-semibold whitespace-nowrap">
           {title}
         </h1>
-        <span className="text-xs">
+        <span className="text-sm">
           Silakan isi risk profile untuk OJK
         </span>
       </div>

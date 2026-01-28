@@ -13,13 +13,13 @@ import PopUpDelete from "../../../components/PopUp/PopUpDelete";
 
 const IndicatorItem = React.memo(({ label, value, onChange, color, loading = false, editMode = false }) => (
   <div className="rounded-xl px-2 py-2 text-white" style={{ backgroundColor: color }}>
-    <div className="text-xs font-bold text-center mb-1">{label}</div>
+    <div className="text-base font-bold text-center mb-1">{label}</div>
     <Textarea
-      className="bg-white text-center text-black text-xs min-h-[100px]"
       value={value || ""}
       onChange={(e) => onChange(e.target.value)}
       disabled={loading || !editMode}
       placeholder="masukan deskripsi level"
+      className="bg-white text-center text-black text-md min-h-[100px]"
     />
   </div>
 ));
@@ -41,6 +41,7 @@ function PertanyaanPanel({
 }) {
   const [openPertanyaanList, setOpenPertanyaanList] = useState(false);
   const [originalPertanyaan, setOriginalPertanyaan] = useState(null);
+  const [draftPertanyaan, setDraftPertanyaan] = useState(null);
   const dropdownPertanyaanBtnRef = useRef(null);
   const [dropdownPertanyaanRect, setDropdownPertanyaanRect] = useState(null);
   const dropdownPertanyaanListRef = useRef(null);
@@ -58,9 +59,23 @@ function PertanyaanPanel({
     activePertanyaanIndex >= 0 && 
     activePertanyaanIndex < pertanyaanList.length 
       ? activePertanyaanIndex 
-      : null;
+      : -1;
 
-  const currentPertanyaan = safeActivePertanyaanIndex !== null ? pertanyaanList[safeActivePertanyaanIndex] : null;
+  // Fungsi untuk mendapatkan currentPertanyaan dengan aman
+  const getCurrentPertanyaan = () => {
+    if (editModePertanyaan && draftPertanyaan) {
+      return draftPertanyaan;
+    }
+    
+    if (safeActivePertanyaanIndex >= 0 && pertanyaanList[safeActivePertanyaanIndex]) {
+      return pertanyaanList[safeActivePertanyaanIndex];
+    }
+    
+    return draftPertanyaan || createEmptyPertanyaan();
+  };
+
+  const currentPertanyaan = getCurrentPertanyaan();
+  
   const hasPertanyaan = Array.isArray(pertanyaanList) && pertanyaanList.length > 0;
   const [showPertanyaanForm, setShowPertanyaanForm] = useState(true);
 
@@ -98,22 +113,71 @@ function PertanyaanPanel({
   useEffect(() => {
     setEditModePertanyaan(false);
     setOriginalPertanyaan(null);
+    setDraftPertanyaan(null);
   }, [activePertanyaanIndex]);
 
+  // PERUBAHAN PENTING: Otomatis masuk ke mode buat baru ketika pertama kali atau tidak ada pertanyaan dipilih
+  useEffect(() => {
+    // Jika tidak ada pertanyaan sama sekali di daftar, atau activePertanyaanIndex = -1
+    if (!hasPertanyaan || activePertanyaanIndex === -1) {
+      setEditModePertanyaan(true); // Otomatis masuk edit mode
+      if (!draftPertanyaan) {
+        setDraftPertanyaan(createEmptyPertanyaan()); // Buat draft kosong
+      }
+    }
+  }, [hasPertanyaan, activePertanyaanIndex]);
+
+  function createEmptyPertanyaan() {
+    return {
+      id: crypto.randomUUID(),
+      nomor: "",
+      pertanyaan: "",
+      skor: {},
+      indicator: {
+        strong: "",
+        satisfactory: "",
+        fair: "",
+        marginal: "",
+        unsatisfactory: "",
+      },
+      evidence: "",
+    };
+  }
+
   // Format question label for dropdown display
-  const formatPertanyaanLabel = useCallback((pertanyaan) => {
-    if (!pertanyaan) return "Pilih atau Tambah Pertanyaan Baru";
+  const formatPertanyaanLabel = useCallback((pertanyaan, index) => {
+    if (!pertanyaan) return "Buat Pertanyaan Baru";
     
-    const nomor = pertanyaan.nomor || "";
+    const nomor = pertanyaan.nomor || (index + 1);
     const pertanyaanText = pertanyaan.pertanyaan || "Tanpa Pertanyaan";
     const copyText = pertanyaan.pertanyaan?.includes("(Copy)") ? " (Copy)" : "";
     
     return `${nomor} – ${pertanyaanText.substring(0, 50)}${pertanyaanText.length > 50 ? "..." : ""}${copyText}`;
   }, []);
 
-  // Update specific field in the active question
+  // Update draft pertanyaan saat dalam edit mode
+  const handleChangeDraftPertanyaan = useCallback((path, value) => {
+    if (!draftPertanyaan || !editModePertanyaan) return;
+    
+    const updatedDraft = { ...draftPertanyaan };
+    const keys = path.split('.');
+    let current = updatedDraft;
+    
+    for (let i = 0; i < keys.length - 1; i++) {
+      const key = keys[i];
+      if (!current[key]) current[key] = {};
+      current = current[key];
+    }
+    
+    const lastKey = keys[keys.length - 1];
+    current[lastKey] = value;
+    
+    setDraftPertanyaan(updatedDraft);
+  }, [draftPertanyaan, editModePertanyaan]);
+
+  // Update specific field in the active question (non-edit mode)
   const handleChangePertanyaanField = useCallback((path, value) => {
-    if (aspekIndex === null || safeActivePertanyaanIndex === null) return;
+    if (aspekIndex === null || safeActivePertanyaanIndex === -1) return;
 
     setRows((prev) =>
       prev.map((row, ri) => {
@@ -146,7 +210,7 @@ function PertanyaanPanel({
 
   // Update score for the active quarter
   const handleSkorChange = useCallback((value) => {
-    if (aspekIndex === null || safeActivePertanyaanIndex === null) return;
+    if (aspekIndex === null || safeActivePertanyaanIndex === -1) return;
 
     const q = activeQuarter.toUpperCase();
 
@@ -167,45 +231,45 @@ function PertanyaanPanel({
     );
   }, [aspekIndex, safeActivePertanyaanIndex, activeQuarter, setRows]);
 
-  // Persist data to storage
-  const saveDataToStorage = useCallback(() => {
-    if (typeof onSaveData === 'function') {
-      return onSaveData();
-    } else if (typeof window !== 'undefined' && typeof window.saveKpmrData === 'function') {
-      try {
-        const success = window.saveKpmrData();
-        if (success) {
-          return true;
-        } else {
-          return false;
-        }
-      } catch (error) {
-        return false;
-      }
-    }
-    return false;
-  }, [onSaveData]);
+  // Update draft skor for the active quarter
+  const handleDraftSkorChange = useCallback((value) => {
+    if (!draftPertanyaan || !editModePertanyaan) return;
+
+    const q = activeQuarter.toUpperCase();
+    const updatedDraft = {
+      ...draftPertanyaan,
+      skor: {
+        ...draftPertanyaan.skor,
+        [q]: value,
+      },
+    };
+    
+    setDraftPertanyaan(updatedDraft);
+  }, [draftPertanyaan, editModePertanyaan, activeQuarter]);
 
   // Enter question edit mode
   const handleEditPertanyaan = useCallback(() => {
-    if (safeActivePertanyaanIndex === null) return;
+    if (safeActivePertanyaanIndex === -1) return;
     
     const pertanyaan = pertanyaanList[safeActivePertanyaanIndex];
     setOriginalPertanyaan(structuredClone(pertanyaan));
+    setDraftPertanyaan(structuredClone(pertanyaan));
     setEditModePertanyaan(true);
   }, [safeActivePertanyaanIndex, pertanyaanList]);
 
-  // Save updated question
-  const handleUpdatePertanyaan = useCallback(() => {
-    if (aspekIndex === null || safeActivePertanyaanIndex === null) return;
+  // Add new question
+  const handleAddNewPertanyaan = useCallback(() => {
+    if (aspekIndex === null) return;
+
+    const pertanyaanToAdd = draftPertanyaan || createEmptyPertanyaan();
     
-    if (!currentPertanyaan?.pertanyaan?.trim()) {
+    if (!pertanyaanToAdd.pertanyaan?.trim()) {
       alert("Pertanyaan tidak boleh kosong!");
       return;
     }
-
+    
     const q = activeQuarter.toUpperCase();
-    const skorValue = currentPertanyaan?.skor?.[q];
+    const skorValue = pertanyaanToAdd.skor?.[q];
     if (skorValue !== undefined && skorValue !== null && skorValue !== "") {
       const skorNum = Number(skorValue);
       if (isNaN(skorNum) || skorNum < 1 || skorNum > 5) {
@@ -214,38 +278,29 @@ function PertanyaanPanel({
       }
     }
 
-    setEditModePertanyaan(false);
-    setOriginalPertanyaan(null);
+    const newPertanyaan = {
+      ...pertanyaanToAdd,
+      id: crypto.randomUUID(),
+    };
     
-    setTimeout(() => {
-      if (typeof onSaveData === 'function') {
-        const success = onSaveData();
-        if (!success) {
-          alert("⚠️ Pertanyaan berhasil diupdate tapi gagal disimpan!");
-        }
-      }
-    }, 100);
-  }, [aspekIndex, safeActivePertanyaanIndex, currentPertanyaan, activeQuarter, onSaveData]);
-
-  // Add new question
-  const handleAddNewPertanyaan = useCallback(() => {
-    if (aspekIndex === null) return;
-
     const updatedRows = rows.map((r, i) =>
       i === aspekIndex
         ? { 
             ...r, 
-            pertanyaanList: [...(r.pertanyaanList || []), createPertanyaan()] 
+            pertanyaanList: [...(r.pertanyaanList || []), newPertanyaan] 
           }
         : r
     );
 
     setRows(updatedRows);
 
-    const newIndex = pertanyaanList.length;
+    const newIndex = (rows[aspekIndex]?.pertanyaanList || []).length;
     setActivePertanyaanIndex(newIndex);
-    setEditModePertanyaan(false);
+    
+    // SETELAH BERHASIL MENAMBAH, RESET KE DRAFT KOSONG UNTUK PERTANYAAN BARU BERIKUTNYA
+    setEditModePertanyaan(true); // Tetap dalam edit mode
     setOriginalPertanyaan(null);
+    setDraftPertanyaan(createEmptyPertanyaan()); // Reset ke draft kosong
     
     setTimeout(() => {
       if (typeof onSaveData === 'function') {
@@ -255,11 +310,64 @@ function PertanyaanPanel({
         }
       }
     }, 100);
-  }, [aspekIndex, pertanyaanList.length, rows, setRows, setActivePertanyaanIndex, onSaveData]);
+  }, [aspekIndex, draftPertanyaan, rows, setRows, setActivePertanyaanIndex, activeQuarter, onSaveData]);
+
+  // Save updated question
+   // Save updated question
+  const handleUpdatePertanyaan = useCallback(() => {
+    if (aspekIndex === null || safeActivePertanyaanIndex === -1 || !draftPertanyaan) return;
+    
+    if (!draftPertanyaan.pertanyaan?.trim()) {
+      alert("Pertanyaan tidak boleh kosong!");
+      return;
+    }
+
+    const q = activeQuarter.toUpperCase();
+    const skorValue = draftPertanyaan.skor?.[q];
+    if (skorValue !== undefined && skorValue !== null && skorValue !== "") {
+      const skorNum = Number(skorValue);
+      if (isNaN(skorNum) || skorNum < 1 || skorNum > 5) {
+        alert("Skor harus antara 1 dan 5!");
+        return;
+      }
+    }
+
+    setRows((prev) => {
+      const updatedRows = prev.map((row, ri) => {
+        if (ri !== aspekIndex) return row;
+        
+        return {
+          ...row,
+          pertanyaanList: (row.pertanyaanList || []).map((p, pi) =>
+            pi === safeActivePertanyaanIndex ? draftPertanyaan : p
+          ),
+        };
+      });
+      
+      // PERBAIKAN: Simpan ke storage setelah state diupdate
+      setTimeout(() => {
+        if (typeof onSaveData === 'function') {
+          onSaveData(updatedRows);
+        }
+      }, 0);
+      
+      return updatedRows;
+    });
+    
+    setEditModePertanyaan(false);
+    setOriginalPertanyaan(null);
+    setDraftPertanyaan(null);
+  }, [aspekIndex, safeActivePertanyaanIndex, draftPertanyaan, activeQuarter, setRows, onSaveData]);
 
   // Cancel question editing
   const handleCancelEditPertanyaan = useCallback(() => {
-    if (originalPertanyaan && aspekIndex !== null && safeActivePertanyaanIndex !== null) {
+    const confirmed = window.confirm(
+      "Batalkan perubahan? Semua perubahan yang belum disimpan akan hilang."
+    );
+    
+    if (!confirmed) return;
+    
+    if (originalPertanyaan && aspekIndex !== null && safeActivePertanyaanIndex >= 0) {
       setRows((prev) =>
         prev.map((row, ri) => {
           if (ri !== aspekIndex) return row;
@@ -282,11 +390,12 @@ function PertanyaanPanel({
     
     setEditModePertanyaan(false);
     setOriginalPertanyaan(null);
+    setDraftPertanyaan(null);
   }, [originalPertanyaan, aspekIndex, safeActivePertanyaanIndex, setRows, onSaveData]);
 
   // Duplicate current question
   const handleCopyPertanyaan = useCallback(() => {
-    if (aspekIndex === null || safeActivePertanyaanIndex === null || !currentPertanyaan) return;
+    if (aspekIndex === null || safeActivePertanyaanIndex === -1 || !currentPertanyaan) return;
 
     const copiedPertanyaan = {
       ...structuredClone(currentPertanyaan),
@@ -305,10 +414,11 @@ function PertanyaanPanel({
 
     setRows(updatedRows);
 
-    const newIndex = pertanyaanList.length;
+    const newIndex = (rows[aspekIndex]?.pertanyaanList || []).length;
     setActivePertanyaanIndex(newIndex);
     setEditModePertanyaan(false);
     setOriginalPertanyaan(null);
+    setDraftPertanyaan(null);
     
     setTimeout(() => {
       if (typeof onSaveData === 'function') {
@@ -318,39 +428,40 @@ function PertanyaanPanel({
         }
       }
     }, 100);
-  }, [aspekIndex, safeActivePertanyaanIndex, currentPertanyaan, pertanyaanList.length, rows, setRows, setActivePertanyaanIndex, onSaveData]);
+  }, [aspekIndex, safeActivePertanyaanIndex, currentPertanyaan, rows, setRows, setActivePertanyaanIndex, onSaveData]);
 
   // Open delete confirmation dialog for question
- const handleOpenPertanyaanDeleteDialog = useCallback(() => {
-  if (aspekIndex === null || safeActivePertanyaanIndex === null || !currentPertanyaan) return;
-  
-  setItemToDelete({
-    name: currentPertanyaan.pertanyaan || 'pertanyaan ini',
-    nomor: currentPertanyaan.nomor || '-',
-    judul: currentPertanyaan.pertanyaan || 'Tidak ada judul',
-    aspekNomor: rows[aspekIndex]?.nomor || '-',
-    aspekJudul: rows[aspekIndex]?.judul || '-'
-  });
-  setDeleteContext({
-    type: 'pertanyaan',
-    aspekIndex: aspekIndex,
-    pertanyaanIndex: safeActivePertanyaanIndex
-  });
-  setDeleteDialogOpen(true);
-}, [aspekIndex, safeActivePertanyaanIndex, currentPertanyaan, rows]);
+  const handleOpenPertanyaanDeleteDialog = useCallback(() => {
+    if (aspekIndex === null || safeActivePertanyaanIndex === -1 || !currentPertanyaan) return;
+    
+    // Dapatkan data aspek dari rows berdasarkan aspekIndex
+    const aspekData = rows[aspekIndex];
+    
+    setItemToDelete({
+      name: currentPertanyaan.pertanyaan || 'pertanyaan ini',
+      nomor: currentPertanyaan.nomor || '-',
+      judul: currentPertanyaan.pertanyaan || 'Tidak ada judul',
+      aspekNomor: aspekData?.nomor || '-',
+      aspekJudul: aspekData?.judul || '-'
+    });
+    setDeleteContext({
+      type: 'pertanyaan',
+      aspekIndex: aspekIndex,
+      pertanyaanIndex: safeActivePertanyaanIndex
+    });
+    setDeleteDialogOpen(true);
+  }, [aspekIndex, safeActivePertanyaanIndex, currentPertanyaan, rows]);
 
   // Handle delete confirmation
   const handleConfirmDelete = useCallback(() => {
     if (!itemToDelete || !deleteContext.type) return;
 
-    setLoading(true);
+    setDeleteDialogOpen(false);
     
     if (deleteContext.type === 'pertanyaan') {
       const { aspekIndex, pertanyaanIndex } = deleteContext;
       
       if (aspekIndex === null || pertanyaanIndex === null) {
-        setLoading(false);
-        setDeleteDialogOpen(false);
         return;
       }
       
@@ -367,10 +478,11 @@ function PertanyaanPanel({
 
       setRows(updatedRows);
       
-      const nextIndex = Math.max(0, pertanyaanIndex - 1);
-      setActivePertanyaanIndex(pertanyaanIndex > 0 ? nextIndex : null);
+      const nextIndex = updatedRows[aspekIndex]?.pertanyaanList?.length > 0 
+        ? Math.max(0, pertanyaanIndex - 1) 
+        : -1;
+      setActivePertanyaanIndex(nextIndex);
       
-      setDeleteDialogOpen(false);
       setItemToDelete(null);
       setDeleteContext({ type: '', aspekIndex: null, pertanyaanIndex: null });
       
@@ -381,30 +493,87 @@ function PertanyaanPanel({
             console.error("⚠️ Pertanyaan berhasil dihapus tapi gagal menyimpan!");
           }
         }
-        setLoading(false);
       }, 100);
     }
     
-    setDeleteDialogOpen(false);
     setItemToDelete(null);
     setDeleteContext({ type: '', aspekIndex: null, pertanyaanIndex: null });
   }, [itemToDelete, deleteContext, rows, setRows, setActivePertanyaanIndex, onSaveData]);
 
   // Clear question selection
   const handleClearPertanyaanSelection = useCallback(() => {
-    setActivePertanyaanIndex(null);
-    setEditModePertanyaan(false);
+    setActivePertanyaanIndex(-1);
+    setEditModePertanyaan(true);
     setOriginalPertanyaan(null);
+    setDraftPertanyaan(createEmptyPertanyaan());
     setOpenPertanyaanList(false);
   }, []);
 
+  const handleSelectPertanyaan = (index) => {
+    setActivePertanyaanIndex(index);
+    setOpenPertanyaanList(false);
+    setEditModePertanyaan(false); // Keluar dari edit mode ketika memilih pertanyaan yang ada
+    setOriginalPertanyaan(null);
+    setDraftPertanyaan(null);
+  };
+
+  // Tentukan apakah field input harus disabled
+  const isFieldDisabled = () => {
+    if (loading) return true;
+    
+    // Jika tidak ada pertanyaan yang dipilih (membuat pertanyaan baru), field harus ENABLED
+    if (safeActivePertanyaanIndex === -1) return false;
+    
+    // Jika dalam mode edit, field harus ENABLED
+    if (editModePertanyaan) return false;
+    
+    // Default: disabled
+    return true;
+  };
+
+  // Tentukan editMode untuk komponen child
+  const isEditModeForComponents = editModePertanyaan || safeActivePertanyaanIndex === -1;
+
+  // Tentukan config tombol utama
+  const getMainButtonConfig = () => {
+    // Jika edit mode DAN safeActivePertanyaanIndex = -1 (mode buat baru)
+    if (editModePertanyaan && safeActivePertanyaanIndex === -1) {
+      return {
+        onClick: handleAddNewPertanyaan,
+        title: "Tambah Pertanyaan Baru",
+        icon: <Plus className="w-4 h-4" />,
+        className: "bg-emerald-600 hover:bg-emerald-700"
+      };
+    }
+    // Jika edit mode untuk pertanyaan yang sudah ada
+    else if (editModePertanyaan) {
+      return {
+        onClick: handleUpdatePertanyaan,
+        title: "Simpan Perubahan",
+        icon: <Save className="w-4 h-4" />,
+        className: "bg-green-600 hover:bg-green-700"
+      };
+    }
+    // Default: tambah pertanyaan baru
+    else {
+      return {
+        onClick: handleAddNewPertanyaan,
+        title: "Tambah Pertanyaan Baru",
+        icon: <Plus className="w-4 h-4" />,
+        className: "bg-emerald-600 hover:bg-emerald-700"
+      };
+    }
+  };
+
+  const mainButtonConfig = getMainButtonConfig();
+
   return (
     <div className="w-full relative">
-      <div className="bg-gradient-to-r from-blue-700 to-sky-600 text-white px-4 py-3 flex justify-between items-center border-t border-l border-r rounded-t-lg border-slate-700">
-        <div className="text-lg font-bold">Pertanyaan ({activeQuarter?.toUpperCase()})</div>
+      <div className="bg-blue-700 text-white px-4 py-3 flex justify-between items-center border-t border-l border-r rounded-t-lg border-slate-700">
+        <div className="text-2xl tracking-wider font-bold">Pertanyaan ({activeQuarter?.toUpperCase()})</div>
         <div className="flex items-center gap-2">
           {loading && (
-            <div className="text-xs bg-slate-700 text-slate-200 px-2 py-1 rounded">
+            <div className="text-xs bg-slate-700 text-white px-2 py-1 rounded">
               Memproses...
             </div>
           )}
@@ -413,7 +582,7 @@ function PertanyaanPanel({
             size="sm"
             variant="outline"
             onClick={() => setShowPertanyaanForm(!showPertanyaanForm)}
-            className="bg-slate-700 text-slate-200 hover:bg-slate-600 text-sm px-3 border-slate-600"
+            className="bg-slate-900 text-white hover:bg-slate-800 text-md px-3 border border-black"
             disabled={loading}
           >
             {showPertanyaanForm ? (
@@ -429,7 +598,7 @@ function PertanyaanPanel({
             )}
           </Button>
 
-          {safeActivePertanyaanIndex !== null && !editModePertanyaan && (
+          {safeActivePertanyaanIndex >= 0 && hasPertanyaan && !editModePertanyaan && (
             <Button
               size="icon"
               onClick={handleEditPertanyaan}
@@ -456,53 +625,59 @@ function PertanyaanPanel({
           <div className="flex items-center gap-1">
             <Button
               size="icon"
-              className="h-8 w-8 rounded-full bg-emerald-600 hover:bg-emerald-700"
-              onClick={editModePertanyaan ? handleUpdatePertanyaan : handleAddNewPertanyaan}
-              title={editModePertanyaan ? "Update Pertanyaan" : "Tambah Pertanyaan"}
+              className={`h-9 w-9 rounded-full ${mainButtonConfig.className}`}
+              onClick={mainButtonConfig.onClick}
+              title={mainButtonConfig.title}
               disabled={loading}
             >
-              {editModePertanyaan ? <Save className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+              {mainButtonConfig.icon}
             </Button>
 
-            <Button
-              size="icon"
-              className="h-8 w-8 rounded-full bg-amber-600 hover:bg-amber-700"
-              onClick={handleCopyPertanyaan}
-              disabled={safeActivePertanyaanIndex === null || loading}
-              title="Salin Pertanyaan"
-            >
-              <Copy className="w-4 h-4" />
-            </Button>
+            {!editModePertanyaan && safeActivePertanyaanIndex >= 0 && hasPertanyaan && (
+              <Button
+                size="icon"
+                className="h-9 w-9 rounded-full bg-amber-600 hover:bg-amber-700"
+                onClick={handleCopyPertanyaan}
+                disabled={loading}
+                title="Salin Pertanyaan"
+              >
+                <Copy className="w-4 h-4" />
+              </Button>
+            )}
 
-            <Button
-              size="icon"
-              className="h-8 w-8 rounded-full bg-rose-600 hover:bg-rose-700"
-              onClick={handleOpenPertanyaanDeleteDialog}
-              disabled={safeActivePertanyaanIndex === null || loading}
-              title="Hapus Pertanyaan"
-            >
-              <Trash2 className="w-4 h-4" />
-            </Button>
+            {!editModePertanyaan && safeActivePertanyaanIndex >= 0 && hasPertanyaan && (
+              <Button
+                size="icon"
+                className="h-9 w-9 rounded-full bg-rose-600 hover:bg-rose-700"
+                onClick={handleOpenPertanyaanDeleteDialog}
+                disabled={loading}
+                title="Hapus Pertanyaan"
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            )}
           </div>
         </div>
       </div>
 
       {showPertanyaanForm && (
-        <div className="bg-gradient-to-r from-blue-700 to-sky-600 text-white px-4 pb-4 border-b border-l border-r border-slate-700 space-y-3 rounded-b-lg">
+        <div className="bg-blue-700 text-white px-4 pb-4 border-b border-l border-r border-slate-700 space-y-3 rounded-b-lg">
           <div className="w-full bg-slate-200 rounded-lg p-0.5" />
 
           <div className="mt-3">
-            <label className="font-semibold text-sm ml-1 text-slate-200">
+            <label className="font-semibold text-base tracking-wide ml-1 text-white">
               Pilih Pertanyaan
             </label>
             <button
               ref={dropdownPertanyaanBtnRef}
               onClick={() => setOpenPertanyaanList((v) => !v)}
-              className="w-full mt-1 bg-white text-sm text-slate-800 px-3 py-2 rounded-md flex justify-between border border-slate-300 hover:bg-slate-50"
+              className="w-full mt-1 bg-white text-md text-slate-800 px-3 py-2 rounded-md flex justify-between border border-slate-300 hover:bg-slate-50"
               disabled={loading || !hasPertanyaan}
             >
               <span className="truncate">
-                {currentPertanyaan ? formatPertanyaanLabel(currentPertanyaan) : "Pilih atau Tambah Pertanyaan Baru"}
+                {safeActivePertanyaanIndex >= 0 && hasPertanyaan 
+                  ? formatPertanyaanLabel(currentPertanyaan, safeActivePertanyaanIndex) 
+                  : "Buat Pertanyaan Baru"}
               </span>
               <span>▾</span>
             </button>
@@ -524,23 +699,20 @@ function PertanyaanPanel({
                       handleClearPertanyaanSelection();
                       setOpenPertanyaanList(false);
                     }}
-                    className="w-full text-left px-3 py-2 hover:bg-slate-100 border-b border-slate-200 text-slate-600"
+                    className="w-full text-left px-3 py-2 hover:bg-slate-100 border-b border-slate-200 text-slate-600 bg-blue-50"
                   >
-                    ← Kosongkan Pilihan
+                     Buat Pertanyaan Baru
                   </button>
 
                   {hasPertanyaan && pertanyaanList.map((pertanyaan, idx) => (
                     <button
                       key={pertanyaan.id ?? idx}
-                      onClick={() => {
-                        setActivePertanyaanIndex(idx);
-                        setOpenPertanyaanList(false);
-                      }}
+                      onClick={() => handleSelectPertanyaan(idx)}
                       className={`w-full text-left px-3 py-2 hover:bg-slate-50 ${
                         idx === safeActivePertanyaanIndex ? "bg-blue-50 text-blue-700 font-medium" : "text-slate-700"
                       }`}
                     >
-                      {formatPertanyaanLabel(pertanyaan)}
+                      {formatPertanyaanLabel(pertanyaan, idx)}
                     </button>
                   ))}
                 </div>,
@@ -548,48 +720,62 @@ function PertanyaanPanel({
               )}
           </div>
 
-          {currentPertanyaan && (
+          {/* Tampilkan form ketika dalam mode buat baru atau ada pertanyaan yang dipilih */}
+          {(editModePertanyaan || safeActivePertanyaanIndex >= 0) && (
             <>
               <div className="flex gap-2 text-slate-800 mt-3">
                 <div className="w-[5%]">
-                  <label className="text-slate-200 text-sm font-semibold">Nomor</label>
+                  <label className="text-white text-base tracking-wide ml-1 font-semibold">Nomor</label>
                   <Input
                     className="bg-white h-8 border-slate-300"
-                    value={currentPertanyaan.nomor ?? ""}
-                    onChange={(e) => handleChangePertanyaanField("nomor", e.target.value)}
-                    disabled={loading || !editModePertanyaan}
+                    value={currentPertanyaan?.nomor ?? ""}
+                    onChange={(e) => 
+                      isEditModeForComponents
+                        ? handleChangeDraftPertanyaan("nomor", e.target.value)
+                        : handleChangePertanyaanField("nomor", e.target.value)
+                    }
+                    disabled={isFieldDisabled()}
                     placeholder="1 - 5"
                   />
                 </div>
 
                 <div className="w-[8%]">
-                  <label className="text-slate-200 text-sm font-semibold">Skor untuk {activeQuarter?.toUpperCase()}</label>
+                  <label className="text-white text-base tracking-wide ml-1 font-semibold">Skor untuk {activeQuarter?.toUpperCase()}</label>
                   <Input
                     type="number"
                     min="1"
                     max="5"
                     step="1"
                     className="bg-white h-8 text-slate-800 border-slate-300"
-                    value={currentPertanyaan.skor?.[activeQuarter.toUpperCase()] ?? ""}
-                    onChange={(e) => handleSkorChange(e.target.value)}
-                    disabled={loading || !editModePertanyaan}
+                    value={currentPertanyaan?.skor?.[activeQuarter.toUpperCase()] ?? ""}
+                    onChange={(e) => 
+                      isEditModeForComponents
+                        ? handleDraftSkorChange(e.target.value)
+                        : handleSkorChange(e.target.value)
+                    }
+                    disabled={isFieldDisabled()}
+                    placeholder="masukan skor"
                   />
                 </div>
 
                 <div className="w-[87%]">
-                  <label className="text-slate-200 text-sm font-semibold">Pertanyaan</label>
+                  <label className="text-white text-base tracking-wide ml-1 font-semibold">Pertanyaan</label>
                   <Input
                     className="bg-white h-8 border-slate-300"
-                    value={currentPertanyaan.pertanyaan ?? ""}
-                    onChange={(e) => handleChangePertanyaanField("pertanyaan", e.target.value)}
-                    disabled={loading || !editModePertanyaan}
+                    value={currentPertanyaan?.pertanyaan ?? ""}
+                    onChange={(e) => 
+                      isEditModeForComponents
+                        ? handleChangeDraftPertanyaan("pertanyaan", e.target.value)
+                        : handleChangePertanyaanField("pertanyaan", e.target.value)
+                    }
+                    disabled={isFieldDisabled()}
                     placeholder="masukan pertanyaan"
                   />
                 </div>
               </div>
 
               <div>
-                <div className="font-semibold text-sm py-2 text-slate-200">Indicator</div>
+                <div className="font-bold text-lg py-2 text-white">Description Level</div>
                 <div className="grid grid-cols-5 gap-2">
                   {[
                     ["Strong", "strong", "#162556"],
@@ -602,32 +788,34 @@ function PertanyaanPanel({
                       key={key}
                       label={label}
                       color={color}
-                      value={currentPertanyaan.indicator?.[key] ?? ""}
-                      onChange={(v) => handleChangePertanyaanField(`indicator.${key}`, v)}
+                      value={currentPertanyaan?.indicator?.[key] ?? ""}
+                      onChange={(v) => 
+                        isEditModeForComponents
+                          ? handleChangeDraftPertanyaan(`indicator.${key}`, v)
+                          : handleChangePertanyaanField(`indicator.${key}`, v)
+                      }
                       loading={loading}
-                      editMode={editModePertanyaan}
+                      editMode={isEditModeForComponents}
                     />
                   ))}
                 </div>
               </div>
 
               <div className="text-slate-800">
-                <label className="text-slate-200 text-sm font-semibold">Evidence</label>
+                <label className="text-white text-base tracking-wide ml-1 font-semibold">Evidence</label>
                 <Textarea
                   className="bg-white min-h-[60px] border-slate-300"
-                  value={currentPertanyaan.evidence ?? ""}
-                  onChange={(e) => handleChangePertanyaanField("evidence", e.target.value)}
-                  disabled={loading || !editModePertanyaan}
+                  value={currentPertanyaan?.evidence ?? ""}
+                  onChange={(e) => 
+                    isEditModeForComponents
+                      ? handleChangeDraftPertanyaan("evidence", e.target.value)
+                      : handleChangePertanyaanField("evidence", e.target.value)
+                  }
+                  disabled={isFieldDisabled()}
                   placeholder="masukan penjelasan"
                 />
               </div>
             </>
-          )}
-
-          {!hasPertanyaan && (
-            <div className="py-6 text-center text-sm text-slate-300">
-              Tidak ada pertanyaan. Tambahkan pertanyaan terlebih dahulu.
-            </div>
           )}
         </div>
       )}
@@ -662,8 +850,8 @@ function PertanyaanPanel({
 }
 
 function AspekPanel({ rows = [], setRows, activeQuarter, onSaveData }) {
-  const [activeAspekIndex, setActiveAspekIndex] = useState(null);
-  const [activePertanyaanIndex, setActivePertanyaanIndex] = useState(null);
+  const [activeAspekIndex, setActiveAspekIndex] = useState(-1);
+  const [activePertanyaanIndex, setActivePertanyaanIndex] = useState(-1);
   const [editModeAspek, setEditModeAspek] = useState(false);
   const [editModePertanyaan, setEditModePertanyaan] = useState(false);
   const [originalAspek, setOriginalAspek] = useState(null);
@@ -689,10 +877,39 @@ function AspekPanel({ rows = [], setRows, activeQuarter, onSaveData }) {
   const safeActiveAspekIndex =
     activeAspekIndex !== null && activeAspekIndex >= 0 && activeAspekIndex < normalizedRows.length
       ? activeAspekIndex
-      : null;
+      : -1;
 
-  const safeActiveAspek = safeActiveAspekIndex !== null ? normalizedRows[safeActiveAspekIndex] : null;
-  const aspek = editModeAspek ? draftAspek : (safeActiveAspek ?? draftAspek);
+  const safeActiveAspek = safeActiveAspekIndex >= 0 ? normalizedRows[safeActiveAspekIndex] : null;
+  
+  // PERBAIKAN: Fungsi untuk mendapatkan data aspek dengan aman
+  const getAspekData = () => {
+    if (editModeAspek) {
+      return draftAspek;
+    }
+    
+    if (safeActiveAspek) {
+      return {
+        nomor: safeActiveAspek.nomor ?? "",
+        judul: safeActiveAspek.judul ?? "",
+        bobot: safeActiveAspek.bobot ?? "",
+      };
+    }
+    
+    return draftAspek;
+  };
+
+  const aspek = getAspekData();
+
+  // PERUBAHAN PENTING: Otomatis masuk ke mode buat baru ketika pertama kali atau tidak ada aspek dipilih
+  useEffect(() => {
+    // Jika tidak ada aspek sama sekali di daftar, atau activeAspekIndex = -1
+    if (rows.length === 0 || activeAspekIndex === -1) {
+      setEditModeAspek(true); // Otomatis masuk edit mode
+      if (!draftAspek.nomor && !draftAspek.judul && !draftAspek.bobot) {
+        setDraftAspek({ nomor: "", judul: "", bobot: "" }); // Pastikan draft kosong
+      }
+    }
+  }, [rows.length, activeAspekIndex]);
 
   // Setup dropdown positioning for aspect selection
   useEffect(() => {
@@ -726,7 +943,7 @@ function AspekPanel({ rows = [], setRows, activeQuarter, onSaveData }) {
 
   // Reset question selection when aspect changes
   useEffect(() => {
-    setActivePertanyaanIndex(null);
+    setActivePertanyaanIndex(-1);
     setEditModePertanyaan(false);
   }, [safeActiveAspekIndex]);
 
@@ -754,9 +971,10 @@ function AspekPanel({ rows = [], setRows, activeQuarter, onSaveData }) {
   }, [safeActiveAspek, editModeAspek]);
 
   // Format aspect label for dropdown display
-  const formatAspekLabel = useCallback((row) => 
-    row ? `${row.nomor} – ${row.judul} (Bobot: ${row.bobot}%)` : "-", 
-  []);
+  const formatAspekLabel = useCallback((row, index) => {
+    if (!row) return "Buat Aspek Baru";
+    return `${row.nomor || ''} – ${row.judul || ''} (Bobot: ${row.bobot || ''}%)`;
+  }, []);
 
   // Update aspect field in draft
   const handleChangeAspek = useCallback((key, value) => {
@@ -767,90 +985,6 @@ function AspekPanel({ rows = [], setRows, activeQuarter, onSaveData }) {
   const isAspekIncomplete = useCallback((aspekData) => {
     return !aspekData?.judul?.trim() || Number(aspekData?.bobot) <= 0;
   }, []);
-
-  // Save data to persistent storage
-  const saveDataToStorage = useCallback(() => {
-    if (typeof onSaveData === 'function') {
-      return onSaveData();
-    } else if (typeof window !== 'undefined' && typeof window.saveKpmrData === 'function') {
-      try {
-        const success = window.saveKpmrData();
-        if (success) {
-          return true;
-        } else {
-          return false;
-        }
-      } catch (error) {
-        return false;
-      }
-    }
-    return false;
-  }, [onSaveData]);
-
-  // Enter aspect edit mode
-  const handleEditAspek = useCallback(() => {
-    if (safeActiveAspekIndex === null) return;
-    
-    const aspekData = rows[safeActiveAspekIndex];
-    setOriginalAspek(structuredClone(aspekData));
-    
-    setDraftAspek({
-      nomor: aspekData.nomor ?? "",
-      judul: aspekData.judul ?? "",
-      bobot: aspekData.bobot ?? "",
-    });
-    
-    setEditModeAspek(true);
-  }, [safeActiveAspekIndex, rows]);
-
-  // Save updated aspect
-  const handleUpdateAspek = useCallback(() => {
-    if (safeActiveAspekIndex === null) return;
-    
-    if (isAspekIncomplete(draftAspek)) {
-      alert("Lengkapi data aspek sebelum mengupdate.");
-      return;
-    }
-
-    const bobotNum = Number(draftAspek.bobot);
-    if (isNaN(bobotNum) || bobotNum < 0 || bobotNum > 100) {
-      alert("Bobot harus antara 0 dan 100.");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const updatedAspek = {
-        ...rows[safeActiveAspekIndex],
-        nomor: draftAspek.nomor || "-",
-        judul: draftAspek.judul.trim(),
-        bobot: bobotNum,
-      };
-
-      const updatedRows = rows.map((row, idx) => 
-        idx === safeActiveAspekIndex ? updatedAspek : row
-      );
-      
-      setRows(updatedRows);
-      
-      setEditModeAspek(false);
-      setOriginalAspek(null);
-      
-      setTimeout(() => {
-        if (typeof onSaveData === 'function') {
-          const success = onSaveData(updatedRows);
-          if (!success) {
-            alert("⚠️ Aspek berhasil diupdate tapi gagal disimpan!");
-          }
-        }
-        setLoading(false);
-      }, 100);
-      
-    } catch (error) {
-      alert("❌ Gagal mengupdate aspek.");
-      setLoading(false);
-    }
-  }, [draftAspek, safeActiveAspekIndex, rows, setRows, isAspekIncomplete, onSaveData]);
 
   // Add new aspect
   const handleAddNewAspek = useCallback(() => {
@@ -881,13 +1015,13 @@ function AspekPanel({ rows = [], setRows, activeQuarter, onSaveData }) {
       
       const newIndex = updatedRows.length - 1;
       setActiveAspekIndex(newIndex);
-      setActivePertanyaanIndex(null);
+      setActivePertanyaanIndex(-1);
+      setEditModePertanyaan(true); // Otomatis aktifkan edit mode untuk pertanyaan
       
-      setDraftAspek({
-        nomor: "",
-        judul: "",
-        bobot: "",
-      });
+      // SETELAH BERHASIL MENAMBAH, RESET KE DRAFT KOSONG UNTUK ASPEK BARU BERIKUTNYA
+      setEditModeAspek(true); // Tetap dalam edit mode
+      setOriginalAspek(null);
+      setDraftAspek({ nomor: "", judul: "", bobot: "" });
       
       setTimeout(() => {
         if (typeof onSaveData === 'function') {
@@ -911,9 +1045,81 @@ function AspekPanel({ rows = [], setRows, activeQuarter, onSaveData }) {
     }
   }, [draftAspek, isAspekIncomplete, rows, setRows, onSaveData]);
 
+  // Save updated aspect
+  const handleUpdateAspek = useCallback(() => {
+    if (safeActiveAspekIndex === -1) return;
+    
+    if (isAspekIncomplete(draftAspek)) {
+      alert("Lengkapi data aspek sebelum mengupdate.");
+      return;
+    }
+
+    const bobotNum = Number(draftAspek.bobot);
+    if (isNaN(bobotNum) || bobotNum < 0 || bobotNum > 100) {
+      alert("Bobot harus antara 0 dan 100.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const updatedAspek = {
+        ...rows[safeActiveAspekIndex],
+        nomor: draftAspek.nomor || "-",
+        judul: draftAspek.judul.trim(),
+        bobot: bobotNum,
+      };
+
+      const updatedRows = rows.map((row, idx) => 
+        idx === safeActiveAspekIndex ? updatedAspek : row
+      );
+      
+      setRows(updatedRows);
+      
+      setEditModeAspek(false);
+      setOriginalAspek(null);
+      setDraftAspek({ nomor: "", judul: "", bobot: "" });
+      
+      setTimeout(() => {
+        if (typeof onSaveData === 'function') {
+          const success = onSaveData(updatedRows);
+          if (!success) {
+            alert("⚠️ Aspek berhasil diupdate tapi gagal disimpan!");
+          }
+        }
+        setLoading(false);
+      }, 100);
+      
+    } catch (error) {
+      alert("❌ Gagal mengupdate aspek.");
+      setLoading(false);
+    }
+  }, [draftAspek, safeActiveAspekIndex, rows, setRows, isAspekIncomplete, onSaveData]);
+
+  // Enter aspect edit mode
+  const handleEditAspek = useCallback(() => {
+    if (safeActiveAspekIndex === -1) return;
+    
+    const aspekData = rows[safeActiveAspekIndex];
+    setOriginalAspek(structuredClone(aspekData));
+    
+    setDraftAspek({
+      nomor: aspekData.nomor ?? "",
+      judul: aspekData.judul ?? "",
+      bobot: aspekData.bobot ?? "",
+    });
+    
+    setEditModeAspek(true);
+  }, [safeActiveAspekIndex, rows]);
+
   // Cancel aspect editing
   const handleCancelEditAspek = useCallback(() => {
-    if (originalAspek && safeActiveAspekIndex !== null) {
+    const confirmed = window.confirm(
+      "Batalkan perubahan? Semua perubahan yang belum disimpan akan hilang."
+    );
+    
+    if (!confirmed) return;
+    
+    if (originalAspek && safeActiveAspekIndex >= 0) {
       setRows((prev) =>
         prev.map((row, idx) =>
           idx === safeActiveAspekIndex ? originalAspek : row
@@ -938,7 +1144,7 @@ function AspekPanel({ rows = [], setRows, activeQuarter, onSaveData }) {
 
   // Duplicate current aspect
   const handleCopyAspek = useCallback(() => {
-    if (safeActiveAspekIndex === null) return;
+    if (safeActiveAspekIndex === -1) return;
 
     const source = rows[safeActiveAspekIndex];
 
@@ -959,9 +1165,10 @@ function AspekPanel({ rows = [], setRows, activeQuarter, onSaveData }) {
       
       setRows(updatedRows);
       setActiveAspekIndex(updatedRows.length - 1);
-      setActivePertanyaanIndex(null);
+      setActivePertanyaanIndex(-1);
       setEditModeAspek(false);
       setOriginalAspek(null);
+      setDraftAspek({ nomor: "", judul: "", bobot: "" });
       
       setTimeout(() => {
         if (typeof onSaveData === 'function') {
@@ -979,37 +1186,35 @@ function AspekPanel({ rows = [], setRows, activeQuarter, onSaveData }) {
   }, [safeActiveAspekIndex, rows, setRows, onSaveData]);
 
   // Open delete confirmation dialog for aspect
-const handleOpenAspekDeleteDialog = useCallback(() => {
-  if (safeActiveAspekIndex === null) return;
+  const handleOpenAspekDeleteDialog = useCallback(() => {
+    if (safeActiveAspekIndex === -1) return;
 
-  const aspek = rows[safeActiveAspekIndex];
+    const aspek = rows[safeActiveAspekIndex];
 
-  setItemToDelete({
-    name: aspek.judul || 'aspek ini',
-    nomor: aspek.nomor || '-',
-    judul: aspek.judul || 'Tidak ada judul',
-    bobot: aspek.bobot || '-'
-  });
-  setDeleteContext({
-    type: 'aspek',
-    aspekIndex: safeActiveAspekIndex,
-    pertanyaanIndex: null
-  });
-  setDeleteDialogOpen(true);
-}, [safeActiveAspekIndex, rows]);
+    setItemToDelete({
+      name: aspek.judul || 'aspek ini',
+      nomor: aspek.nomor || '-',
+      judul: aspek.judul || 'Tidak ada judul',
+      bobot: aspek.bobot || '-'
+    });
+    setDeleteContext({
+      type: 'aspek',
+      aspekIndex: safeActiveAspekIndex,
+      pertanyaanIndex: null
+    });
+    setDeleteDialogOpen(true);
+  }, [safeActiveAspekIndex, rows]);
 
   // Handle aspect deletion confirmation
   const handleConfirmDeleteAspek = useCallback(() => {
     if (!itemToDelete || !deleteContext.type) return;
 
-    setLoading(true);
+    setDeleteDialogOpen(false);
     
     if (deleteContext.type === 'aspek') {
       const { aspekIndex } = deleteContext;
       
       if (aspekIndex === null) {
-        setLoading(false);
-        setDeleteDialogOpen(false);
         return;
       }
       
@@ -1017,13 +1222,13 @@ const handleOpenAspekDeleteDialog = useCallback(() => {
       
       setRows(updatedRows);
       
-      const nextIndex = updatedRows.length > 0 ? 0 : null;
+      const nextIndex = updatedRows.length > 0 ? 0 : -1;
       setActiveAspekIndex(nextIndex);
-      setActivePertanyaanIndex(null);
-      setEditModeAspek(false);
+      setActivePertanyaanIndex(-1);
+      setEditModeAspek(nextIndex === -1); // Jika tidak ada aspek, masuk edit mode
       setOriginalAspek(null);
+      setDraftAspek({ nomor: "", judul: "", bobot: "" });
       
-      setDeleteDialogOpen(false);
       setItemToDelete(null);
       setDeleteContext({ type: '', aspekIndex: null, pertanyaanIndex: null });
       
@@ -1034,34 +1239,87 @@ const handleOpenAspekDeleteDialog = useCallback(() => {
             console.error("⚠️ Aspek berhasil dihapus tapi gagal menyimpan!");
           }
         }
-        setLoading(false);
       }, 100);
     }
     
-    setDeleteDialogOpen(false);
     setItemToDelete(null);
     setDeleteContext({ type: '', aspekIndex: null, pertanyaanIndex: null });
-  }, [itemToDelete, deleteContext, rows, setRows, setActiveAspekIndex, setActivePertanyaanIndex, onSaveData]);
+  }, [itemToDelete, deleteContext, rows, setRows, setActiveAspekIndex, onSaveData]);
 
   // Clear aspect selection
   const handleClearAspekSelection = useCallback(() => {
-    setActiveAspekIndex(null);
-    setActivePertanyaanIndex(null);
-    setEditModeAspek(false);
-    setEditModePertanyaan(false);
+    setActiveAspekIndex(-1);
+    setActivePertanyaanIndex(-1);
+    setEditModeAspek(true); // Otomatis masuk edit mode
+    setEditModePertanyaan(true);
     setOriginalAspek(null);
     setDraftAspek({ nomor: "", judul: "", bobot: "" });
     setOpenAspekList(false);
   }, []);
 
+  const handleSelectAspek = (index) => {
+    setActiveAspekIndex(index);
+    setOpenAspekList(false);
+    setEditModeAspek(false); // Keluar dari edit mode ketika memilih aspek yang ada
+    setOriginalAspek(null);
+    setDraftAspek({ nomor: "", judul: "", bobot: "" });
+  };
+
+  // Tentukan apakah field input harus disabled
+  const isFieldDisabled = () => {
+    if (loading) return true;
+    
+    // Jika tidak ada aspek yang dipilih (membuat aspek baru), field harus ENABLED
+    if (safeActiveAspekIndex === -1) return false;
+    
+    // Jika dalam mode edit, field harus ENABLED
+    if (editModeAspek) return false;
+    
+    // Default: disabled
+    return true;
+  };
+
+  // Tentukan config tombol utama
+  const getMainButtonConfig = () => {
+    // Jika edit mode DAN safeActiveAspekIndex = -1 (mode buat baru)
+    if (editModeAspek && safeActiveAspekIndex === -1) {
+      return {
+        onClick: handleAddNewAspek,
+        title: "Tambah Aspek Baru",
+        icon: <Plus className="w-4 h-4" />,
+        className: "bg-emerald-600 hover:bg-emerald-700"
+      };
+    }
+    // Jika edit mode untuk aspek yang sudah ada
+    else if (editModeAspek) {
+      return {
+        onClick: handleUpdateAspek,
+        title: "Simpan Perubahan",
+        icon: <Save className="w-4 h-4" />,
+        className: "bg-green-600 hover:bg-green-700"
+      };
+    }
+    // Default: tambah aspek baru
+    else {
+      return {
+        onClick: handleAddNewAspek,
+        title: "Tambah Aspek Baru",
+        icon: <Plus className="w-4 h-4" />,
+        className: "bg-emerald-600 hover:bg-emerald-700"
+      };
+    }
+  };
+
+  const mainButtonConfig = getMainButtonConfig();
+
   return (
     <div className="w-full space-y-3">
-      <div className="bg-gradient-to-r from-blue-700 to-sky-600 text-white px-4 py-3 rounded-lg border border-slate-700">
+      <div className="bg-blue-700 text-white px-4 py-3 rounded-lg border border-slate-700">
         <div className="flex justify-between items-center">
-          <h2 className="text-lg font-semibold">Aspek</h2>
+          <h2 className="text-2xl tracking-wider font-bold">Aspek</h2>
           <div className="flex items-center gap-2">
             {loading && (
-              <div className="text-xs bg-slate-700 text-slate-200 px-2 py-1 rounded">
+              <div className="text-xs bg-slate-700 text-white px-2 py-1 rounded">
                 Memproses...
               </div>
             )}
@@ -1070,7 +1328,7 @@ const handleOpenAspekDeleteDialog = useCallback(() => {
               size="sm"
               variant="outline"
               onClick={() => setShowAspekForm(!showAspekForm)}
-              className="bg-slate-700 text-slate-200 hover:bg-slate-600 text-sm px-3 border-slate-600"
+              className="bg-slate-900 text-white hover:bg-slate-800 text-md px-3 border border-black"
               disabled={loading}
             >
               {showAspekForm ? (
@@ -1086,7 +1344,7 @@ const handleOpenAspekDeleteDialog = useCallback(() => {
               )}
             </Button>
 
-            {safeActiveAspekIndex !== null && !editModeAspek && (
+            {safeActiveAspekIndex >= 0 && !editModeAspek && (
               <Button
                 size="icon"
                 onClick={handleEditAspek}
@@ -1112,54 +1370,59 @@ const handleOpenAspekDeleteDialog = useCallback(() => {
 
             <Button 
               size="icon" 
-              onClick={editModeAspek ? handleUpdateAspek : handleAddNewAspek}
-              className={editModeAspek ? "bg-green-600 hover:bg-green-700" : "bg-emerald-600 hover:bg-emerald-700"}
+              onClick={mainButtonConfig.onClick}
+              className={mainButtonConfig.className}
               disabled={loading}
-              title={editModeAspek ? "Update Aspek" : "Tambah Aspek"}
+              title={mainButtonConfig.title}
             >
-              {editModeAspek ? <Save className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+              {mainButtonConfig.icon}
             </Button>
 
-            <Button
-              size="icon"
-              onClick={handleCopyAspek}
-              disabled={safeActiveAspekIndex === null || loading}
-              className="bg-amber-600 hover:bg-amber-700"
-              title="Salin Aspek"
-            >
-              <Copy className="w-4 h-4" />
-            </Button>
+            {!editModeAspek && safeActiveAspekIndex >= 0 && (
+              <Button
+                size="icon"
+                onClick={handleCopyAspek}
+                disabled={loading}
+                className="bg-amber-600 hover:bg-amber-700"
+                title="Salin Aspek"
+              >
+                <Copy className="w-4 h-4" />
+              </Button>
+            )}
 
-            <Button 
-              size="icon" 
-              onClick={handleOpenAspekDeleteDialog} 
-              disabled={safeActiveAspekIndex === null || loading} 
-              className="bg-rose-600 hover:bg-rose-700"
-              title="Hapus Aspek"
-            >
-              <Trash2 className="w-4 h-4" />
-            </Button>
+            {!editModeAspek && safeActiveAspekIndex >= 0 && (
+              <Button 
+                size="icon" 
+                onClick={handleOpenAspekDeleteDialog} 
+                disabled={loading} 
+                className="bg-rose-600 hover:bg-rose-700"
+                title="Hapus Aspek"
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            )}
           </div>
         </div>
 
-        <div className="w-full bg-slate-200 rounded-lg p-0.5 mt-1" />
+        
         
         {showAspekForm && (
           <>
+          <div className="w-full bg-slate-200 rounded-lg p-0.5 mt-2" />
             <div className="w-full flex gap-2 mt-3">
               <div className="w-[10%]">
-                <label className="font-semibold text-sm ml-2 text-slate-200">No</label>
+                <label className="font-semibold text-md tracking-wide ml-1 text-white">No</label>
                 <Input
                   placeholder="No"
                   value={aspek.nomor}
                   onChange={(e) => handleChangeAspek("nomor", e.target.value)}
                   className="bg-white text-slate-950 border-slate-300"
-                  disabled={loading || (safeActiveAspekIndex !== null && !editModeAspek)}
+                  disabled={isFieldDisabled()}
                 />
               </div>
 
               <div className="w-[10%]">
-                <label className="font-semibold text-sm ml-2 text-slate-200">Bobot</label>
+                <label className="font-semibold text-md tracking-wid ml-1 text-white">Bobot</label>
                 <Input
                   type="number"
                   placeholder="max 100%"
@@ -1169,30 +1432,36 @@ const handleOpenAspekDeleteDialog = useCallback(() => {
                   value={aspek.bobot}
                   onChange={(e) => handleChangeAspek("bobot", e.target.value)}
                   className="bg-white text-slate-950 border-slate-300"
-                  disabled={loading || (safeActiveAspekIndex !== null && !editModeAspek)}
+                  disabled={isFieldDisabled()}
                 />
               </div>
 
               <div className="w-[80%]">
-                <label className="font-semibold text-sm ml-2 text-slate-200">Aspek</label>
+                <label className="font-semibold text-md tracking-wid ml-1 text-white">Aspek</label>
                 <Input
                   placeholder="masukan aspek"
                   value={aspek.judul}
                   onChange={(e) => handleChangeAspek("judul", e.target.value)}
                   className="bg-white text-slate-950 border-slate-300"
-                  disabled={loading || (safeActiveAspekIndex !== null && !editModeAspek)}
+                  disabled={isFieldDisabled()}
                 />
               </div>
             </div>
 
+          <div className="mt-3">
+           <label className="font-semibold text-normal tracking-wide ml-1 mb-1 text-white">
+                Pilih Aspek
+              </label>
             <button
               ref={dropdownAspekBtnRef}
               onClick={() => setOpenAspekList((v) => !v)}
-              className="w-full mt-3 bg-white text-slate-800 px-3 py-2 rounded-md flex justify-between border border-slate-300 hover:bg-slate-50"
+              className="w-full  bg-white text-slate-800 px-3 py-2  rounded-md text-md flex justify-between border border-slate-300 hover:bg-slate-50"
               disabled={loading}
             >
-              <span className="truncate">
-                {safeActiveAspek ? formatAspekLabel(safeActiveAspek) : "Pilih atau Tambah Aspek Baru"}
+              <span className="truncate text-md">
+                {safeActiveAspekIndex >= 0 && safeActiveAspek
+                  ? formatAspekLabel(safeActiveAspek, safeActiveAspekIndex) 
+                  : "Buat Aspek Baru"}
               </span>
               <span>▾</span>
             </button>
@@ -1214,30 +1483,28 @@ const handleOpenAspekDeleteDialog = useCallback(() => {
                       handleClearAspekSelection();
                       setOpenAspekList(false);
                     }}
-                    className="w-full text-left px-3 py-2 hover:bg-slate-100 border-b border-slate-200 text-slate-600 text-sm"
+                    className="w-full text-left px-3 py-2 hover:bg-slate-100 border-b border-slate-200 text-slate-600 text-md bg-blue-50"
                     disabled={loading}
                   >
-                    ← Kosongkan Pilihan
+                    ← Buat Aspek Baru
                   </button>
 
                   {normalizedRows.map((row, idx) => (
                     <button
                       key={row.id}
-                      onClick={() => {
-                        setActiveAspekIndex(idx);
-                        setOpenAspekList(false);
-                      }}
+                      onClick={() => handleSelectAspek(idx)}
                       className={`w-full text-left px-3 py-2 hover:bg-slate-50 ${
                         idx === safeActiveAspekIndex ? "bg-blue-50 text-blue-700 font-medium" : "text-slate-700"
-                      } text-sm`}
+                      } text-md`}
                       disabled={loading}
                     >
-                      {formatAspekLabel(row)}
+                      {formatAspekLabel(row, idx)}
                     </button>
                   ))}
                 </div>,
                 document.body
               )}
+          </div>
           </>
         )}
 
@@ -1246,10 +1513,11 @@ const handleOpenAspekDeleteDialog = useCallback(() => {
         )}
       </div>
 
-      {safeActiveAspek && (
+      {/* Tampilkan PertanyaanPanel ketika ada aspek yang aktif */}
+      {safeActiveAspekIndex >= 0 && safeActiveAspek && (
         <PertanyaanPanel
           aspekIndex={safeActiveAspekIndex}
-          pertanyaanList={safeActiveAspek.pertanyaanList}
+          pertanyaanList={safeActiveAspek.pertanyaanList || []}
           activePertanyaanIndex={activePertanyaanIndex}
           setActivePertanyaanIndex={setActivePertanyaanIndex}
           activeQuarter={activeQuarter}
@@ -1260,6 +1528,13 @@ const handleOpenAspekDeleteDialog = useCallback(() => {
           rows={rows}
           setRows={setRows}
         />
+      )}
+
+      {/* Tampilkan pesan ketika dalam mode buat aspek baru (tanpa aspek aktif) */}
+      {safeActiveAspekIndex === -1 && editModeAspek && (
+        <div className="w-full bg-slate-100 rounded-lg p-4 text-center text-slate-500">
+          <p className="text-sm">Tambahkan aspek terlebih dahulu untuk mengelola pertanyaan.</p>
+        </div>
       )}
 
       <PopUpDelete
@@ -1420,7 +1695,7 @@ function TableKpmr({ rows = [], activeQuarter }) {
     <div className="w-full">
       <div className="flex justify-between mb-2 pr-2">
         <div>
-          <h1 className="text-2xl font-semibold">Data Konsentrasi Produk - KPMR</h1>
+          <h1 className="text-2xl font-semibold">Data Konsentrasi Produk - Kualitas Penerapan Manajemen Risiko</h1>
           <div className="text-sm text-gray-600">
             Quarter Aktif: <span className="font-bold bg-blue-100 px-2 py-1 rounded">{activeQuarter?.toUpperCase()}</span>
             <span className="ml-2 text-gray-500">•</span>

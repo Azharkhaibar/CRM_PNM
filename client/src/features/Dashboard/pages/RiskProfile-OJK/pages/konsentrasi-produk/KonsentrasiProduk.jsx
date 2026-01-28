@@ -46,7 +46,7 @@ function RiskTabs({ value, onChange }) {
             }
           `}
         >
-          Kualitas Penerapan Manajemen Risiko
+          KUALITAS PENERAPAN MANAJEMEN RISIKO
         </button>
       </nav>
     </div>
@@ -130,49 +130,53 @@ export default function KonsentrasiProduk() {
   const saveTimeoutRef = useRef(null);
 
   // Menyimpan data inherent dengan debouncing dan signature checking
-  const saveInherentData = useCallback(() => {
-    if (!isDataReady || !initialLoadDone || inherentRows.length === 0) {
-      return false;
-    }
+const saveInherentData = useCallback(() => {
+  if (!isDataReady || !initialLoadDone || inherentRows.length === 0) {
+    return false;
+  }
 
-    const currentSignature = getInherentSignature(inherentRows);
+  const currentSignature = getInherentSignature(inherentRows);
+  
+  if (currentSignature === lastSavedSignature && !isSaving) {
+    return true;
+  }
+
+  setIsSaving(true);
+  
+  try {
+    saveInherent({
+      categoryId: CATEGORY_ID,
+      year,
+      quarter: activeQuarter,
+      rows: inherentRows,
+    });
+
+    const derivedValues = inherentRows.flatMap(param => 
+      (param.nilaiList || []).map(nilai => computeDerived(nilai, param))
+    );
     
-    if (currentSignature === lastSavedSignature && !isSaving) {
-      return true;
-    }
-
-    setIsSaving(true);
+    // TAMBAHKAN snapshot calculation
+    const snapshot = computeInherentSnapshot(inherentRows);
     
-    try {
-      saveInherent({
-        categoryId: CATEGORY_ID,
-        year,
-        quarter: activeQuarter,
-        rows: inherentRows,
-      });
+    saveDerived({
+      categoryId: CATEGORY_ID,
+      year,
+      quarter: activeQuarter,
+      snapshot: snapshot,  // TAMBAHKAN snapshot
+      values: derivedValues,
+    });
 
-      const derivedValues = inherentRows.flatMap(param => 
-        (param.nilaiList || []).map(nilai => computeDerived(nilai, param))
-      );
-      
-      saveDerived({
-        categoryId: CATEGORY_ID,
-        year,
-        quarter: activeQuarter,
-        values: derivedValues,
-      });
-
-      notifyRiskUpdated();
-      
-      setLastSavedSignature(currentSignature);
-      
-      return true;
-    } catch (error) {
-      return false;
-    } finally {
-      setIsSaving(false);
-    }
-  }, [inherentRows, isDataReady, year, activeQuarter, initialLoadDone, lastSavedSignature, isSaving]);
+    notifyRiskUpdated();
+    
+    setLastSavedSignature(currentSignature);
+    
+    return true;
+  } catch (error) {
+    return false;
+  } finally {
+    setIsSaving(false);
+  }
+}, [inherentRows, isDataReady, year, activeQuarter, initialLoadDone, lastSavedSignature, isSaving]);
 
   // Debounced save effect untuk inherent data
   useEffect(() => {
@@ -348,53 +352,67 @@ export default function KonsentrasiProduk() {
   }, [kpmrRows, year]);
 
   // Immediate save function untuk inherent data dengan snapshot calculation
-  const saveInherentDataImmediate = useCallback((rowsToSave = null) => {
-    const rows = rowsToSave || inherentRows;
-    
-    if (!isDataReady || !initialLoadDone) {
-      console.log('Cannot save: data not ready');
-      return false;
-    }
+ const saveInherentDataImmediate = useCallback((rowsToSave = null) => {
+  const rows = rowsToSave || inherentRows;
+  
+  if (!isDataReady || !initialLoadDone) {
+    console.log('Cannot save: data not ready');
+    return false;
+  }
 
-    console.log('Saving inherent data:', rows.length, 'parameters');
-    
-    setIsSaving(true);
-    
-    try {
-      saveInherent({
-        categoryId: CATEGORY_ID,
-        year,
-        quarter: activeQuarter,
-        rows: rows,
-      });
+  console.log('=== SAVING INHERENT DATA ===');
+  console.log('Category:', CATEGORY_ID);
+  console.log('Year:', year);
+  console.log('Quarter:', activeQuarter);
+  console.log('Rows count:', rows.length);
+  
+  const snapshot = computeInherentSnapshot(rows);
+  console.log('Computed snapshot:', snapshot);
+  
+  setIsSaving(true);
+  
+  try {
+    saveInherent({
+      categoryId: CATEGORY_ID,
+      year,
+      quarter: activeQuarter,
+      rows: rows,
+    });
 
-      console.log('Saved to localStorage successfully');
-      
-      const derivedValues = rows.flatMap(param => 
-        (param.nilaiList || []).map(nilai => computeDerived(nilai, param))
-      );
-      
-      const snapshot = computeInherentSnapshot(rows);
-      
-      saveDerived({
-        categoryId: CATEGORY_ID,
-        year,
-        quarter: activeQuarter,
-        snapshot: snapshot,
-        values: derivedValues,
-      });
+    console.log('Saved inherent data to localStorage');
+    
+    const derivedValues = rows.flatMap(param => 
+      (param.nilaiList || []).map(nilai => computeDerived(nilai, param))
+    );
+    
+    console.log('Derived values count:', derivedValues.length);
+    
+    saveDerived({
+      categoryId: CATEGORY_ID,
+      year,
+      quarter: activeQuarter,
+      snapshot: snapshot,
+      values: derivedValues,
+    });
 
-      notifyRiskUpdated();
-      setLastSavedSignature(getInherentSignature(rows));
-      
-      return true;
-    } catch (error) {
-      console.error("Save failed:", error);
-      return false;
-    } finally {
-      setIsSaving(false);
-    }
-  }, [isDataReady, year, activeQuarter, initialLoadDone, inherentRows]);
+    console.log('Saved derived data to localStorage');
+    
+    // DEBUG: Tampilkan key yang digunakan
+    const derivedKey = `derived:${CATEGORY_ID}:${year}:${activeQuarter}`;
+    console.log('Derived storage key:', derivedKey);
+    console.log('Stored data:', JSON.parse(localStorage.getItem(derivedKey) || '{}'));
+    
+    notifyRiskUpdated();
+    setLastSavedSignature(getInherentSignature(rows));
+    
+    return true;
+  } catch (error) {
+    console.error("Save failed:", error);
+    return false;
+  } finally {
+    setIsSaving(false);
+  }
+}, [isDataReady, year, activeQuarter, initialLoadDone, inherentRows]);
 
 
   useEffect(() => {

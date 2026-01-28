@@ -17,6 +17,7 @@ import {
   Earth,
   FileText,
   Grid3x3,
+  Circle,
 } from "lucide-react";
 import {
   loadKpmr,
@@ -28,7 +29,7 @@ const CATEGORIES = [
   { id: "likuiditas-produk", label: "Likuiditas Produk", Icon: HandCoins },
   { id: "kredit-produk", label: "Kredit Produk", Icon: BanknoteArrowUp },
   { id: "konsentrasi-produk", label: "Konsentrasi Produk", Icon: BrainCircuit },
-  { id: "operasional", label: "Operasional", Icon: Cog },
+  { id: "operasional-regulatory", label: "Operasional", Icon: Cog },
   { id: "hukum-regulatory", label: "Hukum", Icon: Scale },
   { id: "kepatuhan-regulatory", label: "Kepatuhan", Icon: ClipboardCheck },
   { id: "reputasi-regulatory", label: "Reputasi", Icon: CircleStar },
@@ -361,21 +362,21 @@ const FooterIndicatorCell = ({ indicator, size = "normal" }) => {
         
          <div className="flex mb-4">
          <div   style={{
-    writingMode: 'vertical-rl',
-    textOrientation: 'mixed',
-    transform: 'rotate(180deg)',
-  }}>
+            writingMode: 'vertical-rl',
+            textOrientation: 'mixed',
+            transform: 'rotate(180deg)',
+          }}>
             <h1 className="text-center">Inherent Risiko</h1>
         </div>
              <table className="w-full border-collapse table-fixed">
-  <colgroup>
-    <col style={{ width: "20%" }} /> 
-    <col style={{ width: "23%" }} />
-    <col style={{ width: "23%" }} />
-    <col style={{ width: "23%"}} />
-    <col style={{ width: "23%" }} />
-    <col style={{ width: "23%" }} />
-  </colgroup>
+              <colgroup>
+                <col style={{ width: "20%" }} /> 
+                <col style={{ width: "23%" }} />
+                <col style={{ width: "23%" }} />
+                <col style={{ width: "23%"}} />
+                <col style={{ width: "23%" }} />
+                <col style={{ width: "23%" }} />
+              </colgroup>
           
             <thead>
             
@@ -420,7 +421,7 @@ const FooterIndicatorCell = ({ indicator, size = "normal" }) => {
                       >
                         {cell}
                         {isActive && (
-                          <div className="absolute top-2 right-5 w-13 h-13 rounded-full border-4 border-black bg-transparent" >
+                          <div className="absolute top-2 right-7 w-13 h-13 rounded-full border-4 border-black bg-transparent" >
 
                             
                           </div>
@@ -437,15 +438,15 @@ const FooterIndicatorCell = ({ indicator, size = "normal" }) => {
         
         <div className="space-y-2">
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded-full bg-black flex items-center justify-center">
-              <div className="w-2 h-2 bg-white rounded-full"></div>
+            <div className=" flex items-center justify-center">
+              <Circle className="h-5 w-5 stroke-4"/>
             </div>
             <span className="text-base font-semibold text-gray-950">
               Posisi risiko saat ini (Inherent: {footerDisplay.inherentScoreForMatrix}, KPMR: {footerDisplay.kpmrScoreForMatrix})
             </span>
           </div>
-          <div className="text-sm font-semibold text-gray-950">
-            <span className="font-semibold">Hasil Matriks:</span> {footerDisplay.matrixIndicator.label} ({footerDisplay.matrixDisplay.toFixed(1)})
+          <div className="text-lg ml-7 font-semibold text-gray-950">
+            <span className="font-semibold ">Hasil Matriks:</span> {footerDisplay.matrixIndicator.label} ({footerDisplay.matrixDisplay.toFixed(1)})
           </div>
         </div>
       </div>
@@ -463,15 +464,14 @@ const FooterIndicatorCell = ({ indicator, size = "normal" }) => {
         <div className="lg:col-span-6">
           <div className="bg-white rounded-xl shadow-lg overflow-hidden">
             {/* Tabel Header - SEMUA COL-SPAN 3 */}
-            <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white">
+            <div className="bg-blue-700 text-white">
               <div className="grid grid-cols-12 p-4 font-bold text-lg">
                 <div className="col-span-3 flex items-center gap-2">
-                  <FileText className="w-5 h-5" />
-                  <span>Jenis Risiko</span>
+                  <span>JENIS RISIKO</span>
                 </div>
-                <div className="col-span-3 text-center">Inherent Risk</div>
+                <div className="col-span-3 text-center">INHERENT</div>
                 <div className="col-span-3 text-center">KPMR</div>
-                <div className="col-span-3 text-center">Net Risk</div>
+                <div className="col-span-3 text-center">NET RISK</div>
               </div>
             </div>
 
@@ -489,7 +489,7 @@ const FooterIndicatorCell = ({ indicator, size = "normal" }) => {
                         <FileText className="w-5 h-5 text-blue-600" />
                       )}
                     </div>
-                    <span className="font-bold text-gray-800">{item.nama}</span>
+                    <span className="font-bold text-gray-800 text-lg">{item.nama}</span>
                   </div>
 
                   {/* Inherent */}
@@ -546,45 +546,43 @@ const FooterIndicatorCell = ({ indicator, size = "normal" }) => {
         </div>
       </div>
 
-<div className="mt-6 rounded-lg border border-gray-200 bg-white p-3">
-  <div className="flex flex-col gap-3">
+      <div className="mt-6 rounded-lg border border-gray-200 bg-white p-3">
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="text-base font-semibold text-gray-950">
+              INHERENT :
+            </span>
+            {INHERENT_RISK_INDICATORS.map((i, idx) => (
+              <div key={idx} className="flex items-center gap-1.5 text-base font-semibold">
+                <span
+                  className="w-5 h-5 rounded border"
+                  style={{ backgroundColor: i.color }}
+                />
+                <span className="text-gray-950">
+                  {i.label} ({i.min.toFixed(2)}–{i.max.toFixed(2)})
+                </span>
+              </div>
+            ))}
+          </div>
 
-    <div className="flex flex-wrap items-center gap-3">
-      <span className="text-xs font-semibold text-gray-700">
-        Inherent:
-      </span>
-      {INHERENT_RISK_INDICATORS.map((i, idx) => (
-        <div key={idx} className="flex items-center gap-1.5 text-xs">
-          <span
-            className="w-3 h-3 rounded border"
-            style={{ backgroundColor: i.color }}
-          />
-          <span className="text-gray-600">
-            {i.label} ({i.min.toFixed(2)}–{i.max.toFixed(2)})
-          </span>
+          <div className="flex flex-wrap items-center gap-5">
+            <span className="text-base font-semibold text-gray-950">
+              KPMR :
+            </span>
+            {KPMR_RISK_INDICATORS.map((i, idx) => (
+              <div key={idx} className="flex items-center gap-1.5 text-base font-semibold">
+                <span
+                  className="w-5 h-5 rounded border"
+                  style={{ backgroundColor: i.color }}
+                />
+                <span className="text-gray-950">
+                  {i.label} ({i.min.toFixed(2)}–{i.max.toFixed(2)})
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
-      ))}
-    </div>
-
-    <div className="flex flex-wrap items-center gap-3">
-      <span className="text-xs font-semibold text-gray-700">
-        KPMR:
-      </span>
-      {KPMR_RISK_INDICATORS.map((i, idx) => (
-        <div key={idx} className="flex items-center gap-1.5 text-xs">
-          <span
-            className="w-3 h-3 rounded border"
-            style={{ backgroundColor: i.color }}
-          />
-          <span className="text-gray-600">
-            {i.label} ({i.min.toFixed(2)}–{i.max.toFixed(2)})
-          </span>
-        </div>
-      ))}
-    </div>
-
-  </div>
-</div>
+      </div>
     </div>
   );
 }

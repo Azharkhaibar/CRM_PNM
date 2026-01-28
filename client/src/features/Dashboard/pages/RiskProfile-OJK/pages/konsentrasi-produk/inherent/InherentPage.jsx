@@ -39,9 +39,10 @@ export default function InherentPage({
   );
 }
 
+//komponent parameter panel
 function ParameterPanel({ rows, setRows, active, onSaveData }) {
   const [activeParamIndex, setActiveParamIndex] = useState(null);
-  const [activeNilaiIndex, setActiveNilaiIndex] = useState(0);
+  const [activeNilaiIndex, setActiveNilaiIndex] = useState(-1);
   const [showParameterForm, setShowParameterForm] = useState(true);
   const [loading, setLoading] = useState(false);
   
@@ -361,15 +362,13 @@ function ParameterPanel({ rows, setRows, active, onSaveData }) {
             ? draftParameter.kategori.underlying
             : [],
         },
-        nilaiList: [
-          createNilai("Tanpa Faktor")
-        ],
+        nilaiList: [] // ARRAY KOSONG - TIDAK ADA NILAI DEFAULT
       };
       
       setRows((prev) => {
         const next = [...prev, newParam];
         setActiveParamIndex(next.length - 1);
-        setActiveNilaiIndex(0);
+        setActiveNilaiIndex(-1); // Set ke -1 karena tidak ada nilai
         return next;
       });
       
@@ -436,16 +435,13 @@ function ParameterPanel({ rows, setRows, active, onSaveData }) {
         judul: `${source.judul} (Copy)`,
         bobot: source.bobot,
         kategori: structuredClone(source.kategori || {}),
-        nilaiList: (source.nilaiList || []).map((n) => ({
-          ...structuredClone(n),
-          id: crypto.randomUUID(),
-        })),
+        nilaiList: [] // ARRAY KOSONG - tidak menyalin nilai
       };
 
       setRows((prev) => {
         const next = [...prev, copiedParam];
         setActiveParamIndex(next.length - 1);
-        setActiveNilaiIndex(0);
+        setActiveNilaiIndex(-1); // Set ke -1 karena tidak ada nilai
         return next;
       });
       
@@ -507,7 +503,7 @@ function ParameterPanel({ rows, setRows, active, onSaveData }) {
       
       const nextIndex = updatedRows.length > 0 ? 0 : null;
       setActiveParamIndex(nextIndex);
-      setActiveNilaiIndex(0);
+      setActiveNilaiIndex(-1);
       setEditMode(false);
       setOriginalParameter(null);
       setDraftParameter(null);
@@ -548,7 +544,9 @@ function ParameterPanel({ rows, setRows, active, onSaveData }) {
 
       setRows(updatedRows);
       
-      const nextIndex = Math.max(0, nilaiIndex - 1);
+      const nextIndex = updatedRows[paramIndex]?.nilaiList?.length > 0 
+        ? Math.max(0, nilaiIndex - 1) 
+        : -1;
       setActiveNilaiIndex(nextIndex);
 
       setDeleteDialogOpen(false);
@@ -591,7 +589,7 @@ function ParameterPanel({ rows, setRows, active, onSaveData }) {
 
   const handleClearSelection = useCallback(() => {
     setActiveParamIndex(null);
-    setActiveNilaiIndex(0);
+    setActiveNilaiIndex(-1);
     setEditMode(false);
     setOriginalParameter(null);
     setDraftParameter(createEmptyParameter());
@@ -622,15 +620,15 @@ function ParameterPanel({ rows, setRows, active, onSaveData }) {
 
   return (
     <div className="w-full space-y-3">
-      <div className="bg-gradient-to-r from-blue-700 to-sky-600 text-white px-4 py-3 rounded-lg border border-black">
+      <div className="bg-blue-700 text-white px-4 py-3 rounded-lg border border-black">
         <div className="flex justify-between items-center">
-          <div className="text-lg font-semibold">
-            <h2 className="">Parameter</h2>
+          <div className="text-2xl tracking-wider font-bold">
+            <span>Parameter</span>
           </div>
 
           <div className="flex items-center gap-2">
             {loading && (
-              <div className="text-sm bg-slate-700 text-slate-200 px-2 py-1 rounded">
+              <div className="text-md bg-slate-700 text-slate-200 px-2 py-1 rounded">
                 Memproses...
               </div>
             )}
@@ -720,7 +718,7 @@ function ParameterPanel({ rows, setRows, active, onSaveData }) {
             {isKategoriIncomplete(currentParameter) && currentParameter.kategori.model !== "tanpa_model" ? (
               <div className="w-full mt-2 p-1 flex items-center gap-2 justify-center bg-amber-50 text-amber-700 rounded border border-amber-200">
                 <TriangleAlert className="w-4 h-4" />
-                <span className="text-sm">Kategori belum diselesaikan</span>
+                <span className="text-base font-semibold">Kategori belum diselesaikan</span>
               </div>
             ) : (
               <div className="w-full bg-slate-200 rounded p-0.5 mt-2" />
@@ -728,11 +726,11 @@ function ParameterPanel({ rows, setRows, active, onSaveData }) {
               
             <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 my-3 items-start">
               <div className="flex flex-col">
-                <label className="font-semibold text-md ml-1 mb-1 text-slate-200">
+                <label className="font-semibold text-base tracking-wide ml-1 mb-1 text-slate-200">
                   Model Produk
                 </label>
                 <select
-                  className="bg-white text-slate-800 text-md rounded px-2 py-1 border border-black"
+                  className="bg-white text-slate-800 text-md rounded px-2 py-2 border border-black"
                   value={currentParameter.kategori.model}
                   onChange={(e) =>
                     handleChangeKategori("model", e.target.value)
@@ -748,13 +746,13 @@ function ParameterPanel({ rows, setRows, active, onSaveData }) {
 
               {currentParameter.kategori.model === "open_end" && (
                 <div className="flex flex-col lg:col-span-2">
-                  <label className="font-semibold text-md ml-1 mb-1 text-slate-200">
+                  <label className="font-semibold text-base tracking-wide ml-1 mb-1 text-slate-200">
                     Jenis Reksa Dana
                   </label>
 
                   <div className="flex gap-4 items-center">
                     <select
-                      className="flex-1 bg-white text-slate-800 text-md rounded px-2 py-1 border border-black"
+                      className="flex-1 bg-white text-slate-800 text-md rounded px-2 py-2 border border-black"
                       value={currentParameter.kategori.jenis}
                       onChange={(e) =>
                         handleChangeKategori("jenis", e.target.value)
@@ -772,7 +770,7 @@ function ParameterPanel({ rows, setRows, active, onSaveData }) {
 
                     {currentParameter.kategori.model !== "tanpa_model" && (
                       <div className="flex gap-4 shrink-0">
-                        <label className="flex items-center gap-2 text-md cursor-pointer select-none text-slate-200">
+                        <label className="flex items-center gap-2 text-base font-semibold cursor-pointer select-none text-slate-200">
                           <input
                             type="checkbox"
                             checked={currentParameter.kategori.prinsip === "syariah"}
@@ -785,12 +783,12 @@ function ParameterPanel({ rows, setRows, active, onSaveData }) {
                               )
                             }
                             disabled={isFieldDisabled()}
-                            className="accent-emerald-500"
+                            className="accent-emerald-500 h-4 w-4"
                           />
                           <span>Syariah</span>
                         </label>
 
-                        <label className="flex items-center gap-2 text-md cursor-pointer select-none text-slate-200">
+                        <label className="flex items-center gap-2 text-base font-semibold cursor-pointer select-none text-slate-200">
                           <input
                             type="checkbox"
                             checked={currentParameter.kategori.prinsip === "konvensional"}
@@ -803,7 +801,7 @@ function ParameterPanel({ rows, setRows, active, onSaveData }) {
                               )
                             }
                             disabled={isFieldDisabled()}
-                            className="accent-slate-500"
+                            className="accent-slate-500 h-4 w-4 "
                           />
                           <span>Konvensional</span>
                         </label>
@@ -815,7 +813,7 @@ function ParameterPanel({ rows, setRows, active, onSaveData }) {
 
               {currentParameter.kategori.model === "terstruktur" && (
                 <div className="flex flex-col lg:col-span-2">
-                  <label className="font-semibold text-md ml-1 mb-1 text-slate-200">
+                  <label className="font-semibold text-base tracking-wide ml-1 mb-1 text-slate-200">
                     Aset Dasar
                   </label>
 
@@ -823,7 +821,7 @@ function ParameterPanel({ rows, setRows, active, onSaveData }) {
                     <div className="relative flex-1">
                       <button
                         type="button"
-                        className="w-full bg-white text-slate-800 text-md rounded px-2 py-1 flex justify-between items-center border border-black"
+                        className="w-full bg-white text-slate-800 text-md rounded px-2 py-1.5 flex justify-between items-center border border-black"
                         onClick={() => setOpenUnderlying((v) => !v)}
                         disabled={isFieldDisabled()}
                       >
@@ -877,7 +875,7 @@ function ParameterPanel({ rows, setRows, active, onSaveData }) {
 
                     {currentParameter.kategori.model !== "tanpa_model" && (
                       <div className="flex gap-4 shrink-0">
-                        <label className="flex items-center gap-2 text-md cursor-pointer select-none text-slate-200">
+                        <label className="flex items-center gap-2 text-base font-semibold cursor-pointer select-none text-slate-200">
                           <input
                             type="checkbox"
                             checked={currentParameter.kategori.prinsip === "syariah"}
@@ -890,12 +888,12 @@ function ParameterPanel({ rows, setRows, active, onSaveData }) {
                               )
                             }
                             disabled={isFieldDisabled()}
-                            className="accent-emerald-500"
+                            className="accent-emerald-500 h-4 w-4"
                           />
                           <span>Syariah</span>
                         </label>
 
-                        <label className="flex items-center gap-2 text-md cursor-pointer select-none text-slate-200">
+                        <label className="flex items-center gap-2 text-base font-semibold cursor-pointer select-none text-slate-200">
                           <input
                             type="checkbox"
                             checked={currentParameter.kategori.prinsip === "konvensional"}
@@ -908,7 +906,7 @@ function ParameterPanel({ rows, setRows, active, onSaveData }) {
                               )
                             }
                             disabled={isFieldDisabled()}
-                            className="accent-slate-500"
+                            className="accent-slate-500 h-4 w-4"
                           />
                           <span>Konvensional</span>
                         </label>
@@ -925,7 +923,7 @@ function ParameterPanel({ rows, setRows, active, onSaveData }) {
 
             <div className="w-full flex gap-2">
               <div className="w-[10%]">
-                <label className="font-semibold text-md ml-2 text-slate-200">No</label>
+                <label className="font-semibold text-md ml-1 text-slate-200">No</label>
                 <Input
                   placeholder="4."
                   value={currentParameter.nomor}
@@ -936,7 +934,7 @@ function ParameterPanel({ rows, setRows, active, onSaveData }) {
               </div>
 
               <div className="w-[10%]">
-                <label className="font-semibold text-md ml-2 text-slate-200">Bobot</label>
+                <label className="font-semibold text-md ml-1 text-slate-200">Bobot</label>
                 <Input
                   placeholder="max 100%"
                   type="number"
@@ -951,7 +949,7 @@ function ParameterPanel({ rows, setRows, active, onSaveData }) {
               </div>
 
               <div className="w-[80%]">
-                <label className="font-semibold text-md ml-2 text-slate-200">Parameter</label>
+                <label className="font-semibold text-md ml-1 text-slate-200">Parameter</label>
                 <Input
                   placeholder="Reksa Dana"
                   value={currentParameter.judul}
@@ -968,10 +966,15 @@ function ParameterPanel({ rows, setRows, active, onSaveData }) {
               </div>
             </div>
 
+            <div className="mt-2">
+              <label className="font-semibold text-normal tracking-wide ml-1 mb-1 text-slate-200">
+                Pilih Parameter
+              </label>
+
             <button
               ref={dropdownBtnRef}
               onClick={() => setOpenParamList((v) => !v)}
-              className="w-full mt-3 bg-white text-md text-slate-800 px-3 py-2 rounded-md flex justify-between border border-black hover:bg-slate-50"
+              className="w-full bg-white text-md text-slate-800 px-3 py-2 rounded-md flex justify-between border border-black hover:bg-slate-50"
               disabled={loading}
             >
               <span className="truncate">
@@ -997,9 +1000,9 @@ function ParameterPanel({ rows, setRows, active, onSaveData }) {
                       handleClearSelection();
                       setOpenParamList(false);
                     }}
-                    className="w-full text-left px-3 py-2 hover:bg-slate-50 text-slate-700 border border-b-black"
+                    className="w-full text-left px-3 py-2 hover:bg-slate-50 text-slate-700 border border-b-black border-x-white"
                   >
-                    ← Kosongkan Pilihan
+                    Buat Parameter Baru
                   </button>
                   
                   {rows.map((row, idx) => (
@@ -1022,6 +1025,7 @@ function ParameterPanel({ rows, setRows, active, onSaveData }) {
                 </div>,
                 document.body
               )}
+            </div>
           </>
         )}
       </div>
@@ -1068,6 +1072,8 @@ function ParameterPanel({ rows, setRows, active, onSaveData }) {
   );
 }
 
+
+//komponent nilai panel
 function NilaiPanel({
   param,
   nilaiList = [],
@@ -1128,13 +1134,16 @@ function NilaiPanel({
     containerRef: dropdownNilaiListRef,
   });
 
+  // PERUBAHAN PENTING: Otomatis masuk ke mode buat baru ketika pertama kali atau tidak ada nilai dipilih
   useEffect(() => {
-    if (!editModeNilai) {
-      setEditModeNilai(false);
-      setOriginalNilai(null);
-      setDraftNilai(null);
+    // Jika tidak ada nilai sama sekali di daftar, atau activeNilaiIndex = -1
+    if (!hasNilai || activeNilaiIndex === -1) {
+      setEditModeNilai(true); // Otomatis masuk edit mode
+      if (!draftNilai) {
+        setDraftNilai(createEmptyDraftNilai()); // Buat draft kosong
+      }
     }
-  }, [activeNilaiIndex]);
+  }, [hasNilai, activeNilaiIndex]);
 
   const safeActiveIndex =
     hasNilai &&
@@ -1159,9 +1168,9 @@ function NilaiPanel({
         percent: false,
       },
       bobot: "",
+      keterangan: "",
       kodeEmiten: "",
       kepemilikan: "",
-      keterangan: "",
       riskindikator: {
         low: "",
         lowToModerate: "",
@@ -1185,7 +1194,7 @@ function NilaiPanel({
   }, [hasNilai, activeNilaiIndex, setActiveNilaiIndex]);
 
   const formatNilaiLabel = useCallback((nilai, index) => {
-    if (!nilai) return "Pilih atau Tambah Nilai Baru";
+    if (!nilai) return "Buat Nilai Baru ";
     
     const nomor = nilai.nomor || (index + 1);
     const judul = nilai.judul?.text || "Tanpa Judul";
@@ -1339,50 +1348,60 @@ function NilaiPanel({
     }));
   }, [draftNilai, editModeNilai]);
 
-  // Tambah nilai baru dari draft
-  const handleAddNilai = useCallback(() => {
-    if (paramIndex === null) return;
+  // Tambah nilai baru
+const handleAddNilai = useCallback(() => {
+  if (paramIndex === null) return;
 
-    const nilaiToAdd = draftNilai || createEmptyDraftNilai();
+  const nilaiToAdd = draftNilai || createEmptyDraftNilai();
+  
+  if (!nilaiToAdd.judul?.text?.trim()) {
+    alert("Judul nilai tidak boleh kosong!");
+    return;
+  }
+  
+  const bobotNum = Number(nilaiToAdd.bobot);
+  if (isNaN(bobotNum) || bobotNum < 0 || bobotNum > 100) {
+    alert("Bobot nilai harus antara 0 dan 100!");
+    return;
+  }
+  
+  const newNilai = {
+    ...nilaiToAdd,
+    id: crypto.randomUUID(),
+  };
+  
+  // Buat rows yang sudah diupdate
+  const updatedRows = rows.map((row, ri) =>
+    ri === paramIndex
+      ? {
+          ...row,
+          nilaiList: [...(row.nilaiList || []), newNilai],
+        }
+      : row
+  );
+  
+  // Update state dengan rows baru
+  setRows(updatedRows);
+  
+  // Langsung panggil onSaveData dengan rows yang baru
+  if (typeof onSaveData === 'function') {
+    const saveSuccess = onSaveData(updatedRows);
     
-    if (!nilaiToAdd.judul?.text?.trim()) {
-      alert("Judul nilai tidak boleh kosong!");
-      return;
+    if (!saveSuccess) {
+      alert("❌ Nilai berhasil ditambahkan tapi gagal disimpan!");
     }
-    
-    const bobotNum = Number(nilaiToAdd.bobot);
-    if (isNaN(bobotNum) || bobotNum < 0 || bobotNum > 100) {
-      alert("Bobot nilai harus antara 0 dan 100!");
-      return;
-    }
-    
-    const newNilai = {
-      ...nilaiToAdd,
-      id: crypto.randomUUID(),
-    };
-    
-    setRows((prev) =>
-      prev.map((row, ri) =>
-        ri === paramIndex
-          ? {
-              ...row,
-              nilaiList: [...(row.nilaiList || []), newNilai],
-            }
-          : row
-      )
-    );
+  }
 
-    setActiveNilaiIndex((row.nilaiList || []).length);
-    setEditModeNilai(false);
-    setOriginalNilai(null);
-    setDraftNilai(null);
-    
-    setTimeout(() => {
-      if (typeof onSaveData === 'function') {
-        onSaveData();
-      }
-    }, 100);
-  }, [paramIndex, draftNilai, setRows, setActiveNilaiIndex, onSaveData]);
+  const currentRow = rows[paramIndex];
+  const currentLength = (currentRow?.nilaiList || []).length;
+  setActiveNilaiIndex(currentLength);
+  
+  // Reset state
+  setEditModeNilai(true);
+  setOriginalNilai(null);
+  setDraftNilai(createEmptyDraftNilai());
+  
+}, [paramIndex, draftNilai, rows, setRows, setActiveNilaiIndex, onSaveData]);
 
   // Aktifkan edit mode untuk nilai yang dipilih
   const handleEditNilai = useCallback(() => {
@@ -1394,22 +1413,40 @@ function NilaiPanel({
   }, [safeActiveIndex, currentNilai, editModeNilai]);
 
   // Simpan perubahan dari edit mode ke state utama
-  const handleUpdateNilai = useCallback(() => {
-    if (!draftNilai || paramIndex === null || !editModeNilai) return;
-    
-    if (!draftNilai.judul?.text?.trim()) {
-      alert("Judul nilai tidak boleh kosong!");
-      return;
-    }
-    
-    const bobotNum = Number(draftNilai.bobot);
-    if (isNaN(bobotNum) || bobotNum < 0 || bobotNum > 100) {
-      alert("Bobot nilai harus antara 0 dan 100!");
-      return;
-    }
-    
-    setRows((prev) =>
-      prev.map((row, ri) => {
+ const handleUpdateNilai = useCallback(() => {
+  if (!draftNilai || paramIndex === null || !editModeNilai) return;
+  
+  if (!draftNilai.judul?.text?.trim()) {
+    alert("Judul nilai tidak boleh kosong!");
+    return;
+  }
+  
+  const bobotNum = Number(draftNilai.bobot);
+  if (isNaN(bobotNum) || bobotNum < 0 || bobotNum > 100) {
+    alert("Bobot nilai harus antara 0 dan 100!");
+    return;
+  }
+  
+  setRows((prev) =>
+    prev.map((row, ri) => {
+      if (ri !== paramIndex) return row;
+      
+      return {
+        ...row,
+        nilaiList: (row.nilaiList || []).map((n, ni) =>
+          ni === safeActiveIndex ? draftNilai : n
+        ),
+      };
+    })
+  );
+  
+  setEditModeNilai(false);
+  setOriginalNilai(null);
+  setDraftNilai(null);
+
+  setTimeout(() => {
+    if (typeof onSaveData === 'function') {
+      const updatedRows = rows.map((row, ri) => {
         if (ri !== paramIndex) return row;
         
         return {
@@ -1418,20 +1455,18 @@ function NilaiPanel({
             ni === safeActiveIndex ? draftNilai : n
           ),
         };
-      })
-    );
-    
-    setEditModeNilai(false);
-    setOriginalNilai(null);
-    setDraftNilai(null);
-    
-    setTimeout(() => {
-      if (typeof onSaveData === 'function') {
-        onSaveData();
+      });
+      
+      // Panggil onSaveData dengan rows yang sudah diupdate
+      const saveSuccess = onSaveData(updatedRows);
+      
+      if (!saveSuccess) {
+        alert("❌ Nilai berhasil diupdate tapi gagal disimpan ke storage!");
       }
-    }, 100);
-    
-  }, [draftNilai, paramIndex, safeActiveIndex, setRows, onSaveData, editModeNilai]);
+    }
+  }, 100);
+  
+}, [draftNilai, paramIndex, safeActiveIndex, setRows, onSaveData, editModeNilai, rows]);
 
   // Batalkan edit dan kembalikan ke nilai asli
   const handleCancelEditNilai = useCallback(() => {
@@ -1485,14 +1520,15 @@ function NilaiPanel({
       )
     );
 
-    setActiveNilaiIndex((row.nilaiList || []).length);
+    const newIndex = (rows[paramIndex]?.nilaiList || []).length;
+    setActiveNilaiIndex(newIndex);
     
     setTimeout(() => {
       if (typeof onSaveData === 'function') {
         onSaveData();
       }
     }, 100);
-  }, [paramIndex, currentNilai, safeActiveIndex, editModeNilai, setRows, setActiveNilaiIndex, onSaveData]);
+  }, [paramIndex, currentNilai, safeActiveIndex, editModeNilai, setRows, rows, setActiveNilaiIndex, onSaveData]);
 
   // Tampilkan dialog konfirmasi hapus nilai
   const handleDeleteNilai = useCallback(() => {
@@ -1506,16 +1542,16 @@ function NilaiPanel({
   const handleSelectNilai = (index) => {
     setActiveNilaiIndex(index);
     setOpenNilaiList(false);
-    setEditModeNilai(false);
+    setEditModeNilai(false); // Keluar dari edit mode ketika memilih nilai yang ada
     setOriginalNilai(null);
     setDraftNilai(null);
   };
 
   const handleClearNilaiSelection = useCallback(() => {
     setActiveNilaiIndex(-1);
-    setEditModeNilai(true); // MASUK KE EDIT MODE AGAR BISA NGETIK!
+    setEditModeNilai(true); // Otomatis masuk edit mode
     setOriginalNilai(null);
-    setDraftNilai(createEmptyDraftNilai());
+    setDraftNilai(createEmptyDraftNilai()); // Buat draft kosong
     setOpenNilaiList(false);
   }, []);
 
@@ -1659,8 +1695,8 @@ function NilaiPanel({
         </div>
       )}
 
-      <div className="w-full bg-gradient-to-r from-blue-700 to-sky-600 text-white px-4 pt-4 pb-3 border border-t-black border-l-black border-r-black flex items-center justify-between gap-4 rounded-t-lg">
-        <div className="text-lg font-bold">Nilai Form</div>
+      <div className="w-full bg-blue-700 text-white px-4 pt-4 pb-3 border border-x-black border-t-black border-b-blue-700 flex items-center justify-between gap-4 rounded-t-lg">
+        <div className="text-2xl tracking-wider font-bold">Nilai Form</div>
 
         <div className="flex items-center gap-3">
           <Button
@@ -1710,7 +1746,7 @@ function NilaiPanel({
           <div className="flex items-center gap-1">
             <Button
               size="icon"
-              className={`h-8 w-8 rounded-full ${mainButtonConfig.className}`}
+              className={`h-9 w-9 rounded-full ${mainButtonConfig.className}`}
               onClick={mainButtonConfig.onClick}
               title={mainButtonConfig.title}
               disabled={loading}
@@ -1721,7 +1757,7 @@ function NilaiPanel({
             {!editModeNilai && safeActiveIndex >= 0 && hasNilai && (
               <Button
                 size="icon"
-                className="h-8 w-8 rounded-full bg-amber-600 hover:bg-amber-700"
+                className="h-9 w-9 rounded-full bg-amber-600 hover:bg-amber-700"
                 onClick={handleCopyNilai}
                 disabled={loading}
                 title="Salin Nilai"
@@ -1733,7 +1769,7 @@ function NilaiPanel({
             {!editModeNilai && safeActiveIndex >= 0 && hasNilai && (
               <Button
                 size="icon"
-                className="h-8 w-8 rounded-full bg-rose-600 hover:bg-rose-700"
+                className="h-9 w-9 rounded-full bg-rose-600 hover:bg-rose-700"
                 onClick={handleDeleteNilai}
                 disabled={loading}
                 title="Hapus Nilai"
@@ -1746,13 +1782,12 @@ function NilaiPanel({
       </div>
 
       {showForm && (
-        <div className="w-full bg-gradient-to-r from-blue-700 to-sky-600 text-white px-4 pb-4 border border-slate-900 space-y-4 rounded-b-lg">
-          <div className="w-full bg-slate-200 rounded-lg p-0.5 mt-2"/>
-          
+        <div className="w-full bg-blue-700 text-white px-4 pb-4 border border-x-black border-t-blue-700 space-y-4 rounded-b-lg">
+          <div className="w-full bg-slate-200 rounded-lg p-0.5 mt-2"/>              
           <div className="space-y-2">
             <div className="flex flex-col">
-              <label className="font-semibold text-md ml-1 mb-1 text-slate-200">
-                Pilih Nilai
+              <label className="font-semibold text-normal tracking-wide ml-1 mb-1 text-slate-200">
+                ID Indikator
               </label>
               <button
                 ref={dropdownNilaiBtnRef}
@@ -1763,7 +1798,7 @@ function NilaiPanel({
                 <span className="truncate">
                   {safeActiveIndex >= 0 && hasNilai 
                     ? formatNilaiLabel(currentNilai, safeActiveIndex) 
-                    : "Pilih atau Tambah Nilai Baru"}
+                    : "Buat Nilai Baru"}
                 </span>
                 <span>▾</span>
               </button>
@@ -1784,9 +1819,9 @@ function NilaiPanel({
                     handleClearNilaiSelection();
                     setOpenNilaiList(false);
                   }}
-                  className="w-full text-left px-3 py-2 hover:bg-slate-50 text-slate-700 border border-b-black"
+                  className="w-full text-left px-3 py-2 hover:bg-slate-50 text-slate-700 border border-b-black border-x-white"
                 >
-                  ← Kosongkan Pilihan (Buat Baru)
+                   Buat Nilai Baru 
                 </button>
                 
                 {hasNilai && nilaiList.map((nilai, idx) => (
@@ -1805,12 +1840,13 @@ function NilaiPanel({
             )}
           </div>
 
-          {(currentNilai && (safeActiveIndex === -1 || safeActiveIndex >= 0)) && (
+          {/* Tampilkan form ketika dalam mode buat baru atau ada nilai yang dipilih */}
+          {(editModeNilai || safeActiveIndex >= 0) && (
             <>
               <div className="flex justify-end">
                 <Button
-                  size="sm"
-                  className="bg-slate-100 text-slate-800 font-semibold hover:bg-slate-200 border border-black"
+                  size="normal"
+                  className="bg-slate-100 p-1 text-slate-800 font-semibold hover:bg-slate-200 border border-black"
                   onClick={openFormula}
                   disabled={loading}
                 >
@@ -1847,53 +1883,53 @@ function NilaiPanel({
               />
 
               <div className="flex gap-2">
-                 <div className="w-[50%] text-slate-800">
-                <label className="font-semibold text-md text-slate-200">
-                  Kode Emiten
-                </label>
-                <Input
-                  className="h-8 bg-white text-md border border-black w-full"
-                  value={currentNilai.kodeEmiten ?? ""}
-                  onChange={(e) => 
-                    isEditModeForComponents
-                      ? handleChangeDraftNilai("kodeEmiten", e.target.value)
-                      : handleChangeNilaiField("kodeEmiten", e.target.value)
-                  }
-                  disabled={isFieldDisabled()}
-                  placeholder="masukan kode emiten"
-                />
-              </div>
+                <div className="w-[50%] text-slate-800">
+                  <label className="font-semibold text-md tracking-wide ml-1 text-slate-200">
+                   Kode Emiten
+                  </label>
+                  <Input
+                    className=" bg-white text-md border border-black w-full"
+                    value={currentNilai.kodeEmiten?? ""}
+                    onChange={(e) => 
+                      isEditModeForComponents
+                        ? handleChangeDraftNilai("kodeEmiten", e.target.value)
+                        : handleChangeNilaiField("kodeEmiten", e.target.value)
+                    }
+                    disabled={isFieldDisabled()}
+                    placeholder="masukan kode emiten"
+                  />
+                </div>
 
-              <div className="w-[50%] text-slate-800">
-                <label className="font-semibold text-md text-slate-200">
-                  % Kepemilikan
-                </label>
-                <Input
-                  className="h-8 bg-white text-md border border-black w-full"
-                  value={currentNilai.kepemilikan ?? ""}
-                  onChange={(e) => 
-                    isEditModeForComponents
-                      ? handleChangeDraftNilai("kepemilikan", e.target.value)
-                      : handleChangeNilaiField("kepemilikan", e.target.value)
-                  }
-                  disabled={isFieldDisabled()}
-                  placeholder="masukan kepemilikan"
-                />
-              </div>
+                <div className="w-[50%] text-slate-800">
+                  <label className="font-semibold text-md tracking-wide ml-1 text-slate-200">
+                    % Kepemilikan
+                  </label>
+                  <Input
+                    className=" bg-white text-md border border-black w-full"
+                    value={currentNilai.kepemilikan ?? ""}
+                    onChange={(e) => 
+                      isEditModeForComponents
+                        ? handleChangeDraftNilai("kepemilikan", e.target.value)
+                        : handleChangeNilaiField("kepemilikan", e.target.value)
+                    }
+                    disabled={isFieldDisabled()}
+                    placeholder="masukan % dalam kepemilikan"
+                  />
+                </div>
               </div>
 
               <div className="mt-3">
-                <div className="text-md font-semibold py-2 text-slate-200">
+                <div className="text-lg ml-1 font-semibold py-2 text-slate-200">
                   Risk Indicator
                 </div>
 
                 <div className="grid grid-cols-5 gap-2">
                   {[
-                    ["Low", "low", "#2ECC71"],
+                    ["Low", "low", "#00B050"],
                     ["Low To Moderate", "lowToModerate", "#A3E635"],
-                    ["Moderate", "moderate", "#FACC15"],
-                    ["Moderate To High", "moderateToHigh", "#F97316"],
-                    ["High", "high", "#EF4444"],
+                    ["Moderate", "moderate", "#EEFF00"],
+                    ["Moderate To High", "moderateToHigh", "#FFC000"],
+                    ["High", "high", "#FF0000"],
                   ].map(([label, key, color]) => (
                     <RiskItem
                       key={key}
@@ -1911,9 +1947,9 @@ function NilaiPanel({
                   ))}
                 </div>
               </div>
-
+              
               <div className="mt-2 text-slate-800">
-                <label className="text-slate-200 font-semibold text-md">
+                <label className="text-slate-200 ml-1 tracking-wide font-semibold text-md">
                   Keterangan
                 </label>
                 <Textarea
@@ -1946,12 +1982,12 @@ function RiskItem({ label, value, onChange, color, loading = false, editMode = f
       className="rounded-lg px-3 py-3 flex flex-col gap-2 border border-black shadow-sm"
       style={{ backgroundColor: color }}
     >
-      <div className="text-md font-bold uppercase text-black text-center">
+      <div className="text-md font-bold tracking-wide uppercase text-black text-center">
         {label}
       </div>
       <div className="bg-white/90 rounded border border-black">
         <Textarea
-          className="min-h-[60px] text-sm bg-transparent text-slate-800 resize-none text-center p-2"
+          className="min-h-[60px] text-md bg-transparent text-slate-800 resize-none text-center p-2"
           value={value}
           onChange={(e) => onChange(e.target.value)}
           disabled={loading || !editMode}
@@ -2045,7 +2081,8 @@ function NilaiJudulInput({
         nomor: nomor || "",
         judul: judulObj,
         bobot: Number(bobot) || 0,
-        portofolio: "",
+        kodeEmiten: "",
+        kepemilikan: "",
         keterangan: "",
         riskindikator: {
           low: "",
@@ -2146,13 +2183,13 @@ function NilaiJudulInput({
             onClick={() => updateType(m)}
             disabled={loading || !editMode}
             className={`
-              px-3 py-1 border border-black text-sm transition 
+              px-3 py-1 border border-black text-md transition 
               ${
                 judul.type === m
                   ? "bg-blue-900 text-white"
                   : "bg-slate-100 text-slate-800"
               }
-              hover:bg-slate-700 hover:text-white
+              hover:bg-blue-900 hover:text-white
               first:rounded-l last:rounded-r
               ${(loading || !editMode) ? "opacity-60 cursor-not-allowed" : ""}
             `}
@@ -2166,18 +2203,18 @@ function NilaiJudulInput({
 
       <div className="grid grid-cols-16 gap-2">
         <div className="col-span-1 space-y-1">
-          <label className="font-semibold text-md text-slate-200">No</label>
+          <label className="font-semibold text-md ml-1 tracking-wide text-slate-200">No</label>
           <Input
             className="text-slate-800 border border-black bg-white w-full"
             value={nomor || ""}
             onChange={(e) => onNomorChange && onNomorChange(e.target.value)}
             disabled={loading || !editMode}
-            placeholder="1.1."
+            placeholder="4."
           />
         </div>
 
         <div className="col-span-1 space-y-1">
-          <label className="font-semibold text-md text-slate-200">Bobot</label>
+          <label className="font-semibold text-md ml-1 tracking-wide text-slate-200">Bobot</label>
           <Input
             className="text-slate-800 border border-black bg-white w-full"
             value={bobot || ""}
@@ -2192,7 +2229,7 @@ function NilaiJudulInput({
         </div>
 
         <div className="col-span-14 space-y-1">
-          <label className="font-semibold text-md text-slate-200">Judul Nilai</label>
+          <label className="font-semibold text-md ml-1 tracking-wide text-slate-200">ID Indikator</label>
           <Input
             className="text-slate-800 border border-black bg-white w-full"
             value={judul.text || ""}
@@ -2204,9 +2241,9 @@ function NilaiJudulInput({
       </div>
 
       {judul.type === "Tanpa Faktor" && (
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-4 gap-2">
           <div className="space-y-1 col-span-3">
-            <label className="font-semibold text-md text-slate-200">Value</label>
+            <label className="font-semibold text-md ml-1 tracking-wide text-slate-200">Value</label>
             <Input
               className="text-slate-800 border border-black bg-white w-full"
               value={judul.value ?? ""}
@@ -2218,7 +2255,7 @@ function NilaiJudulInput({
             />
           </div>
           <div className="space-y-1 col-span-1">
-            <label className="font-semibold text-md text-slate-200">Hasil</label>
+            <label className="font-semibold text-md ml-1 tracking-wide text-slate-200">Hasil</label>
             <Input
               className="text-slate-800 border border-black bg-gray-100 w-full cursor-default"
               value={formatHasil(hasilDisplay) || (formulaPreview && `Formula: ${formulaPreview}`) || ""}
@@ -2231,9 +2268,9 @@ function NilaiJudulInput({
 
       {judul.type === "Satu Faktor" && (
         <div className="space-y-4">
-          <div className="grid grid-cols-6 gap-4">
+          <div className="grid grid-cols-6 gap-2">
             <div className="space-y-1 col-span-3">
-              <label className="font-semibold text-md text-slate-200">Pembilang</label>
+              <label className="font-semibold text-md ml-1 tracking-wide text-slate-200">Pembilang</label>
               <Input
                 className="text-slate-800 border border-black bg-white w-full"
                 value={judul.pembilang || ""}
@@ -2244,7 +2281,7 @@ function NilaiJudulInput({
             </div>
 
             <div className="space-y-1 col-span-2">
-              <label className="font-semibold  text-md text-slate-200">Value Pembilang</label>
+              <label className="font-semibold  text-md ml-1 tracking-wide text-slate-200">Value Pembilang</label>
               <Input
                 className="text-slate-800 border border-black bg-white w-full"
                 value={judul.valuePembilang ?? ""}
@@ -2260,7 +2297,7 @@ function NilaiJudulInput({
             </div>
             
             <div className="space-y-1 col-span-1">
-              <label className="font-semibold text-md text-slate-200">Hasil</label>
+              <label className="font-semibold text-md ml-1 tracking-wide text-slate-200">Hasil</label>
               <Input
                 className="text-slate-800 border border-black bg-gray-100 w-full cursor-default"
                 value={formatHasil(hasilDisplay) || (formulaPreview && `Formula: ${formulaPreview}`) || ""}
@@ -2274,9 +2311,9 @@ function NilaiJudulInput({
 
       {judul.type === "Dua Faktor" && (
         <div className="space-y-4">
-          <div className="grid grid-cols-6 gap-4">
+          <div className="grid grid-cols-6 gap-2">
             <div className="space-y-1 col-span-3">
-              <label className="font-semibold text-md text-slate-200">Pembilang</label>
+              <label className="font-semibold text-md ml-1 tracking-wide text-slate-200">Pembilang</label>
               <Input
                 className="text-slate-800 border border-black bg-white w-full"
                 value={judul.pembilang || ""}
@@ -2287,7 +2324,7 @@ function NilaiJudulInput({
             </div>
 
             <div className="space-y-1 col-span-3">
-              <label className="font-semibold text-md text-slate-200">Value Pembilang</label>
+              <label className="font-semibold text-md ml-1 tracking-wide text-slate-200">Value Pembilang</label>
               <Input
                 className="text-slate-800 border border-black bg-white w-full"
                 value={judul.valuePembilang ?? ""}
@@ -2305,7 +2342,7 @@ function NilaiJudulInput({
 
           <div className="grid grid-cols-6 gap-4">
             <div className="space-y-1m col-span-3">
-              <label className="font-semibold text-md text-slate-200">Penyebut</label>
+              <label className="font-semibold text-md ml-1 tracking-wide text-slate-200">Penyebut</label>
               <Input
                 className="text-slate-800 border border-black bg-white w-full"
                 value={judul.penyebut || ""}
@@ -2316,7 +2353,7 @@ function NilaiJudulInput({
             </div>
 
             <div className="space-y-1 col-span-2">
-              <label className="font-semibold text-md text-slate-200">Value Penyebut</label>
+              <label className="font-semibold text-md ml-1 tracking-wide text-slate-200">Value Penyebut</label>
               <Input
                 className="text-slate-800 border border-black bg-white w-full"
                 value={judul.valuePenyebut ?? ""}
@@ -2332,7 +2369,7 @@ function NilaiJudulInput({
             </div>
             
             <div className="space-y-1 col-span-1">
-              <label className="font-semibold text-md text-slate-200">Hasil</label>
+              <label className="font-semibold text-md ml-1 tracking-wide text-slate-200">Hasil</label>
               <Input
                 className="text-slate-800 border border-black bg-gray-100 w-full cursor-default"
                 value={formatHasil(hasilDisplay) || (formulaPreview && `Formula: ${formulaPreview}`) || ""}
@@ -2459,7 +2496,7 @@ function TableInherent({ rows = [], activeQuarter }) {
             −
           </button>
           <div className="flex flex-col items-center">
-            <span className="text-sm font-medium mb-1">{zoom}%</span>
+            <span className="text-md font-medium mb-1">{zoom}%</span>
             <input
               type="range"
               min={minZoom}
@@ -2489,7 +2526,7 @@ function TableInherent({ rows = [], activeQuarter }) {
             display: "block"
           }}
         >
-          <table className="text-sm table-auto w-full">
+          <table className="text-md table-auto w-full">
             <colgroup>
               <col style={{ width: "3%" }} />
               <col style={{ width: "4%" }} />
@@ -2497,8 +2534,8 @@ function TableInherent({ rows = [], activeQuarter }) {
               <col style={{ width: "3%" }} />
               <col style={{ width: "15%" }} />
               <col style={{ width: "4%" }} />
-              <col style={{ width: "5%" }} />
-              <col style={{ width: "5%" }} />
+              <col style={{ width: "10%" }} />
+              <col style={{ width: "10%" }} />
               <col style={{ width: "8%" }} />
               <col style={{ width: "8%" }} />
               <col style={{ width: "8%" }} />
@@ -2507,7 +2544,8 @@ function TableInherent({ rows = [], activeQuarter }) {
               <col style={{ width: "8%" }} />
               <col style={{ width: "8%" }} />
               <col style={{ width: "8%" }} />
-              <col style={{ width: "15%" }} />
+              <col style={{ width: "8%" }} />
+              
             </colgroup>
             
             <thead>
@@ -2517,21 +2555,21 @@ function TableInherent({ rows = [], activeQuarter }) {
                 <th className="border border-black px-2 py-2 bg-blue-900 text-white text-center">Parameter</th>
 
                 <th className="border border-black px-2 py-2 bg-blue-900 text-white text-center">No</th>
-                <th className="border border-black px-2 py-2 bg-blue-900 text-white text-center">ID Indikator</th>
+                <th className="border border-black px-2 py-2 bg-blue-900 text-white text-center">Indikator</th>
                 <th className="border border-black px-2 py-2 bg-blue-900 text-white text-center">Bobot</th>
                 <th className="border border-black px-2 py-2 bg-blue-900 text-white text-center">Kode Emiten</th>
                 <th className="border border-black px-2 py-2 bg-blue-900 text-white text-center">% Kepemilikan</th>
 
-                <th className="border border-black px-2 py-2 bg-[#2ECC71] text-white text-center">Low</th>
+                <th className="border border-black px-2 py-2 bg-[#00B050] text-white text-center">Low</th>
                 <th className="border border-black px-2 py-2 bg-[#A3E635] text-black text-center">Low To Moderate</th>
-                <th className="border border-black px-2 py-2 bg-[#FACC15] text-black text-center">Moderate</th>
+                <th className="border border-black px-2 py-2 bg-[#EEFF00] text-black text-center">Moderate</th>
                 <th className="border border-black px-2 py-2 bg-[#F97316] text-black text-center">Moderate To High</th>
                 <th className="border border-black px-2 py-2 bg-[#FF0000] text-white text-center">High</th>
 
                 <th className="border border-black px-2 py-2 bg-blue-950 text-white text-center">Hasil</th>
                 <th className="border border-black px-2 py-2 bg-blue-950 text-white text-center">Peringkat</th>
                 <th className="border border-black px-2 py-2 bg-blue-950 text-white text-center">Weighted</th>
-                <th className="border border-black px-2 py-2 bg-blue-900 text-white text-center">Keterangan</th>
+                <th className="border border-black px-2 py-2 bg-blue-950 text-white text-center">Keterangan</th>
               </tr>
             </thead>
 
@@ -2555,7 +2593,10 @@ function TableInherent({ rows = [], activeQuarter }) {
                         colSpan={13}
                         className="border border-black px-2 py-2 text-center text-gray-400 bg-white"
                       >
-                        Belum ada nilai
+                        <div className="flex items-center justify-center gap-2">
+                          <TriangleAlert className="w-4 h-4" />
+                          <span>Belum ada nilai untuk parameter ini</span>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -2680,7 +2721,7 @@ function TableInherent({ rows = [], activeQuarter }) {
                             {formatPercent(nilai.bobot)}
                           </td>
                           <td className="border border-black px-2 py-2 max-w-[120px] text-center bg-[#E8F5FA] break-words">
-                            {nilai.kodeEmiten ?? "-"}
+                            {nilai.kodeEmiten?? "-"}
                           </td>
 
                           <td className="border border-black px-2 py-2 max-w-[120px] text-center bg-[#E8F5FA] break-words">
@@ -2691,7 +2732,7 @@ function TableInherent({ rows = [], activeQuarter }) {
                         <>
                           <td className="border border-black px-2 py-2 text-center bg-white"></td>
                           <td className="border border-black max-w-[180px] px-2 py-2 bg-white break-words">
-                            <div className="text-sm">
+                            <div className="text-md">
                               {nilaiText}
                             </div>
                           </td>
@@ -2714,7 +2755,7 @@ function TableInherent({ rows = [], activeQuarter }) {
                       <td className={`border border-black px-2 py-2 max-w-[150px] text-center ${
                         isMainRow ? 'bg-white' : 'bg-[#D9EAD3]'
                       } break-words`}>
-                        <div className={isMainRow ? "text-md font-semibold" : "text-sm"}>
+                        <div className={isMainRow ? "text-md font-semibold" : "text-md"}>
                           {hasilText}
                         </div>
                       </td>
@@ -2758,7 +2799,6 @@ function TableInherent({ rows = [], activeQuarter }) {
                     ? globalSummary.totalWeighted.toFixed(2)
                     : "-"}
                 </td>
-                <td className="border border-black bg-white"></td>
               </tr>
             </tbody>
           </table>

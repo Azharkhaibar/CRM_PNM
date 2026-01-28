@@ -1,331 +1,185 @@
-# Backend Contract – Risk Profile Pasar Produk
+# Catatan API – Risk Profile OJK
 
-Dokumen ini menjelaskan **format JSON**, **endpoint**, dan **alur data** yang dibutuhkan backend agar kompatibel dengan implementasi frontend pada modul:
+## 1. Konsep Umum Risk Profile OJK
 
-* Inherent Risk
-* KPMR
+Risk Profile OJK berisi **parameter risiko per kategori OJK** (misal: Pasar, Likuiditas, Kredit, Operasional, dll) yang:
 
-Sumber acuan: `InherentPage.jsx`, `KpmrPage.jsx`, `PasarProduk.jsx`.
-
----
-
-## 1. Konteks Umum
-
-Kategori tetap:
-
-```
-categoryId: "pasar-produk"
-```
-
-Semua data dipartisi berdasarkan:
-
-* `categoryId`
-* `year`
-* `quarter` (khusus Inherent)
+* Dinilai **per tahun** (bukan bulanan)
+* Memiliki **indikator kuantitatif / kualitatif**
+* Menghasilkan **nilai risiko** dan **level risiko**
+* Digunakan untuk pelaporan regulator (OJK)
 
 ---
 
-## 2. Struktur Data – Inherent Risk
-
-### 2.1 Root Payload
+## 2. Format JSON – Risk Profile OJK
 
 ```json
 {
-  "categoryId": "pasar-produk",
+  "id": "generated-uuid-v4",
   "year": 2025,
-  "quarter": "Q1",
-  "rows": [ /* Parameter[] */ ]
-}
-```
-
----
-
-### 2.2 Parameter Object
-
-```json
-{
-  "id": "uuid",
-  "nomor": "1",
-  "judul": "Reksa Dana",
-  "bobot": 20,
-  "kategori": {
-    "model": "open_end | terstruktur | tanpa_model",
-    "prinsip": "syariah | konvensional | " ,
-    "jenis": "pasar_uang | pendapatan_tetap | campuran | saham | indeks | terproteksi | " ,
-    "underlying": ["indeks", "eba", "dinfra", "obligasi"]
-  },
-  "nilaiList": [ /* Nilai[] */ ]
-}
-```
-
-**Catatan aturan frontend:**
-
-* Jika `model = tanpa_model` → field lain boleh kosong.
-* Jika `model = open_end` → `jenis` wajib.
-* Jika `model = terstruktur` → `underlying` minimal 1.
-* `bobot` valid: `0–100`.
-
----
-
-### 2.3 Nilai Object
-
-```json
-{
-  "id": "uuid",
-  "nomor": "1",
-  "bobot": 50,
-  "portofolio": "string",
-  "keterangan": "string",
-  "riskindikator": "string",
-  "judul": { "text": "Tanpa Faktor" }
-}
-```
-
----
-
-## 3. Struktur Data – Derived (Hasil Hitung)
-
-Frontend memanggil `computeDerived(nilai, param)` lalu mengirim hasilnya.
-
-### 3.1 Payload Save Derived
-
-```json
-{
   "categoryId": "pasar-produk",
-  "year": 2025,
-  "quarter": "Q1",
-  "snapshot": {
-    "summary": 123.45,
-    "meta": { "formula": "SUM(all derived.weighted)" }
-  },
-  "values": [ /* DerivedValue[] */ ]
-}
-```
 
-### 3.2 DerivedValue Object
+  "groupId": "RP-PASAR-001",
+  
+  "riskCategory": "Risiko Pasar",
+  "no": 1,
+  "parameter": "Fluktuasi Nilai Aset",
+  "statement": "Risiko akibat perubahan nilai pasar instrumen investasi.",
 
-```json
-{
-  "parameterId": "uuid",
-  "nilaiId": "uuid",
-  "raw": 3,
-  "weighted": 0.75,
-  "final": 2.25
-}
-```
+  "measurementType": "QUALITATIVE",
+  
+  "unitType": "LEVEL",
 
-(Field persis tergantung implementasi `computeDerived` di backend)
-
----
-
-## 4. Struktur Data – KPMR
-
-### 4.1 Root Payload
-
-```json
-{
-  "categoryId": "pasar-produk",
-  "year": 2025,
-  "rows": [ /* Aspek[] */ ]
-}
-```
-
----
-
-### 4.2 Aspek Object
-
-```json
-{
-  "id": "uuid",
-  "nomor": "1",
-  "judul": "Governance",
-  "bobot": 25,
-  "pertanyaanList": [ /* Pertanyaan[] */ ]
-}
-```
-
----
-
-### 4.3 Pertanyaan Object
-
-```json
-{
-  "id": "uuid",
-  "nomor": "1.1",
-  "pertanyaan": "Apakah kebijakan risiko tersedia?",
-  "skor": {
-    "Q1": 3,
-    "Q2": 4,
-    "Q3": 2,
-    "Q4": 5
-  },
   "indicator": {
-    "strong": "...",
-    "satisfactory": "...",
-    "fair": "...",
-    "marginal": "...",
-    "unsatisfactory": "..."
+    "low": "Fluktuasi sangat kecil",
+    "lowToModerate": "Fluktuasi kecil",
+    "moderate": "Fluktuasi sedang",
+    "moderateToHigh": "Fluktuasi tinggi",
+    "high": "Fluktuasi sangat tinggi"
   },
-  "evidence": "dokumen pendukung"
-}
-```
 
-**Validasi frontend:**
+  "assessment": {
+    "value": 3,
+    "level": "Moderate"
+  },
 
-* Skor valid: `1–5`.
-* `pertanyaan` wajib diisi.
+  "mitigation": {
+    "existingControl": "Diversifikasi portofolio",
+    "plannedAction": "Peningkatan monitoring pasar",
+    "owner": "Manajer Investasi",
+    "targetDate": "2025-06-30",
+    "status": "On Progress"
+  },
 
----
+  "notes": "Penilaian berdasarkan kondisi pasar Q4",
 
-## 5. Endpoint yang Diharapkan
-
-### 5.1 Load Inherent
-
-```
-GET /api/risk/inherent
-```
-
-Query:
-
-```
-?categoryId=pasar-produk&year=2025&quarter=Q1
-```
-
-Response:
-
-```json
-{ "rows": [ /* Parameter[] */ ] }
-```
-
----
-
-### 5.2 Save Inherent
-
-```
-POST /api/risk/inherent
-```
-
-Body:
-
-```json
-{
-  "categoryId": "pasar-produk",
-  "year": 2025,
-  "quarter": "Q1",
-  "rows": [ /* Parameter[] */ ]
-}
-```
-
-Response:
-
-```json
-{ "success": true }
-```
-
----
-
-### 5.3 Save Derived
-
-```
-POST /api/risk/derived
-```
-
-Body:
-
-```json
-{
-  "categoryId": "pasar-produk",
-  "year": 2025,
-  "quarter": "Q1",
-  "snapshot": { "summary": 123.45 },
-  "values": [ /* DerivedValue[] */ ]
+  "lastUpdated": "2025-01-15T10:00:00Z"
 }
 ```
 
 ---
 
-### 5.4 Load KPMR
+## 3. Penjelasan Field Penting
+
+### Identitas & Relasi
+
+* **id**: Primary key
+* **year**: Tahun penilaian
+* **categoryId**: Kategori risiko (mapping ke halaman Risk Profile)
+* **groupId**: ID stabil antar tahun (opsional, untuk tracking historis manual)
+
+### Measurement
+
+* **measurementType**:
+
+  * `QUALITATIVE`
+  * `QUANTITATIVE` (jika pakai angka)
+
+* **unitType**:
+
+  * `LEVEL`
+  * `PERCENTAGE`
+  * `RUPIAH`
+
+### Indicator
+
+Dipakai untuk:
+
+* Menampilkan deskripsi tiap level
+* Acuan penilaian user
+
+### Assessment
+
+* **value**: Angka 1–5
+* **level**: Mapping dari value
+
+| Value | Level            |
+| ----- | ---------------- |
+| 1     | Low              |
+| 2     | Low to Moderate  |
+| 3     | Moderate         |
+| 4     | Moderate to High |
+| 5     | High             |
+
+### Mitigation
+
+Wajib ada untuk risiko **Moderate ke atas**.
+
+---
+
+## 4. Endpoint API
+
+### 4.1 Ambil Semua Data
+
+**Method**: GET
+**URL**: `/risk-profile-ojk`
+
+**Query Param**:
+
+* `year` (Integer, wajib)
+* `categoryId` (String, opsional)
+
+**Deskripsi**:
+Mengambil seluruh parameter Risk Profile OJK per tahun.
+
+---
+
+### 4.2 Ambil Detail per ID
+
+**Method**: GET
+**URL**: `/risk-profile-ojk/{id}`
+
+**Deskripsi**:
+Digunakan untuk edit / review detail parameter.
+
+---
+
+### 4.3 Create Data
+
+**Method**: POST
+**URL**: `/risk-profile-ojk`
+
+**Body**: JSON lengkap (tanpa id)
+
+**Validasi Wajib**:
+
+* `parameter` unik dalam **categoryId + year**
+* `assessment.value` harus 1–5
+
+Jika duplikat:
 
 ```
-GET /api/risk/kpmr
-```
-
-Query:
-
-```
-?categoryId=pasar-produk&year=2025
-```
-
-Response:
-
-```json
-{ "rows": [ /* Aspek[] */ ] }
+Parameter risiko sudah ada di tahun ini
 ```
 
 ---
 
-### 5.5 Save KPMR
+### 4.4 Update Data
 
-```
-POST /api/risk/kpmr
-```
+**Method**: PUT
+**URL**: `/risk-profile-ojk/{id}`
 
-Body:
+**Logic Penting**:
 
-```json
-{
-  "categoryId": "pasar-produk",
-  "year": 2025,
-  "rows": [ /* Aspek[] */ ]
-}
-```
+* `groupId` **tidak boleh berubah**
+* Partial update diperbolehkan
 
 ---
 
-## 6. Behaviour yang Diandalkan Frontend
+### 4.5 Delete Data
 
-1. **Idempotent Save**
-   Save payload yang sama tidak boleh menggandakan data.
+**Method**: DELETE
+**URL**: `/risk-profile-ojk/{id}`
 
-2. **Toleran Field Kosong**
-   Backend tidak boleh reject:
-
-   * `kategori.jenis = ""`
-   * `kategori.underlying = []`
-     jika aturan model terpenuhi.
-
-3. **Order Preserved**
-   Urutan `rows`, `nilaiList`, `pertanyaanList` harus dipertahankan.
-
-4. **UUID Stabil**
-   Backend tidak boleh regenerate `id`.
+**Deskripsi**:
+Menghapus satu parameter Risk Profile OJK.
 
 ---
 
-## 7. Ringkas – Mapping Frontend → Backend
+## 5. Catatan Implementasi Frontend
 
-| Frontend Action | Endpoint                |
-| --------------- | ----------------------- |
-| Load Inherent   | GET /api/risk/inherent  |
-| Save Inherent   | POST /api/risk/inherent |
-| Save Derived    | POST /api/risk/derived  |
-| Load KPMR       | GET /api/risk/kpmr      |
-| Save KPMR       | POST /api/risk/kpmr     |
-
+* Assessment value disimpan **per tahun**
+* Tidak ada quarter
+* Indicator ditampilkan sebagai **guidance**, bukan input nilai
+* Jika value ≥ 3 → form mitigasi wajib muncul
 ---
-
-## 8. Catatan Kritis
-
-* Backend **tidak boleh** auto-normalize:
-
-  * bobot
-  * skor
-  * urutan array
-
-* Semua validasi berat tetap di frontend. Backend cukup:
-
-  * schema validation
-  * persistence
-
----
-
