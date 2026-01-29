@@ -11,6 +11,7 @@ import { createParameter } from "../../../utils/factory/createParameter";
 import { createNilai } from "../../../utils/factory/createNilai";
 import PopUpDelete from "../../../components/PopUp/PopUpDelete";
 
+// main page
 export default function InherentPage({
   rows,
   setRows,
@@ -1203,8 +1204,14 @@ function NilaiPanel({
     return `${nomor} – ${judul}${copyText}${bobot}`;
   }, []);
 
-  // Buka modal untuk mengatur formula
+  // Buka modal untuk mengatur formula - HANYA dalam edit mode
   const openFormula = () => {
+    // HANYA izinkan jika dalam edit mode
+    if (!editModeNilai) {
+      alert("Harap masuk ke mode edit terlebih dahulu untuk mengatur rumus.");
+      return;
+    }
+    
     if (currentNilai?.judul) {
       setTempFormula(currentNilai.judul.formula || "");
       setTempPercent(currentNilai.judul.percent || false);
@@ -1847,7 +1854,7 @@ const handleAddNilai = useCallback(() => {
                   size="normal"
                   className="bg-slate-100 p-1 text-slate-800 font-semibold hover:bg-slate-200 border border-black"
                   onClick={openFormula}
-                  disabled={loading}
+                  disabled={loading || !editModeNilai} // PERUBAHAN: Disable jika bukan edit mode
                 >
                   Atur Rumus
                 </Button>
@@ -1958,6 +1965,7 @@ const handleAddNilai = useCallback(() => {
   );
 }
 
+// Risk Item
 function RiskItem({ label, value, onChange, color, loading = false, editMode = false }) {
   return (
     <div
@@ -1980,7 +1988,7 @@ function RiskItem({ label, value, onChange, color, loading = false, editMode = f
   );
 }
 
-
+//Nilai Judul
 function NilaiJudulInput({ 
   judul, 
   onChange, 
@@ -1991,7 +1999,7 @@ function NilaiJudulInput({
   bobot, 
   onNomorChange, 
   onBobotChange,
-  param // Tambahkan prop param untuk perhitungan
+  param 
 }) {
   // Handler untuk mengubah tipe nilai (Tanpa Faktor/Satu Faktor/Dua Faktor)
   const updateType = (newType) => {
@@ -2052,7 +2060,7 @@ function NilaiJudulInput({
     onChange(updated);
   };
 
-  // Hitung hasil menggunakan computeDerived seperti di table
+  // Hitung hasil menggunakan computeDerived 
   const calculateHasilDisplay = (judulObj) => {
     if (!judulObj || !param) return "";
     
@@ -2076,19 +2084,7 @@ function NilaiJudulInput({
 
       const derived = computeDerived(tempNilai, param);
       
-      // DEBUG: Tampilkan derived untuk troubleshooting
-      console.log("Derived result:", {
-        type: judulObj.type,
-        hasilDisplay: derived.hasilDisplay,
-        hasilRows: derived.hasilRows,
-        formula: judulObj.formula,
-        valuePembilang: judulObj.valuePembilang,
-        valuePenyebut: judulObj.valuePenyebut
-      });
-      
-      // Untuk hasil di form, kita ambil hasil yang sesuai
-      // Berdasarkan tabel, hasil utama adalah hasilDisplay
-      // Untuk semua tipe, tampilkan hasilDisplay
+      // Ambil langsung hasilDisplay dari computeDerived yang sudah diperbaiki
       return derived.hasilDisplay || "";
       
     } catch (error) {
@@ -2097,63 +2093,9 @@ function NilaiJudulInput({
     }
   };
 
-  // Format hasil untuk ditampilkan
-  const formatHasil = (value) => {
-    if (value === null || value === undefined || value === "") return "";
-    
-    try {
-      // Jika sudah dalam format yang benar (dari computeDerived)
-      if (typeof value === 'string') {
-        // Cek apakah mengandung % atau sudah diformat
-        if (value.includes('%')) {
-          return value;
-        }
-        
-        // Coba parse sebagai angka
-        const num = Number(value);
-        if (!isNaN(num)) {
-          // Format dengan 2 desimal untuk hasil perhitungan
-          return num.toFixed(2);
-        }
-      }
-      
-      return String(value);
-    } catch (error) {
-      return String(value);
-    }
-  };
-
-  // Fungsi untuk menghitung preview rumus jika ada
-  const calculateFormulaPreview = () => {
-    if (!judul.formula) return "";
-    
-    try {
-      // Evaluasi formula sederhana
-      let formula = judul.formula.toLowerCase();
-      
-      // Ganti placeholder dengan nilai sebenarnya
-      formula = formula.replace(/pem|pembilang/g, judul.valuePembilang || '0');
-      formula = formula.replace(/pen|penyebut/g, judul.valuePenyebut || '1');
-      formula = formula.replace(/val|value/g, judul.value || '0');
-      
-      // Evaluasi ekspresi matematika sederhana
-      // HATI-HATI: jangan gunakan eval() di production!
-      // Ini hanya untuk preview
-      const result = eval(formula); // Hanya untuk development
-      
-      if (judul.percent) {
-        return `${(result * 100).toFixed(2)}%`;
-      }
-      return result.toFixed(2);
-    } catch (error) {
-      return "";
-    }
-  };
-
   if (!judul) return null;
 
   const hasilDisplay = calculateHasilDisplay(judul);
-  const formulaPreview = judul.formula ? calculateFormulaPreview() : "";
 
   return (
     <div className="space-y-4">
@@ -2236,10 +2178,10 @@ function NilaiJudulInput({
             />
           </div>
           <div className="space-y-1 col-span-1">
-            <label className="font-semibold text-md ml-1 tracking-wide text-slate-200">Hasil</label>
+            <label className="font-semibold text-md ml-1 tracking-wide text-slate-200">Hasil (Read-Only)</label>
             <Input
               className="text-slate-800 border border-black bg-gray-100 w-full cursor-default"
-              value={formatHasil(hasilDisplay) || (formulaPreview && `Formula: ${formulaPreview}`) || ""}
+              value={hasilDisplay || ""}
               readOnly
               placeholder="hasil"
             />
@@ -2278,10 +2220,10 @@ function NilaiJudulInput({
             </div>
             
             <div className="space-y-1 col-span-1">
-              <label className="font-semibold text-md ml-1 tracking-wide text-slate-200">Hasil</label>
+              <label className="font-semibold text-md ml-1 tracking-wide text-slate-200">Hasil (Read-Only)</label>
               <Input
                 className="text-slate-800 border border-black bg-gray-100 w-full cursor-default"
-                value={formatHasil(hasilDisplay) || (formulaPreview && `Formula: ${formulaPreview}`) || ""}
+                value={hasilDisplay || ""}
                 readOnly
                 placeholder="hasil"
               />
@@ -2322,7 +2264,7 @@ function NilaiJudulInput({
           </div>
 
           <div className="grid grid-cols-6 gap-4">
-            <div className="space-y-1m col-span-3">
+            <div className="space-y-1 col-span-3">
               <label className="font-semibold text-md ml-1 tracking-wide text-slate-200">Penyebut</label>
               <Input
                 className="text-slate-800 border border-black bg-white w-full"
@@ -2350,10 +2292,10 @@ function NilaiJudulInput({
             </div>
             
             <div className="space-y-1 col-span-1">
-              <label className="font-semibold text-md ml-1 tracking-wide text-slate-200">Hasil</label>
+              <label className="font-semibold text-md ml-1 tracking-wide text-slate-200">Hasil (Read-Only)</label>
               <Input
                 className="text-slate-800 border border-black bg-gray-100 w-full cursor-default"
-                value={formatHasil(hasilDisplay) || (formulaPreview && `Formula: ${formulaPreview}`) || ""}
+                value={hasilDisplay || ""}
                 readOnly
                 placeholder="hasil"
               />
@@ -2365,6 +2307,7 @@ function NilaiJudulInput({
   );
 }
 
+// Table Untuk Tampilin data
 function TableInherent({ rows = [], activeQuarter }) {
   const [zoom, setZoom] = useState(100); 
   const [currentPage, setCurrentPage] = useState(1);

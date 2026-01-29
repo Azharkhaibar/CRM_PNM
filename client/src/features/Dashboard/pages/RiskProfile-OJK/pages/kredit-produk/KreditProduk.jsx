@@ -113,7 +113,7 @@ export default function KreditProduk() {
     resetExport,
   } = useHeaderStore();
 
-  const CATEGORY_ID = "likuiditas-produk";
+  const CATEGORY_ID = "kredit-produk";
 
   const [activeTab, setActiveTab] = useState("inherent");
   const [inherentRows, setInherentRows] = useState([]);

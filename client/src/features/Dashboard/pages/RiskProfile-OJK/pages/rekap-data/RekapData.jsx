@@ -29,8 +29,6 @@ import {
 import { computeDerived } from "../../utils/compute/computeDerived";
 import UnsaveChangesModal from "../../components/PopUp/UnsaveChangesModal";
 
-
-
 const CATEGORIES = [
   { id: "pasar-produk", label: "Pasar Produk", Icon: StoreIcon },
   { id: "likuiditas-produk", label: "Likuiditas Produk", Icon: HandCoins },
@@ -77,14 +75,11 @@ const KATEGORI_OPTIONS = {
   ],
 };
 
-
-// Fungsi untuk format persentase
 function formatPercent(value) {
   if (value == null || isNaN(value)) return "-";
   return `${Number(value).toFixed(2)}%`;
 }
 
-// Fungsi untuk mengambil item list 
 function getItemList(param) {
   if (Array.isArray(param.nilaiList)) return param.nilaiList;
   return [];
@@ -99,37 +94,31 @@ function calculateGlobalSummary(dataMap, selectedPages, filterKategori = {}) {
 
     const rows = dataMap[catId] || [];
     rows.forEach((param) => {
-      // Filter berdasarkan kategori
       const kategori = param.kategori || {};
       let shouldInclude = true;
 
-      // Filter model
       if (filterKategori.model && kategori.model !== filterKategori.model) {
         shouldInclude = false;
       }
       
-      // Filter prinsip (tidak berlaku untuk "tanpa_model")
       if (filterKategori.prinsip && kategori.model !== "tanpa_model") {
         if (kategori.prinsip !== filterKategori.prinsip) {
           shouldInclude = false;
         }
       }
       
-      // Filter jenis (hanya untuk open_end)
       if (filterKategori.jenis && kategori.model === "open_end") {
         if (kategori.jenis !== filterKategori.jenis) {
           shouldInclude = false;
         }
       }
       
-      // Filter underlying (hanya untuk terstruktur) - MULTI SELECT
       if (Array.isArray(filterKategori.underlying) && 
           filterKategori.underlying.length > 0 && 
           kategori.model === "terstruktur") {
         
         const paramUnderlying = Array.isArray(kategori.underlying) ? kategori.underlying : [];
         
-        // Cek apakah ada overlap antara filter dan parameter
         const hasOverlap = filterKategori.underlying.some(value => 
           paramUnderlying.includes(value)
         );
@@ -168,11 +157,6 @@ function calculateGlobalSummary(dataMap, selectedPages, filterKategori = {}) {
   };
 }
 
-/* ======================================================================
-   NORMALIZER - DENGAN COMPUTE DERIVED
-====================================================================== */
-
-// Normalize individual item dengan menghitung derived values
 function normalizeItemWithDerived(item, param) {
   if (!item) return null;
 
@@ -197,7 +181,6 @@ function normalizeItemWithDerived(item, param) {
     riskkategori: item?.riskkategori ?? judul?.riskkategori ?? "",
   };
 
-  // Hitung derived values saat normalisasi
   normalizedItem.derived = computeDerived(normalizedItem, param);
 
   return normalizedItem;
@@ -210,25 +193,21 @@ function normalizeInherentRowsWithDerived(rows) {
     .map((r) => {
       if (!r) return null;
 
-      // HANYA ambil nilaiList, abaikan indicatorList
       const hasNilaiList = Array.isArray(r.nilaiList);
 
       const normalizedRow = {
         ...r,
         id: r.id || crypto.randomUUID(),
         bobot: Number(r.bobot ?? 0),
-        // Pastikan kategori ada
         kategori: r.kategori || {
           model: "",
           prinsip: "",
           jenis: "",
           underlying: [],
         },
-        // Hanya nilaiList yang diproses
         nilaiList: hasNilaiList
           ? r.nilaiList.map((item) => (item ? normalizeItemWithDerived(item, r) : null)).filter(Boolean)
           : [],
-        // indicatorList diabaikan
         indicatorList: []
       };
 
@@ -236,10 +215,6 @@ function normalizeInherentRowsWithDerived(rows) {
     })
     .filter(Boolean);
 }
-
-/* ======================================================================
-   KATEGORI FILTER COMPONENT 
-====================================================================== */
 
 function KategoriFilter({ filter, setFilter }) {
   const [showUnderlyingDropdown, setShowUnderlyingDropdown] = useState(false);
@@ -249,9 +224,7 @@ function KategoriFilter({ filter, setFilter }) {
     setFilter(prev => {
       const newFilter = { ...prev, [key]: value };
       
-      // Reset dependent filters
       if (key === "model") {
-        // Untuk "tanpa_model", reset semua filter lain
         if (value === "tanpa_model") {
           return { 
             ...newFilter,
@@ -260,7 +233,6 @@ function KategoriFilter({ filter, setFilter }) {
             underlying: []
           };
         }
-        // Untuk model lain, reset jenis dan underlying
         return { 
           ...newFilter,
           jenis: "",
@@ -272,7 +244,6 @@ function KategoriFilter({ filter, setFilter }) {
     });
   };
 
-  // Handle multi-select untuk underlying
   const handleUnderlyingToggle = (value) => {
     setFilter(prev => {
       const current = Array.isArray(prev.underlying) ? prev.underlying : [];
@@ -284,7 +255,6 @@ function KategoriFilter({ filter, setFilter }) {
     });
   };
 
-  // Untuk display text
   const getUnderlyingDisplayText = () => {
     if (!filter.underlying || filter.underlying.length === 0) {
       return "Semua Underlying";
@@ -297,7 +267,6 @@ function KategoriFilter({ filter, setFilter }) {
     return labels.join(", ");
   };
 
-  // Close dropdown ketika klik di luar
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (underlyingDropdownRef.current && !underlyingDropdownRef.current.contains(event.target)) {
@@ -315,7 +284,6 @@ function KategoriFilter({ filter, setFilter }) {
     <div className="w-full bg-blue-50 p-4 rounded-lg border border-blue-200">
       <h3 className="font-bold text-lg tracking-wide mb-3 text-blue-800">Filter Kategori</h3>
       <div className="grid grid-cols-7  gap-4">
-        {/* Model Produk */}
         <div className="col-span-2">
           <label className="block text-base ml-2 font-semibold tracking-wide text-gray-700 mb-1">
             Model Produk
@@ -333,7 +301,6 @@ function KategoriFilter({ filter, setFilter }) {
           </select>
         </div>
 
-        {/* Prinsip - Hanya tampil jika bukan "tanpa_model" */}
         {filter.model !== "tanpa_model" && (
           <div className="col-span-2">
             <label className="block text-base ml-2 font-semibold tracking-wide text-gray-700 mb-1">
@@ -353,7 +320,6 @@ function KategoriFilter({ filter, setFilter }) {
           </div>
         )}
 
-        {/* Jenis Reksa Dana (hanya untuk Open-End) */}
         {filter.model === "open_end" && (
           <div className="col-span-2">
             <label className="block text-base ml-2 tracking-wide font-semibold text-gray-700 mb-1">
@@ -373,7 +339,6 @@ function KategoriFilter({ filter, setFilter }) {
           </div>
         )}
 
-        {/* Aset Dasar (hanya untuk Terstruktur) - MULTI SELECT */}
         {filter.model === "terstruktur" && (
           <div className="col-span-2 relative" ref={underlyingDropdownRef}>
             <label className="block text-base ml-2 font-semibold tracking-wide text-gray-700 mb-1">
@@ -436,7 +401,6 @@ function KategoriFilter({ filter, setFilter }) {
           </div>
         )}
 
-        {/* Tombol Reset */}
         <div className="flex items-end">
           <button
             type="button"
@@ -453,14 +417,12 @@ function KategoriFilter({ filter, setFilter }) {
         </div>
       </div>
       
-      {/* Info Filter Aktif */}
       {(filter.model || (filter.model !== "tanpa_model" && filter.prinsip) || filter.jenis || 
         (Array.isArray(filter.underlying) && filter.underlying.length > 0 && filter.model === "terstruktur")) && (
         <div className="mt-3 text-base font-semibold text-gray-800">
           Filter aktif :<br/>
           {[
             filter.model && `Model: ${KATEGORI_OPTIONS.model.find(o => o.value === filter.model)?.label}`,
-            // Tampilkan prinsip hanya jika bukan "tanpa_model"
             filter.prinsip && filter.model !== "tanpa_model" && 
               `Prinsip: ${KATEGORI_OPTIONS.prinsip.find(o => o.value === filter.prinsip)?.label}`,
             filter.jenis && `Jenis: ${KATEGORI_OPTIONS.jenis.find(o => o.value === filter.jenis)?.label}`,
@@ -478,12 +440,88 @@ function KategoriFilter({ filter, setFilter }) {
   );
 }
 
-/* ======================================================================
-   SIMPLE TABLE
-====================================================================== */
+const processInputValue = (value) => {
+  if (value === null || value === undefined || value === "") {
+    return null;
+  }
+  
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value)) {
+      return String(value);
+    }
+    return value;
+  }
+  
+  const strValue = String(value).trim();
+  
+  if (/[eE]/.test(strValue) || strValue.toLowerCase().includes('infinity')) {
+    return strValue;
+  }
+  
+  return strValue;
+};
+
+const formatDisplayValue = (value) => {
+  if (value === null || value === undefined || value === "") {
+    return "";
+  }
+  
+  const strValue = String(value);
+  
+  if (strValue.toLowerCase().includes('infinity')) {
+    return "∞";
+  }
+  
+  if (/[eE]/.test(strValue)) {
+    const match = strValue.match(/^([+-]?\d*\.?\d+)[eE]([+-]?\d+)$/);
+    if (match) {
+      const base = match[1];
+      const exponent = parseInt(match[2], 10);
+      
+      if (exponent > 10) {
+        return `${base} × 10^${exponent}`;
+      }
+    }
+  }
+  return strValue;
+};
+
+function CustomTextarea({ 
+  value, 
+  onChange, 
+  placeholder, 
+  className = "", 
+  rows = 2,
+  ...props 
+}) {
+  const textareaRef = useRef(null);
+  
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (textarea) {
+      textarea.style.height = 'auto';
+      textarea.style.height = `${textarea.scrollHeight}px`;
+    }
+  }, [value]);
+  
+  return (
+    <textarea
+      ref={textareaRef}
+      value={value}
+      onChange={onChange}
+      placeholder={placeholder}
+      rows={rows}
+      className={`w-full bg-white text-center outline-none text-base border border-black rounded resize-none overflow-y-auto ${className}`}
+      style={{ 
+        minHeight: '40px',
+        maxHeight: '150px'
+      }}
+      {...props}
+    />
+  );
+}
 
 function SimpleTable({ rows, onUpdateRawValue, filterKategori }) {
-  // Filter rows berdasarkan kategori
   const filteredRows = useMemo(() => {
     if (!filterKategori.model && !filterKategori.prinsip && 
         !filterKategori.jenis && 
@@ -495,37 +533,30 @@ function SimpleTable({ rows, onUpdateRawValue, filterKategori }) {
       const kategori = param.kategori || {};
       let shouldInclude = true;
       
-      // Filter model
       if (filterKategori.model && kategori.model !== filterKategori.model) {
         shouldInclude = false;
       }
       
-      // Filter prinsip (tidak berlaku untuk "tanpa_model")
       if (filterKategori.prinsip && kategori.model !== "tanpa_model") {
         if (kategori.prinsip !== filterKategori.prinsip) {
           shouldInclude = false;
         }
       }
       
-      // Filter jenis - HANYA berlaku jika model adalah open_end
       if (filterKategori.jenis) {
-        // Jika model adalah open_end, filter berdasarkan jenis
         if (kategori.model === "open_end") {
           if (kategori.jenis !== filterKategori.jenis) {
             shouldInclude = false;
           }
         }
-        // Jika model adalah terstruktur atau tanpa_model, jenis selalu kosong, jangan filter berdasarkan jenis
       }
       
-      // Filter underlying - HANYA berlaku jika model adalah terstruktur - MULTI SELECT
       if (Array.isArray(filterKategori.underlying) && 
           filterKategori.underlying.length > 0) {
         
         if (kategori.model === "terstruktur") {
           const paramUnderlying = Array.isArray(kategori.underlying) ? kategori.underlying : [];
           
-          // Cek apakah ada overlap antara filter dan parameter
           const hasOverlap = filterKategori.underlying.some(value => 
             paramUnderlying.includes(value)
           );
@@ -534,14 +565,12 @@ function SimpleTable({ rows, onUpdateRawValue, filterKategori }) {
             shouldInclude = false;
           }
         }
-        // Jika model adalah open_end atau tanpa_model, underlying tidak relevan
       }
       
       return shouldInclude;
     });
   }, [rows, filterKategori]);
 
-  // Early return jika tidak ada data setelah filter
   if (!Array.isArray(filteredRows) || filteredRows.length === 0) {
     return (
       <div className="p-6 text-center text-gray-500 border rounded-xl">
@@ -550,13 +579,11 @@ function SimpleTable({ rows, onUpdateRawValue, filterKategori }) {
     );
   }
 
-  // Proses data untuk render
   const flatRows = [];
 
   filteredRows.forEach((param) => {
     if (!param || !param.id) return;
 
-    // HANYA nilaiList
     const itemList = Array.isArray(param.nilaiList) ? param.nilaiList : [];
 
     if (itemList.length === 0) {
@@ -574,7 +601,6 @@ function SimpleTable({ rows, onUpdateRawValue, filterKategori }) {
 
       const itemType = item.judul?.type || "Tanpa Faktor";
       
-      // Tentukan subKinds berdasarkan type
       let subKinds = ["main"];
       
       if (itemType === "Satu Faktor") {
@@ -617,13 +643,6 @@ function SimpleTable({ rows, onUpdateRawValue, filterKategori }) {
   const renderedCategory = {};
   const renderedParam = {};
 
-  // Fungsi untuk menentukan apakah nilai adalah angka
-  const isNumeric = (value) => {
-    if (value === null || value === undefined || value === "") return false;
-    return !isNaN(value) && !isNaN(parseFloat(value));
-  };
-
-  // Render table
   return (
     <div className="w-full overflow-auto border shadow">
       <table className="table-fixed text-sm w-full ">
@@ -662,7 +681,6 @@ function SimpleTable({ rows, onUpdateRawValue, filterKategori }) {
               itemText = item?.judul?.pembilang ?? "-";
             if (kind === "frac-bottom") itemText = item?.judul?.penyebut ?? "-";
 
-            // Tentukan value untuk input berdasarkan jenis
             let inputValue = "";
             let fieldName = "";
             
@@ -684,14 +702,13 @@ function SimpleTable({ rows, onUpdateRawValue, filterKategori }) {
               fieldName = "valuePenyebut";
             }
 
-            // GUNAKAN hasilDisplay dari derived untuk row utama
             let hasilText = "-";
             if (kind === "main") {
               const hasilDisplay = item.derived?.hasilDisplay;
-              // hasilText bisa string atau number
-              hasilText = hasilDisplay !== undefined && hasilDisplay !== null ? String(hasilDisplay) : "-";
+              hasilText = hasilDisplay !== undefined && hasilDisplay !== null ? 
+                formatDisplayValue(hasilDisplay) : "-";
             } else {
-              hasilText = inputValue || "-";
+              hasilText = formatDisplayValue(inputValue) || "-";
             }
 
             const nilaiTextClass = isMain
@@ -705,20 +722,20 @@ function SimpleTable({ rows, onUpdateRawValue, filterKategori }) {
 
             return (
               <tr key={`${idx}-${editKey}`}>
-             {showCategory && (
-                <td
-                  rowSpan={categoryRowSpan[_categoryId]}
-                  className="align-middle text-center p-2 bg-[#E8F5FA] font-semibold border-2 border-black tracking-widest"
-                  style={{
-                    writingMode: 'vertical-rl',
-                    textOrientation: 'mixed',
-                    transform: 'rotate(180deg)',
-                  }}
-                >
-                  <div className="flex items-center text-lg justify-center h-full">
-                    {_categoryLabel}
-                  </div>
-                </td>
+                {showCategory && (
+                  <td
+                    rowSpan={categoryRowSpan[_categoryId]}
+                    className="align-middle text-center p-2 bg-[#E8F5FA] font-semibold border-2 border-black tracking-widest"
+                    style={{
+                      writingMode: 'vertical-rl',
+                      textOrientation: 'mixed',
+                      transform: 'rotate(180deg)',
+                    }}
+                  >
+                    <div className="flex items-center text-lg justify-center h-full">
+                      {_categoryLabel}
+                    </div>
+                  </td>
                 )}
 
                 {showParam && (
@@ -739,19 +756,14 @@ function SimpleTable({ rows, onUpdateRawValue, filterKategori }) {
                   </div>
                 </td>
 
-                <td className="border border-black px-2 py-2">
-                  {/* LOGIKA RENDER BERDASARKAN JENIS DAN BARIS */}
+                <td className="border border-black bg-[#E8F5FA] px-2 py-2">
                   {kind === "main" ? (
-                    // BARIS UTAMA (main)
                     itemType === "Tanpa Faktor" ? (
-                      // TANPA FAKTOR di baris utama: Hasil di atas, Input di bawah
                       <div className="space-y-1">
-                        <div className="font-semibold text-gray-950 text-center">
+                        <div className="font-semibold text-lg text-gray-950 text-center break-words">
                           {hasilText}
                         </div>
-                        <input
-                          type="text"
-                          className="w-full bg-transparent text-center outline-none text-base border border-black rounded"
+                        <CustomTextarea
                           value={inputValue}
                           onChange={(e) => {
                             const value = e.target.value;
@@ -767,26 +779,15 @@ function SimpleTable({ rows, onUpdateRawValue, filterKategori }) {
                               return;
                             }
                             
-                            const num = parseFloat(value);
-                            const isNumeric = !isNaN(num) && !isNaN(parseFloat(value));
+                            const processedValue = processInputValue(value);
                             
-                            if (isNumeric) {
-                              onUpdateRawValue({
-                                categoryId: _categoryId,
-                                paramId: param.id,
-                                itemId: item.id,
-                                field: fieldName,
-                                value: num,
-                              });
-                            } else {
-                              onUpdateRawValue({
-                                categoryId: _categoryId,
-                                paramId: param.id,
-                                itemId: item.id,
-                                field: fieldName,
-                                value: value,
-                              });
-                            }
+                            onUpdateRawValue({
+                              categoryId: _categoryId,
+                              paramId: param.id,
+                              itemId: item.id,
+                              field: fieldName,
+                              value: processedValue,
+                            });
                           }}
                           onBlur={(e) => {
                             if (e.target.value === "") {
@@ -803,17 +804,13 @@ function SimpleTable({ rows, onUpdateRawValue, filterKategori }) {
                         />
                       </div>
                     ) : (
-                      // SATU FAKTOR atau DUA FAKTOR di baris utama: Hanya tampilkan hasil
-                      <div className="font-semibold text-gray-950 text-center">
+                      <div className="font-semibold text-gray-950 text-center break-words">
                         {hasilText}
                       </div>
                     )
                   ) : (
-                    // BARIS BUKAN UTAMA (single, frac-top, frac-bottom): Hanya input
                     <div className="space-y-1">
-                      <input
-                        type="text"
-                        className="w-full bg-transparent text-center outline-none text-base border rounded"
+                      <CustomTextarea
                         value={inputValue}
                         onChange={(e) => {
                           const value = e.target.value;
@@ -829,26 +826,15 @@ function SimpleTable({ rows, onUpdateRawValue, filterKategori }) {
                             return;
                           }
                           
-                          const num = parseFloat(value);
-                          const isNumeric = !isNaN(num) && !isNaN(parseFloat(value));
+                          const processedValue = processInputValue(value);
                           
-                          if (isNumeric) {
-                            onUpdateRawValue({
-                              categoryId: _categoryId,
-                              paramId: param.id,
-                              itemId: item.id,
-                              field: fieldName,
-                              value: num,
-                            });
-                          } else {
-                            onUpdateRawValue({
-                              categoryId: _categoryId,
-                              paramId: param.id,
-                              itemId: item.id,
-                              field: fieldName,
-                              value: value,
-                            });
-                          }
+                          onUpdateRawValue({
+                            categoryId: _categoryId,
+                            paramId: param.id,
+                            itemId: item.id,
+                            field: fieldName,
+                            value: processedValue,
+                          });
                         }}
                         onBlur={(e) => {
                           if (e.target.value === "") {
@@ -875,10 +861,6 @@ function SimpleTable({ rows, onUpdateRawValue, filterKategori }) {
   );
 }
 
-/* ======================================================================
-   MAIN PAGE
-====================================================================== */
-
 export default function RekapData() {
   const { year, activeQuarter, search } = useHeaderStore();
 
@@ -894,21 +876,14 @@ export default function RekapData() {
   const [showUnsaveModal, setShowUnsaveModal] = useState(false);
   const [pendingAction, setPendingAction] = useState(null);
   
-  // STATE UNTUK NOTIFIKASI SUKSES
   const [showSuccessNotification, setShowSuccessNotification] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
 
   const pageSize = 7;
 
-  const kategoriScrollRef = useRef(null);
   const paginationRef = useRef(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const [startX, setStartX] = useState(0);
-  const [scrollLeft, setScrollLeft] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
 
-  /* ====================== FUNGSI UNTUK KONTROL KATEGORI ====================== */
-
-  // Fungsi untuk select semua kategori
   const selectAllPages = () => {
     if (hasUnsavedChanges) {
       setPendingAction(() => () => {
@@ -921,7 +896,6 @@ export default function RekapData() {
     }
   };
 
-  // Fungsi untuk deselect semua kategori
   const deselectAllPages = () => {
     if (hasUnsavedChanges) {
       setPendingAction(() => () => {
@@ -934,7 +908,6 @@ export default function RekapData() {
     }
   };
 
-  // Fungsi untuk toggle semua kategori
   const toggleAllPages = () => {
     if (selectedPages.length === CATEGORIES.length) {
       deselectAllPages();
@@ -943,7 +916,6 @@ export default function RekapData() {
     }
   };
 
-  // Fungsi untuk toggle kategori individual
   const togglePage = (id) => {
     if (hasUnsavedChanges) {
       setPendingAction(() => () => {
@@ -968,75 +940,6 @@ export default function RekapData() {
     }
   };
 
-  /* ====================== SCROLL HANDLING ====================== */
-
-  // Handle mouse wheel untuk scroll horizontal
-  useEffect(() => {
-    const container = kategoriScrollRef.current;
-    if (!container) return;
-
-    const handleWheel = (e) => {
-      // Cek jika cursor ada di dalam container
-      const rect = container.getBoundingClientRect();
-      const isInside = 
-        e.clientX >= rect.left && 
-        e.clientX <= rect.right && 
-        e.clientY >= rect.top && 
-        e.clientY <= rect.bottom;
-
-      if (isInside && container.scrollWidth > container.clientWidth) {
-        e.preventDefault();
-        container.scrollLeft += e.deltaY * 2; // Faktor kecepatan scroll
-      }
-    };
-
-    container.addEventListener('wheel', handleWheel, { passive: false });
-    
-    return () => {
-      container.removeEventListener('wheel', handleWheel);
-    };
-  }, []);
-
-  // Handle mouse drag untuk scroll
-  const handleMouseDown = (e) => {
-    setIsDragging(true);
-    setStartX(e.pageX - kategoriScrollRef.current.offsetLeft);
-    setScrollLeft(kategoriScrollRef.current.scrollLeft);
-    kategoriScrollRef.current.style.cursor = 'grabbing';
-    kategoriScrollRef.current.style.userSelect = 'none';
-  };
-
-  const handleMouseMove = (e) => {
-    if (!isDragging || !kategoriScrollRef.current) return;
-    e.preventDefault();
-    const x = e.pageX - kategoriScrollRef.current.offsetLeft;
-    const walk = (x - startX) * 2; // Faktor kecepatan drag
-    kategoriScrollRef.current.scrollLeft = scrollLeft - walk;
-  };
-
-  const handleMouseUp = () => {
-    setIsDragging(false);
-    if (kategoriScrollRef.current) {
-      kategoriScrollRef.current.style.cursor = 'grab';
-      kategoriScrollRef.current.style.removeProperty('user-select');
-    }
-  };
-
-  // Cleanup event listeners
-  useEffect(() => {
-    if (isDragging) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-      
-      return () => {
-        document.removeEventListener('mousemove', handleMouseMove);
-        document.removeEventListener('mouseup', handleMouseUp);
-      };
-    }
-  }, [isDragging]);
-
-  /* ====================== LOAD DATA ====================== */
-
   useEffect(() => {
     const next = {};
 
@@ -1059,8 +962,6 @@ export default function RekapData() {
     setHasUnsavedChanges(false);
   }, [selectedPages, year, activeQuarter]);
 
-  /* ====================== HANDLE UPDATE RAW VALUE ====================== */
-
   const handleUpdateRawValue = ({ categoryId, paramId, itemId, field, value }) => {
     setDataMap((prev) => {
       const next = structuredClone(prev);
@@ -1070,17 +971,13 @@ export default function RekapData() {
       const p = rows.find((x) => x.id === paramId);
       if (!p) return prev;
 
-      // HANYA nilaiList
       const itemList = Array.isArray(p.nilaiList) ? p.nilaiList : [];
       const item = itemList.find((x) => x.id === itemId);
 
       if (!item) return prev;
 
-      // Update raw data berdasarkan field
-      // Menerima string atau number
       if (field === "value") {
         item.judul.value = value;
-        // Untuk Tanpa Faktor, valuePembilang juga diupdate agar konsisten
         item.judul.valuePembilang = value;
       } else if (field === "valuePembilang") {
         item.judul.valuePembilang = value;
@@ -1088,31 +985,15 @@ export default function RekapData() {
         item.judul.valuePenyebut = value;
       }
 
-      // Hitung ulang derived values
       item.derived = computeDerived(item, p);
 
-      // Set flag untuk perubahan yang belum disimpan
       setHasUnsavedChanges(true);
-
-      console.log("🚀 Updated raw value and computed derived:", {
-        categoryId,
-        paramId,
-        itemId,
-        field,
-        value,
-        valueType: typeof value,
-        derived: item.derived,
-        itemJudul: item.judul,
-      });
 
       return next;
     });
   };
 
-  /* ====================== SAVE ALL CHANGES ====================== */
-
   const handleSaveAllChanges = () => {
-    // Simpan semua data yang telah diubah
     Object.keys(dataMap).forEach((catId) => {
       try {
         saveInherent({
@@ -1126,23 +1007,17 @@ export default function RekapData() {
       }
     });
 
-    // Notifikasi semua halaman untuk sync
     notifyRiskUpdated();
 
-    // Reset flag perubahan
     setHasUnsavedChanges(false);
 
-    // Tampilkan notifikasi sukses
     setSuccessMessage("Data berhasil disimpan!");
     setShowSuccessNotification(true);
     
-    // Sembunyikan notifikasi setelah 3 detik
     setTimeout(() => {
       setShowSuccessNotification(false);
     }, 3000);
   };
-
-  /* ====================== HANDLE FILTER CHANGE ====================== */
 
   const handleFilterChange = (newFilter) => {
     if (hasUnsavedChanges) {
@@ -1155,8 +1030,6 @@ export default function RekapData() {
       setKategoriFilter(newFilter);
     }
   };
-
-  /* ====================== REAL-TIME SYNC ====================== */
 
   useEffect(() => {
     const handleRealTimeSync = () => {
@@ -1188,14 +1061,11 @@ export default function RekapData() {
     };
   }, [selectedPages, year, activeQuarter]);
 
-  /* ====================== FLATTEN DENGAN FILTER - DIPERBARUI ====================== */
-
   const flattenedRows = useMemo(() => {
     const res = [];
     CATEGORIES.forEach((cat) => {
       if (!selectedPages.includes(cat.id)) return;
       (dataMap[cat.id] || []).forEach((param) => {
-        // Filter berdasarkan search
         if (search) {
           const s = search.toLowerCase();
           const hit =
@@ -1204,41 +1074,33 @@ export default function RekapData() {
           if (!hit) return;
         }
 
-        // Filter berdasarkan kategori
         const kategori = param.kategori || {};
         let shouldInclude = true;
         
-        // Filter model
         if (kategoriFilter.model && kategori.model !== kategoriFilter.model) {
           shouldInclude = false;
         }
         
-        // Filter prinsip (tidak berlaku untuk "tanpa_model")
         if (kategoriFilter.prinsip && kategori.model !== "tanpa_model") {
           if (kategori.prinsip !== kategoriFilter.prinsip) {
             shouldInclude = false;
           }
         }
         
-        // Filter jenis - HANYA berlaku jika model adalah open_end
         if (kategoriFilter.jenis) {
-          // Jika model adalah open_end, filter berdasarkan jenis
           if (kategori.model === "open_end") {
             if (kategori.jenis !== kategoriFilter.jenis) {
               shouldInclude = false;
             }
           }
-          // Jika model adalah terstruktur atau tanpa_model, jenis selalu kosong, jangan filter berdasarkan jenis
         }
         
-        // Filter underlying - HANYA berlaku jika model adalah terstruktur - MULTI SELECT
         if (Array.isArray(kategoriFilter.underlying) && 
             kategoriFilter.underlying.length > 0) {
           
           if (kategori.model === "terstruktur") {
             const paramUnderlying = Array.isArray(kategori.underlying) ? kategori.underlying : [];
             
-            // Cek apakah ada overlap antara filter dan parameter
             const hasOverlap = kategoriFilter.underlying.some(value => 
               paramUnderlying.includes(value)
             );
@@ -1247,12 +1109,10 @@ export default function RekapData() {
               shouldInclude = false;
             }
           }
-          // Jika model adalah open_end atau tanpa_model, underlying tidak relevan
         }
 
         if (!shouldInclude) return;
 
-        // Hanya tambah jika ada nilaiList
         if (Array.isArray(param.nilaiList) && param.nilaiList.length > 0) {
           res.push({
             ...param,
@@ -1265,9 +1125,6 @@ export default function RekapData() {
     return res;
   }, [selectedPages, dataMap, search, kategoriFilter]);
 
-  /* ====================== PAGINATION ====================== */
-
-  const [currentPage, setCurrentPage] = useState(1);
   const totalPages = Math.max(1, Math.ceil(flattenedRows.length / pageSize));
 
   const pagedRows = flattenedRows.slice(
@@ -1275,10 +1132,8 @@ export default function RekapData() {
     currentPage * pageSize
   );
 
-  // Hitung global summary dengan filter
   const globalSummary = calculateGlobalSummary(dataMap, selectedPages, kategoriFilter);
 
-  // Fungsi untuk scroll pagination
   const scrollPaginationLeft = () => {
     paginationRef.current?.scrollBy({ left: -200, behavior: "smooth" });
   };
@@ -1299,13 +1154,9 @@ export default function RekapData() {
     }
   };
 
-  /* ====================== MODAL HANDLERS ====================== */
-
   const handleModalSave = () => {
-    // Simpan data terlebih dahulu
     handleSaveAllChanges();
     
-    // Jalankan pending action
     if (pendingAction) {
       pendingAction();
       setPendingAction(null);
@@ -1315,7 +1166,6 @@ export default function RekapData() {
   };
 
   const handleModalDontSave = () => {
-    // Jalankan pending action tanpa save
     if (pendingAction) {
       pendingAction();
       setPendingAction(null);
@@ -1329,8 +1179,6 @@ export default function RekapData() {
     setShowUnsaveModal(false);
     setPendingAction(null);
   };
-
-  /* ====================== SUCCESS NOTIFICATION ====================== */
 
   const SuccessNotification = () => {
     if (!showSuccessNotification) return null;
@@ -1364,61 +1212,54 @@ export default function RekapData() {
     );
   };
 
-  /* ====================== UI ====================== */
-
   return (
     <div className="space-y-4">
       <Header title="Rekap Data" />
 
-      {/* SUCCESS NOTIFICATION */}
       <SuccessNotification />
 
       <div className="bg-white rounded-lg p-4 shadow space-y-4">
-      {/* CATEGORY SELECTION */}
-      <div>
-        <div className="flex justify-between items-center mb-2">
-          <h3 className="font-bold tracking-wide text-lg">Kategori Halaman</h3>
-          <div className="flex gap-2">
-            <button
-              onClick={toggleAllPages}
-              className="px-3 py-1.5 text-xs bg-sky-700 text-white rounded-md hover:bg-sky-900 transition-colors"
-            >
-              {selectedPages.length === CATEGORIES.length ? 'Deselect All' : 'Select All'}
-            </button>
+        <div>
+          <div className="flex justify-between items-center mb-2">
+            <h3 className="font-semibold text-2xl tracking-wider">Kategori Halaman</h3>
+            <div className="flex gap-2">
+              <button
+                onClick={toggleAllPages}
+                className="px-3 py-1.5 text-xs bg-sky-700 text-white rounded-md hover:bg-sky-900 transition-colors"
+              >
+                {selectedPages.length === CATEGORIES.length ? 'Deselect All' : 'Select All'}
+              </button>
+            </div>
+          </div>
+          
+          <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-4 rounded-lg">
+            <div className="flex flex-wrap gap-3">
+              {CATEGORIES.map((c) => {
+                const Icon = c.Icon;
+                const active = selectedPages.includes(c.id);
+                return (
+                  <Button
+                    key={c.id}
+                    onClick={() => togglePage(c.id)}
+                    className={
+                      active
+                        ? "bg-blue-900 font-semibold text-white flex-shrink-0 hover:bg-gray-300 hover:text-black"
+                        : "bg-white text-black font-semibold flex-shrink-0 hover:bg-blue-900 hover:text-white"
+                    }
+                  >
+                    <Icon className="w-4 h-4 mr-2" />
+                    {c.label}
+                  </Button>
+                );
+              })}
+            </div>
+          </div>
+          
+          <div className="mt-2 text-md font-medium ml-2 text-gray-600">
+            {selectedPages.length} dari {CATEGORIES.length} kategori terpilih
           </div>
         </div>
-        
-        <div className="bg-gradient-to-r from-blue-700 to-sky-600 p-4 rounded-lg">
-          {/* HAPUS semua scroll logic dan ganti dengan flex-wrap */}
-          <div className="flex flex-wrap gap-3">
-            {CATEGORIES.map((c) => {
-              const Icon = c.Icon;
-              const active = selectedPages.includes(c.id);
-              return (
-                <Button
-                  key={c.id}
-                  onClick={() => togglePage(c.id)}
-                  className={
-                    active
-                      ? "bg-blue-900 font-semibold text-white flex-shrink-0 hover:bg-gray-300 hover:text-black"
-                      : "bg-white text-black font-semibold flex-shrink-0 hover:bg-blue-900 hover:text-white"
-                  }
-                >
-                  <Icon className="w-4 h-4 mr-2" />
-                  {c.label}
-                </Button>
-              );
-            })}
-          </div>
-        </div>
-        
-        {/* Info jumlah yang terpilih */}
-        <div className="mt-2 text-md font-medium ml-2 text-gray-600">
-          {selectedPages.length} dari {CATEGORIES.length} kategori terpilih
-        </div>
-      </div>
 
-        {/* KATEGORI FILTER */}
         {selectedPages.length > 0 && (
           <KategoriFilter 
             filter={kategoriFilter} 
@@ -1427,7 +1268,6 @@ export default function RekapData() {
           />
         )}
 
-        {/* SAVE BUTTON */}
         <div className="flex justify-end gap-2">
           {hasUnsavedChanges && (
             <div className="flex items-center mr-4 text-yellow-600 text-sm">
@@ -1448,7 +1288,6 @@ export default function RekapData() {
           </Button>
         </div>
 
-        {/* SIMPLE TABLE */}
         {selectedPages.length === 0 ? (
           <div className="border rounded-xl p-6 text-center text-gray-500">
             Pilih kategori halaman terlebih dahulu
@@ -1462,10 +1301,8 @@ export default function RekapData() {
           />
         )}
 
-        {/* PAGINATION - STYLE SEPERTI DI INHERENT */}
         {flattenedRows.length > pageSize && (
           <div className="mt-3 flex justify-center items-center gap-4">
-            {/* BUTTON < */}
             {totalPages > 7 && (
               <button
                 type="button"
@@ -1476,7 +1313,6 @@ export default function RekapData() {
               </button>
             )}
 
-            {/* PAGINATION LIST */}
             <div className="max-w-[420px] overflow-x-hidden">
               <div
                 ref={paginationRef}
@@ -1505,7 +1341,6 @@ export default function RekapData() {
               </div>
             </div>
 
-            {/* BUTTON > */}
             {totalPages > 7 && (
               <button
                 type="button"
@@ -1519,7 +1354,6 @@ export default function RekapData() {
         )}
       </div>
 
-      {/* UNSAVED CHANGES MODAL */}
       <UnsaveChangesModal
         isOpen={showUnsaveModal}
         onClose={handleModalClose}

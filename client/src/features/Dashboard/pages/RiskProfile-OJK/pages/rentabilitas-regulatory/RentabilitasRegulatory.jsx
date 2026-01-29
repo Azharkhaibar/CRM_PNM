@@ -67,8 +67,8 @@ function getInherentSignature(rows = []) {
         nomor: n.nomor,
         bobot: n.bobot,
         sumberRisiko: n.sumberRisiko,
-        keterangan: n.keterangan,
         dampak: n.dampak,
+        keterangan: n.keterangan,
         riskindikator: n.riskindikator,
         judul: n.judul,
       })),
@@ -115,7 +115,7 @@ export default function RentabilitasRegulatory() {
     resetExport,
   } = useHeaderStore();
 
-  const CATEGORY_ID = "rentabilitas-regulatory";
+  const CATEGORY_ID = "Rentabilitas-regulatory";
 
   const [activeTab, setActiveTab] = useState("inherent");
   const [inherentRows, setInherentRows] = useState([]);

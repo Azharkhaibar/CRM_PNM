@@ -284,13 +284,15 @@ export default function PeringkatKomposit() {
     const safeIndicator = indicator || getRiskIndicator(0, "inherent");
     const score = safeIndicator.score || 5;
     
-    return (
-      <div 
-        className={`rounded-full px-3 py-2 font-bold text-lg w-full flex items-center justify-center whitespace-nowrap min-h-[40px] ${whiteText ? 'text-white' : (score >= 4 ? "text-white" : "text-black")}`}
-        style={{ 
-          backgroundColor: safeIndicator.color,
-        }}
-      >
+return (
+  <div 
+    className={`rounded-full px-3 py-2 font-bold text-lg w-full flex items-center justify-center whitespace-nowrap min-h-[40px] ${
+      whiteText || score <= 1.49 || score >= 4.5 ? 'text-black' : 'text-black'
+    }`}
+    style={{ 
+      backgroundColor: safeIndicator.color,
+    }}
+  >
         {score}
       </div>
     );

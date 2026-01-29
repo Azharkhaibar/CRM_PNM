@@ -73,11 +73,11 @@ const KATEGORI_OPTIONS = {
 
 // Fungsi untuk mendapatkan warna berdasarkan risk level
 const getRiskColor = (level) => {
-  if (level >= 0 && level < 2) return "bg-[#2ECC71] text-white"; 
+  if (level >= 0 && level < 2) return "bg-[#00B050] text-black"; 
   if (level >= 2 && level < 3) return "bg-[#A3E635] text-black"; 
-  if (level >= 3 && level < 4) return "bg-[#FACC15] text-black"; 
-  if (level >= 4 && level < 5) return "bg-[#F97316] text-black"; 
-  if (level >= 5) return "bg-[#FF0000] text-white"; 
+  if (level >= 3 && level < 4) return "bg-[#EEFF00] text-black"; 
+  if (level >= 4 && level < 5) return "bg-[#FFC000] text-black"; 
+  if (level >= 5) return "bg-[#FF0000] text-black"; 
   return "bg-gray-200 text-gray-700";
 };
 
@@ -889,55 +889,55 @@ const renderDataRows = () => {
           <tr key={`${categoryCode}-${paramIndex}-${itemIndex}`}>
             {/* No - hanya di baris pertama halaman */}
             {isFirstRowInPage && itemIndex === 0 && (
-              <td rowSpan={totalRowSpanForPage} className="border border-gray-950 px-2 py-2 text-center bg-[#E8F5FA] align-top">
+              <td rowSpan={totalRowSpanForPage} className="border border-gray-950 px-2 py-2 text-base text-center bg-[#E8F5FA] align-top">
                 {no}
               </td>
             )}
             
             {/* Jenis Risiko - hanya di baris pertama halaman */}
             {isFirstRowInPage && itemIndex === 0 && (
-              <td rowSpan={totalRowSpanForPage} className="border border-gray-950 px-2 py-2 bg-[#E8F5FA] align-top">
+              <td rowSpan={totalRowSpanForPage} className="border border-gray-950 text-base px-2 py-2 bg-[#E8F5FA] align-top">
                 Risiko {categoryLabel}
               </td>
             )}
             
             {/* Bobot Parameter - hanya di nilai pertama setiap parameter */}
             {itemIndex === 0 && (
-              <td rowSpan={param.nilaiList.length} className="border border-gray-950 px-2 py-2 text-center bg-[#E8F5FA] align-top">
+              <td rowSpan={param.nilaiList.length} className="border border-gray-950 text-base px-2 py-2 text-center bg-[#E8F5FA] align-top">
                 {formatPercent(param.bobot)}
               </td>
             )}
             
             {/* Nama Parameter - hanya di nilai pertama setiap parameter */}
             {itemIndex === 0 && (
-              <td rowSpan={param.nilaiList.length} className="border border-gray-950 px-2 py-2 bg-[#E8F5FA] align-top">
+              <td rowSpan={param.nilaiList.length} className="border border-gray-950 text-base px-2 py-2 bg-[#E8F5FA] align-top">
                 {parameterName}
               </td>
             )}
             
             {/* Indeks ditampilkan per item dan menggunakan nomor nilai */}
-            <td className="border border-gray-950 px-2 py-2 text-center font-mono bg-[#E8F5FA]">
+            <td className="border border-gray-950 text-base px-2 py-2 text-center font-mono bg-[#E8F5FA]">
               {indeks}
             </td>
             
             {/* KOLOM INDIKATOR/RISIKO INHEREN */}
-            <td className="border border-gray-950 px-2 py-2 bg-[#E8F5FA] break-words max-w-[500px]">
+            <td className="border border-gray-950 text-base px-2 py-2 bg-[#E8F5FA] break-words max-w-[500px]">
               {indikatorInheren}
             </td>
             
-            <td className="border border-gray-950 px-2 py-2 text-center">
+            <td className="border border-gray-950 text-base px-2 py-2 text-center">
               {formatPercent(item.bobot)}
             </td>
             
             {/* Hasil Assessment ambil dari derived.hasilDisplay */}
-            <td className="border border-gray-950 px-2 py-2 text-center font-bold">
+            <td className="border border-gray-950 text-base px-2 py-2 text-center font-bold">
               {formatNumber(hasilAssessment)}
             </td>
             
-            <td className={`border border-gray-950 px-2 py-2 text-center font-bold ${riskColor}`}>
+            <td className={`border border-gray-950 text-base px-2 py-2 text-center font-bold ${riskColor}`}>
               {formatNumber(riskLevel)}
             </td>
-            <td className={`border border-gray-950 px-2 py-2 text-center font-bold ${riskColor}`}>
+            <td className={`border border-gray-950 text-base px-2 py-2 text-center font-bold ${riskColor}`}>
               {riskIndicator}
             </td>
           </tr>
@@ -976,13 +976,13 @@ const renderDataRows = () => {
 
   return (
     <div className="space-y-4">
-      <Header title="Ringkasan Risk Assessment" />
+      <Header title="Ringkasan" />
 
       <div className="bg-white rounded-lg p-4 shadow space-y-4">
 {/* CATEGORY SELECTION */}
 <div>
   <div className="flex justify-between items-center mb-2">
-    <h3 className="font-semibold">Kategori Halaman</h3>
+    <h3 className="font-semibold text-2xl tracking-wider">Kategori Halaman</h3>
     <div className="flex gap-2">
       <button
         onClick={toggleAllPages}
@@ -993,7 +993,7 @@ const renderDataRows = () => {
     </div>
   </div>
   
-  <div className="bg-gradient-to-r from-blue-700 to-sky-600 p-4 rounded-lg">
+  <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-4 rounded-lg">
     {/* HAPUS semua scroll logic dan ganti dengan flex-wrap */}
     <div className="flex flex-wrap gap-3">
       {CATEGORIES.map((c) => {
@@ -1037,58 +1037,58 @@ const renderDataRows = () => {
             <thead className="[&>tr>th]:sticky [&>tr>th]:top-0 ">
               <tr>
                 {/* No - Lebar sangat kecil */}
-                <th rowSpan={3} className="border border-gray-950 px-2 py-2 bg-blue-800 text-white min-w-[50px] max-w-[80px]">
+                <th rowSpan={3} className="border border-gray-950 text-lg px-2 py-2 bg-blue-800 text-white min-w-[50px] max-w-[80px]">
                   No
                 </th>
                 
                 {/* Jenis Resiko - Lebar sedang */}
-                <th rowSpan={3} className="border border-gray-950 px-2 py-2 bg-blue-800 text-white min-w-[110px] max-w-[150px]">
+                <th rowSpan={3} className="border border-gray-950 text-lg px-2 py-2 bg-blue-800 text-white min-w-[110px] max-w-[150px]">
                   Jenis Resiko
                 </th>
                 
                 {/* Bobot - Lebar kecil */}
-                <th rowSpan={3} className="border border-gray-950 px-2 py-2 bg-blue-800 text-white min-w-[30px] max-w-[120px]">
+                <th rowSpan={3} className="border border-gray-950 text-lg px-2 py-2 bg-blue-800 text-white min-w-[30px] max-w-[120px]">
                   Bobot
                 </th>
                 
                 {/* Parameter - Lebar besar */}
-                <th rowSpan={3} className="border border-gray-950 px-2 py-2 bg-blue-800 text-white min-w-[250px] max-w-[200px]">
+                <th rowSpan={3} className="border border-gray-950 text-lg px-2 py-2 bg-blue-800 text-white min-w-[250px] max-w-[200px]">
                   Parameter
                 </th>
                 
                 {/*  R.{categoryCode}.noparameter */}
-                <th rowSpan={3} className="border border-gray-950 px-2 py-2 bg-blue-800 text-white min-w-[100px] max-w-[200px]">
+                <th rowSpan={3} className="border border-gray-950 text-lg px-2 py-2 bg-blue-800 text-white min-w-[100px] max-w-[200px]">
                   Indeks
                 </th>
                 
                 {/* Indikator/Risiko Inheren diambil dari nilai di local storage */}
-                <th rowSpan={3} className="border border-gray-950 px-2 py-2 bg-blue-800 text-white min-w-[250px] max-w-[250px]">
+                <th rowSpan={3} className="border border-gray-950 text-lg px-2 py-2 bg-blue-800 text-white min-w-[250px] max-w-[250px]">
                   Indikator/Risiko Inheren
                 </th>
                 
                 {/* Hasil Risk Assessment - Header Utama */}
-                <th colSpan={4} className="border border-gray-950 px-2 py-2 bg-slate-800 text-white">
+                <th colSpan={4} className="border border-gray-950 text-base px-2 py-2 bg-slate-800 text-white">
                   Hasil Risk Assessment
                 </th>
               </tr>
               
               <tr>
-                <th colSpan={4} className="border border-gray-950 px-2 py-2 bg-slate-800 text-white">
+                <th colSpan={4} className="border border-gray-950 text-base px-2 py-2 bg-slate-800 text-white">
                   Active Quarter {activeQuarter?.toUpperCase()}
                 </th>
               </tr>
               
               <tr>
-                <th className="border border-gray-950 px-2 py-2 bg-slate-800 text-white min-w-[40px] max-w-[150px]">
+                <th className="border border-gray-950 text-base px-2 py-2 bg-slate-800 text-white min-w-[40px] max-w-[150px]">
                   Bobot
                 </th>
-                <th className="border border-gray-950 px-2 py-2 bg-slate-800 text-white min-w-[80px] max-w-[180px]">
+                <th className="border border-gray-950 text-base px-2 py-2 bg-slate-800 text-white min-w-[80px] max-w-[180px]">
                   Hasil Assessment
                 </th>
-                <th className="border border-gray-950 px-2 py-2 bg-slate-800 text-white min-w-[80px] max-w-[150px]">
+                <th className="border border-gray-950 text-base px-2 py-2 bg-slate-800 text-white min-w-[80px] max-w-[150px]">
                   Risk Level
                 </th>
-                <th className="border border-gray-950 px-2 py-2 bg-slate-800 text-white min-w-[80px] max-w-[250px]">
+                <th className="border border-gray-950 text-base px-2 py-2 bg-slate-800 text-white min-w-[80px] max-w-[250px]">
                   Risk Indicator
                 </th>
               </tr>

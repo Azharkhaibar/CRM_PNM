@@ -1,4 +1,3 @@
-
 export function computeDerived(nilai, param) {
   try {
     if (!nilai) {
@@ -28,8 +27,11 @@ export function computeDerived(nilai, param) {
         const isPercent = cleaned.includes("%");
         cleaned = cleaned.replace("%", "");
         
+        // Untuk perhitungan: hapus semua titik (anggap titik sebagai pemisah ribuan)
         cleaned = cleaned.replace(/\./g, "");
-        cleaned = cleaned.replace(/,/g, ".");  
+        
+        // Ganti koma dengan titik (untuk desimal)
+        cleaned = cleaned.replace(/,/g, ".");
         
         const num = Number(cleaned);
         
@@ -52,7 +54,6 @@ export function computeDerived(nilai, param) {
       if (!expr || typeof expr !== "string" || expr.trim() === "") return NaN;
 
       let e = expr.trim();
-      
       
       for (const [token, value] of Object.entries(subs)) {
         const re = new RegExp(`\\b${token}\\b`, "gi");
@@ -82,6 +83,50 @@ export function computeDerived(nilai, param) {
       }
     };
 
+    // Helper function untuk format angka dengan pemisah ribuan
+    const formatNumberWithSeparators = (num, isPercent = false) => {
+      if (isNaN(num)) return "";
+      
+      // Format untuk display: pisah ribuan dengan titik, desimal dengan koma
+      let formatted;
+      
+      if (Number.isInteger(num)) {
+        // Integer: 1.000.000
+        formatted = num.toLocaleString('id-ID', {
+          useGrouping: true,
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 0
+        });
+      } else {
+        // Desimal: 1.000.000,50
+        formatted = num.toLocaleString('id-ID', {
+          useGrouping: true,
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        });
+      }
+      
+      if (isPercent) {
+        return formatted + "%";
+      }
+      
+      return formatted;
+    };
+
+    // Helper function untuk format input jika berupa angka
+    const formatIfNumber = (value, isPercent = false) => {
+      if (value == null || value === "") return "";
+      
+      // Coba parse sebagai number
+      const num = parseNumber(value);
+      if (!isNaN(num)) {
+        return formatNumberWithSeparators(num, isPercent);
+      }
+      
+      // Jika bukan number, kembalikan aslinya
+      return String(value);
+    };
+
     let rawValue = NaN;
     let rawString = null;
     let hasilDisplay = "";
@@ -91,6 +136,7 @@ export function computeDerived(nilai, param) {
       const v = judul.value;
       const formula = (judul.formula || "").trim();
       const parsed = parseNumber(v);
+      
       if (!isNaN(parsed)) {
         rawValue = formula
           ? evaluateFormula(formula, { pem: parsed })
@@ -99,7 +145,7 @@ export function computeDerived(nilai, param) {
         rawString = normalize(v);
       }
 
-      finalizeDisplay("Tanpa Faktor");
+      finalizeDisplay("Tanpa Faktor", v);
       hasilRows = [hasilDisplay, v ?? "", formula || ""];
     }
 
@@ -108,6 +154,7 @@ export function computeDerived(nilai, param) {
       const v = judul.valuePembilang;
       const formula = (judul.formula || "").trim();
       const parsed = parseNumber(v);
+      
       if (!isNaN(parsed)) {
         rawValue = formula
           ? evaluateFormula(formula, { pem: parsed })
@@ -116,7 +163,7 @@ export function computeDerived(nilai, param) {
         rawString = normalize(v);
       }
 
-      finalizeDisplay("Satu Faktor");
+      finalizeDisplay("Satu Faktor", v, null);
       hasilRows = [hasilDisplay, v ?? "", formula || ""];
     }
 
@@ -139,7 +186,7 @@ export function computeDerived(nilai, param) {
         rawString = normalize(vPem);
       }
 
-      finalizeDisplay("Dua Faktor");
+      finalizeDisplay("Dua Faktor", vPem, vPen);
       hasilRows = [
         hasilDisplay,
         vPem ?? "",
@@ -149,71 +196,71 @@ export function computeDerived(nilai, param) {
     }
 
 
-/*  RANKING */
+    /*  RANKING */
 
-let peringkat = null;
-let matchedIndex = null;
+    let peringkat = null;
+    let matchedIndex = null;
 
-const ri = nilai.riskindikator || {};
-const ranges = [
-  { key: "low", rank: 1 },
-  { key: "lowToModerate", rank: 2 },
-  { key: "moderate", rank: 3 },
-  { key: "moderateToHigh", rank: 4 },
-  { key: "high", rank: 5 },
-];
+    const ri = nilai.riskindikator || {};
+    const ranges = [
+      { key: "low", rank: 1 },
+      { key: "lowToModerate", rank: 2 },
+      { key: "moderate", rank: 3 },
+      { key: "moderateToHigh", rank: 4 },
+      { key: "high", rank: 5 },
+    ];
 
-if (!isNaN(rawValue)) {
-  const highText = String(ri.high ?? "").trim();
-  const isGreaterThanFormat = /^[xX]?\s*>|≥?>\s*\d+/i.test(highText);
-  
-  if (isGreaterThanFormat) {
-    const match = highText.match(/(\d+(\.\d+)?)/);
-    if (match) {
-      const threshold = Number(match[1]);
-      if (rawValue >= threshold) {
-        peringkat = 5;
-        matchedIndex = 0;
-      }
-    }
-  }
-  
-  if (peringkat === null) {
-    for (const { key, rank } of ranges) {
-      const rawText = String(ri[key] ?? "");
-      const nums = rawText.match(/-?\d+(\.\d+)?/g);
-      if (!nums || nums.length === 0) continue;
-
-      let min = -Infinity;
-      let max = Infinity;
-
-      if (nums.length === 1) {
-        const n = Number(nums[0]);
-        if (/≤|<=/.test(rawText)) max = n;
-        else if (/≥|>=/.test(rawText)) min = n;
-        else if (/^[xX]?\s*>|>\s*\d+/i.test(rawText)) {
-          min = n;
-          max = Infinity;
-        } else if (/^[xX]?\s*<|<\s*\d+/i.test(rawText)) {
-          min = -Infinity;
-          max = n;
-        } else {
-          min = n;
-          max = n;
+    if (!isNaN(rawValue)) {
+      const highText = String(ri.high ?? "").trim();
+      const isGreaterThanFormat = /^[xX]?\s*>|≥?>\s*\d+/i.test(highText);
+      
+      if (isGreaterThanFormat) {
+        const match = highText.match(/(\d+(\.\d+)?)/);
+        if (match) {
+          const threshold = Number(match[1]);
+          if (rawValue >= threshold) {
+            peringkat = 5;
+            matchedIndex = 0;
+          }
         }
-      } else {
-        min = Number(nums[0]);
-        max = Number(nums[1]);
       }
+      
+      if (peringkat === null) {
+        for (const { key, rank } of ranges) {
+          const rawText = String(ri[key] ?? "");
+          const nums = rawText.match(/-?\d+(\.\d+)?/g);
+          if (!nums || nums.length === 0) continue;
 
-      if (rawValue >= min && rawValue <= max) {
-        peringkat = rank;
-        matchedIndex = 0;
-        break;
+          let min = -Infinity;
+          let max = Infinity;
+
+          if (nums.length === 1) {
+            const n = Number(nums[0]);
+            if (/≤|<=/.test(rawText)) max = n;
+            else if (/≥|>=/.test(rawText)) min = n;
+            else if (/^[xX]?\s*>|>\s*\d+/i.test(rawText)) {
+              min = n;
+              max = Infinity;
+            } else if (/^[xX]?\s*<|<\s*\d+/i.test(rawText)) {
+              min = -Infinity;
+              max = n;
+            } else {
+              min = n;
+              max = n;
+            }
+          } else {
+            min = Number(nums[0]);
+            max = Number(nums[1]);
+          }
+
+          if (rawValue >= min && rawValue <= max) {
+            peringkat = rank;
+            matchedIndex = 0;
+            break;
+          }
+        }
       }
     }
-  }
-}
 
     if (isNaN(rawValue) && rawString) {
       for (const { key, rank } of ranges) {
@@ -250,18 +297,16 @@ if (!isNaN(rawValue)) {
       },
     };
 
-    function finalizeDisplay(type) {
+    function finalizeDisplay(type, originalValue, originalValuePen = null) {
       
       if (!isNaN(rawValue)) {
-        hasilDisplay = rawValue.toFixed(2);
-        
-        if (judul.percent) {
-          hasilDisplay += "%";
-        }
+        // Untuk angka hasil perhitungan (hasil formula atau pembagian)
+        hasilDisplay = formatNumberWithSeparators(rawValue, judul.percent);
         return;
       }
 
       if (rawString) {
+        // Tampilkan string asli yang sudah dinormalisasi
         if (type === "Tanpa Faktor") {
           hasilDisplay = judul.value ?? rawString;
         } else if (type === "Satu Faktor") {
@@ -278,13 +323,21 @@ if (!isNaN(rawValue)) {
         return;
       }
 
-      // Fallback jika tidak ada nilai
-      if (type === "Tanpa Faktor" && judul.value) {
-        hasilDisplay = judul.value;
-      } else if (type === "Satu Faktor" && judul.valuePembilang) {
-        hasilDisplay = judul.valuePembilang;
+      // Tampilkan value asli dengan format ribuan
+      if (type === "Tanpa Faktor" && originalValue !== null && originalValue !== undefined && originalValue !== "") {
+        hasilDisplay = formatIfNumber(originalValue, judul.percent);
+      } else if (type === "Satu Faktor" && originalValue !== null && originalValue !== undefined && originalValue !== "") {
+        hasilDisplay = formatIfNumber(originalValue, judul.percent);
       } else if (type === "Dua Faktor") {
-        hasilDisplay = judul.formula || `${judul.valuePembilang || ""} / ${judul.valuePenyebut || ""}`;
+        if (judul.formula && judul.formula.trim() !== "") {
+          hasilDisplay = judul.formula;
+        } else if (originalValue || originalValuePen) {
+          const pem = formatIfNumber(originalValue, false);
+          const pen = formatIfNumber(originalValuePen, false);
+          hasilDisplay = pem && pen ? `${pem} / ${pen}` : pem || pen || "";
+        } else {
+          hasilDisplay = "";
+        }
       } else {
         hasilDisplay = "";
       }
