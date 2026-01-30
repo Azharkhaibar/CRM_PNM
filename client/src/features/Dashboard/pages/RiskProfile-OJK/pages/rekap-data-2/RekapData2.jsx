@@ -455,68 +455,70 @@ export default function RekapData2() {
   }, [peringkatKomposit]);
 
   const IndicatorCell = ({ indicator, size = "normal" }) => {
-    const safeIndicator = indicator || getRiskIndicator(0, "inherent", false);
-    const textClass = size === "small" ? "text-sm" : "text-base";
-    const paddingClass = size === "small" ? "px-3 py-2" : "px-4 py-2.5";
-    
-    const value = typeof safeIndicator.value === 'number' ? safeIndicator.value : 0;
-    
-    let displayText = "";
-    if (safeIndicator.isPartialData) {
-      displayText = "Data belum Lengkap";
-    } else if (safeIndicator.isNoData) {
-      displayText = "Data tidak Ditemukan";
-    } else {
-      displayText = value.toFixed(1);
-    }
-    
-    return (
-      <div className="w-full flex flex-col items-center justify-center">
-        <div 
-          className={`rounded-full ${paddingClass} font-bold ${textClass} w-full flex items-center justify-center whitespace-nowrap min-h-[40px] text-center ${
-            safeIndicator.isNoData || safeIndicator.isPartialData ? "text-gray-700" : "text-black"
-          }`}
-          style={{ 
-            backgroundColor: safeIndicator.color,
-          }}
-        >
-          {displayText}
-        </div>
+  const safeIndicator = indicator || getRiskIndicator(0, "inherent", false);
+  const textClass = size === "small" ? "text-sm" : "text-base";
+  const paddingClass = size === "small" ? "px-3 py-2" : "px-4 py-2.5";
+  
+  const value = typeof safeIndicator.value === 'number' ? safeIndicator.value : 0;
+  
+  let displayText = "";
+  if (safeIndicator.isPartialData) {
+    displayText = "Data belum Lengkap";
+  } else if (safeIndicator.isNoData) {
+    displayText = "Data tidak Ditemukan";
+  } else {
+    // Ubah dari toFixed(1) menjadi pembulatan tanpa desimal
+    displayText = Math.round(value);
+  }
+  
+  return (
+    <div className="w-full flex flex-col items-center justify-center">
+      <div 
+        className={`rounded-full ${paddingClass} font-bold ${textClass} w-full flex items-center justify-center whitespace-nowrap min-h-[40px] text-center ${
+          safeIndicator.isNoData || safeIndicator.isPartialData ? "text-gray-700" : "text-black"
+        }`}
+        style={{ 
+          backgroundColor: safeIndicator.color,
+        }}
+      >
+        {displayText}
       </div>
-    );
-  };
+    </div>
+  );
+};
 
-  const FooterIndicatorCell = ({ indicator, size = "normal" }) => {
-    const safeIndicator = indicator || getRiskIndicator(0, "inherent", false);
-    const textClass = size === "small" ? "text-sm" : "text-base";
-    const paddingClass = size === "small" ? "px-3 py-2" : "px-4 py-2.5";
-    
-    const value = typeof safeIndicator.value === 'number' ? safeIndicator.value : 0;
-    
-    let displayText = "";
-    if (safeIndicator.isPartialData) {
-      displayText = "Data belum Lengkap";
-    } else if (safeIndicator.isNoData) {
-      displayText = "Data tidak Ditemukan";
-    } else {
-      displayText = value.toFixed(1);
-    }
-    
-    return (
-      <div className="w-full flex flex-col items-center justify-center">
-        <div 
-          className={`rounded-full ${paddingClass} font-bold ${textClass} w-full flex items-center justify-center whitespace-nowrap min-h-[40px] text-center ${
-            safeIndicator.isNoData || safeIndicator.isPartialData ? "text-gray-700" : "text-black"
-          }`}
-          style={{ 
-            backgroundColor: safeIndicator.color,
-          }}
-        >
-          {displayText}
-        </div>
+const FooterIndicatorCell = ({ indicator, size = "normal" }) => {
+  const safeIndicator = indicator || getRiskIndicator(0, "inherent", false);
+  const textClass = size === "small" ? "text-sm" : "text-base";
+  const paddingClass = size === "small" ? "px-3 py-2" : "px-4 py-2.5";
+  
+  const value = typeof safeIndicator.value === 'number' ? safeIndicator.value : 0;
+  
+  let displayText = "";
+  if (safeIndicator.isPartialData) {
+    displayText = "Data belum Lengkap";
+  } else if (safeIndicator.isNoData) {
+    displayText = "Data tidak Ditemukan";
+  } else {
+    // Ubah dari toFixed(1) menjadi pembulatan tanpa desimal
+    displayText = Math.round(value);
+  }
+  
+  return (
+    <div className="w-full flex flex-col items-center justify-center">
+      <div 
+        className={`rounded-full ${paddingClass} font-bold ${textClass} w-full flex items-center justify-center whitespace-nowrap min-h-[40px] text-center ${
+          safeIndicator.isNoData || safeIndicator.isPartialData ? "text-gray-700" : "text-black"
+        }`}
+        style={{ 
+          backgroundColor: safeIndicator.color,
+        }}
+      >
+        {displayText}
       </div>
-    );
-  };
+    </div>
+  );
+};
 
   const RiskMatrix = ({ inherentScore, kpmrScore, hasInherentData, hasKpmrData }) => {
     const inherentIndex = inherentScore - 1;

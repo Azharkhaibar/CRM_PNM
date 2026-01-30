@@ -2508,7 +2508,7 @@ function TableInherent({ rows = [], activeQuarter }) {
                       <td className="border border-black px-2 py-2 align-top bg-[#E8F5FA] text-center">
                         {formatPercent(param.bobot)}
                       </td>
-                      <td className="border border-black px-2 max-w-[180px] py-2 align-top bg-[#E8F5FA] wrap-break-words">
+                      <td className="border border-black font-semibold px-2 max-w-[180px] py-2 align-top bg-[#E8F5FA] wrap-break-words">
                         {param.judul || "-"}
                       </td>
                       <td
@@ -2625,7 +2625,7 @@ function TableInherent({ rows = [], activeQuarter }) {
                           </td>
                           <td 
                             rowSpan={totalRowsForParam}
-                            className="border border-black px-2 py-2 align-middle bg-[#E8F5FA] break-words"
+                            className="border border-black px-2 font-semibold py-2 align-middle bg-[#E8F5FA] break-words"
                             style={{ maxWidth: '200px', wordBreak: 'break-word' }}
                           >
                             {param.judul || "-"}

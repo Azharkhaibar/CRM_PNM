@@ -824,7 +824,7 @@ const footerDisplay = useMemo(() => {
       </div>
       
       {/* PTK Footer - MENGGUNAKAN KOMPONEN PTK KHUSUS */}
-      <div className="col-span-2 mr-4 -ml-2 flex items-center justify-center">
+      <div className="col-span-2 mr-4 -ml-3 flex items-center justify-center">
         <PtkFooterCell 
           value={footerDisplay.ptkDisplay} 
           indicator={footerDisplay.ptkIndicator}
@@ -877,7 +877,7 @@ const footerDisplay = useMemo(() => {
           {/* LEGENDA PTK (PERINGKAT TINGKAT KOMPOSIT) */}
           <div className="flex flex-wrap items-center gap-3 mt-2">
             <span className="text-base font-semibold text-gray-950">
-              PERINGKAT TINGKAT KOMPOSIT (PTK) :
+              PERINGKAT TINGKAT KOMPOSIT :
             </span>
             {PTK_INDICATORS.map((i, idx) => (
               <div key={idx} className="flex items-center gap-1.5 text-base font-semibold">

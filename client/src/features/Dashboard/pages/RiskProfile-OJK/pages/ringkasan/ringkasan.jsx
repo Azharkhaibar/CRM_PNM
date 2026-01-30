@@ -820,32 +820,32 @@ const renderDataRows = () => {
           <tr key={`${categoryCode}-${paramIndex}-empty`}>
             {/* No - hanya di baris pertama halaman */}
             {isFirstRowInPage && (
-              <td rowSpan={totalRowSpanForPage} className="border border-gray-950 px-2 py-2 text-center bg-[#E8F5FA] align-top">
+              <td rowSpan={totalRowSpanForPage} className="border border-gray-950 px-2 py-2 text-center text-base bg-[#E8F5FA] align-top">
                 {no}
               </td>
             )}
             
             {/* Jenis Risiko - hanya di baris pertama halaman */}
             {isFirstRowInPage && (
-              <td rowSpan={totalRowSpanForPage} className="border border-gray-950 px-2 py-2 bg-[#E8F5FA] align-top">
+              <td rowSpan={totalRowSpanForPage} className="border border-gray-950 px-2 py-2 text-base bg-[#E8F5FA] align-top">
                 Risiko {categoryLabel}
               </td>
             )}
             
-            <td className="border border-gray-950 px-2 py-2 text-center bg-[#E8F5FA]">
+            <td className="border border-gray-950 px-2 py-2 text-center text-base bg-[#E8F5FA]">
               {formatPercent(param.bobot)}
             </td>
-            <td className="border border-gray-950 px-2 py-2 bg-[#E8F5FA]">
+            <td className="border border-gray-950 px-2 py-2 text-base bg-[#E8F5FA]">
               {parameterName}
             </td>
-            <td className="border border-gray-950 px-2 py-2 text-center font-mono bg-[#E8F5FA]">
+            <td className="border border-gray-950 px-2 py-2 text-center text-base font-mono bg-[#E8F5FA]">
               {indeks}
             </td>
-            <td className="border border-gray-950 px-2 py-2 text-center bg-[#E8F5FA]">-</td>
-            <td className="border border-gray-950 px-2 py-2 text-center">-</td>
-            <td className="border border-gray-950 px-2 py-2 text-center">-</td>
-            <td className="border border-gray-950 px-2 py-2 text-center">-</td>
-            <td className="border border-gray-950 px-2 py-2 text-center">-</td>
+            <td className="border border-gray-950 px-2 py-2 text-center text-base bg-[#E8F5FA]">-</td>
+            <td className="border border-gray-950 px-2 py-2 text-center text-base">-</td>
+            <td className="border border-gray-950 px-2 py-2 text-center text-base">-</td>
+            <td className="border border-gray-950 px-2 py-2 text-center text-base">-</td>
+            <td className="border border-gray-950 px-2 py-2 text-center text-base">-</td>
           </tr>
         );
         
@@ -979,49 +979,49 @@ const renderDataRows = () => {
       <Header title="Ringkasan" />
 
       <div className="bg-white rounded-lg p-4 shadow space-y-4">
-{/* CATEGORY SELECTION */}
-<div>
-  <div className="flex justify-between items-center mb-2">
-    <h3 className="font-semibold text-2xl tracking-wider">Kategori Halaman</h3>
-    <div className="flex gap-2">
-      <button
-        onClick={toggleAllPages}
-        className="px-3 py-1.5 text-xs bg-sky-700 text-white rounded-md hover:bg-sky-900 transition-colors"
-      >
-        {selectedPages.length === CATEGORIES.length ? 'Deselect All' : 'Select All'}
-      </button>
-    </div>
-  </div>
-  
-  <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-4 rounded-lg">
-    {/* HAPUS semua scroll logic dan ganti dengan flex-wrap */}
-    <div className="flex flex-wrap gap-3">
-      {CATEGORIES.map((c) => {
-        const Icon = c.Icon;
-        const active = selectedPages.includes(c.id);
-        return (
-          <Button
-            key={c.id}
-            onClick={() => togglePage(c.id)}
-            className={
-              active
-                ? "bg-blue-900 text-white flex-shrink-0 hover:bg-gray-300 hover:text-black"
-                : "bg-white text-black flex-shrink-0 hover:bg-blue-900 hover:text-white"
-            }
-          >
-            <Icon className="w-4 h-4 mr-2" />
-            {c.label}
-          </Button>
-        );
-      })}
-    </div>
-  </div>
-  
-  {/* Info jumlah yang terpilih */}
-  <div className="mt-2 text-sm text-gray-600">
-    {selectedPages.length} dari {CATEGORIES.length} kategori terpilih
-  </div>
-</div>
+        {/* CATEGORY SELECTION */}
+        <div>
+          <div className="flex justify-between items-center mb-2">
+            <h3 className="font-semibold text-2xl tracking-wider">Kategori Halaman</h3>
+            <div className="flex gap-2">
+              <button
+                onClick={toggleAllPages}
+                className="px-3 py-1.5 text-xs bg-sky-700 text-white rounded-md hover:bg-sky-900 transition-colors"
+              >
+                {selectedPages.length === CATEGORIES.length ? 'Deselect All' : 'Select All'}
+              </button>
+            </div>
+          </div>
+          
+          <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-4 rounded-lg">
+            {/* HAPUS semua scroll logic dan ganti dengan flex-wrap */}
+            <div className="flex flex-wrap gap-3">
+              {CATEGORIES.map((c) => {
+                const Icon = c.Icon;
+                const active = selectedPages.includes(c.id);
+                return (
+                  <Button
+                    key={c.id}
+                    onClick={() => togglePage(c.id)}
+                    className={
+                      active
+                        ? "bg-blue-900 text-white flex-shrink-0 hover:bg-gray-300 hover:text-black"
+                        : "bg-white text-black flex-shrink-0 hover:bg-blue-900 hover:text-white"
+                    }
+                  >
+                    <Icon className="w-4 h-4 mr-2" />
+                    {c.label}
+                  </Button>
+                );
+              })}
+            </div>
+          </div>
+          
+          {/* Info jumlah yang terpilih */}
+          <div className="mt-2 text-sm text-gray-600">
+            {selectedPages.length} dari {CATEGORIES.length} kategori terpilih
+          </div>
+        </div>
 
         {/* KATEGORI FILTER */}
         {selectedPages.length > 0 && (

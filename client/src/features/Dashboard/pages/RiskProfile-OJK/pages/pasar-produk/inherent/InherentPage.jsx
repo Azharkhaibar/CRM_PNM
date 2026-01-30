@@ -2621,7 +2621,7 @@ function TableInherent({ rows = [], activeQuarter }) {
                           </td>
                           <td 
                             rowSpan={totalRowsForParam}
-                            className="border border-black px-2 py-2 align-middle bg-[#E8F5FA] break-words"
+                            className="border border-black px-2 font-semibold py-2 align-middle bg-[#E8F5FA] break-words"
                             style={{ maxWidth: '200px', wordBreak: 'break-word' }}
                           >
                             {param.judul || "-"}
