@@ -1198,7 +1198,7 @@ function NilaiPanel({
     const nomor = nilai.nomor || (index + 1);
     const judul = nilai.judul?.text || "Tanpa Judul";
     const bobot = nilai.bobot ? ` (Bobot: ${nilai.bobot}%)` : "";
-    const copyText = nilai.judul?.text?.includes("(Copy)") ? " (Copy)" : "";
+    const copyText = nilai.judul?.text?.includes("(Copy)") ? "" : "";
     
     return `${nomor} – ${judul}${copyText}${bobot}`;
   }, []);
@@ -2111,7 +2111,7 @@ function NilaiJudulInput({
             value={nomor || ""}
             onChange={(e) => onNomorChange && onNomorChange(e.target.value)}
             disabled={loading || !editMode}
-            placeholder="1.1."
+            placeholder="3."
           />
         </div>
 
@@ -2425,11 +2425,10 @@ function TableInherent({ rows = [], activeQuarter }) {
           style={{ 
             transform: `scale(${zoom / 100})`,
             transformOrigin: 'top left',
-            width: "100%",
-            display: "block"
+            width: `${100 * (100/zoom)}%`, // Perbaikan: sesuaikan width
           }}
         >
-          <table className="text-md table-auto w-full">
+          <table className="text-md table-fixed w-full">
             <colgroup>
               <col style={{ width: "3%" }} />
               <col style={{ width: "4%" }} />
@@ -2446,8 +2445,6 @@ function TableInherent({ rows = [], activeQuarter }) {
               <col style={{ width: "8%" }} />
               <col style={{ width: "8%" }} />
               <col style={{ width: "8%" }} />
-              <col style={{ width: "8%" }} />
-              
             </colgroup>
             
             <thead>
@@ -2486,11 +2483,11 @@ function TableInherent({ rows = [], activeQuarter }) {
                       <td className="border border-black px-2 py-2 align-top bg-[#E8F5FA] text-center">
                         {formatPercent(param.bobot)}
                       </td>
-                      <td className="border border-black px-2 max-w-[180px] py-2 align-top bg-[#E8F5FA] wrap-break-words">
+                      <td className="border border-black px-2 py-2 align-top bg-[#E8F5FA] break-words">
                         {param.judul || "-"}
                       </td>
                       <td
-                        colSpan={13}
+                        colSpan={12}
                         className="border border-black px-2 py-2 text-center text-gray-400 bg-white"
                       >
                         <div className="flex items-center justify-center gap-2">
@@ -2583,7 +2580,8 @@ function TableInherent({ rows = [], activeQuarter }) {
 
                   return (
                     <tr key={key}>
-                      {isFirstRowOfParam && (
+                      {/* Kolom Parameter (rowspan) */}
+                      {isFirstRowOfParam ? (
                         <>
                           <td
                             rowSpan={totalRowsForParam}
@@ -2600,19 +2598,19 @@ function TableInherent({ rows = [], activeQuarter }) {
                           <td 
                             rowSpan={totalRowsForParam}
                             className="border border-black px-2 py-2 align-middle bg-[#E8F5FA] break-words"
-                            style={{ maxWidth: '200px', wordBreak: 'break-word' }}
                           >
                             {param.judul || "-"}
                           </td>
                         </>
-                      )}
+                      ) : null}
 
+                      {/* Kolom Nilai */}
                       {isMainRow ? (
                         <>
                           <td className="border border-black px-2 py-2 text-center bg-[#E8F5FA]">
                             {nilai.nomor ?? "-"}
                           </td>
-                          <td className="border border-black max-w-[180px] px-2 py-2 bg-[#E8F5FA] break-words">
+                          <td className="border border-black px-2 py-2 bg-[#E8F5FA] break-words">
                             <div className="text-md font-semibold">
                               {nilaiText}
                             </div>
@@ -2624,42 +2622,38 @@ function TableInherent({ rows = [], activeQuarter }) {
                       ) : (
                         <>
                           <td className="border border-black px-2 py-2 text-center bg-white"></td>
-                          <td className="border border-black max-w-[180px] px-2 py-2 bg-white break-words">
+                          <td className="border border-black px-2 py-2 bg-white break-words">
                             <div className="text-md">
                               {nilaiText}
                             </div>
                           </td>
                           <td className="border border-black px-2 py-2 text-center bg-white"></td>
-                          <td className="border border-black px-2 py-2 text-center bg-white"></td>
                         </>
                       )}
 
+                      {/* Kolom Risk Indicator */}
                       {["low", "lowToModerate", "moderate", "moderateToHigh", "high"].map((rk) => (
                         <td
                           key={rk}
-                          className={`border border-black px-2 py-2 max-w-[100px] text-center ${
-                            isMainRow ? 'bg-[#D9EAD3]' : 'bg-white'
-                          } break-words`}
+                          className={`border border-black px-2 py-2 text-center ${isMainRow ? 'bg-[#D9EAD3]' : 'bg-white'} break-words`}
                         >
-                          {isMainRow ? nilai.riskindikator?.[rk] ?? "-" : ""}
+                          {isMainRow ? (nilai.riskindikator?.[rk] ?? "-") : ""}
                         </td>
                       ))}
 
-                      <td className={`border border-black px-2 py-2 max-w-[150px] text-center ${
-                        isMainRow ? 'bg-white' : 'bg-[#D9EAD3]'
-                      } break-words`}>
+                      {/* Kolom Hasil */}
+                      <td className={`border border-black px-2 py-2 text-center ${isMainRow ? 'bg-white' : 'bg-[#D9EAD3]'} break-words`}>
                         <div className={isMainRow ? "text-md font-semibold" : "text-md"}>
                           {hasilText}
                         </div>
                       </td>
 
+                      {/* Kolom Peringkat, Weighted, Keterangan (rowspan) */}
                       {subIndex === 0 ? (
                         <>
                           <td
                             rowSpan={rowsForThisNilai}
-                            className={`border border-black px-2 py-2 align-middle text-center font-semibold ${
-                              peringkat ? rankBgMap[peringkat] : ""
-                            }`}
+                            className={`border border-black px-2 py-2 align-middle text-center font-semibold ${peringkat && rankBgMap[peringkat] ? rankBgMap[peringkat] : ""}`}
                           >
                             {Number.isFinite(peringkat) ? peringkat : "-"}
                           </td>
@@ -2667,11 +2661,11 @@ function TableInherent({ rows = [], activeQuarter }) {
                             rowSpan={rowsForThisNilai}
                             className="border border-black px-2 py-2 align-middle text-center bg-white"
                           >
-                            {weightedDisplay || ""}
+                            {weightedDisplay || "-"}
                           </td>
                           <td
                             rowSpan={rowsForThisNilai}
-                            className="border border-black px-2 max-w-[200px] py-2 align-middle bg-white break-words"
+                            className="border border-black px-2 py-2 align-middle bg-white break-words"
                           >
                             {nilai.keterangan ?? ""}
                           </td>
@@ -2682,6 +2676,7 @@ function TableInherent({ rows = [], activeQuarter }) {
                 });
               })}
               
+              {/* Summary Row */}
               <tr>
                 <td colSpan={11} className="border border-black bg-white"></td>
                 <td colSpan={2} className="border border-black px-2 py-2 text-center font-semibold text-white bg-blue-900">
@@ -2692,6 +2687,7 @@ function TableInherent({ rows = [], activeQuarter }) {
                     ? globalSummary.totalWeighted.toFixed(2)
                     : "-"}
                 </td>
+                <td className="border border-black bg-white"></td>
               </tr>
             </tbody>
           </table>

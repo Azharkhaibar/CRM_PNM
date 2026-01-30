@@ -1200,7 +1200,7 @@ function NilaiPanel({
     const nomor = nilai.nomor || (index + 1);
     const judul = nilai.judul?.text || "Tanpa Judul";
     const bobot = nilai.bobot ? ` (Bobot: ${nilai.bobot}%)` : "";
-    const copyText = nilai.judul?.text?.includes("(Copy)") ? " (Copy)" : "";
+    const copyText = nilai.judul?.text?.includes("(Copy)") ? "" : "";
     
     return `${nomor} – ${judul}${copyText}${bobot}`;
   }, []);
@@ -2151,7 +2151,7 @@ function NilaiJudulInput({
             value={nomor || ""}
             onChange={(e) => onNomorChange && onNomorChange(e.target.value)}
             disabled={loading || !editMode}
-            placeholder="1.1."
+            placeholder="4."
           />
         </div>
 
@@ -2574,20 +2574,19 @@ function TableInherent({ rows = [], activeQuarter }) {
                     let nilaiText = "-";
                     let hasilText = "-";
                     
-                    if (j.type === "Tanpa Faktor" || subIndex === 0) {
+                    // PERUBAHAN PENTING: Gunakan hasilRows untuk semua sub-baris
+                    if (subIndex === 0) {
+                      // Baris utama (judul)
                       nilaiText = j.text ?? "-";
                       hasilText = hasilDisplay || "-";
-                    } else if (j.type === "Satu Faktor" && subIndex === 1) {
+                    } else if (subIndex === 1) {
+                      // Baris pembilang (untuk Satu Faktor dan Dua Faktor)
                       nilaiText = j.pembilang ?? "-";
                       hasilText = hasilRows?.[1] ?? "-";
-                    } else if (j.type === "Dua Faktor") {
-                      if (subIndex === 1) {
-                        nilaiText = j.pembilang ?? "-";
-                        hasilText = hasilRows?.[1] ?? "-";
-                      } else if (subIndex === 2) {
-                        nilaiText = j.penyebut ?? "-";
-                        hasilText = hasilRows?.[2] ?? "-";
-                      }
+                    } else if (subIndex === 2) {
+                      // Baris penyebut (hanya untuk Dua Faktor)
+                      nilaiText = j.penyebut ?? "-";
+                      hasilText = hasilRows?.[2] ?? "-";
                     }
 
                     allRowsInParam.push({
@@ -2678,6 +2677,7 @@ function TableInherent({ rows = [], activeQuarter }) {
                               {nilaiText}
                             </div>
                           </td>
+                          <td className="border border-black px-2 py-2 text-center bg-white"></td>
                           <td className="border border-black px-2 py-2 text-center bg-white"></td>
                           <td className="border border-black px-2 py-2 text-center bg-white"></td>
                         </>
@@ -2801,4 +2801,4 @@ function TableInherent({ rows = [], activeQuarter }) {
       )}
     </div>
   );
-}
+} 

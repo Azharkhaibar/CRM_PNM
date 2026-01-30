@@ -11,39 +11,31 @@ export function computeDerived(nilai, param) {
 
     /* HELPERS */
 
-    const parseNumber = (v) => {
-      if (v == null || v === "" || v === undefined) return NaN;
-      
-      // Jika sudah number, return langsung
-      if (typeof v === 'number') return v;
-      
-      if (typeof v === "string") {
-        let cleaned = v.trim();
-        
-        // Hapus spasi
-        cleaned = cleaned.replace(/\s/g, "");
-        
-        // Tangani persen
-        const isPercent = cleaned.includes("%");
-        cleaned = cleaned.replace("%", "");
-        
-        // Untuk perhitungan: hapus semua titik (anggap titik sebagai pemisah ribuan)
-        cleaned = cleaned.replace(/\./g, "");
-        
-        // Ganti koma dengan titik (untuk desimal)
-        cleaned = cleaned.replace(/,/g, ".");
-        
-        const num = Number(cleaned);
-        
-        if (!isNaN(num) && isPercent) {
-          return num / 100;
-        }
-        
-        return num;
-      }
-      
-      return Number(v);
-    };
+   const parseNumber = (v) => {
+  if (v == null || v === "" || v === undefined) return NaN;
+  
+  if (typeof v === 'number') return v;
+  
+  if (typeof v === "string") {
+    let cleaned = v.trim();
+    cleaned = cleaned.replace(/\s/g, "");
+    
+    const isPercent = cleaned.includes("%");
+    cleaned = cleaned.replace("%", "");
+    cleaned = cleaned.replace(/\./g, "");
+    cleaned = cleaned.replace(/,/g, ".");
+    
+    const num = Number(cleaned);
+    
+    if (!isNaN(num) && isPercent) {
+      return num / 100; // Konversi persentase ke desimal
+    }
+    
+    return num;
+  }
+  
+  return Number(v);
+};
 
     const normalize = (v) =>
       String(v ?? "")
@@ -84,48 +76,49 @@ export function computeDerived(nilai, param) {
     };
 
     // Helper function untuk format angka dengan pemisah ribuan
-    const formatNumberWithSeparators = (num, isPercent = false) => {
-      if (isNaN(num)) return "";
-      
-      // Format untuk display: pisah ribuan dengan titik, desimal dengan koma
-      let formatted;
-      
-      if (Number.isInteger(num)) {
-        // Integer: 1.000.000
-        formatted = num.toLocaleString('id-ID', {
-          useGrouping: true,
-          minimumFractionDigits: 0,
-          maximumFractionDigits: 0
-        });
-      } else {
-        // Desimal: 1.000.000,50
-        formatted = num.toLocaleString('id-ID', {
-          useGrouping: true,
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2
-        });
-      }
-      
-      if (isPercent) {
-        return formatted + "%";
-      }
-      
-      return formatted;
-    };
+const formatNumberWithSeparators = (num, isPercent = false) => {
+  if (isNaN(num)) return "";
+  
+  // Jika persentase, kalikan dengan 100 terlebih dahulu
+  let displayNum = num;
+  if (isPercent) {
+    displayNum = num * 100;
+  }
+  
+  let formatted;
+  
+  if (Number.isInteger(displayNum)) {
+    formatted = displayNum.toLocaleString('id-ID', {
+      useGrouping: true,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    });
+  } else {
+    formatted = displayNum.toLocaleString('id-ID', {
+      useGrouping: true,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  }
+  
+  if (isPercent) {
+    return formatted + "%";
+  }
+  
+  return formatted;
+};
 
     // Helper function untuk format input jika berupa angka
-    const formatIfNumber = (value, isPercent = false) => {
-      if (value == null || value === "") return "";
-      
-      // Coba parse sebagai number
-      const num = parseNumber(value);
-      if (!isNaN(num)) {
-        return formatNumberWithSeparators(num, isPercent);
-      }
-      
-      // Jika bukan number, kembalikan aslinya
-      return String(value);
-    };
+   const formatIfNumber = (value, isPercent = false) => {
+  if (value == null || value === "") return "";
+  
+  const num = parseNumber(value);
+  if (!isNaN(num)) {
+    return formatNumberWithSeparators(num, isPercent);
+  }
+  
+  return String(value);
+};
 
     let rawValue = NaN;
     let rawString = null;

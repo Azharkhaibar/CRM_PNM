@@ -1199,7 +1199,7 @@ function NilaiPanel({
     const nomor = nilai.nomor || (index + 1);
     const judul = nilai.judul?.text || "Tanpa Judul";
     const bobot = nilai.bobot ? ` (Bobot: ${nilai.bobot}%)` : "";
-    const copyText = nilai.judul?.text?.includes("(Copy)") ? " (Copy)" : "";
+    const copyText = nilai.judul?.text?.includes("(Copy)") ? "" : "";
     
     return `${nomor} – ${judul}${copyText}${bobot}`;
   }, []);

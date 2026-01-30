@@ -1198,7 +1198,7 @@ function NilaiPanel({
     const nomor = nilai.nomor || (index + 1);
     const judul = nilai.judul?.text || "Tanpa Judul";
     const bobot = nilai.bobot ? ` (Bobot: ${nilai.bobot}%)` : "";
-    const copyText = nilai.judul?.text?.includes("(Copy)") ? " (Copy)" : "";
+    const copyText = nilai.judul?.text?.includes("(Copy)") ? "" : "";
     
     return `${nomor} – ${judul}${copyText}${bobot}`;
   }, []);
@@ -2113,7 +2113,7 @@ function NilaiJudulInput({
             value={nomor || ""}
             onChange={(e) => onNomorChange && onNomorChange(e.target.value)}
             disabled={loading || !editMode}
-            placeholder="1.1."
+            placeholder="5."
           />
         </div>
 
@@ -2681,7 +2681,7 @@ function TableInherent({ rows = [], activeQuarter }) {
               })}
               
               <tr>
-                <td colSpan={11} className="border border-black bg-white"></td>
+                <td colSpan={12} className="border border-black bg-white"></td>
                 <td colSpan={2} className="border border-black px-2 py-2 text-center font-semibold text-white bg-blue-900">
                   Summary
                 </td>

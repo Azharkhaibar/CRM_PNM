@@ -115,7 +115,7 @@ export default function RentabilitasRegulatory() {
     resetExport,
   } = useHeaderStore();
 
-  const CATEGORY_ID = "Rentabilitas-regulatory";
+  const CATEGORY_ID = "rentabilitas-regulatory";
 
   const [activeTab, setActiveTab] = useState("inherent");
   const [inherentRows, setInherentRows] = useState([]);

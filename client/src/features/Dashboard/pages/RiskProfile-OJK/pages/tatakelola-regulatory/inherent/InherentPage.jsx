@@ -1200,7 +1200,7 @@ function NilaiPanel({
     const nomor = nilai.nomor || (index + 1);
     const judul = nilai.judul?.text || "Tanpa Judul";
     const bobot = nilai.bobot ? ` (Bobot: ${nilai.bobot}%)` : "";
-    const copyText = nilai.judul?.text?.includes("(Copy)") ? " (Copy)" : "";
+    const copyText = nilai.judul?.text?.includes("(Copy)") ? "" : "";
     
     return `${nomor} – ${judul}${copyText}${bobot}`;
   }, []);
@@ -2151,7 +2151,7 @@ function NilaiJudulInput({
             value={nomor || ""}
             onChange={(e) => onNomorChange && onNomorChange(e.target.value)}
             disabled={loading || !editMode}
-            placeholder="1.1."
+            placeholder="13."
           />
         </div>
 
@@ -2425,7 +2425,7 @@ function TableInherent({ rows = [], activeQuarter }) {
     <div className="w-full">
       <div className="flex justify-between mb-2 pr-2">
         <div>
-          <h1 className="text-2xl font-semibold">Data Tata kelola - Inherent</h1>
+          <h1 className="text-2xl font-semibold">Data Tata Kelola - Inherent</h1>
           <div className="text-md text-gray-600">
             Quarter Aktif: <span className="font-bold bg-blue-100 px-2 py-1 rounded">{activeQuarter?.toUpperCase()}</span>
           </div>
@@ -2498,7 +2498,7 @@ function TableInherent({ rows = [], activeQuarter }) {
                 <th className="border border-black px-2 py-2 bg-blue-900 text-white text-center">Parameter</th>
 
                 <th className="border border-black px-2 py-2 bg-blue-900 text-white text-center">No</th>
-                <th className="border border-black px-2 py-2 bg-blue-900 text-white text-center">Nilai</th>
+                <th className="border border-black px-2 py-2 bg-blue-900 text-white text-center">Indikator</th>
                 <th className="border border-black px-2 py-2 bg-blue-900 text-white text-center">Bobot</th>
                 <th className="border border-black px-2 py-2 bg-blue-900 text-white text-center">Sumber Risiko</th>
                 <th className="border border-black px-2 py-2 bg-blue-900 text-white text-center">Dampak</th>
@@ -2533,7 +2533,7 @@ function TableInherent({ rows = [], activeQuarter }) {
                         {param.judul || "-"}
                       </td>
                       <td
-                        colSpan={13}
+                        colSpan={14}
                         className="border border-black px-2 py-2 text-center text-gray-400 bg-white"
                       >
                         <div className="flex items-center justify-center gap-2">
@@ -2574,18 +2574,22 @@ function TableInherent({ rows = [], activeQuarter }) {
                     let nilaiText = "-";
                     let hasilText = "-";
                     
+                    // PERUBAHAN: Untuk Satu Faktor dan Dua Faktor, row ke-2 dan ke-3 menampilkan Hasil dari value
                     if (j.type === "Tanpa Faktor" || subIndex === 0) {
                       nilaiText = j.text ?? "-";
                       hasilText = hasilDisplay || "-";
                     } else if (j.type === "Satu Faktor" && subIndex === 1) {
                       nilaiText = j.pembilang ?? "-";
+                      // PERUBAHAN: Gunakan hasilRows[1] untuk value pembilang di kolom Hasil
                       hasilText = hasilRows?.[1] ?? "-";
                     } else if (j.type === "Dua Faktor") {
                       if (subIndex === 1) {
                         nilaiText = j.pembilang ?? "-";
+                        // PERUBAHAN: Gunakan hasilRows[1] untuk value pembilang di kolom Hasil
                         hasilText = hasilRows?.[1] ?? "-";
                       } else if (subIndex === 2) {
                         nilaiText = j.penyebut ?? "-";
+                        // PERUBAHAN: Gunakan hasilRows[2] untuk value penyebut di kolom Hasil
                         hasilText = hasilRows?.[2] ?? "-";
                       }
                     }
@@ -2680,6 +2684,7 @@ function TableInherent({ rows = [], activeQuarter }) {
                           </td>
                           <td className="border border-black px-2 py-2 text-center bg-white"></td>
                           <td className="border border-black px-2 py-2 text-center bg-white"></td>
+                          <td className="border border-black px-2 py-2 text-center bg-white"></td>
                         </>
                       )}
 
@@ -2690,10 +2695,12 @@ function TableInherent({ rows = [], activeQuarter }) {
                             isMainRow ? 'bg-[#D9EAD3]' : 'bg-white'
                           } break-words`}
                         >
+                          {/* PERUBAHAN: Hanya tampilkan risk indicator untuk row utama */}
                           {isMainRow ? nilai.riskindikator?.[rk] ?? "-" : ""}
                         </td>
                       ))}
 
+                      {/* PERUBAHAN: Kolom Hasil selalu ditampilkan untuk semua row */}
                       <td className={`border border-black px-2 py-2 max-w-[150px] text-center ${
                         isMainRow ? 'bg-white' : 'bg-[#D9EAD3]'
                       } break-words`}>
@@ -2741,6 +2748,7 @@ function TableInherent({ rows = [], activeQuarter }) {
                     ? globalSummary.totalWeighted.toFixed(2)
                     : "-"}
                 </td>
+                <td className="border border-black bg-white"></td>
               </tr>
             </tbody>
           </table>
