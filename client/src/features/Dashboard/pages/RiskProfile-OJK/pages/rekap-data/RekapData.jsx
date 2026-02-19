@@ -388,16 +388,7 @@ const getHasilForQuarter = (item, quarter) => {
 };
 
 // ==================== KOMPONEN TABEL SEDERHANA ====================
-function SimpleTable({ rows, onUpdateRawValue, filterKategori, activeQuarter }) {
-  const [zoom, setZoom] = useState(100);
-  const minZoom = 100;
-  const maxZoom = 125;
-  const stepZoom = 5;
-
-  const handleZoomIn = () => setZoom((z) => Math.min(maxZoom, z + stepZoom));
-  const handleZoomOut = () => setZoom((z) => Math.max(minZoom, z - stepZoom));
-  const handleSliderChange = (e) => setZoom(Number(e.target.value));
-
+function SimpleTable({ rows, onUpdateRawValue, filterKategori, activeQuarter, hasUnsavedChanges, onSave }) {
   const filteredRows = useMemo(() => {
     if (!filterKategori.model && !filterKategori.prinsip && !filterKategori.jenis &&
         (!Array.isArray(filterKategori.underlying) || filterKategori.underlying.length === 0)) {
@@ -481,7 +472,7 @@ function SimpleTable({ rows, onUpdateRawValue, filterKategori, activeQuarter }) 
 
   return (
     <div className="w-full">
-      <div className="flex justify-between mb-2 pr-2">
+      <div className="flex justify-between items-center mb-2 pr-2">
         <div>
           <h1 className="text-2xl font-semibold">Rekap Data - Hasil Perhitungan</h1>
           <div className="text-sm text-gray-600">
@@ -489,141 +480,151 @@ function SimpleTable({ rows, onUpdateRawValue, filterKategori, activeQuarter }) 
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-2">
-            <button type="button" onClick={handleZoomOut} className="flex h-8 w-8 items-center justify-center rounded-md bg-blue-900 text-white text-xl font-bold shadow hover:bg-blue-800">−</button>
-            <div className="flex flex-col items-center">
-              <span className="text-xs font-medium mb-1">{zoom}%</span>
-              <input type="range" min={minZoom} max={maxZoom} step={stepZoom} value={zoom} onChange={handleSliderChange} className="w-40 accent-slate-700" />
+          {hasUnsavedChanges && (
+            <div className="flex items-center text-yellow-600 text-sm mr-2">
+              <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                <path
+                  fillRule="evenodd"
+                  d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                  clipRule="evenodd"
+                />
+              </svg>
+              Ada perubahan yang belum disimpan
             </div>
-            <button type="button" onClick={handleZoomIn} className="flex h-8 w-8 items-center justify-center rounded-md bg-blue-900 text-white text-xl font-bold shadow hover:bg-blue-800">+</button>
-          </div>
+          )}
+          <Button
+            onClick={onSave}
+            className={`flex items-center gap-2 ${hasUnsavedChanges ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-400 cursor-not-allowed'} text-white`}
+            disabled={!hasUnsavedChanges}
+          >
+            <Save className="w-4 h-4" />
+            Simpan Perubahan
+          </Button>
         </div>
       </div>
 
       <div className="w-full overflow-auto border shadow">
-        <div style={{ transform: `scale(${zoom / 100})`, transformOrigin: "top left", display: "block", width: "100%" }}>
-          <table className="table-fixed text-sm w-full border-collapse">
-            <colgroup>
-              <col style={{ width: "10%" }} />
-              <col style={{ width: "20%" }} />
-              <col style={{ width: "30%" }} />
-              <col style={{ width: "40%" }} />
-            </colgroup>
-            <thead>
-              <tr>
-                <th className="border border-black px-2 py-2 bg-blue-900 text-white text-center">Jenis Risiko</th>
-                <th className="border border-black px-2 py-2 bg-blue-900 text-white text-center">Parameter</th>
-                <th className="border border-black px-2 py-2 bg-blue-900 text-white text-center">Nilai atau Indikator</th>
-                <th className="border border-black px-2 py-2 bg-blue-900 text-white text-center">Hasil {quarterFromHeader}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {tableData.map((row, idx) => {
-                const { param, item, kind, _categoryId, _categoryLabel, itemType, isFirstRow } = row;
-                if (!param || !item) return null;
-                const showCategory = !renderedCategory[_categoryId];
-                const showParam = isFirstRow && !renderedParam[param.id];
-                if (showCategory) renderedCategory[_categoryId] = true;
-                if (showParam) renderedParam[param.id] = true;
+        <table className="table-fixed text-sm w-full border-collapse">
+          <colgroup>
+            <col style={{ width: "10%" }} />
+            <col style={{ width: "20%" }} />
+            <col style={{ width: "30%" }} />
+            <col style={{ width: "40%" }} />
+          </colgroup>
+          <thead>
+            <tr>
+              <th className="border border-black px-2 py-2 bg-blue-900 text-white text-center">Jenis Risiko</th>
+              <th className="border border-black px-2 py-2 bg-blue-900 text-white text-center">Parameter</th>
+              <th className="border border-black px-2 py-2 bg-blue-900 text-white text-center">Nilai atau Indikator</th>
+              <th className="border border-black px-2 py-2 bg-blue-900 text-white text-center">Hasil {quarterFromHeader}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {tableData.map((row, idx) => {
+              const { param, item, kind, _categoryId, _categoryLabel, itemType, isFirstRow } = row;
+              if (!param || !item) return null;
+              const showCategory = !renderedCategory[_categoryId];
+              const showParam = isFirstRow && !renderedParam[param.id];
+              if (showCategory) renderedCategory[_categoryId] = true;
+              if (showParam) renderedParam[param.id] = true;
 
-                let itemText = "-";
-                if (itemType === "Tanpa Faktor") itemText = item?.judul?.text ?? "-";
-                else if (itemType === "Satu Faktor") {
-                  if (kind === "hasil") itemText = item?.judul?.text ?? "-";
-                  else if (kind === "input") itemText = item?.judul?.pembilang ?? "-";
-                } else if (itemType === "Dua Faktor") {
-                  if (kind === "hasil") itemText = item?.judul?.text ?? "-";
-                  else if (kind === "pembilang") itemText = item?.judul?.pembilang ?? "-";
-                  else if (kind === "penyebut") itemText = item?.judul?.penyebut ?? "-";
-                }
+              let itemText = "-";
+              if (itemType === "Tanpa Faktor") itemText = item?.judul?.text ?? "-";
+              else if (itemType === "Satu Faktor") {
+                if (kind === "hasil") itemText = item?.judul?.text ?? "-";
+                else if (kind === "input") itemText = item?.judul?.pembilang ?? "-";
+              } else if (itemType === "Dua Faktor") {
+                if (kind === "hasil") itemText = item?.judul?.text ?? "-";
+                else if (kind === "pembilang") itemText = item?.judul?.pembilang ?? "-";
+                else if (kind === "penyebut") itemText = item?.judul?.penyebut ?? "-";
+              }
 
-                let inputValue = "";
-                let fieldName = "";
-                if (itemType === "Tanpa Faktor") {
-                  const currentValue = item.judul?.value ?? item.judul?.valuePembilang;
-                  inputValue = currentValue !== null && currentValue !== undefined ? String(currentValue) : "";
-                  fieldName = "value";
-                } else if (itemType === "Satu Faktor" && kind === "input") {
+              let inputValue = "";
+              let fieldName = "";
+              if (itemType === "Tanpa Faktor") {
+                const currentValue = item.judul?.value ?? item.judul?.valuePembilang;
+                inputValue = currentValue !== null && currentValue !== undefined ? String(currentValue) : "";
+                fieldName = "value";
+              } else if (itemType === "Satu Faktor" && kind === "input") {
+                const currentValue = item.judul?.valuePembilang;
+                inputValue = currentValue !== null && currentValue !== undefined ? String(currentValue) : "";
+                fieldName = "valuePembilang";
+              } else if (itemType === "Dua Faktor") {
+                if (kind === "pembilang") {
                   const currentValue = item.judul?.valuePembilang;
                   inputValue = currentValue !== null && currentValue !== undefined ? String(currentValue) : "";
                   fieldName = "valuePembilang";
-                } else if (itemType === "Dua Faktor") {
-                  if (kind === "pembilang") {
-                    const currentValue = item.judul?.valuePembilang;
-                    inputValue = currentValue !== null && currentValue !== undefined ? String(currentValue) : "";
-                    fieldName = "valuePembilang";
-                  } else if (kind === "penyebut") {
-                    const currentValue = item.judul?.valuePenyebut;
-                    inputValue = currentValue !== null && currentValue !== undefined ? String(currentValue) : "";
-                    fieldName = "valuePenyebut";
-                  }
+                } else if (kind === "penyebut") {
+                  const currentValue = item.judul?.valuePenyebut;
+                  inputValue = currentValue !== null && currentValue !== undefined ? String(currentValue) : "";
+                  fieldName = "valuePenyebut";
                 }
+              }
 
-                const nilaiBgClass = isFirstRow ? 'bg-[#E8F5FA]' : 'bg-white';
-                const nilaiTextClass = isFirstRow ? "text-base font-semibold" : "text-base";
-                const isInputRow = kind === "input" || kind === "pembilang" || kind === "penyebut" || (itemType === "Tanpa Faktor" && kind === "full");
-                const hasilText = getHasilForQuarter(item, quarterFromHeader);
+              const nilaiBgClass = isFirstRow ? 'bg-[#E8F5FA]' : 'bg-white';
+              const nilaiTextClass = isFirstRow ? "text-base font-semibold" : "text-base";
+              const isInputRow = kind === "input" || kind === "pembilang" || kind === "penyebut" || (itemType === "Tanpa Faktor" && kind === "full");
+              const hasilText = getHasilForQuarter(item, quarterFromHeader);
 
-                return (
-                  <tr key={`${idx}-${param.id}-${item.id}-${kind}`}>
-                    {showCategory && (
-                      <td
-                        rowSpan={categoryRowSpan[_categoryId]}
-                        className="align-middle text-center p-2 bg-[#E8F5FA] font-semibold border-3 border-black tracking-widest lg:tracking-widest"
-                        style={{ writingMode: 'vertical-rl', textOrientation: 'mixed', transform: 'rotate(180deg)' }}
-                      >
-                        <div className="flex items-center text-lg justify-center h-full">{_categoryLabel}</div>
-                      </td>
-                    )}
-                    {showParam && (
-                      <td
-                        rowSpan={paramRowSpan[param.id]}
-                        className="border border-black px-2 align-middle text-lg bg-[#E8F5FA] font-semibold"
-                        style={{ verticalAlign: 'middle' }}
-                      >
-                        {param.judul || "-"}
-                      </td>
-                    )}
-                    <td className={`border border-black px-2 py-3 ${nilaiBgClass}`}>
-                      <div className={nilaiTextClass}>{itemText}</div>
+              return (
+                <tr key={`${idx}-${param.id}-${item.id}-${kind}`}>
+                  {showCategory && (
+                    <td
+                      rowSpan={categoryRowSpan[_categoryId]}
+                      className="align-middle text-center p-2 bg-[#E8F5FA] font-semibold border-3 border-black tracking-widest lg:tracking-widest"
+                      style={{ writingMode: 'vertical-rl', textOrientation: 'mixed', transform: 'rotate(180deg)' }}
+                    >
+                      <div className="flex items-center text-lg justify-center h-full">{_categoryLabel}</div>
                     </td>
-                    <td className={`border border-black px-2 py-2 ${isInputRow ? 'bg-white' : 'bg-[#E8F5FA]'}`}>
-                      {isInputRow ? (
-                        <div className="flex flex-col">
-                          <div className="flex-1 p-1">
-                            <Input
-                              value={inputValue}
-                              onChange={(e) => {
-                                const value = e.target.value;
-                                if (value === "") {
-                                  onUpdateRawValue({ categoryId: _categoryId, paramId: param.id, itemId: item.id, field: fieldName, value: null, quarter: activeQuarter });
-                                  return;
-                                }
-                                const processedValue = processInputValue(value);
-                                onUpdateRawValue({ categoryId: _categoryId, paramId: param.id, itemId: item.id, field: fieldName, value: processedValue, quarter: activeQuarter });
-                              }}
-                              onBlur={(e) => {
-                                if (e.target.value === "") {
-                                  onUpdateRawValue({ categoryId: _categoryId, paramId: param.id, itemId: item.id, field: fieldName, value: null, quarter: activeQuarter });
-                                }
-                              }}
-                              placeholder="Masukkan nilai"
-                              className="text-center text-base w-full"
-                            />
-                          </div>
-                        </div>
-                      ) : (
-                        <div className={`flex items-center justify-center text-base font-semibold text-center break-words ${isInputRow ? '' : 'h-full'}`}>
-                          {hasilText}
-                        </div>
-                      )}
+                  )}
+                  {showParam && (
+                    <td
+                      rowSpan={paramRowSpan[param.id]}
+                      className="border border-black px-2 align-middle text-lg bg-[#E8F5FA] font-semibold"
+                      style={{ verticalAlign: 'middle' }}
+                    >
+                      {param.judul || "-"}
                     </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                  )}
+                  <td className={`border border-black px-2 py-3 ${nilaiBgClass}`}>
+                    <div className={nilaiTextClass}>{itemText}</div>
+                  </td>
+                  <td className={`border border-black px-2 py-2 ${isInputRow ? 'bg-white' : 'bg-[#E8F5FA]'}`}>
+                    {isInputRow ? (
+                      <div className="flex flex-col">
+                        <div className="flex-1 p-1">
+                          <Input
+                            value={inputValue}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              if (value === "") {
+                                onUpdateRawValue({ categoryId: _categoryId, paramId: param.id, itemId: item.id, field: fieldName, value: null, quarter: activeQuarter });
+                                return;
+                              }
+                              const processedValue = processInputValue(value);
+                              onUpdateRawValue({ categoryId: _categoryId, paramId: param.id, itemId: item.id, field: fieldName, value: processedValue, quarter: activeQuarter });
+                            }}
+                            onBlur={(e) => {
+                              if (e.target.value === "") {
+                                onUpdateRawValue({ categoryId: _categoryId, paramId: param.id, itemId: item.id, field: fieldName, value: null, quarter: activeQuarter });
+                              }
+                            }}
+                            placeholder="Masukkan nilai"
+                            className="text-center text-base w-full"
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className={`flex items-center justify-center text-base font-semibold text-center break-words ${isInputRow ? '' : 'h-full'}`}>
+                        {hasilText}
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
     </div>
   );
@@ -684,189 +685,194 @@ function ImportModalRekap({
     return category?.id || null;
   }, [categoryList]);
 
-  // PREVIEW: Baca file Excel dan proses secara SEQUENTIAL
-  const handlePreview = async () => {
-    if (!file) {
-      setError('Silakan pilih file terlebih dahulu');
-      return;
-    }
+const handlePreview = async () => {
+  if (!file) {
+    setError('Silakan pilih file terlebih dahulu');
+    return;
+  }
 
-    setIsLoading(true);
-    setError(null);
+  setIsLoading(true);
+  setError(null);
 
-    try {
-      const buffer = await file.arrayBuffer();
-      const workbook = new ExcelJS.Workbook();
-      await workbook.xlsx.load(buffer);
+  try {
+    const buffer = await file.arrayBuffer();
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(buffer);
 
-      // Tentukan sheet sesuai quarter aktif
-      const quarterMap = {
-        q1: `Maret - ${year}`,
-        q2: `Juni - ${year}`,
-        q3: `September - ${year}`,
-        q4: `Desember - ${year}`,
-      };
-      const targetSheetName = quarterMap[quarter?.toLowerCase()] || `${quarter} - ${year}`;
-      let worksheet = workbook.worksheets.find(ws => ws.name.includes(targetSheetName));
-      if (!worksheet) worksheet = workbook.worksheets[0];
-      if (!worksheet) throw new Error('Tidak ada worksheet');
+    // Gunakan sheet pertama (hasil export selalu satu sheet)
+    const worksheet = workbook.worksheets[0];
+    if (!worksheet) throw new Error('Tidak ada worksheet dalam file');
 
-      // Cari baris header (kolom D = "Jenis Risiko")
-      let headerRow = null;
-      for (let i = 1; i <= 10; i++) {
-        const row = worksheet.getRow(i);
-        if (row.getCell(4).value?.toString().includes('Jenis Risiko')) {
+    // Cari baris header (kolom A berisi "Jenis Risiko") dalam 20 baris pertama
+    let headerRow = null;
+    for (let i = 1; i <= 20; i++) {
+      const row = worksheet.getRow(i);
+      const cellValue = row.getCell(1).value;
+      if (cellValue) {
+        const str = String(cellValue).trim().toLowerCase();
+        if (str.includes('jenis risiko')) {
           headerRow = i;
           break;
         }
       }
-      if (!headerRow) throw new Error('Header "Jenis Risiko" tidak ditemukan');
+    }
+    if (!headerRow) {
+      throw new Error('Header "Jenis Risiko" tidak ditemukan dalam 20 baris pertama. Pastikan file sesuai template.');
+    }
 
-      const updates = [];
-      const errors = [];
-      let totalRows = 0;
-      let matchedRows = 0;
+    // Tentukan kolom hasil berdasarkan quarter aktif
+    const quarterToCol = {
+      q1: 4, // kolom D
+      q2: 5, // kolom E
+      q3: 6, // kolom F
+      q4: 7, // kolom G
+    };
+    const hasilColIndex = quarterToCol[quarter?.toLowerCase()] || 4;
 
-      // Kelompokkan baris per kategori dan parameter (urutan sesuai Excel)
-      const rowsByCategoryAndParam = {};
-
-      for (let r = headerRow + 1; r <= worksheet.rowCount; r++) {
-        const row = worksheet.getRow(r);
-        const jenisRisiko = row.getCell(4).value?.toString()?.trim();
-        const parameter = row.getCell(5).value?.toString()?.trim();
-        const nilaiIndikator = row.getCell(6).value?.toString()?.trim(); // tidak dipakai dalam sequential
-        let hasil = row.getCell(7).value;
-
-        if (!jenisRisiko && !parameter && !nilaiIndikator) continue;
-        totalRows++;
-
-        // Ambil nilai hasil (handle formula)
-        if (hasil && typeof hasil === 'object' && hasil.result) {
-          hasil = hasil.result;
-        }
-        const hasilStr = hasil !== null && hasil !== undefined ? String(hasil) : '';
-
-        const categoryId = findCategoryIdByLabel(jenisRisiko);
-        if (!categoryId || !selectedCategories.includes(categoryId)) {
-          errors.push(`Baris ${r}: Kategori "${jenisRisiko}" tidak dipilih atau tidak valid`);
-          continue;
-        }
-
-        const key = `${categoryId}||${parameter}`;
-        if (!rowsByCategoryAndParam[key]) {
-          rowsByCategoryAndParam[key] = [];
-        }
-        rowsByCategoryAndParam[key].push({
-          rowNumber: r,
-          hasilStr,
-          nilaiIndikator,
-        });
-      }
-
-      // Proses setiap grup (kategori + parameter) secara SEQUENTIAL
-      Object.entries(rowsByCategoryAndParam).forEach(([key, excelRows]) => {
-        const [categoryId, paramName] = key.split('||');
-        const categoryRows = dataMap[categoryId] || [];
-        const param = categoryRows.find(p =>
-          p.judul?.toString().trim().toLowerCase() === paramName?.toLowerCase()
-        );
-        if (!param) {
-          excelRows.forEach(row => {
-            errors.push(`Baris ${row.rowNumber}: Parameter "${paramName}" tidak ditemukan di kategori "${categoryId}"`);
-          });
-          return;
-        }
-
+    // Bangun daftar baris yang diharapkan (expected rows) berdasarkan dataMap dan urutan kategori
+    const expectedRows = [];
+    // Gunakan CATEGORIES global untuk urutan kategori (sesuai tampilan)
+    CATEGORIES.forEach(cat => {
+      if (!selectedCategories.includes(cat.id)) return;
+      const rows = dataMap[cat.id] || [];
+      rows.forEach(param => {
         const itemList = param.nilaiList || [];
-        let expectedTotalRows = 0;
         itemList.forEach(item => {
           const type = item.judul?.type || 'Tanpa Faktor';
-          if (type === 'Tanpa Faktor') expectedTotalRows += 1;
-          else if (type === 'Satu Faktor') expectedTotalRows += 2;
-          else if (type === 'Dua Faktor') expectedTotalRows += 3;
-        });
-
-        // Cek kesesuaian jumlah baris
-        if (excelRows.length !== expectedTotalRows) {
-          errors.push(`Parameter "${paramName}": jumlah baris di Excel (${excelRows.length}) tidak sesuai dengan sistem (${expectedTotalRows})`);
-          return;
-        }
-
-        let rowIndex = 0;
-        itemList.forEach(item => {
-          const type = item.judul?.type || 'Tanpa Faktor';
-          const itemId = item.id;
-
           if (type === 'Tanpa Faktor') {
-            // 1 baris: update value
-            const excelRow = excelRows[rowIndex];
-            updates.push({
-              categoryId,
+            // 1 baris input (value)
+            expectedRows.push({
+              categoryId: cat.id,
+              categoryLabel: cat.label,
               paramId: param.id,
-              itemId,
+              itemId: item.id,
               field: 'value',
-              newValue: excelRow.hasilStr,
+              isJudul: false,
             });
-            matchedRows++;
-            rowIndex += 1;
-          }
-          else if (type === 'Satu Faktor') {
-            // Baris 1: judul nilai (tidak diupdate)
-            // Baris 2: pembilang -> update valuePembilang
-            const pembilangRow = excelRows[rowIndex + 1];
-            updates.push({
-              categoryId,
+          } else if (type === 'Satu Faktor') {
+            // Baris 1: judul (tidak diupdate)
+            expectedRows.push({
+              categoryId: cat.id,
+              categoryLabel: cat.label,
+              isJudul: true,
+            });
+            // Baris 2: pembilang (input)
+            expectedRows.push({
+              categoryId: cat.id,
+              categoryLabel: cat.label,
               paramId: param.id,
-              itemId,
+              itemId: item.id,
               field: 'valuePembilang',
-              newValue: pembilangRow.hasilStr,
+              isJudul: false,
             });
-            matchedRows++;
-            rowIndex += 2;
-          }
-          else if (type === 'Dua Faktor') {
-            // Baris 1: judul nilai (tidak diupdate)
-            // Baris 2: pembilang -> update valuePembilang
-            // Baris 3: penyebut  -> update valuePenyebut
-            const pembilangRow = excelRows[rowIndex + 1];
-            updates.push({
-              categoryId,
+          } else if (type === 'Dua Faktor') {
+            // Baris 1: judul (tidak diupdate)
+            expectedRows.push({
+              categoryId: cat.id,
+              categoryLabel: cat.label,
+              isJudul: true,
+            });
+            // Baris 2: pembilang (input)
+            expectedRows.push({
+              categoryId: cat.id,
+              categoryLabel: cat.label,
               paramId: param.id,
-              itemId,
+              itemId: item.id,
               field: 'valuePembilang',
-              newValue: pembilangRow.hasilStr,
+              isJudul: false,
             });
-            matchedRows++;
-
-            const penyebutRow = excelRows[rowIndex + 2];
-            updates.push({
-              categoryId,
+            // Baris 3: penyebut (input)
+            expectedRows.push({
+              categoryId: cat.id,
+              categoryLabel: cat.label,
               paramId: param.id,
-              itemId,
+              itemId: item.id,
               field: 'valuePenyebut',
-              newValue: penyebutRow.hasilStr,
+              isJudul: false,
             });
-            matchedRows++;
-
-            rowIndex += 3;
           }
         });
       });
+    });
 
-      const result = {
-        success: true,
-        updates,
-        stats: { totalRows, matchedRows, errors: errors.length },
-        errors,
-      };
-      setPreviewData(result);
-      setShowPreviewModal(true);
-    } catch (err) {
-      setError(`Gagal membaca file: ${err.message}`);
-    } finally {
-      setIsLoading(false);
+    // Baca baris dari Excel (setelah header)
+    const excelRows = [];
+    for (let r = headerRow + 1; r <= worksheet.rowCount; r++) {
+      const row = worksheet.getRow(r);
+      const jenisRisikoCell = row.getCell(1);
+      const hasilCell = row.getCell(hasilColIndex);
+
+      const jenisRisiko = jenisRisikoCell.value ? String(jenisRisikoCell.value).trim() : '';
+      if (!jenisRisiko) continue; // lewati baris yang benar-benar kosong
+
+      let hasil = hasilCell.value;
+      if (hasil && typeof hasil === 'object' && hasil.result !== undefined) {
+        hasil = hasil.result;
+      }
+      const hasilStr = hasil !== null && hasil !== undefined ? String(hasil) : '';
+
+      excelRows.push({
+        rowNumber: r,
+        categoryLabel: jenisRisiko,
+        hasilStr,
+      });
     }
-  };
+
+    // Validasi jumlah baris
+    if (excelRows.length !== expectedRows.length) {
+      throw new Error(
+        `Jumlah baris data di Excel (${excelRows.length}) tidak sesuai dengan yang diharapkan (${expectedRows.length}). ` +
+        `Pastikan file adalah hasil export langsung tanpa mengubah struktur baris.`
+      );
+    }
+
+    const updates = [];
+    const errors = [];
+    let matchedRows = 0;
+
+    for (let i = 0; i < expectedRows.length; i++) {
+      const expected = expectedRows[i];
+      const excel = excelRows[i];
+
+      // Jika baris ini adalah judul (tidak perlu diupdate), lewati
+      if (expected.isJudul) {
+        continue;
+      }
+
+      // Validasi kategori
+      const categoryId = findCategoryIdByLabel(excel.categoryLabel);
+      if (!categoryId || categoryId !== expected.categoryId) {
+        errors.push(
+          `Baris ${excel.rowNumber}: Kategori "${excel.categoryLabel}" tidak sesuai dengan yang diharapkan (${expected.categoryLabel})`
+        );
+        continue;
+      }
+
+      // Buat update
+      updates.push({
+        categoryId: expected.categoryId,
+        paramId: expected.paramId,
+        itemId: expected.itemId,
+        field: expected.field,
+        newValue: excel.hasilStr,
+      });
+      matchedRows++;
+    }
+
+    const result = {
+      success: true,
+      updates,
+      stats: { totalRows: excelRows.length, matchedRows, errors: errors.length },
+      errors,
+    };
+    setPreviewData(result);
+    setShowPreviewModal(true);
+  } catch (err) {
+    setError(`Gagal membaca file: ${err.message}`);
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const handleImport = () => {
     if (!previewData) {
@@ -1047,7 +1053,7 @@ function ImportModalRekap({
 
       {/* MODAL PREVIEW */}
       {showPreviewModal && previewData && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
+        <div className="fixed inset-0 bg-white/5 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
           <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
             <h3 className="text-xl font-bold text-gray-800 mb-4">Preview Import</h3>
             <div className="mb-6 space-y-3">
@@ -1073,7 +1079,7 @@ function ImportModalRekap({
 
       {/* MODAL KONFIRMASI */}
       {showConfirmModal && previewData && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
+        <div className="fixed inset-0 bg-white/5 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
           <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
             <div className="text-center mb-6">
               <div className="w-16 h-16 mx-auto bg-yellow-100 rounded-full flex items-center justify-center mb-4">
@@ -1762,7 +1768,7 @@ Object.entries(categoryRanges).forEach(([catId, range]) => {
     const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    link.download = `Rekap_Data_${year}_Semua_Quarter.xlsx`;
+    link.download = `Rekap_Data_${year}.xlsx`;
     link.click();
     URL.revokeObjectURL(link.href);
 
@@ -1852,28 +1858,6 @@ Object.entries(categoryRanges).forEach(([catId, range]) => {
           />
         )}
 
-        <div className="flex justify-between items-center gap-2">
-          <div className="flex items-center gap-2">
-            {hasUnsavedChanges && (
-              <div className="flex items-center mr-4 text-yellow-600 text-sm">
-                <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                </svg>
-                Ada perubahan yang belum disimpan
-              </div>
-            )}
-
-            <Button
-              onClick={handleSaveAllChanges}
-              className={`flex items-center gap-2 ${hasUnsavedChanges ? "bg-blue-600 hover:bg-blue-700" : "bg-gray-400 cursor-not-allowed"} text-white`}
-              disabled={!hasUnsavedChanges}
-            >
-              <Save className="w-4 h-4" />
-              Simpan Perubahan
-            </Button>
-          </div>
-        </div>
-
         {selectedPages.length === 0 ? (
           <div className="border rounded-xl p-6 text-center text-gray-500">
             Pilih kategori halaman terlebih dahulu
@@ -1884,6 +1868,8 @@ Object.entries(categoryRanges).forEach(([catId, range]) => {
             onUpdateRawValue={handleUpdateRawValue}
             filterKategori={kategoriFilter}
             activeQuarter={activeQuarter}
+            hasUnsavedChanges={hasUnsavedChanges}
+            onSave={handleSaveAllChanges}
             key={`simple-table-${JSON.stringify(pagedRows.map(r => r.id))}`}
           />
         )}
