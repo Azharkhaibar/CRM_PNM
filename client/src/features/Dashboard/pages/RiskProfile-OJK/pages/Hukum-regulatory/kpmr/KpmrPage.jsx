@@ -110,11 +110,13 @@ function PertanyaanPanel({
   });
 
   // Reset edit mode when active question changes
-  useEffect(() => {
+useEffect(() => {
+  if (activePertanyaanIndex >= 0) {
     setEditModePertanyaan(false);
     setOriginalPertanyaan(null);
     setDraftPertanyaan(null);
-  }, [activePertanyaanIndex]);
+  }
+}, [activePertanyaanIndex]);
 
   // PERUBAHAN PENTING: Otomatis masuk ke mode buat baru ketika pertama kali atau tidak ada pertanyaan dipilih
   useEffect(() => {
@@ -150,7 +152,7 @@ function PertanyaanPanel({
     
     const nomor = pertanyaan.nomor || (index + 1);
     const pertanyaanText = pertanyaan.pertanyaan || "Tanpa Pertanyaan";
-    const copyText = pertanyaan.pertanyaan?.includes("(Copy)") ? " (Copy)" : "";
+    const copyText = pertanyaan.pertanyaan?.includes("(Copy)") ? " " : "";
     
     return `${nomor} – ${pertanyaanText.substring(0, 50)}${pertanyaanText.length > 50 ? "..." : ""}${copyText}`;
   }, []);
@@ -1610,11 +1612,11 @@ function TableKpmr({ rows = [], activeQuarter }) {
   // Determine background color based on score value
   const skorBg = (skor) => {
     const num = Number(skor);
-    if (num >= 4.5) return "bg-red-500 text-white";
-    if (num >= 3.5) return "bg-orange-400 text-white";
-    if (num >= 2.5) return "bg-yellow-400 text-black";
-    if (num >= 1.5) return "bg-lime-400 text-black";
-    if (num > 0) return "bg-green-500 text-white";
+    if (num >= 4.5) return "bg-[#FF0000] text-white";
+    if (num >= 3.5) return "bg-[#FFC000] text-white";
+    if (num >= 2.5) return "bg-[#FFFF00] text-black";
+    if (num >= 1.5) return "bg-[#92D050] text-black";
+    if (num > 0) return "bg-[#4F6228] text-white";
     return "bg-gray-100 text-gray-500";
   };
 
@@ -1858,7 +1860,7 @@ function TableKpmr({ rows = [], activeQuarter }) {
                               const hasSkor = skorValue !== "" && skorValue !== undefined && skorValue !== null;
 
                               return (
-                                <td key={quarter} className={`border border-black px-2 py-2 text-center font-bold ${hasSkor ? skorBg(skorValue) : ""}`}>
+                                <td key={quarter} className={`border border-black px-2 py-2 text-center font-bold ${hasSkor ? skorValue : ""}`}>
                                   {hasSkor ? skorValue : "-"}
                                 </td>
                               );

@@ -329,71 +329,74 @@ function ParameterPanel({ rows, setRows, active, onSaveData }) {
   }, [draftParameter, safeActiveParamIndex, rows, setRows, isKategoriIncomplete, onSaveData, editMode]);
 
   // Tambah parameter baru dari draft
-  const handleAddNewParameter = useCallback(() => {
-    if (!draftParameter) return;
+const handleAddNewParameter = useCallback(() => {
+  if (!draftParameter) return;
+  
+  const bobotNum = Number(draftParameter.bobot);
+  if (isNaN(bobotNum) || bobotNum < 0 || bobotNum > 100) {
+    alert("Bobot harus antara 0 dan 100.");
+    return;
+  }
+  
+  if (isKategoriIncomplete(draftParameter)) {
+    alert("Lengkapi kategori sebelum menambah parameter.");
+    return;
+  }
+  
+  if (!draftParameter.judul.trim()) {
+    alert("Judul parameter tidak boleh kosong.");
+    return;
+  }
+  
+  setLoading(true);
+  
+  try {
+    const newParam = {
+      ...createParameter(),
+      nomor: draftParameter.nomor || "-",
+      judul: draftParameter.judul.trim(),
+      bobot: bobotNum,
+      kategori: {
+        model: draftParameter.kategori.model || "",
+        prinsip: draftParameter.kategori.prinsip || "",
+        jenis: draftParameter.kategori.jenis || "",
+        underlying: Array.isArray(draftParameter.kategori.underlying)
+          ? draftParameter.kategori.underlying
+          : [],
+      },
+      nilaiList: [] 
+    };
     
-    const bobotNum = Number(draftParameter.bobot);
-    if (isNaN(bobotNum) || bobotNum < 0 || bobotNum > 100) {
-      alert("Bobot harus antara 0 dan 100.");
-      return;
-    }
+    const updatedRows = [...rows, newParam];
     
-    if (isKategoriIncomplete(draftParameter)) {
-      alert("Lengkapi kategori sebelum menambah parameter.");
-      return;
-    }
+    setRows(updatedRows);
+    setActiveParamIndex(updatedRows.length - 1);
+    setActiveNilaiIndex(-1);
+    setDraftParameter(createEmptyParameter());
+    setEditMode(false);
     
-    if (!draftParameter.judul.trim()) {
-      alert("Judul parameter tidak boleh kosong.");
-      return;
-    }
-    
-    setLoading(true);
-    try {
-      const newParam = {
-        ...createParameter(),
-        nomor: draftParameter.nomor || "-",
-        judul: draftParameter.judul.trim(),
-        bobot: bobotNum,
-        kategori: {
-          model: draftParameter.kategori.model || "",
-          prinsip: draftParameter.kategori.prinsip || "",
-          jenis: draftParameter.kategori.jenis || "",
-          underlying: Array.isArray(draftParameter.kategori.underlying)
-            ? draftParameter.kategori.underlying
-            : [],
-        },
-        nilaiList: [] // ARRAY KOSONG - TIDAK ADA NILAI DEFAULT
-      };
-      
-      setRows((prev) => {
-        const next = [...prev, newParam];
-        setActiveParamIndex(next.length - 1);
-        setActiveNilaiIndex(-1); // Set ke -1 karena tidak ada nilai
-        return next;
-      });
-      
-      setDraftParameter(createEmptyParameter());
-      setEditMode(false);
-      
+    if (typeof onSaveData === 'function') {
       setTimeout(() => {
-        if (typeof onSaveData === 'function') {
-          const saveSuccess = onSaveData();
-
-          if (!saveSuccess) {
-            setLoading(false);       
-            alert("Gagal menyimpan ke storage"); 
-            return;
-          }
-          setLoading(false);
+        const saveSuccess = onSaveData(updatedRows);
+        
+        if (saveSuccess) {
+          console.log("Parameter berhasil ditambahkan dan disimpan!");
+        } else {
+          alert("Parameter berhasil ditambahkan tapi gagal disimpan ke storage!");
         }
-      }, 100);
-
-    } catch (error) {
-      alert("Gagal menambah parameter.");
+        
+        setLoading(false);
+      }, 50);
+    } else {
       setLoading(false);
     }
-  }, [draftParameter, isKategoriIncomplete, setRows, onSaveData]);
+    
+  } catch (error) {
+    console.error("Gagal menambah parameter:", error);
+    alert("Gagal menambah parameter.");
+    setLoading(false);
+  }
+}, [draftParameter, isKategoriIncomplete, rows, setRows, onSaveData]);
 
   // Batalkan edit dan kembalikan ke state sebelumnya
   const handleCancelEdit = useCallback(() => {
@@ -423,46 +426,53 @@ function ParameterPanel({ rows, setRows, active, onSaveData }) {
   }, [originalParameter, safeActiveParamIndex, setRows, onSaveData, safeActiveParam]);
 
   // Salin parameter yang sedang aktif
-  const handleCopyParam = useCallback(() => {
-    if (safeActiveParamIndex === null) return;
+const handleCopyParam = useCallback(() => {
+  if (safeActiveParamIndex === null) return;
 
-    const source = rows[safeActiveParamIndex];
+  const source = rows[safeActiveParamIndex];
 
-    setLoading(true);
-    try {
-      const copiedParam = {
-        ...createParameter(),
-        nomor: `${source.nomor}`,
-        judul: `${source.judul} (Copy)`,
-        bobot: source.bobot,
-        kategori: structuredClone(source.kategori || {}),
-        nilaiList: [] // ARRAY KOSONG - tidak menyalin nilai
-      };
+  setLoading(true);
+  try {
+    const copiedParam = {
+      ...createParameter(),
+      nomor: `${source.nomor}`,
+      judul: `${source.judul} (Copy)`,
+      bobot: source.bobot,
+      kategori: structuredClone(source.kategori || {}),
+      nilaiList: Array.isArray(source.nilaiList) 
+        ? source.nilaiList.map(nilai => ({
+            ...structuredClone(nilai),
+            judul: {
+              ...nilai.judul,
+              text: nilai.judul?.text ? `${nilai.judul.text}` : 'Nilai (Copy)'
+            }
+          }))
+        : []
+    };
 
-      setRows((prev) => {
-        const next = [...prev, copiedParam];
-        setActiveParamIndex(next.length - 1);
-        setActiveNilaiIndex(-1); // Set ke -1 karena tidak ada nilai
-        return next;
-      });
-      
-      setTimeout(() => {
-        if (typeof onSaveData === 'function') {
-          const saveSuccess = onSaveData();
+    setRows((prev) => {
+      const next = [...prev, copiedParam];
+      setActiveParamIndex(next.length - 1);
+      return next;
+    });
+    
+    setTimeout(() => {
+      if (typeof onSaveData === 'function') {
+        const saveSuccess = onSaveData();
 
-          if (!saveSuccess) {
-            setLoading(false);       
-            alert("Gagal menyimpan ke storage"); 
-            return;
-          }
-          setLoading(false);
+        if (!saveSuccess) {
+          setLoading(false);       
+          alert("Gagal menyimpan ke storage"); 
+          return;
         }
-      }, 100);
-    } catch (error) {
-      alert("Gagal menyalin parameter.");
-      setLoading(false);
-    }
-  }, [safeActiveParamIndex, rows, setRows, onSaveData]);
+        setLoading(false);
+      }
+    }, 100);
+  } catch (error) {
+    alert("Gagal menyalin parameter.");
+    setLoading(false);
+  }
+}, [safeActiveParamIndex, rows, setRows, onSaveData]);
 
   // Tampilkan dialog konfirmasi hapus parameter
   const handleDeleteParam = useCallback(() => {
@@ -766,7 +776,7 @@ function ParameterPanel({ rows, setRows, active, onSaveData }) {
                       <option value="campuran">Campuran</option>
                       <option value="saham">Saham</option>
                       <option value="indeks">Indeks</option>
-                      <option value="terproteksi">Terproteksi</option>
+                      
                     </select>
 
                     {currentParameter.kategori.model !== "tanpa_model" && (
@@ -839,7 +849,7 @@ function ParameterPanel({ rows, setRows, active, onSaveData }) {
                           {[
                             { key: "indeks", label: "Indeks" },
                             { key: "eba", label: "Efek Beragun Aset(EBA)" },
-                            { key: "dinfra", label: "DinFra" },
+                            { key: "dinfra", label: "Dana Strategis Infrastruktur" },
                             { key: "obligasi", label: "Obligasi" },
                           ].map((u) => {
                             const checked = currentParameter.kategori.underlying.includes(u.key);
@@ -926,7 +936,7 @@ function ParameterPanel({ rows, setRows, active, onSaveData }) {
               <div className="w-[10%]">
                 <label className="font-semibold text-md ml-1 text-slate-200">No</label>
                 <Input
-                  placeholder="9."
+                  placeholder="7."
                   value={currentParameter.nomor}
                   onChange={(e) => handleChangeParameter("nomor", e.target.value)}
                   className="bg-white text-slate-950 border border-black"
@@ -1169,6 +1179,7 @@ function NilaiPanel({
         percent: false,
       },
       bobot: "",
+      keterangan: "",
       sumberRisiko: "",
       dampak: "",
       riskindikator: {
@@ -1545,13 +1556,19 @@ const handleAddNilai = useCallback(() => {
     }
   }, [paramIndex, currentNilai, safeActiveIndex, editModeNilai, onOpenDeleteDialog]);
 
-  const handleSelectNilai = (index) => {
-    setActiveNilaiIndex(index);
-    setOpenNilaiList(false);
-    setEditModeNilai(false); // Keluar dari edit mode ketika memilih nilai yang ada
-    setOriginalNilai(null);
-    setDraftNilai(null);
-  };
+const handleSelectNilai = (index) => {
+  const selected = nilaiList[index];
+
+  if (!selected) return;
+
+  setActiveNilaiIndex(index);
+  setOpenNilaiList(false);
+
+  setOriginalNilai(structuredClone(selected));
+  setDraftNilai(structuredClone(selected));
+
+  setEditModeNilai(true);
+};
 
   const handleClearNilaiSelection = useCallback(() => {
     setActiveNilaiIndex(-1);
@@ -1931,9 +1948,9 @@ const handleAddNilai = useCallback(() => {
 
                 <div className="grid grid-cols-5 gap-2">
                   {[
-                    ["Low", "low", "#00B050"],
-                    ["Low To Moderate", "lowToModerate", "#A3E635"],
-                    ["Moderate", "moderate", "#EEFF00"],
+                    ["Low", "low", "#4F6228"],
+                    ["Low To Moderate", "lowToModerate", "#92D050"],
+                    ["Moderate", "moderate", "#FFFF00"],
                     ["Moderate To High", "moderateToHigh", "#FFC000"],
                     ["High", "high", "#FF0000"],
                   ].map(([label, key, color]) => (
@@ -1952,6 +1969,23 @@ const handleAddNilai = useCallback(() => {
                     />
                   ))}
                 </div>
+              </div>
+              
+              <div className="mt-2 text-slate-800">
+                <label className="text-slate-200 ml-1 tracking-wide font-semibold text-md">
+                  Keterangan
+                </label>
+                <Textarea
+                  className="min-h-[40px] text-md bg-white border border-black"
+                  value={currentNilai.keterangan ?? ""}
+                  onChange={(e) => 
+                    isEditModeForComponents
+                      ? handleChangeDraftNilai("keterangan", e.target.value)
+                      : handleChangeNilaiField("keterangan", e.target.value)
+                  }
+                  disabled={isFieldDisabled()}
+                  placeholder="masukan keterangan"
+                />
               </div>
             </>
           )}
@@ -2073,6 +2107,7 @@ function NilaiJudulInput({
         bobot: Number(bobot) || 0,
         sumberRisiko: "",
         dampak: "",
+        keterangan: "",
         riskindikator: {
           low: "",
           lowToModerate: "",
@@ -2132,7 +2167,7 @@ function NilaiJudulInput({
             value={nomor || ""}
             onChange={(e) => onNomorChange && onNomorChange(e.target.value)}
             disabled={loading || !editMode}
-            placeholder="9."
+            placeholder="7."
           />
         </div>
 
@@ -2307,7 +2342,7 @@ function NilaiJudulInput({
   );
 }
 
-// Table Untuk Tampilin data 
+// Table Untuk Tampilin data
 function TableInherent({ rows = [], activeQuarter }) {
   const [zoom, setZoom] = useState(100); 
   const [currentPage, setCurrentPage] = useState(1);
@@ -2322,11 +2357,11 @@ function TableInherent({ rows = [], activeQuarter }) {
   const getSummaryBgByValue = (total) => {
     if (!Number.isFinite(total)) return "";
 
-    if (total <= 1) return "bg-green-400 text-black";
-    if (total <= 2) return "bg-lime-300 text-black";
-    if (total <= 3) return "bg-yellow-400 text-black";
-    if (total <= 4) return "bg-orange-400 text-black";
-    return "bg-red-500 text-white";
+    if (total <= 1) return "bg-[#4F6228] text-white";
+    if (total <= 2) return "bg-[#92D050] text-black";
+    if (total <= 3) return "bg-[#FFFF00] text-black";
+    if (total <= 4) return "bg-[#FFC000] text-black";
+    return "bg-[#FF0000] text-white";
   };
 
   const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
@@ -2380,11 +2415,11 @@ function TableInherent({ rows = [], activeQuarter }) {
   }
 
   const rankBgMap = {
-    1: "bg-green-400 text-black",
-    2: "bg-lime-300 text-black",
-    3: "bg-yellow-400 text-black",
-    4: "bg-orange-400 text-black",
-    5: "bg-red-500 text-white",
+    1: "bg-[#4F6228] text-white",
+    2: "bg-[#92D050] text-black",
+    3: "bg-[#FFFF00] text-black",
+    4: "bg-[#FFC000] text-black",
+    5: "bg-[#FF0000] text-white",
   };
 
   const formatPercent = (val) => {
@@ -2468,6 +2503,7 @@ function TableInherent({ rows = [], activeQuarter }) {
               <col style={{ width: "8%" }} />
               <col style={{ width: "8%" }} />
               <col style={{ width: "8%" }} />
+              <col style={{ width: "8%" }} />
               
             </colgroup>
             
@@ -2483,15 +2519,16 @@ function TableInherent({ rows = [], activeQuarter }) {
                 <th className="border border-black px-2 py-2 bg-blue-900 text-white text-center">Sumber Risiko</th>
                 <th className="border border-black px-2 py-2 bg-blue-900 text-white text-center">Dampak</th>
 
-                <th className="border border-black px-2 py-2 bg-[#00B050] text-white text-center">Low</th>
-                <th className="border border-black px-2 py-2 bg-[#A3E635] text-black text-center">Low To Moderate</th>
-                <th className="border border-black px-2 py-2 bg-[#EEFF00] text-black text-center">Moderate</th>
+                <th className="border border-black px-2 py-2 bg-[#4F6228] text-white text-center">Low</th>
+                <th className="border border-black px-2 py-2 bg-[#92D050] text-black text-center">Low To Moderate</th>
+                <th className="border border-black px-2 py-2 bg-[#FFFF00] text-black text-center">Moderate</th>
                 <th className="border border-black px-2 py-2 bg-[#F97316] text-black text-center">Moderate To High</th>
                 <th className="border border-black px-2 py-2 bg-[#FF0000] text-white text-center">High</th>
 
                 <th className="border border-black px-2 py-2 bg-blue-950 text-white text-center">Hasil</th>
                 <th className="border border-black px-2 py-2 bg-blue-950 text-white text-center">Peringkat</th>
                 <th className="border border-black px-2 py-2 bg-blue-950 text-white text-center">Weighted</th>
+                <th className="border border-black px-2 py-2 bg-blue-950 text-white text-center">Keterangan</th>
               </tr>
             </thead>
 
@@ -2512,7 +2549,7 @@ function TableInherent({ rows = [], activeQuarter }) {
                         {param.judul || "-"}
                       </td>
                       <td
-                        colSpan={13}
+                        colSpan={14}
                         className="border border-black px-2 py-2 text-center text-gray-400 bg-white"
                       >
                         <div className="flex items-center justify-center gap-2">
@@ -2553,7 +2590,7 @@ function TableInherent({ rows = [], activeQuarter }) {
                     let nilaiText = "-";
                     let hasilText = "-";
                     
-                    // PERUBAHAN PENTING: Untuk Satu Faktor dan Dua Faktor, row ke-2 dan ke-3 menampilkan Hasil
+                    // PERUBAHAN: Untuk Satu Faktor dan Dua Faktor, row ke-2 dan ke-3 menampilkan Hasil dari value
                     if (j.type === "Tanpa Faktor" || subIndex === 0) {
                       nilaiText = j.text ?? "-";
                       hasilText = hasilDisplay || "-";
@@ -2674,12 +2711,12 @@ function TableInherent({ rows = [], activeQuarter }) {
                             isMainRow ? 'bg-[#D9EAD3]' : 'bg-white'
                           } break-words`}
                         >
-                          {/* PERUBAHAN: Hanya tampilkan risk indicator untuk row utama (subIndex === 0) */}
+                          {/* PERUBAHAN: Hanya tampilkan risk indicator untuk row utama */}
                           {isMainRow ? nilai.riskindikator?.[rk] ?? "-" : ""}
                         </td>
                       ))}
 
-                      {/* PERUBAHAN PENTING: Kolom Hasil selalu ditampilkan untuk semua row */}
+                      {/* PERUBAHAN: Kolom Hasil selalu ditampilkan untuk semua row */}
                       <td className={`border border-black px-2 py-2 max-w-[150px] text-center ${
                         isMainRow ? 'bg-white' : 'bg-[#D9EAD3]'
                       } break-words`}>
@@ -2704,6 +2741,12 @@ function TableInherent({ rows = [], activeQuarter }) {
                           >
                             {weightedDisplay || ""}
                           </td>
+                          <td
+                            rowSpan={rowsForThisNilai}
+                            className="border border-black px-2 max-w-[200px] py-2 align-middle bg-white break-words"
+                          >
+                            {nilai.keterangan ?? ""}
+                          </td>
                         </>
                       ) : null}
                     </tr>
@@ -2721,6 +2764,7 @@ function TableInherent({ rows = [], activeQuarter }) {
                     ? globalSummary.totalWeighted.toFixed(2)
                     : "-"}
                 </td>
+                <td className="border border-black bg-white"></td>
               </tr>
             </tbody>
           </table>

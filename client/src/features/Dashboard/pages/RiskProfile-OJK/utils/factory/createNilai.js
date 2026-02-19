@@ -23,7 +23,7 @@ export function createNilai(mode = "Tanpa Faktor") {
           type: "Tanpa Faktor",
           text: "",
           value: "",
-          formula: "",
+          formula: undefined,
           percent: false,
         },
       };
@@ -36,7 +36,7 @@ export function createNilai(mode = "Tanpa Faktor") {
           text: "",
           pembilang: "",
           valuePembilang: "",
-          formula: "",
+          formula: undefined,
           percent: false,
         },
       };
@@ -51,7 +51,7 @@ export function createNilai(mode = "Tanpa Faktor") {
           valuePembilang: "",
           penyebut: "",
           valuePenyebut: "",
-          formula: "",
+          formula: undefined,
           percent: false,
         },
       };

@@ -3,7 +3,6 @@ import Header from "../../components/header/Header";
 import InherentPage from "./inherent/InherentPage";
 import KpmrPage from "./kpmr/KpmrPage";
 import { useHeaderStore } from "../../store/headerStore";
-import * as ExcelJS from "exceljs"; // Tambahkan import ExcelJS
 
 import {
   loadInherent,
@@ -16,6 +15,7 @@ import {
 import { computeDerived } from "@/features/Dashboard/pages/RiskProfile-OJK/utils/compute/computeDerived";
 import { normalizeInherentRows } from "../../utils/normalize/normalizeInherentRows";
 import { normalizeKpmrRows } from "../../utils/normalize/normalizeKpmrRows";
+import * as ExcelJS from "exceljs";
 
 // Komponen tab untuk navigasi antara inherent dan KPMR
 function RiskTabs({ value, onChange }) {
@@ -112,7 +112,7 @@ async function exportInherentToExcel({
   rows = [],
   year,
   quarter,
-  categoryLabel = "RentabilitasRegulatory",
+  categoryLabel = "StrategisRegulatory",
 }) {
   if (!Array.isArray(rows) || rows.length === 0) {
     alert("Tidak ada data inherent untuk diekspor");
@@ -446,9 +446,7 @@ async function exportInherentToExcel({
                 cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: bgColor } };
                 cell.font = {
                   bold: true,
-                  color: {
-                    argb: peringkat === 1 || peringkat === 5 ? "FFFFFFFF" : "FF000000",
-                  },
+                  color: { argb: peringkat === 1 || peringkat === 5 ? "FFFFFFFF" : "FF000000" },
                 };
                 cell.alignment.horizontal = "center";
               }
@@ -568,7 +566,7 @@ async function exportKpmrToExcel({
   rows = [],
   year,
   quarter,
-  categoryLabel = "RentabilitasRegulatory",
+  categoryLabel = "StrategisRegulatory",
   selectedQuarters = ["Q1", "Q2", "Q3", "Q4"],
 }) {
   if (!Array.isArray(rows) || rows.length === 0) {
@@ -875,16 +873,10 @@ async function exportKpmrToExcel({
   }
 }
 
-export default function RentabilitasRegulatory() {
-  const {
-    year,
-    activeQuarter,
-    search,
-    exportRequestId,
-    resetExport,
-  } = useHeaderStore();
+export default function StrategisRegulatory() {
+  const { year, activeQuarter, search, exportRequestId, resetExport } = useHeaderStore();
 
-  const CATEGORY_ID = "rentabilitas-regulatory";
+  const CATEGORY_ID = "strategis-regulatory";
 
   const [activeTab, setActiveTab] = useState("inherent");
   const [inherentRows, setInherentRows] = useState([]);
@@ -920,8 +912,8 @@ export default function RentabilitasRegulatory() {
         rows: inherentRows,
       });
 
-      const derivedValues = inherentRows.flatMap(param =>
-        (param.nilaiList || []).map(nilai => computeDerived(nilai, param))
+      const derivedValues = inherentRows.flatMap((param) =>
+        (param.nilaiList || []).map((nilai) => computeDerived(nilai, param))
       );
 
       const snapshot = computeInherentSnapshot(inherentRows);
@@ -1035,10 +1027,10 @@ export default function RentabilitasRegulatory() {
         }
       };
 
-      window.addEventListener('beforeunload', handleBeforeUnload);
+      window.addEventListener("beforeunload", handleBeforeUnload);
 
       return () => {
-        window.removeEventListener('beforeunload', handleBeforeUnload);
+        window.removeEventListener("beforeunload", handleBeforeUnload);
       };
     }
   }, [activeTab, inherentRows, lastSavedSignature, saveInherentData]);
@@ -1050,14 +1042,14 @@ export default function RentabilitasRegulatory() {
         rows: inherentRows,
         year,
         quarter: activeQuarter,
-        categoryLabel: "Rentabilitas Regulatory",
+        categoryLabel: "Strategis Regulatory",
       });
     } else if (activeTab === "kpmr") {
       await exportKpmrToExcel({
         rows: kpmrRows,
         year,
         quarter: activeQuarter,
-        categoryLabel: "Rentabilitas Regulatory",
+        categoryLabel: "Strategis Regulatory",
         selectedQuarters: ["Q1", "Q2", "Q3", "Q4"],
       });
     }
@@ -1071,16 +1063,19 @@ export default function RentabilitasRegulatory() {
   }, [exportRequestId, isDataReady, handleExportToExcel, resetExport]);
 
   // Handler untuk perubahan tab dengan pengecekan perubahan data
-  const handleTabChange = useCallback((tab) => {
-    if (activeTab === "inherent" && inherentRows.length > 0) {
-      const currentSignature = getInherentSignature(inherentRows);
-      if (currentSignature !== lastSavedSignature) {
-        // Bisa ditambahkan notifikasi atau auto-save jika diperlukan
+  const handleTabChange = useCallback(
+    (tab) => {
+      if (activeTab === "inherent" && inherentRows.length > 0) {
+        const currentSignature = getInherentSignature(inherentRows);
+        if (currentSignature !== lastSavedSignature) {
+          // Bisa ditambahkan notifikasi atau auto-save jika diperlukan
+        }
       }
-    }
 
-    setActiveTab(tab);
-  }, [activeTab, inherentRows, lastSavedSignature]);
+      setActiveTab(tab);
+    },
+    [activeTab, inherentRows, lastSavedSignature]
+  );
 
   // Expose save KPMR function ke window object
   useEffect(() => {
@@ -1106,83 +1101,89 @@ export default function RentabilitasRegulatory() {
   }, [kpmrRows, year, activeTab]);
 
   // Immediate save function untuk KPMR data
-  const saveKpmrDataImmediate = useCallback((rowsToSave = null) => {
-    const rows = rowsToSave || kpmrRows;
+  const saveKpmrDataImmediate = useCallback(
+    (rowsToSave = null) => {
+      const rows = rowsToSave || kpmrRows;
 
-    try {
-      saveKpmr({
-        categoryId: CATEGORY_ID,
-        year,
-        rows: rows,
-      });
-      return true;
-    } catch (error) {
-      console.error("Gagal menyimpan KPMR:", error);
-      return false;
-    }
-  }, [kpmrRows, year]);
+      try {
+        saveKpmr({
+          categoryId: CATEGORY_ID,
+          year,
+          rows: rows,
+        });
+        return true;
+      } catch (error) {
+        console.error("Gagal menyimpan KPMR:", error);
+        return false;
+      }
+    },
+    [kpmrRows, year]
+  );
 
   // Immediate save function untuk inherent data dengan snapshot calculation
-  const saveInherentDataImmediate = useCallback((rowsToSave = null) => {
-    const rows = rowsToSave || inherentRows;
+  const saveInherentDataImmediate = useCallback(
+    (rowsToSave = null) => {
+      const rows = rowsToSave || inherentRows;
 
-    if (!isDataReady || !initialLoadDone) {
-      console.log('Cannot save: data not ready');
-      return false;
-    }
+      if (!isDataReady || !initialLoadDone) {
+        console.log("Cannot save: data not ready");
+        return false;
+      }
 
-    console.log('=== SAVING INHERENT DATA ===');
-    console.log('Category:', CATEGORY_ID);
-    console.log('Year:', year);
-    console.log('Quarter:', activeQuarter);
-    console.log('Rows count:', rows.length);
+      console.log("=== SAVING INHERENT DATA ===");
+      console.log("Category:", CATEGORY_ID);
+      console.log("Year:", year);
+      console.log("Quarter:", activeQuarter);
+      console.log("Rows count:", rows.length);
 
-    const snapshot = computeInherentSnapshot(rows);
-    console.log('Computed snapshot:', snapshot);
+      const snapshot = computeInherentSnapshot(rows);
+      console.log("Computed snapshot:", snapshot);
 
-    setIsSaving(true);
+      setIsSaving(true);
 
-    try {
-      saveInherent({
-        categoryId: CATEGORY_ID,
-        year,
-        quarter: activeQuarter,
-        rows: rows,
-      });
+      try {
+        saveInherent({
+          categoryId: CATEGORY_ID,
+          year,
+          quarter: activeQuarter,
+          rows: rows,
+        });
 
-      console.log('Saved inherent data to localStorage');
+        console.log("Saved inherent data to localStorage");
 
-      const derivedValues = rows.flatMap(param =>
-        (param.nilaiList || []).map(nilai => computeDerived(nilai, param))
-      );
+        const derivedValues = rows.flatMap((param) =>
+          (param.nilaiList || []).map((nilai) => computeDerived(nilai, param))
+        );
 
-      console.log('Derived values count:', derivedValues.length);
+        console.log("Derived values count:", derivedValues.length);
 
-      saveDerived({
-        categoryId: CATEGORY_ID,
-        year,
-        quarter: activeQuarter,
-        snapshot: snapshot,
-        values: derivedValues,
-      });
+        saveDerived({
+          categoryId: CATEGORY_ID,
+          year,
+          quarter: activeQuarter,
+          snapshot: snapshot,
+          values: derivedValues,
+        });
 
-      console.log('Saved derived data to localStorage');
+        console.log("Saved derived data to localStorage");
 
-      const derivedKey = `derived:${CATEGORY_ID}:${year}:${activeQuarter}`;
-      console.log('Derived storage key:', derivedKey);
-      console.log('Stored data:', JSON.parse(localStorage.getItem(derivedKey) || '{}'));
+        const derivedKey = `derived:${CATEGORY_ID}:${year}:${activeQuarter}`;
+        console.log("Derived storage key:", derivedKey);
+        console.log("Stored data:", JSON.parse(localStorage.getItem(derivedKey) || "{}"));
 
-      notifyRiskUpdated();
-      setLastSavedSignature(getInherentSignature(rows));
+        notifyRiskUpdated();
+        setLastSavedSignature(getInherentSignature(rows));
 
-      return true;
-    } catch (error) {
-      console.error("Save failed:", error);
-      return false;
-    } finally {
-      setIsSaving(false);
-    }
-  }, [isDataReady, year, activeQuarter, initialLoadDone, inherentRows]);
+        return true;
+      } catch (error) {
+        console.error("Save failed:", error);
+        return false;
+      } finally {
+        setIsSaving(false);
+      }
+    },
+    [isDataReady, year, activeQuarter, initialLoadDone, inherentRows]
+  );
 
   useEffect(() => {
     if (activeTab === "inherent") {
@@ -1204,12 +1205,9 @@ export default function RentabilitasRegulatory() {
 
   return (
     <div className="w-full space-y-4">
-      <Header title="Risk Profile – Rentabilitas" onExportClick={handleExportToExcel} />
+      <Header title="Risk Profile – Strategis" onExportClick={handleExportToExcel} />
 
-      <RiskTabs
-        value={activeTab}
-        onChange={handleTabChange}
-      />
+      <RiskTabs value={activeTab} onChange={handleTabChange} />
 
       <div className="w-full">
         {activeTab === "inherent" && (

@@ -11,31 +11,38 @@ export function computeDerived(nilai, param) {
 
     /* HELPERS */
 
-   const parseNumber = (v) => {
-  if (v == null || v === "" || v === undefined) return NaN;
-  
-  if (typeof v === 'number') return v;
-  
-  if (typeof v === "string") {
-    let cleaned = v.trim();
-    cleaned = cleaned.replace(/\s/g, "");
-    
-    const isPercent = cleaned.includes("%");
-    cleaned = cleaned.replace("%", "");
-    cleaned = cleaned.replace(/\./g, "");
-    cleaned = cleaned.replace(/,/g, ".");
-    
-    const num = Number(cleaned);
-    
-    if (!isNaN(num) && isPercent) {
-      return num / 100; // Konversi persentase ke desimal
-    }
-    
-    return num;
-  }
-  
-  return Number(v);
-};
+    const parseNumber = (v) => {
+      if (v == null || v === "" || v === undefined) return NaN;
+      
+      if (typeof v === 'number') return v;
+      
+      if (typeof v === "string") {
+        let cleaned = v.trim();
+        cleaned = cleaned.replace(/\s/g, "");
+        
+        // Handle format seperti "100.000.000" (pemisah ribuan dengan titik)
+        const hasThousandSeparators = /^\d{1,3}(\.\d{3})*(,\d+)?$/.test(cleaned) || /^\d{1,3}(\.\d{3})*$/.test(cleaned);
+        
+        if (hasThousandSeparators) {
+          // Hapus semua titik sebagai pemisah ribuan
+          cleaned = cleaned.replace(/\./g, "");
+        }
+        
+        const isPercent = cleaned.includes("%");
+        cleaned = cleaned.replace("%", "");
+        cleaned = cleaned.replace(/,/g, ".");
+        
+        const num = Number(cleaned);
+        
+        if (!isNaN(num) && isPercent) {
+          return num / 100; // Konversi persentase ke desimal
+        }
+        
+        return num;
+      }
+      
+      return Number(v);
+    };
 
     const normalize = (v) =>
       String(v ?? "")
@@ -76,49 +83,216 @@ export function computeDerived(nilai, param) {
     };
 
     // Helper function untuk format angka dengan pemisah ribuan
-const formatNumberWithSeparators = (num, isPercent = false) => {
-  if (isNaN(num)) return "";
-  
-  // Jika persentase, kalikan dengan 100 terlebih dahulu
-  let displayNum = num;
-  if (isPercent) {
-    displayNum = num * 100;
-  }
-  
-  let formatted;
-  
-  if (Number.isInteger(displayNum)) {
-    formatted = displayNum.toLocaleString('id-ID', {
-      useGrouping: true,
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    });
-  } else {
-    formatted = displayNum.toLocaleString('id-ID', {
-      useGrouping: true,
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    });
-  }
-  
-  if (isPercent) {
-    return formatted + "%";
-  }
-  
-  return formatted;
-};
+    const formatNumberWithSeparators = (num, isPercent = false) => {
+      if (isNaN(num)) return "";
+      
+      // Jika persentase, kalikan dengan 100 terlebih dahulu
+      let displayNum = num;
+      if (isPercent) {
+        displayNum = num * 100;
+      }
+      
+      let formatted;
+      
+      if (Number.isInteger(displayNum)) {
+        formatted = displayNum.toLocaleString('id-ID', {
+          useGrouping: true,
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 0
+        });
+      } else {
+        formatted = displayNum.toLocaleString('id-ID', {
+          useGrouping: true,
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        });
+      }
+      
+      if (isPercent) {
+        return formatted + "%";
+      }
+      
+      return formatted;
+    };
 
     // Helper function untuk format input jika berupa angka
-   const formatIfNumber = (value, isPercent = false) => {
-  if (value == null || value === "") return "";
-  
-  const num = parseNumber(value);
-  if (!isNaN(num)) {
-    return formatNumberWithSeparators(num, isPercent);
-  }
-  
-  return String(value);
-};
+    const formatIfNumber = (value, isPercent = false) => {
+      if (value == null || value === "") return "";
+      
+      const num = parseNumber(value);
+      if (!isNaN(num)) {
+        return formatNumberWithSeparators(num, isPercent);
+      }
+      
+      return String(value);
+    };
+
+    /* ========= PARSE RANGE ========= */
+    const parseRange = (text) => {
+      if (!text || typeof text !== 'string') return null;
+      
+      let processedText = text.replace(/≤/g, '<=').replace(/≥/g, '>=');
+
+      const rawText = processedText.trim();
+      if (rawText === "") return null;
+      
+      // Coba parse angka dari teks, termasuk dengan pemisah ribuan dan persentase
+      const extractNumberFromText = (str) => {
+        if (!str) return NaN;
+        
+        let numStr = str.trim();
+        
+        // Handle persentase
+        const isPercent = numStr.includes('%');
+        numStr = numStr.replace(/%/g, '');
+        
+        // Hapus semua spasi
+        numStr = numStr.replace(/\s/g, '');
+        
+        // Tangani format dengan koma sebagai desimal (Indonesia)
+        // Ganti koma dengan titik untuk parsing JavaScript
+        numStr = numStr.replace(/,/g, '.');
+        
+        // Hapus karakter non-angka kecuali titik dan tanda minus
+        numStr = numStr.replace(/[^\d.\-]/g, '');
+        
+        if (!numStr) return NaN;
+        
+        // Cek apakah ada pemisah ribuan dengan titik
+        const hasThousandSeparators = /^\d{1,3}(\.\d{3})*(\.\d+)?$/.test(numStr);
+        
+        if (hasThousandSeparators) {
+          // Untuk membedakan pemisah ribuan dan desimal:
+          // Jika ada lebih dari satu titik, hapus semua kecuali yang terakhir
+          const parts = numStr.split('.');
+          if (parts.length > 2) {
+            // Semua kecuali bagian terakhir adalah pemisah ribuan
+            const integerPart = parts.slice(0, -1).join('');
+            const decimalPart = parts[parts.length - 1];
+            numStr = integerPart + '.' + decimalPart;
+          }
+        }
+        
+        // Tangani angka negatif
+        const isNegative = numStr.startsWith('-');
+        if (isNegative) {
+          numStr = numStr.substring(1);
+        }
+        
+        const num = Number(numStr);
+        if (isNaN(num)) return NaN;
+        
+        let result = isNegative ? -num : num;
+        
+        // Jika persentase, bagi dengan 100
+        return isPercent ? result / 100 : result;
+      };
+      
+      const lowerCaseText = rawText.toLowerCase();
+      
+      // Format: x > 0
+      if (lowerCaseText.includes('>') && !lowerCaseText.includes('<') && !lowerCaseText.includes('=')) {
+        const parts = rawText.split('>');
+        if (parts.length >= 2) {
+          const afterGreater = parts.slice(1).join('>').trim();
+          const num = extractNumberFromText(afterGreater);
+          if (isNaN(num)) return null;
+          
+          return { min: num, max: Infinity, type: 'greater-than', isExclusive: true };
+        }
+      }
+      
+      // Format: x >= value
+      if (lowerCaseText.includes('>=')) {
+        const parts = rawText.split('>=');
+        if (parts.length >= 2) {
+          const afterGreaterEqual = parts.slice(1).join('>=').trim();
+          const num = extractNumberFromText(afterGreaterEqual);
+          if (isNaN(num)) return null;
+          
+          return { min: num, max: Infinity, type: 'greater-equal' };
+        }
+      }
+      
+      // Format: x < -7%
+      if (lowerCaseText.includes('<') && !lowerCaseText.includes('>') && !lowerCaseText.includes('=')) {
+        const parts = rawText.split('<');
+        if (parts.length >= 2) {
+          const afterLess = parts.slice(1).join('<').trim();
+          const num = extractNumberFromText(afterLess);
+          if (isNaN(num)) return null;
+          
+          return { min: -Infinity, max: num, type: 'less-than', isExclusive: true };
+        }
+      }
+      
+      // Format: x <= value
+      if (lowerCaseText.includes('<=')) {
+        const parts = rawText.split('<=');
+        if (parts.length >= 2) {
+          const afterLessEqual = parts.slice(1).join('<=').trim();
+          const num = extractNumberFromText(afterLessEqual);
+          if (isNaN(num)) return null;
+          
+          return { min: -Infinity, max: num, type: 'less-equal' };
+        }
+      }
+      
+      // Format: -3% < x < 0 (range dengan dua operator)
+      if (lowerCaseText.includes('<') && lowerCaseText.includes('>')) {
+        // Cari pola: value1 < x < value2
+        const match = rawText.match(/([^<]+)<\s*x\s*<\s*([^>]+)/i);
+        if (match) {
+          const leftValue = extractNumberFromText(match[1].trim());
+          const rightValue = extractNumberFromText(match[2].trim());
+          
+          if (!isNaN(leftValue) && !isNaN(rightValue)) {
+            return { 
+              min: leftValue, 
+              max: rightValue, 
+              type: 'range', 
+              isExclusive: true 
+            };
+          }
+        }
+        
+        // Coba pola lain: value1 > x > value2
+        const match2 = rawText.match(/([^>]+)>\s*x\s*>\s*([^<]+)/i);
+        if (match2) {
+          const leftValue = extractNumberFromText(match2[1].trim());
+          const rightValue = extractNumberFromText(match2[2].trim());
+          
+          if (!isNaN(leftValue) && !isNaN(rightValue)) {
+            return { 
+              min: rightValue, 
+              max: leftValue, 
+              type: 'range', 
+              isExclusive: true 
+            };
+          }
+        }
+      }
+      
+      // Format: 0 - 100.000.000 atau 0-100.000.000 (range sederhana)
+      if (rawText.includes('-') && !rawText.includes('>') && !rawText.includes('<')) {
+        const parts = rawText.split('-').map(p => p.trim());
+        if (parts.length === 2) {
+          const min = extractNumberFromText(parts[0]);
+          const max = extractNumberFromText(parts[1]);
+          if (!isNaN(min) && !isNaN(max)) {
+            return { min, max, type: 'range', isExclusive: false };
+          }
+        }
+      }
+      
+      // Coba ekstrak angka tunggal
+      const num = extractNumberFromText(rawText);
+      if (!isNaN(num)) {
+        return { min: num, max: num, type: 'exact' };
+      }
+      
+      return null;
+    };
 
     let rawValue = NaN;
     let rawString = null;
@@ -188,7 +362,6 @@ const formatNumberWithSeparators = (num, isPercent = false) => {
       ];
     }
 
-
     /*  RANKING */
 
     let peringkat = null;
@@ -204,52 +377,40 @@ const formatNumberWithSeparators = (num, isPercent = false) => {
     ];
 
     if (!isNaN(rawValue)) {
-      const highText = String(ri.high ?? "").trim();
-      const isGreaterThanFormat = /^[xX]?\s*>|≥?>\s*\d+/i.test(highText);
-      
-      if (isGreaterThanFormat) {
-        const match = highText.match(/(\d+(\.\d+)?)/);
-        if (match) {
-          const threshold = Number(match[1]);
-          if (rawValue >= threshold) {
-            peringkat = 5;
-            matchedIndex = 0;
-          }
-        }
-      }
-      
-      if (peringkat === null) {
-        for (const { key, rank } of ranges) {
-          const rawText = String(ri[key] ?? "");
-          const nums = rawText.match(/-?\d+(\.\d+)?/g);
-          if (!nums || nums.length === 0) continue;
-
-          let min = -Infinity;
-          let max = Infinity;
-
-          if (nums.length === 1) {
-            const n = Number(nums[0]);
-            if (/≤|<=/.test(rawText)) max = n;
-            else if (/≥|>=/.test(rawText)) min = n;
-            else if (/^[xX]?\s*>|>\s*\d+/i.test(rawText)) {
-              min = n;
-              max = Infinity;
-            } else if (/^[xX]?\s*<|<\s*\d+/i.test(rawText)) {
-              min = -Infinity;
-              max = n;
-            } else {
-              min = n;
-              max = n;
+      // Urutan pengecekan
+      for (const { key, rank } of ranges) {
+        const rawText = String(ri[key] ?? "").trim();
+        
+        if (rawText) {
+          const range = parseRange(rawText);
+          
+          if (range) {
+            const { min, max, type, isExclusive } = range;
+            let isMatch = false;
+            
+            if (type === 'greater-than') {
+              isMatch = isExclusive ? rawValue > min : rawValue >= min;
+            } else if (type === 'greater-equal') {
+              isMatch = rawValue >= min;
+            } else if (type === 'less-than') {
+              isMatch = isExclusive ? rawValue < max : rawValue <= max;
+            } else if (type === 'less-equal') {
+              isMatch = rawValue <= max;
+            } else if (type === 'range') {
+              if (isExclusive) {
+                isMatch = rawValue > min && rawValue < max;
+              } else {
+                isMatch = rawValue >= min && rawValue <= max;
+              }
+            } else if (type === 'exact') {
+              isMatch = rawValue === min;
             }
-          } else {
-            min = Number(nums[0]);
-            max = Number(nums[1]);
-          }
-
-          if (rawValue >= min && rawValue <= max) {
-            peringkat = rank;
-            matchedIndex = 0;
-            break;
+            
+            if (isMatch) {
+              peringkat = rank;
+              matchedIndex = ranges.findIndex(r => r.key === key);
+              break;
+            }
           }
         }
       }
@@ -262,7 +423,7 @@ const formatNumberWithSeparators = (num, isPercent = false) => {
 
         if (riValue === rawString) {
           peringkat = rank;
-          matchedIndex = 0;
+          matchedIndex = ranges.findIndex(r => r.key === key);
           break;
         }
       }
@@ -273,7 +434,6 @@ const formatNumberWithSeparators = (num, isPercent = false) => {
       : null;
 
     const weightedDisplay = !isNaN(weighted) ? weighted.toFixed(2) : "";
-
 
     return {
       hasilDisplay,
