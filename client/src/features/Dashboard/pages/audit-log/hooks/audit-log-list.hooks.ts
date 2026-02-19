@@ -55,7 +55,6 @@ export const useAuditLogList = () => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
   const fetchAuditLogs = useCallback(async (page: number = 1, filters: Filters = {}) => {
     try {
       setLoading(true);
@@ -105,6 +104,7 @@ export const useAuditLogList = () => {
     }
   }, []);
 
+  
   const deleteAuditLog = useCallback(
     async (logId: number): Promise<{ message: string }> => {
       try {
@@ -121,7 +121,7 @@ export const useAuditLogList = () => {
         setLoading(false);
       }
     },
-    [fetchAuditLogs, pagination.page]
+    [fetchAuditLogs, pagination.page],
   );
 
   const deleteMultipleAuditLogs = useCallback(
@@ -147,28 +147,28 @@ export const useAuditLogList = () => {
         setLoading(false);
       }
     },
-    [fetchAuditLogs, pagination.page]
+    [fetchAuditLogs, pagination.page],
   );
 
   const handleSearch = useCallback(
     (search: string) => {
       fetchAuditLogs(1, { search });
     },
-    [fetchAuditLogs]
+    [fetchAuditLogs],
   );
 
   const handleFilter = useCallback(
     (filters: Filters) => {
       fetchAuditLogs(1, filters);
     },
-    [fetchAuditLogs]
+    [fetchAuditLogs],
   );
 
   const handlePageChange = useCallback(
     (page: number) => {
       fetchAuditLogs(page);
     },
-    [fetchAuditLogs]
+    [fetchAuditLogs],
   );
 
   const clearError = useCallback(() => {

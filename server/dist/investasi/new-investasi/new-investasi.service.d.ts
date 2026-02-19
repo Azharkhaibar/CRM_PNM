@@ -1,25 +1,41 @@
 import { Repository } from 'typeorm';
-import { Investasi, Quarter } from './entities/new-investasi.entity';
 import { InvestasiSection } from './entities/new-investasi-section.entity';
+import { Investasi, Quarter } from './entities/new-investasi.entity';
 import { CreateInvestasiDto } from './dto/create-new-investasi.dto';
+import { UpdateInvestasiSectionDto } from './dto/update-new-investasi-section.dto';
 import { UpdateInvestasiDto } from './dto/update-new-investasi.dto';
-import { CreateSectionDto } from './dto/create-investasi-section.dto';
-import { UpdateInvestasiSectionDto } from './dto/update-new-investasi.dto';
+import { CreateInvestasiSectionDto } from './dto/create-investasi-section.dto';
 export declare class InvestasiService {
-    private investasiRepo;
-    private sectionRepo;
-    constructor(investasiRepo: Repository<Investasi>, sectionRepo: Repository<InvestasiSection>);
-    findAllSections(): Promise<InvestasiSection[]>;
+    private readonly investasiSectionRepository;
+    private readonly investasiRepository;
+    constructor(investasiSectionRepository: Repository<InvestasiSection>, investasiRepository: Repository<Investasi>);
+    createSection(createDto: CreateInvestasiSectionDto, createdBy?: string): Promise<InvestasiSection>;
+    findAllSections(isActive?: boolean): Promise<InvestasiSection[]>;
     findSectionById(id: number): Promise<InvestasiSection>;
-    createSection(data: CreateSectionDto): Promise<InvestasiSection>;
-    updateSection(id: number, data: UpdateInvestasiSectionDto): Promise<InvestasiSection>;
-    deleteSection(id: number): Promise<void>;
-    findByPeriod(year: number, quarter: Quarter): Promise<Investasi[]>;
-    findById(id: number): Promise<Investasi>;
-    create(data: CreateInvestasiDto): Promise<Investasi>;
-    update(id: number, data: UpdateInvestasiDto): Promise<Investasi>;
-    delete(id: number): Promise<void>;
-    getSummary(year: number, quarter: Quarter): Promise<any>;
-    private calculateHasil;
+    findSectionsByPeriod(year: number, quarter: Quarter): Promise<InvestasiSection[]>;
+    updateSection(id: number, updateDto: UpdateInvestasiSectionDto, updatedBy?: string): Promise<InvestasiSection>;
+    deleteSection(id: number): Promise<{
+        success: boolean;
+        message: string;
+    }>;
+    createIndikator(createDto: CreateInvestasiDto, createdBy?: string): Promise<Investasi>;
+    findIndikatorsByPeriod(year: number, quarter: Quarter): Promise<Investasi[]>;
+    findAllIndikators(): Promise<Investasi[]>;
+    findIndikatorById(id: number): Promise<Investasi>;
+    updateIndikator(id: number, updateDto: UpdateInvestasiDto, updatedBy?: string): Promise<Investasi>;
+    deleteIndikator(id: number): Promise<{
+        success: boolean;
+        message: string;
+    }>;
+    searchIndikators(query?: string, year?: number, quarter?: Quarter): Promise<Investasi[]>;
+    getTotalWeightedByPeriod(year: number, quarter: Quarter): Promise<number>;
+    private validateModeSpecificFields;
     private calculateWeighted;
+    duplicateIndikatorToNewPeriod(sourceId: number, targetYear: number, targetQuarter: Quarter, createdBy?: string): Promise<Investasi>;
+    getIndikatorCountByPeriod(year: number, quarter: Quarter): Promise<number>;
+    getSectionsWithIndicatorsByPeriod(year: number, quarter: Quarter): Promise<any>;
+    getPeriods(): Promise<Array<{
+        year: number;
+        quarter: Quarter;
+    }>>;
 }

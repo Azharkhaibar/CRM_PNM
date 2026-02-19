@@ -1,30 +1,49 @@
-export enum CalculationMode {
-  RASIO = 'RASIO',
-  NILAI_TUNGGAL = 'NILAI_TUNGGAL',
-  TEKS = 'TEKS',
-}
+// src/types/reputasi.types.ts
 
-export enum Quarter {
-  Q1 = 'Q1',
-  Q2 = 'Q2',
-  Q3 = 'Q3',
-  Q4 = 'Q4',
-}
+export type Quarter = 'Q1' | 'Q2' | 'Q3' | 'Q4';
+
+export type CalculationMode = 'RASIO' | 'NILAI_TUNGGAL' | 'TEKS';
 
 export interface ReputasiSection {
   id: number;
-  no: string; // Contoh: "5.1"
+  no: string;
   bobotSection: number;
-  parameter: string; // Contoh: "Perjanjian pengelolaan produk"
-  description?: string;
-  category?: string | null;
+  parameter: string;
+  description: string | null;
   sortOrder: number;
-  createdAt: string;
-  updatedAt: string;
+  isActive: boolean;
+  year: number;
+  quarter: Quarter;
+  createdAt: Date;
+  updatedAt: Date;
   isDeleted: boolean;
+  createdBy?: string | null;
+  updatedBy?: string | null;
 }
 
-export interface Reputasi {
+export interface CreateReputasiSectionData {
+  no: string;
+  parameter: string;
+  bobotSection?: number;
+  description?: string;
+  sortOrder?: number;
+  isActive?: boolean;
+  year: number;
+  quarter: Quarter;
+}
+
+export interface UpdateReputasiSectionData {
+  no?: string;
+  parameter?: string;
+  bobotSection?: number;
+  description?: string;
+  sortOrder?: number;
+  isActive?: boolean;
+  year?: number;
+  quarter?: Quarter;
+}
+
+export interface ReputasiIndikator {
   id: number;
   year: number;
   quarter: Quarter;
@@ -35,133 +54,43 @@ export interface Reputasi {
   subNo: string;
   indikator: string;
   bobotIndikator: number;
-  sumberRisiko?: string | null;
-  dampak?: string | null;
-  low?: string | null;
-  lowToModerate?: string | null;
-  moderate?: string | null;
-  moderateToHigh?: string | null;
-  high?: string | null;
+  sumberRisiko: string | null;
+  dampak: string | null;
+  low: string | null;
+  lowToModerate: string | null;
+  moderate: string | null;
+  moderateToHigh: string | null;
+  high: string | null;
   mode: CalculationMode;
-  pembilangLabel?: string | null;
-  pembilangValue?: number | null;
-  penyebutLabel?: string | null;
-  penyebutValue?: number | null;
-  formula?: string | null;
+  formula: string | null;
   isPercent: boolean;
-  hasil?: string | null;
-  hasilText?: string | null;
+  pembilangLabel: string | null;
+  pembilangValue: number | null;
+  penyebutLabel: string | null;
+  penyebutValue: number | null;
+  hasil: number | null;
+  hasilText: string | null;
   peringkat: number;
   weighted: number;
-  keterangan?: string | null;
-  createdAt: string;
-  updatedAt: string;
+  keterangan: string | null;
+  isValidated: boolean;
+  version: number;
+  createdAt: Date;
+  updatedAt: Date;
   isDeleted: boolean;
-  deletedAt?: string | null;
   createdBy?: string | null;
   updatedBy?: string | null;
   deletedBy?: string | null;
   section?: ReputasiSection;
 }
 
-export interface CreateReputasiSectionDto {
-  no: string;
-  bobotSection: number;
-  parameter: string;
-  description?: string;
-  category?: string;
-  sortOrder?: number;
-}
-
-export interface UpdateReputasiSectionDto {
-  no?: string;
-  bobotSection?: number;
-  parameter?: string;
-  description?: string;
-  category?: string;
-  sortOrder?: number;
-}
-
-export interface CreateReputasiDto {
+export interface CreateReputasiData {
   year: number;
   quarter: Quarter;
   sectionId: number;
   no: string;
   sectionLabel: string;
   bobotSection: number;
-  subNo: string;
-  indikator: string;
-  bobotIndikator: number;
-  sumberRisiko?: string | null;
-  dampak?: string | null;
-  low?: string | null;
-  lowToModerate?: string | null;
-  moderate?: string | null;
-  moderateToHigh?: string | null;
-  high?: string | null;
-  mode?: CalculationMode;
-  pembilangLabel?: string | null;
-  pembilangValue?: number | null;
-  penyebutLabel?: string | null;
-  penyebutValue?: number | null;
-  formula?: string | null;
-  isPercent?: boolean;
-  hasil?: string | null;
-  hasilText?: string | null;
-  peringkat: number;
-  weighted?: number;
-  keterangan?: string | null;
-}
-
-export interface UpdateReputasiDto {
-  year?: number;
-  quarter?: Quarter;
-  sectionId?: number;
-  no?: string;
-  sectionLabel?: string;
-  bobotSection?: number;
-  subNo?: string;
-  indikator?: string;
-  bobotIndikator?: number;
-  sumberRisiko?: string | null;
-  dampak?: string | null;
-  low?: string | null;
-  lowToModerate?: string | null;
-  moderate?: string | null;
-  moderateToHigh?: string | null;
-  high?: string | null;
-  mode?: CalculationMode;
-  pembilangLabel?: string | null;
-  pembilangValue?: number | null;
-  penyebutLabel?: string | null;
-  penyebutValue?: number | null;
-  formula?: string | null;
-  isPercent?: boolean;
-  hasil?: string | null;
-  hasilText?: string | null;
-  peringkat?: number;
-  weighted?: number;
-  keterangan?: string | null;
-}
-
-export interface ReputasiSummary {
-  year: number;
-  quarter: Quarter;
-  totalItems: number;
-  totalWeighted: number;
-  sections: any[];
-  items: Reputasi[];
-}
-
-export interface StructuredReputasi {
-  section: ReputasiSection;
-  indicators: Reputasi[];
-  totalWeighted: number;
-}
-
-export interface ReputasiFormData {
-  year: number;
-  quarter: Quarter;
   subNo: string;
   indikator: string;
   bobotIndikator: number;
@@ -172,14 +101,93 @@ export interface ReputasiFormData {
   moderate?: string;
   moderateToHigh?: string;
   high?: string;
-  mode?: CalculationMode;
+  mode: CalculationMode;
+  formula?: string;
+  isPercent?: boolean;
   pembilangLabel?: string;
   pembilangValue?: number;
   penyebutLabel?: string;
   penyebutValue?: number;
-  formula?: string;
-  isPercent?: boolean;
+  hasil?: number;
   hasilText?: string;
   peringkat: number;
+  weighted: number;
+  keterangan?: string;
+  createdBy?: string;
+}
+
+export interface UpdateReputasiData {
+  year?: number;
+  quarter?: Quarter;
+  sectionId?: number;
+  no?: string;
+  sectionLabel?: string;
+  bobotSection?: number;
+  subNo?: string;
+  indikator?: string;
+  bobotIndikator?: number;
+  sumberRisiko?: string;
+  dampak?: string;
+  low?: string;
+  lowToModerate?: string;
+  moderate?: string;
+  moderateToHigh?: string;
+  high?: string;
+  mode?: CalculationMode;
+  formula?: string;
+  isPercent?: boolean;
+  pembilangLabel?: string;
+  pembilangValue?: number;
+  penyebutLabel?: string;
+  penyebutValue?: number;
+  hasil?: number;
+  hasilText?: string;
+  peringkat?: number;
+  weighted?: number;
   keterangan?: string;
 }
+
+export interface TotalWeightedResponse {
+  total: number;
+}
+
+export interface Period {
+  year: number;
+  quarter: Quarter;
+}
+
+export interface SectionWithIndicators {
+  id: number;
+  no: string;
+  parameter: string;
+  bobotSection: number;
+  year: number;
+  quarter: Quarter;
+  indicators: ReputasiIndikator[];
+}
+
+export interface SummaryResponse {
+  year: number;
+  quarter: Quarter;
+  totalItems: number;
+  totalWeighted: number;
+  sections: Array<{
+    section: ReputasiSection;
+    items: ReputasiIndikator[];
+    totalWeighted: number;
+  }>;
+  items: ReputasiIndikator[];
+}
+
+export const transformSectionToBackend = (sectionData: any, year: number, quarter: Quarter): CreateReputasiSectionData => {
+  return {
+    no: String(sectionData.no),
+    bobotSection: Number(sectionData.bobotSection || 0),
+    parameter: sectionData.parameter,
+    description: sectionData.description || undefined,
+    sortOrder: sectionData.sortOrder || 0,
+    isActive: sectionData.isActive ?? true,
+    year: year,
+    quarter: quarter,
+  };
+};

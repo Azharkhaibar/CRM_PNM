@@ -4,6 +4,3 @@ import { CreateInvestasiDto } from './create-new-investasi.dto';
 
 export class UpdateInvestasiDto extends PartialType(CreateInvestasiDto) {}
 
-export class UpdateInvestasiSectionDto extends PartialType(
-  CreateInvestasiDto,
-) {}

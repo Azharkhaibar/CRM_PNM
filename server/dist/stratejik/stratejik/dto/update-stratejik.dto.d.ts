@@ -1,5 +1,5 @@
-import { CreateStratejikDto } from './create-stratejik.dto';
-declare const UpdateStratejikDto_base: import("@nestjs/common").Type<Partial<CreateStratejikDto>>;
-export declare class UpdateStratejikDto extends UpdateStratejikDto_base {
+import { CreateStrategikDto } from './create-stratejik.dto';
+declare const UpdateStrategikDto_base: import("@nestjs/common").Type<Partial<CreateStrategikDto>>;
+export declare class UpdateStrategikDto extends UpdateStrategikDto_base {
 }
 export {};

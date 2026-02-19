@@ -15,379 +15,286 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.LikuiditasService = void 0;
 const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
+const section_likuiditas_entity_1 = require("./entities/section-likuiditas.entity");
 const typeorm_2 = require("typeorm");
 const likuiditas_entity_1 = require("./entities/likuiditas.entity");
-const section_likuiditas_entity_1 = require("./entities/section-likuiditas.entity");
 let LikuiditasService = class LikuiditasService {
+    likuiditasSectionRepository;
     likuiditasRepository;
-    sectionRepository;
-    constructor(likuiditasRepository, sectionRepository) {
+    constructor(likuiditasSectionRepository, likuiditasRepository) {
+        this.likuiditasSectionRepository = likuiditasSectionRepository;
         this.likuiditasRepository = likuiditasRepository;
-        this.sectionRepository = sectionRepository;
     }
-    async createSection(createSectionDto) {
-        const existingSection = await this.sectionRepository.findOne({
+    async createSection(createDto, createdBy) {
+        const deletedSection = await this.likuiditasSectionRepository.findOne({
             where: {
-                year: createSectionDto.year,
-                quarter: createSectionDto.quarter,
-                no: createSectionDto.no,
+                no: createDto.no,
+                parameter: createDto.parameter,
+                year: createDto.year,
+                quarter: createDto.quarter,
+                isDeleted: true,
+            },
+        });
+        if (deletedSection) {
+            console.log(`🔄 Reactivating deleted section: ${deletedSection.no} - ${deletedSection.parameter}`);
+            deletedSection.isDeleted = false;
+            deletedSection.isActive = createDto.isActive ?? true;
+            deletedSection.bobotSection =
+                createDto.bobotSection || deletedSection.bobotSection;
+            deletedSection.description =
+                createDto.description || deletedSection.description;
+            deletedSection.sortOrder =
+                createDto.sortOrder || deletedSection.sortOrder;
+            if (createdBy) {
+                deletedSection['updatedBy'] = createdBy;
+                deletedSection['updatedAt'] = new Date();
+            }
+            return await this.likuiditasSectionRepository.save(deletedSection);
+        }
+        const existingSection = await this.likuiditasSectionRepository.findOne({
+            where: {
+                no: createDto.no,
+                parameter: createDto.parameter,
+                year: createDto.year,
+                quarter: createDto.quarter,
+                isDeleted: false,
             },
         });
         if (existingSection) {
-            throw new common_1.ConflictException(`Section dengan tahun ${createSectionDto.year}, quarter ${createSectionDto.quarter}, dan nomor ${createSectionDto.no} sudah ada`);
+            throw new common_1.ConflictException(`Section dengan nomor "${createDto.no}" dan nama "${createDto.parameter}" sudah ada pada periode ${createDto.year}-${createDto.quarter}`);
         }
-        const section = this.sectionRepository.create({
-            no: createSectionDto.no,
-            bobotSection: createSectionDto.bobotSection,
-            parameter: createSectionDto.parameter,
-            description: createSectionDto.description || null,
-            year: createSectionDto.year,
-            quarter: createSectionDto.quarter,
-        });
-        return await this.sectionRepository.save(section);
+        const sectionData = {
+            no: createDto.no,
+            parameter: createDto.parameter,
+            bobotSection: createDto.bobotSection || 100,
+            description: createDto.description || null,
+            sortOrder: createDto.sortOrder || 0,
+            year: createDto.year,
+            quarter: createDto.quarter,
+            isActive: createDto.isActive ?? true,
+            isDeleted: false,
+        };
+        if (createdBy) {
+            sectionData['createdBy'] = createdBy;
+        }
+        const section = this.likuiditasSectionRepository.create(sectionData);
+        return await this.likuiditasSectionRepository.save(section);
     }
-    async updateSection(id, updateSectionDto) {
-        const section = await this.sectionRepository.findOne({
-            where: { id, isDeleted: false },
+    async findAllSections(isActive) {
+        const where = { isDeleted: false };
+        if (isActive !== undefined) {
+            where.isActive = isActive;
+        }
+        return await this.likuiditasSectionRepository.find({
+            where,
+            order: { year: 'DESC', quarter: 'DESC', sortOrder: 'ASC', no: 'ASC' },
         });
-        if (!section) {
-            throw new common_1.NotFoundException(`Section dengan ID ${id} tidak ditemukan`);
-        }
-        if (updateSectionDto.year !== undefined ||
-            updateSectionDto.quarter !== undefined ||
-            updateSectionDto.no !== undefined) {
-            const year = updateSectionDto.year ?? section.year;
-            const quarter = updateSectionDto.quarter ?? section.quarter;
-            const no = updateSectionDto.no ?? section.no;
-            const duplicate = await this.sectionRepository.findOne({
-                where: {
-                    year,
-                    quarter,
-                    no,
-                    isDeleted: false,
-                    id: (0, typeorm_2.Not)(id),
-                },
-            });
-            if (duplicate) {
-                throw new common_1.ConflictException(`Section dengan tahun ${year}, quarter ${quarter}, dan nomor ${no} sudah ada`);
+    }
+    async findSectionById(id) {
+        try {
+            console.log(`🔍 [SERVICE] Finding section by ID: ${id}`);
+            const section = await this.likuiditasSectionRepository
+                .createQueryBuilder('section')
+                .where('section.id = :id', { id })
+                .andWhere('section.is_deleted = false')
+                .getOne();
+            console.log(`🔍 [SERVICE] Found section:`, section);
+            if (!section) {
+                throw new common_1.NotFoundException(`Section dengan ID ${id} tidak ditemukan`);
             }
+            return section;
         }
-        return await this.sectionRepository.save(section);
+        catch (error) {
+            console.error(`❌ [SERVICE] Error in findSectionById:`, error);
+            throw error;
+        }
+    }
+    async findSectionsByPeriod(year, quarter) {
+        return await this.likuiditasSectionRepository.find({
+            where: {
+                year,
+                quarter,
+                isDeleted: false,
+                isActive: true,
+            },
+            order: { sortOrder: 'ASC', no: 'ASC' },
+        });
+    }
+    async updateSection(id, updateDto, updatedBy) {
+        const section = await this.findSectionById(id);
+        const checkNo = updateDto.no || section.no;
+        const checkParam = updateDto.parameter || section.parameter;
+        const checkYear = updateDto.year || section.year;
+        const checkQuarter = updateDto.quarter || section.quarter;
+        const existing = await this.likuiditasSectionRepository.findOne({
+            where: {
+                no: checkNo,
+                parameter: checkParam,
+                year: checkYear,
+                quarter: checkQuarter,
+                isDeleted: false,
+                id: (0, typeorm_2.Not)(id),
+            },
+        });
+        if (existing) {
+            throw new common_1.ConflictException(`Section dengan nomor "${checkNo}" dan nama "${checkParam}" sudah ada pada periode ${checkYear}-${checkQuarter}`);
+        }
+        if (updateDto.no !== undefined)
+            section.no = updateDto.no;
+        if (updateDto.parameter !== undefined)
+            section.parameter = updateDto.parameter;
+        if (updateDto.bobotSection !== undefined)
+            section.bobotSection = updateDto.bobotSection;
+        if (updateDto.description !== undefined)
+            section.description = updateDto.description;
+        if (updateDto.sortOrder !== undefined)
+            section.sortOrder = updateDto.sortOrder;
+        if (updateDto.isActive !== undefined)
+            section.isActive = updateDto.isActive;
+        if (updateDto.year !== undefined)
+            section.year = updateDto.year;
+        if (updateDto.quarter !== undefined)
+            section.quarter = updateDto.quarter;
+        if (updatedBy) {
+            section['updatedBy'] = updatedBy;
+        }
+        return await this.likuiditasSectionRepository.save(section);
     }
     async deleteSection(id) {
-        const section = await this.sectionRepository.findOne({
-            where: { id, isDeleted: false },
+        const section = await this.likuiditasSectionRepository.findOne({
+            where: { id },
         });
         if (!section) {
             throw new common_1.NotFoundException(`Section dengan ID ${id} tidak ditemukan`);
         }
+        const indikatorCount = await this.likuiditasRepository.count({
+            where: { sectionId: id },
+        });
+        if (indikatorCount > 0) {
+            throw new common_1.ConflictException(`Section tidak dapat dihapus karena masih digunakan oleh ${indikatorCount} indikator`);
+        }
         section.isDeleted = true;
-        section.deletedAt = new Date();
-        await this.sectionRepository.save(section);
+        await this.likuiditasSectionRepository.delete(id);
     }
-    async getSectionsByPeriod(year, quarter) {
-        const sections = await this.sectionRepository.find({
+    async createIndikator(createDto, createdBy) {
+        const section = await this.findSectionById(createDto.sectionId);
+        const deletedIndikator = await this.likuiditasRepository.findOne({
+            where: {
+                year: createDto.year,
+                quarter: createDto.quarter,
+                sectionId: createDto.sectionId,
+                subNo: createDto.subNo,
+                isDeleted: true,
+            },
+        });
+        if (deletedIndikator) {
+            console.log(`🔄 Reactivating deleted indicator: ${deletedIndikator.subNo} - ${deletedIndikator.indikator}`);
+            deletedIndikator.isDeleted = false;
+            deletedIndikator.indikator = createDto.indikator;
+            deletedIndikator.bobotIndikator = createDto.bobotIndikator;
+            deletedIndikator.sumberRisiko = createDto.sumberRisiko || null;
+            deletedIndikator.dampak = createDto.dampak || null;
+            deletedIndikator.mode = createDto.mode;
+            deletedIndikator.formula = createDto.formula || null;
+            deletedIndikator.isPercent = createDto.isPercent || false;
+            deletedIndikator.pembilangLabel = createDto.pembilangLabel || null;
+            deletedIndikator.pembilangValue = createDto.pembilangValue || null;
+            deletedIndikator.penyebutLabel = createDto.penyebutLabel || null;
+            deletedIndikator.penyebutValue = createDto.penyebutValue || null;
+            deletedIndikator.hasil = createDto.hasil || null;
+            deletedIndikator.hasilText = createDto.hasilText || null;
+            deletedIndikator.peringkat = createDto.peringkat;
+            deletedIndikator.weighted =
+                createDto.weighted ||
+                    this.calculateWeighted(section.bobotSection, createDto.bobotIndikator, createDto.peringkat);
+            deletedIndikator.keterangan = createDto.keterangan || null;
+            deletedIndikator.version += 1;
+            if (createdBy) {
+                deletedIndikator.updatedBy = createdBy;
+            }
+            return await this.likuiditasRepository.save(deletedIndikator);
+        }
+        const existingIndikator = await this.likuiditasRepository.findOne({
+            where: {
+                year: createDto.year,
+                quarter: createDto.quarter,
+                sectionId: createDto.sectionId,
+                subNo: createDto.subNo,
+                isDeleted: false,
+            },
+        });
+        if (existingIndikator) {
+            throw new common_1.ConflictException(`Indikator dengan subNo "${createDto.subNo}" sudah ada pada periode ${createDto.year}-${createDto.quarter} di section ini`);
+        }
+        this.validateModeSpecificFields(createDto);
+        const weighted = createDto.weighted ||
+            this.calculateWeighted(section.bobotSection, createDto.bobotIndikator, createDto.peringkat);
+        const likuiditasData = {
+            year: createDto.year,
+            quarter: createDto.quarter,
+            sectionId: createDto.sectionId,
+            no: section.no,
+            sectionLabel: section.parameter,
+            bobotSection: section.bobotSection,
+            subNo: createDto.subNo,
+            indikator: createDto.indikator,
+            bobotIndikator: createDto.bobotIndikator,
+            sumberRisiko: createDto.sumberRisiko || null,
+            dampak: createDto.dampak || null,
+            low: createDto.low || null,
+            lowToModerate: createDto.lowToModerate || null,
+            moderate: createDto.moderate || null,
+            moderateToHigh: createDto.moderateToHigh || null,
+            high: createDto.high || null,
+            mode: createDto.mode,
+            formula: createDto.formula || null,
+            isPercent: createDto.isPercent || false,
+            pembilangLabel: createDto.pembilangLabel || null,
+            pembilangValue: createDto.pembilangValue || null,
+            penyebutLabel: createDto.penyebutLabel || null,
+            penyebutValue: createDto.penyebutValue || null,
+            hasil: createDto.hasil || null,
+            hasilText: createDto.hasilText || null,
+            peringkat: createDto.peringkat,
+            weighted: weighted,
+            keterangan: createDto.keterangan || null,
+            isValidated: false,
+            version: 1,
+            isDeleted: false,
+        };
+        if (createdBy) {
+            likuiditasData.createdBy = createdBy;
+        }
+        const likuiditas = this.likuiditasRepository.create(likuiditasData);
+        return await this.likuiditasRepository.save(likuiditas);
+    }
+    async findIndikatorsByPeriod(year, quarter) {
+        return await this.likuiditasRepository.find({
             where: {
                 year,
                 quarter,
                 isDeleted: false,
             },
-            relations: ['indikators'],
+            relations: ['section'],
             order: {
                 no: 'ASC',
-                id: 'ASC',
+                subNo: 'ASC',
             },
         });
-        return sections.map((section) => ({
-            ...section,
-            indikators: section.indikators.filter((ind) => !ind.isDeleted),
-        }));
     }
-    async createIndikator(createIndikatorDto) {
-        const section = await this.sectionRepository.findOne({
-            where: {
-                id: createIndikatorDto.sectionId,
-                isDeleted: false,
-            },
-        });
-        if (!section) {
-            throw new common_1.NotFoundException(`Section dengan ID ${createIndikatorDto.sectionId} tidak ditemukan`);
-        }
-        const hasil = createIndikatorDto.hasil
-            ? createIndikatorDto.hasil
-            : await this.calculateHasil(createIndikatorDto);
-        const weighted = createIndikatorDto.weighted !== undefined
-            ? createIndikatorDto.weighted
-            : await this.calculateWeighted(createIndikatorDto, section.bobotSection);
-        let modeValue;
-        switch (createIndikatorDto.mode) {
-            case 'RASIO':
-                modeValue = likuiditas_entity_1.CalculationMode.RASIO;
-                break;
-            case 'NILAI_TUNGGAL':
-                modeValue = likuiditas_entity_1.CalculationMode.NILAI_TUNGGAL;
-                break;
-            case 'TEKS':
-                modeValue = likuiditas_entity_1.CalculationMode.TEKS;
-                break;
-            default:
-                modeValue = likuiditas_entity_1.CalculationMode.RASIO;
-        }
-        const indikatorData = {
-            year: createIndikatorDto.year,
-            quarter: createIndikatorDto.quarter,
-            sectionId: createIndikatorDto.sectionId,
-            subNo: createIndikatorDto.subNo,
-            namaIndikator: createIndikatorDto.namaIndikator,
-            bobotIndikator: createIndikatorDto.bobotIndikator,
-            sumberRisiko: createIndikatorDto.sumberRisiko || null,
-            dampak: createIndikatorDto.dampak || null,
-            low: createIndikatorDto.low || null,
-            lowToModerate: createIndikatorDto.lowToModerate || null,
-            moderate: createIndikatorDto.moderate || null,
-            moderateToHigh: createIndikatorDto.moderateToHigh || null,
-            high: createIndikatorDto.high || null,
-            mode: modeValue,
-            pembilangLabel: createIndikatorDto.pembilangLabel || null,
-            pembilangValue: createIndikatorDto.pembilangValue || null,
-            penyebutLabel: createIndikatorDto.penyebutLabel || null,
-            penyebutValue: createIndikatorDto.penyebutValue || null,
-            formula: createIndikatorDto.formula || null,
-            isPercent: createIndikatorDto.isPercent || false,
-            hasil: hasil,
-            hasilText: createIndikatorDto.hasilText || null,
-            peringkat: createIndikatorDto.peringkat || 1,
-            weighted: weighted,
-            keterangan: createIndikatorDto.keterangan || null,
-        };
-        console.log('🔢 [SERVICE] Creating indikator with:', {
-            hasilFromDto: createIndikatorDto.hasil,
-            hasilUsed: hasil,
-            weightedFromDto: createIndikatorDto.weighted,
-            weightedUsed: weighted,
-        });
-        const indikator = this.likuiditasRepository.create(indikatorData);
-        return await this.likuiditasRepository.save(indikator);
-    }
-    async updateIndikator(id, updateIndikatorDto) {
-        console.log('🔄 [BACKEND SERVICE] Update request:', {
-            id,
-            dto: updateIndikatorDto,
-        });
-        const indikator = await this.likuiditasRepository.findOne({
-            where: { id, isDeleted: false },
+    async findAllIndikators() {
+        return await this.likuiditasRepository.find({
+            where: { isDeleted: false },
             relations: ['section'],
+            order: {
+                year: 'DESC',
+                quarter: 'DESC',
+                no: 'ASC',
+                subNo: 'ASC',
+            },
         });
-        if (!indikator) {
-            throw new common_1.NotFoundException(`Indikator dengan ID ${id} tidak ditemukan`);
-        }
-        const updateData = {};
-        if (updateIndikatorDto.namaIndikator !== undefined) {
-            updateData.namaIndikator = updateIndikatorDto.namaIndikator;
-            console.log('📝 [BACKEND SERVICE] Updating namaIndikator to:', updateIndikatorDto.namaIndikator);
-        }
-        if (updateIndikatorDto.subNo !== undefined) {
-            updateData.subNo = updateIndikatorDto.subNo;
-        }
-        if (updateIndikatorDto.sumberRisiko !== undefined) {
-            updateData.sumberRisiko = updateIndikatorDto.sumberRisiko;
-        }
-        if (updateIndikatorDto.dampak !== undefined) {
-            updateData.dampak = updateIndikatorDto.dampak;
-        }
-        if (updateIndikatorDto.keterangan !== undefined) {
-            updateData.keterangan = updateIndikatorDto.keterangan;
-        }
-        if (updateIndikatorDto.pembilangLabel !== undefined) {
-            updateData.pembilangLabel = updateIndikatorDto.pembilangLabel;
-        }
-        if (updateIndikatorDto.penyebutLabel !== undefined) {
-            updateData.penyebutLabel = updateIndikatorDto.penyebutLabel;
-        }
-        if (updateIndikatorDto.formula !== undefined) {
-            updateData.formula = updateIndikatorDto.formula;
-        }
-        if (updateIndikatorDto.hasilText !== undefined) {
-            updateData.hasilText = updateIndikatorDto.hasilText;
-        }
-        if (updateIndikatorDto.bobotIndikator !== undefined) {
-            updateData.bobotIndikator = updateIndikatorDto.bobotIndikator;
-        }
-        if (updateIndikatorDto.pembilangValue !== undefined) {
-            updateData.pembilangValue = updateIndikatorDto.pembilangValue;
-        }
-        if (updateIndikatorDto.penyebutValue !== undefined) {
-            updateData.penyebutValue = updateIndikatorDto.penyebutValue;
-        }
-        if (updateIndikatorDto.peringkat !== undefined) {
-            updateData.peringkat = updateIndikatorDto.peringkat;
-        }
-        if (updateIndikatorDto.isPercent !== undefined) {
-            updateData.isPercent = updateIndikatorDto.isPercent;
-        }
-        if (updateIndikatorDto.mode !== undefined) {
-            let modeValue;
-            switch (updateIndikatorDto.mode) {
-                case 'RASIO':
-                    modeValue = likuiditas_entity_1.CalculationMode.RASIO;
-                    break;
-                case 'NILAI_TUNGGAL':
-                    modeValue = likuiditas_entity_1.CalculationMode.NILAI_TUNGGAL;
-                    break;
-                case 'TEKS':
-                    modeValue = likuiditas_entity_1.CalculationMode.TEKS;
-                    break;
-                default:
-                    modeValue = likuiditas_entity_1.CalculationMode.RASIO;
-            }
-            updateData.mode = modeValue;
-        }
-        if (updateIndikatorDto.low !== undefined) {
-            updateData.low = updateIndikatorDto.low;
-        }
-        if (updateIndikatorDto.lowToModerate !== undefined) {
-            updateData.lowToModerate = updateIndikatorDto.lowToModerate;
-        }
-        if (updateIndikatorDto.moderate !== undefined) {
-            updateData.moderate = updateIndikatorDto.moderate;
-        }
-        if (updateIndikatorDto.moderateToHigh !== undefined) {
-            updateData.moderateToHigh = updateIndikatorDto.moderateToHigh;
-        }
-        if (updateIndikatorDto.high !== undefined) {
-            updateData.high = updateIndikatorDto.high;
-        }
-        const shouldRecalculateHasil = (updateIndikatorDto.pembilangValue !== undefined ||
-            updateIndikatorDto.penyebutValue !== undefined ||
-            updateIndikatorDto.formula !== undefined ||
-            updateIndikatorDto.mode !== undefined ||
-            updateIndikatorDto.isPercent !== undefined) &&
-            updateIndikatorDto.hasil === undefined;
-        const shouldRecalculateWeighted = (updateIndikatorDto.bobotIndikator !== undefined ||
-            updateIndikatorDto.peringkat !== undefined) &&
-            updateIndikatorDto.weighted === undefined;
-        if (shouldRecalculateHasil) {
-            const dataForCalculation = {
-                ...indikator,
-                ...updateIndikatorDto,
-                mode: updateIndikatorDto.mode || indikator.mode,
-            };
-            updateData.hasil = await this.calculateHasil(dataForCalculation);
-            console.log('🧮 [BACKEND SERVICE] Recalculated hasil:', updateData.hasil);
-        }
-        else if (updateIndikatorDto.hasil !== undefined) {
-            updateData.hasil = updateIndikatorDto.hasil;
-        }
-        if (shouldRecalculateWeighted) {
-            const dataForWeighted = {
-                ...indikator,
-                ...updateIndikatorDto,
-                bobotIndikator: updateIndikatorDto.bobotIndikator || indikator.bobotIndikator,
-                peringkat: updateIndikatorDto.peringkat || indikator.peringkat,
-            };
-            updateData.weighted = await this.calculateWeighted(dataForWeighted, indikator.section.bobotSection);
-            console.log('⚖️ [BACKEND SERVICE] Recalculated weighted:', updateData.weighted);
-        }
-        else if (updateIndikatorDto.weighted !== undefined) {
-            updateData.weighted = updateIndikatorDto.weighted;
-        }
-        console.log('📋 [BACKEND SERVICE] Updates to apply:', updateData);
-        Object.assign(indikator, updateData);
-        indikator.updatedAt = new Date();
-        const saved = await this.likuiditasRepository.save(indikator);
-        console.log('✅ [BACKEND SERVICE] Update successful:', {
-            id: saved.id,
-            namaIndikator: saved.namaIndikator,
-            updatedAt: saved.updatedAt,
-            before: indikator.namaIndikator,
-            after: saved.namaIndikator,
-        });
-        return saved;
     }
-    async deleteIndikator(id) {
-        const indikator = await this.likuiditasRepository.findOne({
-            where: { id, isDeleted: false },
-        });
-        if (!indikator) {
-            throw new common_1.NotFoundException(`Indikator dengan ID ${id} tidak ditemukan`);
-        }
-        indikator.isDeleted = true;
-        indikator.deletedAt = new Date();
-        await this.likuiditasRepository.save(indikator);
-    }
-    async calculateHasil(data) {
-        const mode = data.mode || 'RASIO';
-        const formula = data.formula;
-        const pembilangValue = data.pembilangValue || data.pembilang_value;
-        const penyebutValue = data.penyebutValue || data.penyebut_value;
-        if (formula && formula.trim() !== '') {
-            try {
-                const expr = formula
-                    .replace(/\bpemb\b/g, 'pemb')
-                    .replace(/\bpeny\b/g, 'peny');
-                const fn = new Function('pemb', 'peny', `return (${expr});`);
-                const pemb = Number(pembilangValue) || 0;
-                const peny = Number(penyebutValue) || 0;
-                const res = fn(pemb, peny);
-                if (!isFinite(res) || isNaN(res))
-                    return null;
-                return String(res);
-            }
-            catch (e) {
-                console.warn('Invalid formula:', formula, e);
-                return null;
-            }
-        }
-        if (mode === 'RASIO') {
-            if (!penyebutValue || penyebutValue === 0)
-                return null;
-            const result = (Number(pembilangValue) || 0) / Number(penyebutValue);
-            if (!isFinite(result) || isNaN(result))
-                return null;
-            return String(result);
-        }
-        if (mode === 'NILAI_TUNGGAL') {
-            if (!penyebutValue)
-                return null;
-            return String(penyebutValue);
-        }
-        return null;
-    }
-    async calculateWeighted(data, sectionBobot) {
-        const bobotInd = Number(data.bobotIndikator || data.bobot_indikator) || 0;
-        const peringkat = Number(data.peringkat) || 1;
-        const res = (sectionBobot * bobotInd * peringkat) / 10000;
-        if (!isFinite(res) || isNaN(res))
-            return 0;
-        return Number(res.toFixed(4));
-    }
-    async getSummaryByPeriod(year, quarter) {
-        const sections = await this.getSectionsByPeriod(year, quarter);
-        let totalWeighted = 0;
-        const sectionDetails = [];
-        for (const section of sections) {
-            const sectionTotal = section.indikators.reduce((sum, ind) => {
-                return sum + (Number(ind.weighted) || 0);
-            }, 0);
-            sectionDetails.push({
-                sectionId: section.id,
-                sectionNo: section.no,
-                sectionName: section.parameter,
-                bobotSection: section.bobotSection,
-                totalWeighted: sectionTotal,
-                indicatorCount: section.indikators.length,
-            });
-            totalWeighted += sectionTotal;
-        }
-        return {
-            year,
-            quarter,
-            totalWeighted: Number(totalWeighted.toFixed(4)),
-            sectionCount: sections.length,
-            sections: sectionDetails,
-        };
-    }
-    async getIndikatorById(id) {
+    async findIndikatorById(id) {
         const indikator = await this.likuiditasRepository.findOne({
             where: { id, isDeleted: false },
             relations: ['section'],
@@ -397,12 +304,281 @@ let LikuiditasService = class LikuiditasService {
         }
         return indikator;
     }
+    async updateIndikator(id, updateDto, updatedBy) {
+        const indikator = await this.findIndikatorById(id);
+        if (updateDto.sectionId && updateDto.sectionId !== indikator.sectionId) {
+            const newSection = await this.findSectionById(updateDto.sectionId);
+            updateDto.no = newSection.no;
+            updateDto.sectionLabel = newSection.parameter;
+            updateDto.bobotSection = newSection.bobotSection;
+        }
+        if ((updateDto.year && updateDto.year !== indikator.year) ||
+            (updateDto.quarter && updateDto.quarter !== indikator.quarter) ||
+            (updateDto.subNo && updateDto.subNo !== indikator.subNo)) {
+            const year = updateDto.year || indikator.year;
+            const quarter = updateDto.quarter || indikator.quarter;
+            const sectionId = updateDto.sectionId || indikator.sectionId;
+            const subNo = updateDto.subNo || indikator.subNo;
+            const existing = await this.likuiditasRepository.findOne({
+                where: {
+                    year,
+                    quarter,
+                    sectionId,
+                    subNo,
+                    isDeleted: false,
+                    id: (0, typeorm_2.Not)(id),
+                },
+            });
+            if (existing) {
+                throw new common_1.ConflictException(`Indikator dengan subNo "${subNo}" sudah ada pada periode ${year}-${quarter} di section ini`);
+            }
+        }
+        if (updateDto.mode) {
+            const validationDto = {
+                mode: updateDto.mode,
+                pembilangValue: updateDto.pembilangValue,
+                penyebutValue: updateDto.penyebutValue,
+                hasilText: updateDto.hasilText,
+            };
+            this.validateModeSpecificFields(validationDto);
+        }
+        if (updateDto.bobotSection ||
+            updateDto.bobotIndikator ||
+            updateDto.peringkat) {
+            const bobotSection = updateDto.bobotSection || indikator.bobotSection;
+            const bobotIndikator = updateDto.bobotIndikator || indikator.bobotIndikator;
+            const peringkat = updateDto.peringkat || indikator.peringkat;
+            updateDto.weighted = this.calculateWeighted(bobotSection, bobotIndikator, peringkat);
+        }
+        Object.keys(updateDto).forEach((key) => {
+            if (updateDto[key] !== undefined) {
+                indikator[key] = updateDto[key];
+            }
+        });
+        if (updatedBy) {
+            indikator.updatedBy = updatedBy;
+            indikator.version += 1;
+        }
+        return await this.likuiditasRepository.save(indikator);
+    }
+    async deleteIndikator(id) {
+        const indikator = await this.likuiditasRepository.findOne({
+            where: { id },
+        });
+        if (!indikator) {
+            throw new common_1.NotFoundException(`Indikator dengan ID ${id} tidak ditemukan`);
+        }
+        await this.likuiditasRepository.delete(id);
+    }
+    async searchIndikators(query, year, quarter) {
+        const where = { isDeleted: false };
+        if (year)
+            where.year = year;
+        if (quarter)
+            where.quarter = quarter;
+        if (query) {
+            const searchConditions = [
+                { subNo: (0, typeorm_2.Like)(`%${query}%`), ...where },
+                { indikator: (0, typeorm_2.Like)(`%${query}%`), ...where },
+                { sumberRisiko: (0, typeorm_2.Like)(`%${query}%`), ...where },
+                { dampak: (0, typeorm_2.Like)(`%${query}%`), ...where },
+                { keterangan: (0, typeorm_2.Like)(`%${query}%`), ...where },
+                { hasilText: (0, typeorm_2.Like)(`%${query}%`), ...where },
+            ];
+            return await this.likuiditasRepository.find({
+                where: searchConditions,
+                relations: ['section'],
+            });
+        }
+        return await this.likuiditasRepository.find({
+            where,
+            relations: ['section'],
+        });
+    }
+    async getTotalWeightedByPeriod(year, quarter) {
+        const result = await this.likuiditasRepository
+            .createQueryBuilder('likuiditas')
+            .select('SUM(likuiditas.weighted)', 'total')
+            .where('likuiditas.year = :year', { year })
+            .andWhere('likuiditas.quarter = :quarter', { quarter })
+            .andWhere('likuiditas.is_deleted = false')
+            .getRawOne();
+        return parseFloat(result?.total || 0) || 0;
+    }
+    validateModeSpecificFields(dto) {
+        const mode = dto.mode;
+        if (mode === likuiditas_entity_1.CalculationMode.RASIO) {
+            if (dto.pembilangValue !== undefined && dto.pembilangValue < 0) {
+                throw new common_1.BadRequestException('Pembilang value tidak boleh negatif untuk mode RASIO');
+            }
+            if (dto.penyebutValue !== undefined && dto.penyebutValue <= 0) {
+                throw new common_1.BadRequestException('Penyebut value harus lebih besar dari 0 untuk mode RASIO');
+            }
+        }
+        else if (mode === likuiditas_entity_1.CalculationMode.NILAI_TUNGGAL) {
+            if (dto.penyebutValue !== undefined && dto.penyebutValue < 0) {
+                throw new common_1.BadRequestException('Nilai penyebut tidak boleh negatif untuk mode NILAI_TUNGGAL');
+            }
+        }
+        else if (mode === likuiditas_entity_1.CalculationMode.TEKS) {
+            if (!dto.hasilText && !dto.hasilText?.trim()) {
+                throw new common_1.BadRequestException('Hasil text wajib diisi untuk mode TEKS');
+            }
+        }
+    }
+    calculateWeighted(bobotSection, bobotIndikator, peringkat) {
+        return (bobotSection * bobotIndikator * peringkat) / 10000;
+    }
+    async duplicateIndikatorToNewPeriod(sourceId, targetYear, targetQuarter, createdBy) {
+        const source = await this.findIndikatorById(sourceId);
+        const existing = await this.likuiditasRepository.findOne({
+            where: {
+                year: targetYear,
+                quarter: targetQuarter,
+                sectionId: source.sectionId,
+                subNo: source.subNo,
+                isDeleted: false,
+            },
+        });
+        if (existing) {
+            throw new common_1.ConflictException(`Indikator dengan subNo "${source.subNo}" sudah ada pada periode ${targetYear}-${targetQuarter}`);
+        }
+        const newIndikatorData = {
+            ...source,
+            id: undefined,
+            year: targetYear,
+            quarter: targetQuarter,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            version: 1,
+            revisionNotes: `Duplikasi dari periode ${source.year}-${source.quarter}`,
+            isDeleted: false,
+        };
+        if (createdBy) {
+            newIndikatorData.createdBy = createdBy;
+        }
+        const newIndikator = this.likuiditasRepository.create(newIndikatorData);
+        return await this.likuiditasRepository.save(newIndikator);
+    }
+    async getIndikatorCountByPeriod(year, quarter) {
+        try {
+            const result = await this.likuiditasRepository
+                .createQueryBuilder('likuiditas')
+                .select('COUNT(likuiditas.id)', 'count')
+                .where('likuiditas.year = :year', { year })
+                .andWhere('likuiditas.quarter = :quarter', { quarter })
+                .andWhere('likuiditas.is_deleted = false')
+                .getRawOne();
+            return parseInt(result?.count || 0) || 0;
+        }
+        catch (error) {
+            console.error('Error in getIndikatorCountByPeriod:', error);
+            return 0;
+        }
+    }
+    async getSectionsWithIndicatorsByPeriod(year, quarter) {
+        try {
+            console.log(`Loading sections with indicators for period: ${year}-${quarter}`);
+            const sections = await this.likuiditasSectionRepository.find({
+                where: {
+                    year,
+                    quarter,
+                    isDeleted: false,
+                    isActive: true,
+                },
+                order: { sortOrder: 'ASC', no: 'ASC' },
+            });
+            console.log(`Total sections for period ${year}-${quarter}: ${sections.length}`);
+            const sectionsWithIndicators = await Promise.all(sections.map(async (section) => {
+                const indicators = await this.likuiditasRepository.find({
+                    where: {
+                        sectionId: section.id,
+                        year,
+                        quarter,
+                        isDeleted: false,
+                    },
+                    order: { subNo: 'ASC' },
+                });
+                console.log(`Section ${section.no}: ${indicators.length} indicators`);
+                const totalWeighted = indicators.reduce((sum, indicator) => sum + (Number(indicator.weighted) || 0), 0);
+                return {
+                    id: section.id,
+                    no: section.no,
+                    parameter: section.parameter,
+                    bobotSection: section.bobotSection,
+                    description: section.description,
+                    year: section.year,
+                    quarter: section.quarter,
+                    isActive: section.isActive,
+                    indicators: indicators.map((indicator) => ({
+                        id: indicator.id,
+                        subNo: indicator.subNo,
+                        indikator: indicator.indikator,
+                        bobotIndikator: indicator.bobotIndikator,
+                        mode: indicator.mode,
+                        hasil: indicator.hasil,
+                        hasilText: indicator.hasilText,
+                        peringkat: indicator.peringkat,
+                        weighted: indicator.weighted,
+                        sumberRisiko: indicator.sumberRisiko,
+                        dampak: indicator.dampak,
+                        keterangan: indicator.keterangan,
+                        isValidated: indicator.isValidated,
+                        pembilangLabel: indicator.pembilangLabel,
+                        pembilangValue: indicator.pembilangValue,
+                        penyebutLabel: indicator.penyebutLabel,
+                        penyebutValue: indicator.penyebutValue,
+                        formula: indicator.formula,
+                        isPercent: indicator.isPercent,
+                        low: indicator.low,
+                        lowToModerate: indicator.lowToModerate,
+                        moderate: indicator.moderate,
+                        moderateToHigh: indicator.moderateToHigh,
+                        high: indicator.high,
+                    })),
+                    totalWeighted,
+                    indicatorCount: indicators.length,
+                    hasIndicators: indicators.length > 0,
+                };
+            }));
+            const sectionsWithData = sectionsWithIndicators.filter((s) => s.indicators.length > 0);
+            const overallTotalWeighted = sectionsWithData.reduce((sum, section) => sum + (section.totalWeighted || 0), 0);
+            return {
+                success: true,
+                year,
+                quarter,
+                sections: sectionsWithIndicators,
+                sectionsWithIndicators: sectionsWithData,
+                overallTotalWeighted,
+                sectionCount: sectionsWithIndicators.length,
+                totalIndicators: sectionsWithData.reduce((sum, section) => sum + section.indicatorCount, 0),
+            };
+        }
+        catch (error) {
+            console.error('Error in getSectionsWithIndicatorsByPeriod:', error);
+            throw error;
+        }
+    }
+    async getPeriods() {
+        const periods = await this.likuiditasRepository
+            .createQueryBuilder('likuiditas')
+            .select(['likuiditas.year', 'likuiditas.quarter'])
+            .where('likuiditas.is_deleted = false')
+            .groupBy('likuiditas.year, likuiditas.quarter')
+            .orderBy('likuiditas.year', 'DESC')
+            .addOrderBy('likuiditas.quarter', 'DESC')
+            .getRawMany();
+        return periods.map((p) => ({
+            year: p.likuiditas_year,
+            quarter: p.likuiditas_quarter,
+        }));
+    }
 };
 exports.LikuiditasService = LikuiditasService;
 exports.LikuiditasService = LikuiditasService = __decorate([
     (0, common_1.Injectable)(),
-    __param(0, (0, typeorm_1.InjectRepository)(likuiditas_entity_1.Likuiditas)),
-    __param(1, (0, typeorm_1.InjectRepository)(section_likuiditas_entity_1.SectionLikuiditas)),
+    __param(0, (0, typeorm_1.InjectRepository)(section_likuiditas_entity_1.LikuiditasSection)),
+    __param(1, (0, typeorm_1.InjectRepository)(likuiditas_entity_1.Likuiditas)),
     __metadata("design:paramtypes", [typeorm_2.Repository,
         typeorm_2.Repository])
 ], LikuiditasService);

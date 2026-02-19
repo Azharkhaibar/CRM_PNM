@@ -1,110 +1,100 @@
-// src/types/hukum.types.ts
+// src/types/kepatuhan.types.ts
 
-export enum CalculationMode {
-  RASIO = 'RASIO',
-  NILAI_TUNGGAL = 'NILAI_TUNGGAL',
-  TEKS = 'TEKS',
-}
+// Pastikan ini adalah string literal types yang benar
+export type Quarter = 'Q1' | 'Q2' | 'Q3' | 'Q4';
 
-export enum Quarter {
-  Q1 = 'Q1',
-  Q2 = 'Q2',
-  Q3 = 'Q3',
-  Q4 = 'Q4',
-}
+export type CalculationMode = 'RASIO' | 'NILAI_TUNGGAL' | 'TEKS';
 
-// ========== SECTION TYPES ==========
-export interface HukumSection {
+export interface KepatuhanSection {
   id: number;
   no: string;
   bobotSection: number;
   parameter: string;
   description: string | null;
-  category: string | null;
   sortOrder: number;
-  createdAt: string;
-  updatedAt: string;
-  isDeleted: boolean;
-}
-
-export interface CreateHukumSectionDto {
-  no: string;
-  bobotSection: number;
-  parameter: string;
-  description?: string;
-  category?: string;
-  sortOrder?: number;
-}
-
-export interface UpdateHukumSectionDto extends Partial<CreateHukumSectionDto> {}
-
-// ========== HUKUM TYPES ==========
-export interface Hukum {
-  id: number;
-
-  // PERIODE
+  isActive: boolean;
+  // TAMBAHKAN YEAR DAN QUARTER
   year: number;
   quarter: Quarter;
+  createdAt: Date;
+  updatedAt: Date;
+  isDeleted: boolean;
+  createdBy?: string | null;
+  updatedBy?: string | null;
+}
 
-  // RELASI SECTION
+export interface CreateKepatuhanSectionData {
+  no: string;
+  parameter: string;
+  bobotSection?: number;
+  description?: string;
+  sortOrder?: number;
+  isActive?: boolean;
+  // TAMBAHKAN YEAR DAN QUARTER
+  year: number;
+  quarter: Quarter;
+}
+
+export interface UpdateKepatuhanSectionData {
+  no?: string;
+  parameter?: string;
+  bobotSection?: number;
+  description?: string;
+  sortOrder?: number;
+  isActive?: boolean;
+  // OPSIONAL: untuk update bisa tambah year dan quarter
+  year?: number;
+  quarter?: Quarter;
+}
+
+export interface KepatuhanIndikator {
+  id: number;
+  year: number;
+  quarter: Quarter;
   sectionId: number;
-  section: HukumSection;
-
-  // DATA SECTION
   no: string;
   sectionLabel: string;
   bobotSection: number;
-
-  // DATA INDIKATOR
   subNo: string;
   indikator: string;
   bobotIndikator: number;
-
-  // ANALISIS RISIKO
   sumberRisiko: string | null;
   dampak: string | null;
-
-  // LEVEL RISIKO
   low: string | null;
   lowToModerate: string | null;
   moderate: string | null;
   moderateToHigh: string | null;
   high: string | null;
-
-  // METODE PERHITUNGAN
   mode: CalculationMode;
   formula: string | null;
   isPercent: boolean;
-
-  // FAKTOR PERHITUNGAN
   pembilangLabel: string | null;
   pembilangValue: number | null;
   penyebutLabel: string | null;
   penyebutValue: number | null;
-
-  // HASIL
-  hasil: string | null;
+  hasil: number | null;
   hasilText: string | null;
-
-  // SKOR DAN BOBOT
   peringkat: number;
   weighted: number;
   keterangan: string | null;
-
-  // AUDIT TRAIL
-  createdAt: string;
-  updatedAt: string;
+  isValidated: boolean;
+  version: number;
+  createdAt: Date;
+  updatedAt: Date;
   isDeleted: boolean;
-  deletedAt: string | null;
-  createdBy: string | null;
-  updatedBy: string | null;
-  deletedBy: string | null;
+  createdBy?: string | null;
+  updatedBy?: string | null;
+  deletedBy?: string | null;
+  section?: KepatuhanSection;
 }
 
-export interface CreateHukumDto {
+export interface CreateKepatuhanData {
   year: number;
   quarter: Quarter;
   sectionId: number;
+  no: string;
+  sectionLabel: string;
+  bobotSection: number;
   subNo: string;
   indikator: string;
   bobotIndikator: number;
@@ -122,59 +112,88 @@ export interface CreateHukumDto {
   pembilangValue?: number;
   penyebutLabel?: string;
   penyebutValue?: number;
-  hasil?: string;
+  hasil?: number;
   hasilText?: string;
   peringkat: number;
+  weighted: number;
+  keterangan?: string;
+  createdBy?: string;
+}
+
+export interface UpdateKepatuhanData {
+  year?: number;
+  quarter?: Quarter;
+  sectionId?: number;
+  no?: string;
+  sectionLabel?: string;
+  bobotSection?: number;
+  subNo?: string;
+  indikator?: string;
+  bobotIndikator?: number;
+  sumberRisiko?: string;
+  dampak?: string;
+  low?: string;
+  lowToModerate?: string;
+  moderate?: string;
+  moderateToHigh?: string;
+  high?: string;
+  mode?: CalculationMode;
+  formula?: string;
+  isPercent?: boolean;
+  pembilangLabel?: string;
+  pembilangValue?: number;
+  penyebutLabel?: string;
+  penyebutValue?: number;
+  hasil?: number;
+  hasilText?: string;
+  peringkat?: number;
   weighted?: number;
   keterangan?: string;
 }
 
-export interface UpdateHukumDto extends Partial<CreateHukumDto> {}
-
-// ========== STRUCTURED DATA TYPES ==========
-export interface StructuredHukum {
-  section: HukumSection;
-  indicators: Hukum[];
-  totalWeighted: number;
+export interface TotalWeightedResponse {
+  total: number;
 }
 
-export interface HukumSummary {
+export interface Period {
+  year: number;
+  quarter: Quarter;
+}
+
+// Tambahkan interface yang dibutuhkan oleh hook
+export interface SectionWithIndicators {
+  id: number;
+  no: string;
+  parameter: string;
+  bobotSection: number;
+  year: number;
+  quarter: Quarter;
+  indicators: KepatuhanIndikator[];
+}
+
+export interface SummaryResponse {
   year: number;
   quarter: Quarter;
   totalItems: number;
   totalWeighted: number;
   sections: Array<{
-    section: HukumSection;
-    items: Hukum[];
+    section: KepatuhanSection;
+    items: KepatuhanIndikator[];
     totalWeighted: number;
   }>;
-  items: Hukum[];
+  items: KepatuhanIndikator[];
 }
 
-// ========== FORM DATA TYPE ==========
-export interface HukumFormData {
-  year: number;
-  quarter: Quarter;
-  sectionId?: number;
-  subNo: string;
-  indikator: string;
-  bobotIndikator: number;
-  sumberRisiko?: string;
-  dampak?: string;
-  low?: string;
-  lowToModerate?: string;
-  moderate?: string;
-  moderateToHigh?: string;
-  high?: string;
-  mode: CalculationMode;
-  formula?: string;
-  isPercent?: boolean;
-  pembilangLabel?: string;
-  pembilangValue?: number;
-  penyebutLabel?: string;
-  penyebutValue?: number;
-  hasil?: string;
-  hasilText?: string;
-  peringkat: number;
-  keterangan?: string;
-}
+export const transformSectionToBackend = (sectionData: any, year: number, quarter: Quarter): CreateKepatuhanSectionData => {
+  return {
+    no: String(sectionData.no),
+    bobotSection: Number(sectionData.bobotSection || 0),
+    parameter: sectionData.parameter,
+    description: sectionData.description || undefined,
+    sortOrder: sectionData.sortOrder || 0,
+    isActive: sectionData.isActive ?? true,
+    // TAMBAHKAN YEAR DAN QUARTER
+    year: year,
+    quarter: quarter,
+  };
+};

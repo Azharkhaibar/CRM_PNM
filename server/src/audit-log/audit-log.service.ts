@@ -29,11 +29,12 @@ export class AuditLogService {
       });
 
       const savedLog = await this.auditLogRepository.save(auditLog);
-      console.log(
-        '✅ [BACKEND] Berhasil menyimpan audit log. UserId:',
-        savedLog.userId,
-      );
-
+      console.log(' [BACKEND] Audit log berhasil dibuat:', {
+        id: savedLog.id,
+        userId: savedLog.userId,
+        module: savedLog.module,
+        action: savedLog.action,
+      })
       return savedLog;
     } catch (error) {
       console.error('❌ [BACKEND] Error creating audit log:', error);

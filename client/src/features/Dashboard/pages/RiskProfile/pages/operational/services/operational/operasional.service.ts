@@ -1,425 +1,471 @@
-// services/operasional/operasional.service.ts
-import api from '../api.service';
+// src/features/Dashboard/pages/RiskProfile/pages/Operasional/services/operasional.service.ts
+import axios, { AxiosResponse } from 'axios';
+import { api_stratejik } from '../../../../../../services/api.service';
 
-// Types - sesuai dengan entity backend operasional
-export type Quarter = 'Q1' | 'Q2' | 'Q3' | 'Q4';
-export type CalculationMode = 'RASIO' | 'NILAI_TUNGGAL';
+// ENUMS
+export enum CalculationMode {
+  RASIO = 'RASIO',
+  NILAI_TUNGGAL = 'NILAI_TUNGGAL',
+  TEKS = 'TEKS',
+}
 
-// Interfaces - SESUAI dengan entity backend operasional
-export interface SectionOperational {
+export enum Quarter {
+  Q1 = 'Q1',
+  Q2 = 'Q2',
+  Q3 = 'Q3',
+  Q4 = 'Q4',
+}
+
+// INTERFACES
+export interface OperasionalSection {
   id: number;
-  year: number;
-  quarter: Quarter;
   no: string;
   bobotSection: number;
   parameter: string;
-  createdAt?: Date;
-  updatedAt?: Date;
-  isDeleted?: boolean;
-  deletedAt?: Date | null;
-  indikators?: Operational[]; // Perhatikan nama field: indikators (dengan 's')
+  description: string | null;
+  sortOrder: number;
+  isActive: boolean;
+  year: number;
+  quarter: Quarter;
+  createdAt: Date;
+  updatedAt: Date;
+  isDeleted: boolean;
+  createdBy?: string | null;
+  updatedBy?: string | null;
 }
 
-export interface Operational {
+export interface OperasionalIndikator {
   id: number;
   year: number;
   quarter: Quarter;
   sectionId: number;
-  section?: SectionOperational;
+  no: string;
+  sectionLabel: string;
+  bobotSection: number;
   subNo: string;
-  indikator: string; // PERBEDAAN: 'indikator' bukan 'namaIndikator'
+  indikator: string;
   bobotIndikator: number;
-  sumberRisiko?: string | null;
-  dampak?: string | null;
+  sumberRisiko: string | null;
+  dampak: string | null;
+  low: string | null;
+  lowToModerate: string | null;
+  moderate: string | null;
+  moderateToHigh: string | null;
+  high: string | null;
   mode: CalculationMode;
-  pembilangLabel?: string | null;
-  pembilangValue?: number | null;
-  penyebutLabel?: string | null;
-  penyebutValue?: number | null;
-  formula?: string | null;
+  formula: string | null;
   isPercent: boolean;
-  hasil?: number | null; // PERBEDAAN: number bukan string
+  pembilangLabel: string | null;
+  pembilangValue: number | null;
+  penyebutLabel: string | null;
+  penyebutValue: number | null;
+  hasil: number | null;
+  hasilText: string | null;
   peringkat: number;
-  weighted: number; // Diisi otomatis oleh backend
-  keterangan?: string | null;
-  createdAt?: Date;
-  updatedAt?: Date;
-  isDeleted?: boolean;
-  deletedAt?: Date | null;
+  weighted: number;
+  keterangan: string | null;
+  isValidated: boolean;
+  version: number;
+  createdAt: Date;
+  updatedAt: Date;
+  isDeleted: boolean;
+  createdBy?: string | null;
+  updatedBy?: string | null;
+  deletedBy?: string | null;
+  section?: OperasionalSection;
 }
 
-// DTOs - SESUAI dengan backend operasional
-export interface CreateSectionOperationalDto {
+export interface CreateOperasionalSectionData {
   no: string;
-  bobotSection: number;
   parameter: string;
-  year: number;
-  quarter: string; // Kirim sebagai string, backend akan konversi ke enum
-}
-
-export interface UpdateSectionOperationalDto extends Partial<CreateSectionOperationalDto> {}
-
-export interface CreateIndikatorOperationalDto {
-  sectionId: number;
-  year: number;
-  quarter: string; // Kirim sebagai string
-  subNo: string;
-  indikator: string; // PERBEDAAN: 'indikator' bukan 'namaIndikator'
-  bobotIndikator: number;
-  sumberRisiko?: string | null;
-  dampak?: string | null;
-  mode: CalculationMode;
-  pembilangLabel?: string | null;
-  pembilangValue?: number | null;
-  penyebutLabel?: string | null;
-  penyebutValue?: number | null;
-  formula?: string | null;
-  isPercent?: boolean;
-  hasil?: number | null; // PERBEDAAN: number bukan string
-  peringkat?: number; // Opsional, akan dihitung otomatis jika tidak disediakan
-  keterangan?: string | null;
-}
-
-export interface UpdateIndikatorOperationalDto extends Partial<CreateIndikatorOperationalDto> {}
-
-// Response types
-export interface SummaryResponse {
+  bobotSection?: number;
+  description?: string;
+  sortOrder?: number;
+  isActive?: boolean;
   year: number;
   quarter: Quarter;
-  totalWeighted: number;
-  sectionCount: number;
-  sections: Array<{
-    sectionId: number;
-    sectionNo: string;
-    sectionName: string;
-    bobotSection: number;
-    totalWeighted: number;
-    indicatorCount: number;
-  }>;
 }
 
-export interface StructuredOperational {
-  section: SectionOperational;
-  indicators: Operational[];
-  totalWeighted: number;
+export interface UpdateOperasionalSectionData {
+  no?: string;
+  parameter?: string;
+  bobotSection?: number;
+  description?: string;
+  sortOrder?: number;
+  isActive?: boolean;
+  year?: number;
+  quarter?: Quarter;
 }
 
-class OperasionalService {
-  // ==================== SECTION METHODS ====================
+export interface CreateOperasionalData {
+  year: number;
+  quarter: Quarter;
+  sectionId: number;
+  no: string;
+  sectionLabel: string;
+  bobotSection: number;
+  subNo: string;
+  indikator: string;
+  bobotIndikator: number;
+  sumberRisiko?: string;
+  dampak?: string;
+  low?: string;
+  lowToModerate?: string;
+  moderate?: string;
+  moderateToHigh?: string;
+  high?: string;
+  mode: CalculationMode;
+  formula?: string;
+  isPercent?: boolean;
+  pembilangLabel?: string;
+  pembilangValue?: number;
+  penyebutLabel?: string;
+  penyebutValue?: number;
+  hasil?: number;
+  hasilText?: string;
+  peringkat: number;
+  weighted: number;
+  keterangan?: string;
+  createdBy?: string;
+}
 
-  async getSectionsByPeriod(year: number, quarter: string): Promise<SectionOperational[]> {
-    const response = await api.get<SectionOperational[]>('/operasional/sections', {
-      params: { year, quarter },
-    });
-    return response.data;
-  }
+export interface UpdateOperasionalData {
+  year?: number;
+  quarter?: Quarter;
+  sectionId?: number;
+  no?: string;
+  sectionLabel?: string;
+  bobotSection?: number;
+  subNo?: string;
+  indikator?: string;
+  bobotIndikator?: number;
+  sumberRisiko?: string;
+  dampak?: string;
+  low?: string;
+  lowToModerate?: string;
+  moderate?: string;
+  moderateToHigh?: string;
+  high?: string;
+  mode?: CalculationMode;
+  formula?: string;
+  isPercent?: boolean;
+  pembilangLabel?: string;
+  pembilangValue?: number;
+  penyebutLabel?: string;
+  penyebutValue?: number;
+  hasil?: number;
+  hasilText?: string;
+  peringkat?: number;
+  weighted?: number;
+  keterangan?: string;
+}
 
-  async getAllSections(): Promise<SectionOperational[]> {
+export interface TotalWeightedResponse {
+  total: number;
+}
+
+export interface Period {
+  year: number;
+  quarter: Quarter;
+}
+
+// UTILITY FUNCTIONS
+export const fmtNumber = (v: any): string => {
+  if (v === '' || v == null) return '';
+  const n = Number(v);
+  if (isNaN(n)) return String(v);
+  return new Intl.NumberFormat('en-US').format(n);
+};
+
+export const formatHasilNumber = (value: any, maxDecimals = 4): string => {
+  if (value === '' || value == null) return '';
+  const n = Number(value);
+  if (!isFinite(n) || isNaN(n)) return '';
+
+  const fixed = n.toFixed(maxDecimals);
+  return fixed.replace(/\.?0+$/, '');
+};
+
+export const parseNum = (v: any): number => {
+  if (v == null || v === '') return 0;
+  if (typeof v === 'number') return v;
+
+  const cleaned = String(v).replace(/,/g, '').replace(/\s/g, '');
+  const n = Number(cleaned);
+  return isNaN(n) ? 0 : n;
+};
+
+export const computeHasil = (ind: any): number | null => {
+  const mode = ind?.mode || 'RASIO';
+  if (mode === 'TEKS') return null;
+
+  const pemb = parseNum(ind.pembilangValue);
+  const peny = parseNum(ind.penyebutValue);
+
+  if (ind.formula && ind.formula.trim() !== '') {
     try {
-      console.log('📤 [OPERASIONAL SERVICE] Getting all sections...');
-      const response = await api.get<SectionOperational[]>('/operasional/sections/all');
-      console.log('✅ [OPERASIONAL SERVICE] Successfully retrieved all sections:', response.data?.length || 0, 'sections');
-      return response.data || [];
-    } catch (error: any) {
-      console.error('❌ [OPERASIONAL SERVICE] Error getting all sections:', error);
+      const expr = ind.formula
+        .replace(/\bpembilang\b/gi, pemb.toString())
+        .replace(/\bpenyebut\b/gi, peny.toString())
+        .replace(/\bpemb\b/g, pemb.toString())
+        .replace(/\bpeny\b/g, peny.toString());
 
-      // Fallback: coba endpoint yang sudah ada tanpa parameter
-      try {
-        console.log('🔄 [OPERASIONAL SERVICE] Trying fallback method...');
-        const response = await api.get<SectionOperational[]>('/operasional/sections');
-        console.log('✅ [OPERASIONAL SERVICE] Fallback successful:', response.data?.length || 0, 'sections');
-        return response.data || [];
-      } catch (fallbackError) {
-        console.error('❌ [OPERASIONAL SERVICE] Fallback also failed:', fallbackError);
-        throw error; // Lempar error asli
-      }
+      const fn = new Function('pemb', 'peny', `return (${expr});`);
+      const res = fn(pemb, peny);
+      if (!isFinite(res) || isNaN(res)) return null;
+      return Number(res);
+    } catch (e) {
+      console.warn('Invalid formula:', ind.formula, e);
+      return null;
     }
   }
 
-  async getSectionById(id: number): Promise<SectionOperational> {
-    const response = await api.get<SectionOperational>(`/operasional/sections/${id}`);
-    return response.data;
+  if (mode === 'NILAI_TUNGGAL') {
+    if (ind.penyebutValue === '' || ind.penyebutValue == null) return null;
+    return peny;
   }
 
-  async createSection(data: CreateSectionOperationalDto): Promise<SectionOperational> {
-    const payload = {
-      ...data,
-      quarter: data.quarter as string,
-    };
-    const response = await api.post<SectionOperational>('/operasional/sections', payload);
-    return response.data;
+  if (peny === 0) return null;
+  const result = pemb / peny;
+  if (!isFinite(result) || isNaN(result)) return null;
+  return Number(result);
+};
+
+export const computeWeightedAuto = (ind: any, sectionBobot: number): number => {
+  const sectionB = Number(sectionBobot || 0);
+  const bobotInd = Number(ind.bobotIndikator || 0);
+  const peringkat = Number(ind.peringkat || 0);
+  const res = (sectionB * bobotInd * peringkat) / 10000;
+  if (!isFinite(res) || isNaN(res)) return 0;
+  return res;
+};
+
+export const transformIndicatorToBackend = (indicatorData: any, year: number, quarter: Quarter, sectionId: number, sectionData: any): CreateOperasionalData => {
+  const hasilNum = computeHasil(indicatorData);
+
+  return {
+    year,
+    quarter,
+    sectionId,
+    no: sectionData?.no || '',
+    sectionLabel: sectionData?.parameter || '',
+    bobotSection: Number(sectionData?.bobotSection) || 0,
+    subNo: indicatorData.subNo?.toString().trim() || '',
+    indikator: indicatorData.indikator?.toString().trim() || '',
+    bobotIndikator: Number(indicatorData.bobotIndikator) || 0,
+    sumberRisiko: indicatorData.sumberRisiko?.trim() || undefined,
+    dampak: indicatorData.dampak?.trim() || undefined,
+    low: indicatorData.low?.trim() || undefined,
+    lowToModerate: indicatorData.lowToModerate?.trim() || undefined,
+    moderate: indicatorData.moderate?.trim() || undefined,
+    moderateToHigh: indicatorData.moderateToHigh?.trim() || undefined,
+    high: indicatorData.high?.trim() || undefined,
+    mode: indicatorData.mode || CalculationMode.RASIO,
+    formula: indicatorData.formula?.trim() || undefined,
+    isPercent: Boolean(indicatorData.isPercent || false),
+    pembilangLabel: indicatorData.pembilangLabel?.trim() || undefined,
+    pembilangValue: indicatorData.pembilangValue !== undefined && indicatorData.pembilangValue !== '' ? Number(indicatorData.pembilangValue) : undefined,
+    penyebutLabel: indicatorData.penyebutLabel?.trim() || undefined,
+    penyebutValue: indicatorData.penyebutValue !== undefined && indicatorData.penyebutValue !== '' ? Number(indicatorData.penyebutValue) : undefined,
+    hasil: hasilNum !== null ? hasilNum : undefined,
+    hasilText: indicatorData.mode === CalculationMode.TEKS ? indicatorData.hasilText || indicatorData.keterangan || '' : undefined,
+    peringkat: Number(indicatorData.peringkat) || 1,
+    weighted: computeWeightedAuto(indicatorData, Number(sectionData?.bobotSection) || 0),
+    keterangan: indicatorData.keterangan?.trim() || undefined,
+  };
+};
+
+export const transformIndicatorToFrontend = (indikator: OperasionalIndikator): any => {
+  return {
+    id: indikator.id,
+    subNo: indikator.subNo || '',
+    indikator: indikator.indikator || '',
+    bobotIndikator: indikator.bobotIndikator || 0,
+    sumberRisiko: indikator.sumberRisiko || '',
+    dampak: indikator.dampak || '',
+    pembilangLabel: indikator.pembilangLabel || '',
+    pembilangValue: indikator.pembilangValue !== null ? indikator.pembilangValue.toString() : '',
+    penyebutLabel: indikator.penyebutLabel || '',
+    penyebutValue: indikator.penyebutValue !== null ? indikator.penyebutValue.toString() : '',
+    peringkat: indikator.peringkat || 1,
+    weighted: indikator.weighted || '',
+    hasil: indikator.hasil !== null ? indikator.hasil.toString() : '',
+    hasilText: indikator.hasilText || '',
+    keterangan: indikator.keterangan || '',
+    isPercent: Boolean(indikator.isPercent),
+    mode: indikator.mode || CalculationMode.RASIO,
+    formula: indikator.formula || '',
+    low: indikator.low || '',
+    lowToModerate: indikator.lowToModerate || '',
+    moderate: indikator.moderate || '',
+    moderateToHigh: indikator.moderateToHigh || '',
+    high: indikator.high || '',
+    sectionId: indikator.sectionId,
+    no: indikator.no,
+    sectionLabel: indikator.sectionLabel,
+    bobotSection: indikator.bobotSection,
+    year: indikator.year,
+    quarter: indikator.quarter,
+    section: indikator.section,
+  };
+};
+
+export const transformSectionToBackend = (sectionData: any, year: number, quarter: Quarter): CreateOperasionalSectionData => {
+  return {
+    no: String(sectionData.no),
+    bobotSection: Number(sectionData.bobotSection || 0),
+    parameter: sectionData.parameter,
+    description: sectionData.description || undefined,
+    sortOrder: sectionData.sortOrder || 0,
+    isActive: sectionData.isActive ?? true,
+    year: year,
+    quarter: quarter,
+  };
+};
+
+export const rowsPerIndicator = (ind: any): number => {
+  return 1 + (ind.mode === 'RASIO' ? 2 : 1);
+};
+
+// API SERVICE
+class OperasionalApiService {
+  private baseUrl: string;
+
+  constructor() {
+    this.baseUrl = 'http://localhost:5530/api/v1';
   }
 
-  async updateSection(id: number, data: UpdateSectionOperationalDto): Promise<SectionOperational> {
-    const payload = {
-      ...data,
-      quarter: data.quarter as string,
-    };
-    const response = await api.patch<SectionOperational>(`/operasional/sections/${id}`, payload);
-    return response.data;
+  // SECTION APIs
+  async createSection(data: CreateOperasionalSectionData): Promise<OperasionalSection> {
+    return this.request<OperasionalSection>('post', '/operasional/sections', data);
+  }
+
+  async getAllSections(isActive?: boolean): Promise<OperasionalSection[]> {
+    const params = isActive !== undefined ? { isActive } : {};
+    return this.request<OperasionalSection[]>('get', '/operasional/sections', null, params);
+  }
+
+  async getSectionById(id: number): Promise<OperasionalSection> {
+    return this.request<OperasionalSection>('get', `/operasional/sections/${id}`);
+  }
+
+  async updateSection(id: number, data: UpdateOperasionalSectionData): Promise<OperasionalSection> {
+    return this.request<OperasionalSection>('put', `/operasional/sections/${id}`, data);
   }
 
   async deleteSection(id: number): Promise<void> {
-    await api.delete(`/operasional/sections/${id}`);
+    return this.request<void>('delete', `/operasional/sections/${id}`);
   }
 
-  // ==================== INDIKATOR METHODS ====================
-
-  async getIndikatorsBySection(sectionId: number): Promise<Operational[]> {
-    const response = await api.get<Operational[]>(`/operasional/sections/${sectionId}/indicators`);
-    return response.data;
+  // INDIKATOR APIs
+  async createIndikator(data: CreateOperasionalData): Promise<OperasionalIndikator> {
+    return this.request<OperasionalIndikator>('post', '/operasional/indikators', data);
   }
 
-  async getIndikatorsByPeriod(year: number, quarter: string): Promise<Operational[]> {
-    const response = await api.get<Operational[]>('/operasional/indicators', {
-      params: { year, quarter },
-    });
-    return response.data;
+  async getAllIndikators(): Promise<OperasionalIndikator[]> {
+    return this.request<OperasionalIndikator[]>('get', '/operasional/indikators');
   }
 
-  async getIndikatorById(id: number): Promise<Operational> {
-    const response = await api.get<Operational>(`/operasional/indicators/${id}`);
-    return response.data;
+  async getIndikatorsByPeriod(year: number, quarter: Quarter): Promise<OperasionalIndikator[]> {
+    return this.request<OperasionalIndikator[]>('get', '/operasional/indikators/period', null, { year, quarter });
   }
 
-  async createIndikator(data: CreateIndikatorOperationalDto): Promise<Operational> {
-    const payload = { ...data };
-    payload.quarter = payload.quarter as string;
-
-    console.log('📤 [OPERASIONAL SERVICE] Payload untuk create indikator:', payload);
-
-    const response = await api.post<Operational>('/operasional/indicators', payload);
-    return response.data;
+  async getSectionsWithIndicatorsByPeriod(year: number, quarter: Quarter): Promise<Array<OperasionalSection & { indicators: OperasionalIndikator[] }>> {
+    return this.request<Array<OperasionalSection & { indicators: OperasionalIndikator[] }>>('get', '/operasional/indikators/sections-by-period', null, { year, quarter });
   }
 
-  async updateIndikator(id: number, data: UpdateIndikatorOperationalDto): Promise<Operational> {
-    const payload = { ...data };
+  async searchIndikators(query?: string, year?: number, quarter?: Quarter): Promise<OperasionalIndikator[]> {
+    const params: any = {};
+    if (query) params.query = query;
+    if (year) params.year = year;
+    if (quarter) params.quarter = quarter;
 
-    if (payload.quarter) {
-      payload.quarter = payload.quarter as string;
-    }
+    return this.request<OperasionalIndikator[]>('get', '/operasional/indikators/search', null, params);
+  }
 
-    console.log('📤 [OPERASIONAL SERVICE updateIndikator] START - ID:', id, 'Data:', payload);
+  async getIndikatorById(id: number): Promise<OperasionalIndikator> {
+    return this.request<OperasionalIndikator>('get', `/operasional/indikators/${id}`);
+  }
 
+  async updateIndikator(id: number, data: UpdateOperasionalData): Promise<OperasionalIndikator> {
+    return this.request<OperasionalIndikator>('put', `/operasional/indikators/${id}`, data);
+  }
+
+  async deleteIndikator(id: number): Promise<void> {
+    return this.request<void>('delete', `/operasional/indikators/${id}`);
+  }
+
+  async getTotalWeightedByPeriod(year: number, quarter: Quarter): Promise<number> {
+    const response = await this.request<TotalWeightedResponse>('get', '/operasional/total-weighted', null, { year, quarter });
+    return response.total;
+  }
+
+  async getAvailablePeriods(): Promise<Period[]> {
+    return this.request<Period[]>('get', '/operasional/periods');
+  }
+
+  async duplicateIndikator(sourceId: number, targetYear: number, targetQuarter: Quarter): Promise<OperasionalIndikator> {
+    return this.request<OperasionalIndikator>('post', `/operasional/indikators/${sourceId}/duplicate`, null, { year: targetYear, quarter: targetQuarter });
+  }
+
+  // PRIVATE METHODS
+  private async request<T>(method: 'get' | 'post' | 'put' | 'delete', endpoint: string, data?: any, params?: any): Promise<T> {
     try {
-      const response = await api.patch<Operational>(`/operasional/indicators/${id}`, payload);
-
-      console.log('✅ [OPERASIONAL SERVICE updateIndikator] SUCCESS - Response:', {
-        status: response.status,
-        data: response.data,
-        indikator: response.data.indikator,
-        updatedAt: response.data.updatedAt,
-      });
-
-      return response.data;
-    } catch (error: any) {
-      console.error('❌ [OPERASIONAL SERVICE updateIndikator] ERROR:', {
-        message: error.message,
-        response: error.response?.data,
-        status: error.response?.status,
-        config: {
-          url: error.config?.url,
-          method: error.config?.method,
-          data: error.config?.data,
+      const config = {
+        method,
+        url: `${this.baseUrl}${endpoint}`,
+        data,
+        params,
+        headers: {
+          'Content-Type': 'application/json',
         },
-      });
+      };
+
+      const response: AxiosResponse<T> = await axios(config);
+      return response.data;
+    } catch (error) {
+      this.handleError(error);
       throw error;
     }
   }
 
-  async checkIndikatorExists(id: number): Promise<boolean> {
-    try {
-      await this.getIndikatorById(id);
-      return true;
-    } catch {
-      return false;
-    }
-  }
+  private handleError(error: any): void {
+    if (axios.isAxiosError(error)) {
+      if (error.response) {
+        const message = error.response.data?.message || 'Terjadi kesalahan pada server';
+        const status = error.response.status;
 
-  async deleteIndikator(id: number): Promise<void> {
-    await api.delete(`/operasional/indicators/${id}`);
-  }
+        console.error(`API Error [${status}]:`, message);
 
-  // ==================== SUMMARY METHODS ====================
-
-  async getSummaryByPeriod(year: number, quarter: string): Promise<SummaryResponse> {
-    const response = await api.get<SummaryResponse>('/operasional/summary', {
-      params: { year, quarter },
-    });
-    return response.data;
-  }
-
-  async getSectionSummary(sectionId: number): Promise<any> {
-    const response = await api.get(`/operasional/sections/${sectionId}/summary`);
-    return response.data;
-  }
-
-  // ==================== UTILITY METHODS ====================
-
-  formatIndikatorData(formData: any, section: SectionOperational): CreateIndikatorOperationalDto {
-    return {
-      sectionId: section.id,
-      year: Number(formData.year) || section.year,
-      quarter: formData.quarter || section.quarter,
-      subNo: formData.subNo || '',
-      indikator: formData.indikator || '',
-      bobotIndikator: Number(formData.bobotIndikator || 0),
-      sumberRisiko: formData.sumberRisiko || null,
-      dampak: formData.dampak || null,
-      mode: (formData.mode || 'RASIO') as CalculationMode,
-      pembilangLabel: formData.pembilangLabel || null,
-      pembilangValue: formData.pembilangValue !== undefined ? Number(formData.pembilangValue) : null,
-      penyebutLabel: formData.penyebutLabel || null,
-      penyebutValue: formData.penyebutValue !== undefined ? Number(formData.penyebutValue) : null,
-      formula: formData.formula || null,
-      isPercent: Boolean(formData.isPercent || false),
-      hasil: formData.hasil !== undefined ? Number(formData.hasil) : null,
-      peringkat: formData.peringkat || 1,
-      keterangan: formData.keterangan || null,
-    };
-  }
-
-  calculateHasil(mode: string, pembilangValue: number | null, penyebutValue: number | null, formula?: string | null, isPercent?: boolean): number | null {
-    const pemb = pembilangValue || 0;
-    const peny = penyebutValue || 0;
-
-    if (mode === 'NILAI_TUNGGAL') {
-      return peny;
-    }
-
-    if (formula && formula.trim() !== '') {
-      try {
-        const expr = formula
-          .replace(/\bpembilang\b/gi, 'pemb')
-          .replace(/\bpenyebut\b/gi, 'peny')
-          .replace(/\bpemb\b/g, 'pemb')
-          .replace(/\bpeny\b/g, 'peny');
-
-        const fn = new Function('pemb', 'peny', `return (${expr});`);
-        const result = fn(pemb, peny);
-
-        if (isFinite(result) && !isNaN(result)) {
-          if (isPercent) {
-            return result * 100;
-          }
-          return result;
+        switch (status) {
+          case 400:
+            throw new Error(`Bad Request: ${message}`);
+          case 401:
+            throw new Error('Unauthorized: Silakan login kembali');
+          case 403:
+            throw new Error('Forbidden: Anda tidak memiliki akses');
+          case 404:
+            throw new Error(`Not Found: ${message}`);
+          case 409:
+            throw new Error(`Conflict: ${message}`);
+          case 500:
+            throw new Error('Server Error: Silakan coba lagi nanti');
+          default:
+            throw new Error(`Server Error: ${message}`);
         }
-      } catch (error) {
-        console.warn('Invalid formula:', formula, error);
+      } else if (error.request) {
+        console.error('Network Error:', error.message);
+        throw new Error('Koneksi jaringan bermasalah. Periksa koneksi internet Anda.');
+      } else {
+        console.error('Request Error:', error.message);
+        throw new Error(`Gagal membuat permintaan: ${error.message}`);
       }
-    }
-
-    if (peny === 0) {
-      return null;
-    }
-
-    const result = pemb / peny;
-    if (isPercent) {
-      return result * 100;
-    }
-    return result;
-  }
-
-  calculateWeighted(bobotSection: number, bobotIndikator: number, peringkat: number): number {
-    const weighted = (bobotSection * bobotIndikator * peringkat) / 10000;
-    return parseFloat(weighted.toFixed(4));
-  }
-
-  formatHasilDisplay(hasil: number | null, isPercent: boolean, mode: string): string {
-    if (hasil === null || hasil === undefined) return '';
-
-    if (mode === 'NILAI_TUNGGAL') {
-      // Format untuk nilai tunggal (biasanya integer)
-      return Math.round(hasil).toString();
-    }
-
-    if (isPercent) {
-      return `${hasil.toFixed(2)}%`;
-    }
-
-    // Format untuk rasio (4 angka desimal)
-    return hasil.toFixed(4);
-  }
-
-  groupBySection(operationalList: Operational[]): StructuredOperational[] {
-    const sectionsMap = new Map<number, StructuredOperational>();
-
-    operationalList.forEach((item) => {
-      const sectionId = item.sectionId;
-
-      if (!sectionsMap.has(sectionId)) {
-        sectionsMap.set(sectionId, {
-          section: item.section || {
-            id: sectionId,
-            year: item.year,
-            quarter: item.quarter,
-            no: '',
-            bobotSection: 0,
-            parameter: '',
-            createdAt: new Date(),
-            updatedAt: new Date(),
-            isDeleted: false,
-            indikators: [],
-          },
-          indicators: [],
-          totalWeighted: 0,
-        });
-      }
-
-      const sectionData = sectionsMap.get(sectionId)!;
-      sectionData.indicators.push(item);
-      sectionData.totalWeighted += item.weighted || 0;
-    });
-
-    return Array.from(sectionsMap.values());
-  }
-
-  async getOperationalStructured(year?: number, quarter?: string): Promise<StructuredOperational[]> {
-    let url = '/operasional/indicators';
-    const params: any = {};
-
-    if (year) params.year = year;
-    if (quarter) params.quarter = quarter;
-
-    const response = await api.get<Operational[]>(url, { params });
-    return this.groupBySection(response.data);
-  }
-
-  handleError(error: any): string {
-    if (error.response) {
-      const { data, status } = error.response;
-
-      if (status === 500) {
-        return 'Server error: Internal server error. Please try again later.';
-      }
-
-      if (data?.message) {
-        if (Array.isArray(data.message)) {
-          return data.message
-            .map((item: any) => {
-              if (item.constraints) {
-                const field = item.property || 'field';
-                const errors = Object.values(item.constraints).join(', ');
-                return `${field}: ${errors}`;
-              }
-              return typeof item === 'string' ? item : JSON.stringify(item);
-            })
-            .join('\n');
-        }
-        return typeof data.message === 'string' ? data.message : JSON.stringify(data.message);
-      }
-
-      return `Server error: ${status}`;
-    } else if (error.request) {
-      return 'Network error: No response from server. Please check your connection.';
     } else {
-      return error.message || 'Unknown error occurred';
+      console.error('Unexpected Error:', error);
+      throw new Error('Terjadi kesalahan yang tidak diketahui');
     }
   }
 }
 
 // Export singleton instance
-export const operasionalService = new OperasionalService();
-
-// Optional: Export class juga jika diperlukan
-export default OperasionalService;
+export const operasionalApiService = new OperasionalApiService();

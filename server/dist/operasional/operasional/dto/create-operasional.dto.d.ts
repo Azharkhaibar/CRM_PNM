@@ -1,31 +1,33 @@
+import { Quarter } from '../entities/operasional-section.entity';
+import { CalculationMode } from '../entities/operasional.entity';
 export declare class CreateOperasionalDto {
-}
-import { Quarter } from '../entities/operasional.entity';
-export declare class CreateSectionOperationalDto {
-    no: string;
-    bobotSection: number;
-    parameter: string;
     year: number;
     quarter: Quarter;
-}
-export declare class CreateIndikatorOperationalDto {
     sectionId: number;
+    no: string;
+    sectionLabel: string;
+    bobotSection: number;
     subNo: string;
     indikator: string;
     bobotIndikator: number;
-    sumberRisiko?: string | null;
-    dampak?: string | null;
-    mode: 'RASIO' | 'NILAI_TUNGGAL';
-    pembilangLabel?: string | null;
-    pembilangValue?: number | null;
-    penyebutLabel?: string | null;
-    penyebutValue?: number | null;
-    formula?: string | null;
+    sumberRisiko?: string;
+    dampak?: string;
+    low?: string;
+    lowToModerate?: string;
+    moderate?: string;
+    moderateToHigh?: string;
+    high?: string;
+    mode: CalculationMode;
+    formula?: string;
     isPercent?: boolean;
-    hasil?: number | null;
-    peringkat?: number;
-    weighted?: number;
-    keterangan?: string | null;
-    year: number;
-    quarter: Quarter;
+    pembilangLabel?: string;
+    pembilangValue?: number;
+    penyebutLabel?: string;
+    penyebutValue?: number;
+    hasil?: number;
+    hasilText?: string;
+    peringkat: number;
+    weighted: number;
+    keterangan?: string;
+    createdBy?: string;
 }

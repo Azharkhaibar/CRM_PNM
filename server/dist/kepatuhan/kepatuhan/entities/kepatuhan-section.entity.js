@@ -14,16 +14,18 @@ const typeorm_1 = require("typeorm");
 const kepatuhan_entity_1 = require("./kepatuhan.entity");
 let KepatuhanSection = class KepatuhanSection {
     id;
+    year;
+    quarter;
     no;
     bobotSection;
     parameter;
     description;
-    category;
     sortOrder;
+    isActive;
     createdAt;
     updatedAt;
     isDeleted;
-    kepatuhan;
+    kepatuhanIndicators;
 };
 exports.KepatuhanSection = KepatuhanSection;
 __decorate([
@@ -31,7 +33,15 @@ __decorate([
     __metadata("design:type", Number)
 ], KepatuhanSection.prototype, "id", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'varchar', length: 50, unique: true }),
+    (0, typeorm_1.Column)({ type: 'int' }),
+    __metadata("design:type", Number)
+], KepatuhanSection.prototype, "year", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'enum', enum: kepatuhan_entity_1.Quarter }),
+    __metadata("design:type", String)
+], KepatuhanSection.prototype, "quarter", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'varchar', length: 50 }),
     __metadata("design:type", String)
 ], KepatuhanSection.prototype, "no", void 0);
 __decorate([
@@ -40,6 +50,7 @@ __decorate([
         type: 'decimal',
         precision: 5,
         scale: 2,
+        default: 100,
     }),
     __metadata("design:type", Number)
 ], KepatuhanSection.prototype, "bobotSection", void 0);
@@ -52,10 +63,6 @@ __decorate([
     __metadata("design:type", Object)
 ], KepatuhanSection.prototype, "description", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'varchar', length: 100, nullable: true }),
-    __metadata("design:type", Object)
-], KepatuhanSection.prototype, "category", void 0);
-__decorate([
     (0, typeorm_1.Column)({
         name: 'sort_order',
         type: 'int',
@@ -63,6 +70,14 @@ __decorate([
     }),
     __metadata("design:type", Number)
 ], KepatuhanSection.prototype, "sortOrder", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        name: 'is_active',
+        type: 'boolean',
+        default: true,
+    }),
+    __metadata("design:type", Boolean)
+], KepatuhanSection.prototype, "isActive", void 0);
 __decorate([
     (0, typeorm_1.CreateDateColumn)({ name: 'created_at' }),
     __metadata("design:type", Date)
@@ -72,14 +87,19 @@ __decorate([
     __metadata("design:type", Date)
 ], KepatuhanSection.prototype, "updatedAt", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ name: 'is_deleted', type: 'boolean', default: false }),
+    (0, typeorm_1.Column)({
+        name: 'is_deleted',
+        type: 'boolean',
+        default: false,
+    }),
     __metadata("design:type", Boolean)
 ], KepatuhanSection.prototype, "isDeleted", void 0);
 __decorate([
     (0, typeorm_1.OneToMany)(() => kepatuhan_entity_1.Kepatuhan, (kepatuhan) => kepatuhan.section),
     __metadata("design:type", Array)
-], KepatuhanSection.prototype, "kepatuhan", void 0);
+], KepatuhanSection.prototype, "kepatuhanIndicators", void 0);
 exports.KepatuhanSection = KepatuhanSection = __decorate([
-    (0, typeorm_1.Entity)('kepatuhan_sections')
+    (0, typeorm_1.Entity)('sections_kepatuhan'),
+    (0, typeorm_1.Index)('IDX_STRATEGIK_SECTION_PERIOD_UNIQUE', ['year', 'quarter', 'no', 'parameter'], { unique: true })
 ], KepatuhanSection);
 //# sourceMappingURL=kepatuhan-section.entity.js.map

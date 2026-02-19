@@ -1,7 +1,8 @@
 import { InvestasiSection } from './new-investasi-section.entity';
 export declare enum CalculationMode {
     RASIO = "RASIO",
-    NILAI_TUNGGAL = "NILAI_TUNGGAL"
+    NILAI_TUNGGAL = "NILAI_TUNGGAL",
+    TEKS = "TEKS"
 }
 export declare enum Quarter {
     Q1 = "Q1",
@@ -21,28 +22,35 @@ export declare class Investasi {
     subNo: string;
     indikator: string;
     bobotIndikator: number;
-    sumberRisiko: string;
-    dampak: string;
-    low: string;
-    lowToModerate: string;
-    moderate: string;
-    moderateToHigh: string;
-    high: string;
+    sumberRisiko: string | null;
+    dampak: string | null;
+    low: string | null;
+    lowToModerate: string | null;
+    moderate: string | null;
+    moderateToHigh: string | null;
+    high: string | null;
     mode: CalculationMode;
-    numeratorLabel: string;
-    numeratorValue: number;
-    denominatorLabel: string;
-    denominatorValue: number;
-    formula: string;
+    formula: string | null;
     isPercent: boolean;
-    hasil: number;
+    pembilangLabel: string | null;
+    pembilangValue: number | null;
+    penyebutLabel: string | null;
+    penyebutValue: number | null;
+    hasil: number | null;
+    hasilText: string | null;
     peringkat: number;
     weighted: number;
-    keterangan: string;
+    keterangan: string | null;
+    isValidated: boolean;
+    validatedAt: Date | null;
+    validatedBy: string | null;
     createdAt: Date;
     updatedAt: Date;
     isDeleted: boolean;
-    deletedAt: Date;
-    createdBy: string;
-    updatedBy: string;
+    deletedAt: Date | null;
+    createdBy: string | null;
+    updatedBy: string | null;
+    deletedBy: string | null;
+    version: number;
+    revisionNotes: string | null;
 }

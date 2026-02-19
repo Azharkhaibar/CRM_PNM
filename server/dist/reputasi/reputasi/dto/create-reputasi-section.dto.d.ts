@@ -1,8 +1,11 @@
+import { Quarter } from '../entities/reputasi.entity';
 export declare class CreateReputasiSectionDto {
     no: string;
-    bobotSection: number;
     parameter: string;
+    bobotSection?: number;
     description?: string;
-    category?: string;
     sortOrder?: number;
+    year: number;
+    quarter: Quarter;
+    isActive?: boolean;
 }

@@ -1,94 +1,90 @@
-// types/investasi.ts
-export enum CalculationMode {
-  RASIO = 'RASIO',
-  NILAI_TUNGGAL = 'NILAI_TUNGGAL',
-}
+// src/types/investasi.types.ts
 
-export enum Quarter {
-  Q1 = 'Q1',
-  Q2 = 'Q2',
-  Q3 = 'Q3',
-  Q4 = 'Q4',
-}
+export type Quarter = 'Q1' | 'Q2' | 'Q3' | 'Q4';
 
-// Section Interface
+export type CalculationMode = 'RASIO' | 'NILAI_TUNGGAL' | 'TEKS';
+
 export interface InvestasiSection {
   id: number;
   no: string;
   bobotSection: number;
   parameter: string;
-  description?: string;
-  createdAt?: Date;
-  updatedAt?: Date;
-  isDeleted?: boolean;
+  description: string | null;
+  sortOrder: number;
+  isActive: boolean;
+  year: number;
+  quarter: Quarter;
+  createdAt: Date;
+  updatedAt: Date;
+  isDeleted: boolean;
+  createdBy?: string | null;
+  updatedBy?: string | null;
 }
 
-// Investasi Interface
-export interface Investasi {
+export interface CreateInvestasiSectionData {
+  no: string;
+  parameter: string;
+  bobotSection?: number;
+  description?: string;
+  sortOrder?: number;
+  isActive?: boolean;
+  year: number;
+  quarter: Quarter;
+}
+
+export interface UpdateInvestasiSectionData {
+  no?: string;
+  parameter?: string;
+  bobotSection?: number;
+  description?: string;
+  sortOrder?: number;
+  isActive?: boolean;
+  year?: number;
+  quarter?: Quarter;
+}
+
+export interface InvestasiIndikator {
   id: number;
   year: number;
   quarter: Quarter;
-
-  // Section relation
   sectionId: number;
-  section?: InvestasiSection;
-
-  // Section data (denormalized)
   no: string;
   sectionLabel: string;
   bobotSection: number;
-
-  // Indikator data
   subNo: string;
   indikator: string;
   bobotIndikator: number;
-
-  // Risk information
-  sumberRisiko?: string;
-  dampak?: string;
-
-  // Risk thresholds
-  low: string;
-  lowToModerate: string;
-  moderate: string;
-  moderateToHigh: string;
-  high: string;
-
-  // Calculation components
+  sumberRisiko: string | null;
+  dampak: string | null;
+  low: string | null;
+  lowToModerate: string | null;
+  moderate: string | null;
+  moderateToHigh: string | null;
+  high: string | null;
   mode: CalculationMode;
-  numeratorLabel?: string;
-  numeratorValue?: number;
-  denominatorLabel: string;
-  denominatorValue: number;
-  formula?: string;
+  formula: string | null;
   isPercent: boolean;
-
-  // Results
-  hasil?: number;
+  pembilangLabel: string | null;
+  pembilangValue: number | null;
+  penyebutLabel: string | null;
+  penyebutValue: number | null;
+  hasil: number | null;
+  hasilText: string | null;
   peringkat: number;
   weighted: number;
-  keterangan?: string;
-
-  // Timestamps
-  createdAt?: Date;
-  updatedAt?: Date;
-  isDeleted?: boolean;
-  deletedAt?: Date;
-  createdBy?: string;
-  updatedBy?: string;
+  keterangan: string | null;
+  isValidated: boolean;
+  version: number;
+  createdAt: Date;
+  updatedAt: Date;
+  isDeleted: boolean;
+  createdBy?: string | null;
+  updatedBy?: string | null;
+  deletedBy?: string | null;
+  section?: InvestasiSection;
 }
 
-// DTOs for API calls
-export interface CreateSectionDto {
-  no: string;
-  bobotSection: number;
-  parameter: string;
-  description?: string;
-}
-
-export interface UpdateSectionDto extends Partial<CreateSectionDto> {}
-
-export interface CreateInvestasiDto {
+export interface CreateInvestasiData {
   year: number;
   quarter: Quarter;
   sectionId: number;
@@ -105,34 +101,93 @@ export interface CreateInvestasiDto {
   moderate?: string;
   moderateToHigh?: string;
   high?: string;
-  mode?: CalculationMode;
-  numeratorLabel?: string;
-  numeratorValue?: number;
-  denominatorLabel: string;
-  denominatorValue: number;
+  mode: CalculationMode;
   formula?: string;
   isPercent?: boolean;
+  pembilangLabel?: string;
+  pembilangValue?: number;
+  penyebutLabel?: string;
+  penyebutValue?: number;
   hasil?: number;
+  hasilText?: string;
   peringkat: number;
   weighted: number;
   keterangan?: string;
+  createdBy?: string;
 }
 
-export interface UpdateInvestasiDto extends Partial<CreateInvestasiDto> {}
+export interface UpdateInvestasiData {
+  year?: number;
+  quarter?: Quarter;
+  sectionId?: number;
+  no?: string;
+  sectionLabel?: string;
+  bobotSection?: number;
+  subNo?: string;
+  indikator?: string;
+  bobotIndikator?: number;
+  sumberRisiko?: string;
+  dampak?: string;
+  low?: string;
+  lowToModerate?: string;
+  moderate?: string;
+  moderateToHigh?: string;
+  high?: string;
+  mode?: CalculationMode;
+  formula?: string;
+  isPercent?: boolean;
+  pembilangLabel?: string;
+  pembilangValue?: number;
+  penyebutLabel?: string;
+  penyebutValue?: number;
+  hasil?: number;
+  hasilText?: string;
+  peringkat?: number;
+  weighted?: number;
+  keterangan?: string;
+}
 
-// Response types
-export interface ApiResponse<T> {
-  success: boolean;
-  data?: T;
-  message?: string;
-  error?: string;
+export interface TotalWeightedResponse {
+  total: number;
+}
+
+export interface Period {
+  year: number;
+  quarter: Quarter;
+}
+
+export interface SectionWithIndicators {
+  id: number;
+  no: string;
+  parameter: string;
+  bobotSection: number;
+  year: number;
+  quarter: Quarter;
+  indicators: InvestasiIndikator[];
 }
 
 export interface SummaryResponse {
   year: number;
   quarter: Quarter;
-  totalIndicators: number;
-  totalSections: number;
+  totalItems: number;
   totalWeighted: number;
-  averageRating: number;
+  sections: Array<{
+    section: InvestasiSection;
+    items: InvestasiIndikator[];
+    totalWeighted: number;
+  }>;
+  items: InvestasiIndikator[];
 }
+
+export const transformSectionToBackend = (sectionData: any, year: number, quarter: Quarter): CreateInvestasiSectionData => {
+  return {
+    no: String(sectionData.no),
+    bobotSection: Number(sectionData.bobotSection || 0),
+    parameter: sectionData.parameter,
+    description: sectionData.description || undefined,
+    sortOrder: sectionData.sortOrder || 0,
+    isActive: sectionData.isActive ?? true,
+    year: year,
+    quarter: quarter,
+  };
+};

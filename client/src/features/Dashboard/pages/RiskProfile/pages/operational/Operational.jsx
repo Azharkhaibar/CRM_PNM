@@ -45,7 +45,7 @@ export default function Operational() {
         </nav>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-md p-6">
+      <div className="bg-white rounded-2xl p-6">
         {activeTab === 'operational' && <OperationalTab viewYear={viewYear} setViewYear={setViewYear} viewQuarter={viewQuarter} setViewQuarter={setViewQuarter} query={query} setQuery={setQuery} />}
 
         {activeTab === 'kpmr' && <KPMROperationalTab viewYear={viewYear} setViewYear={setViewYear} viewQuarter={viewQuarter} setViewQuarter={setViewQuarter} query={query} setQuery={setQuery} />}

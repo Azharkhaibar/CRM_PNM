@@ -14,194 +14,278 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ReputasiController = void 0;
 const common_1 = require("@nestjs/common");
+const swagger_1 = require("@nestjs/swagger");
 const reputasi_service_1 = require("./reputasi.service");
-const create_reputasi_dto_1 = require("./dto/create-reputasi.dto");
-const update_reputasi_dto_1 = require("./dto/update-reputasi.dto");
 const create_reputasi_section_dto_1 = require("./dto/create-reputasi-section.dto");
 const update_reputasi_section_dto_1 = require("./dto/update-reputasi-section.dto");
 const reputasi_entity_1 = require("./entities/reputasi.entity");
+const create_reputasi_dto_1 = require("./dto/create-reputasi.dto");
+const update_reputasi_dto_1 = require("./dto/update-reputasi.dto");
 let ReputasiController = class ReputasiController {
     reputasiService;
     constructor(reputasiService) {
         this.reputasiService = reputasiService;
     }
-    create(createReputasiDto) {
-        return this.reputasiService.create(createReputasiDto);
+    async createSection(createDto) {
+        return await this.reputasiService.createSection(createDto);
     }
-    findAll(year, quarter) {
-        if (year && quarter) {
-            return this.reputasiService.findByPeriod(year, quarter);
+    async getSections(isActive) {
+        return await this.reputasiService.findAllSections(isActive);
+    }
+    async getSection(id) {
+        return await this.reputasiService.findSectionById(id);
+    }
+    async updateSection(id, updateDto) {
+        return await this.reputasiService.updateSection(id, updateDto);
+    }
+    async deleteSection(id) {
+        await this.reputasiService.deleteSection(id);
+    }
+    async getSectionsWithIndicatorsByPeriod(year, quarter) {
+        return await this.reputasiService.getSectionsWithIndicatorsByPeriod(year, quarter);
+    }
+    async createIndikator(createDto) {
+        return await this.reputasiService.createIndikator(createDto);
+    }
+    async getAllIndikators() {
+        return await this.reputasiService.findAllIndikators();
+    }
+    async getIndikatorsByPeriod(year, quarter) {
+        return await this.reputasiService.findIndikatorsByPeriod(year, quarter);
+    }
+    async searchIndikators(query, year, quarter) {
+        return await this.reputasiService.searchIndikators(query, year, quarter);
+    }
+    async getIndikator(id) {
+        return await this.reputasiService.findIndikatorById(id);
+    }
+    async updateIndikator(id, updateDto) {
+        return await this.reputasiService.updateIndikator(id, updateDto);
+    }
+    async deleteIndikator(id) {
+        await this.reputasiService.deleteIndikator(id);
+    }
+    async getTotalWeighted(year, quarter) {
+        const total = await this.reputasiService.getTotalWeightedByPeriod(year, quarter);
+        return { total };
+    }
+    async getSectionsByPeriod(year, quarter) {
+        return await this.reputasiService.findSectionsByPeriod(year, quarter);
+    }
+    async getAvailablePeriods() {
+        try {
+            const periods = await this.reputasiService.getPeriods();
+            return {
+                success: true,
+                data: periods,
+                count: periods.length,
+            };
         }
-        if (year) {
-            return this.reputasiService.findByYear(year);
+        catch (error) {
+            console.error('Error in getAvailablePeriods:', error);
+            throw error;
         }
-        return this.reputasiService.findAll();
     }
-    getSummary(year, quarter) {
-        return this.reputasiService.getSummary(year, quarter);
+    async getAllPeriods() {
+        try {
+            const periods = await this.reputasiService.getPeriods();
+            const periodsWithCounts = await Promise.all(periods.map(async (period) => {
+                const count = await this.reputasiService.getIndikatorCountByPeriod(period.year, period.quarter);
+                return {
+                    ...period,
+                    indicatorCount: count,
+                };
+            }));
+            return {
+                success: true,
+                data: periodsWithCounts,
+                count: periodsWithCounts.length,
+            };
+        }
+        catch (error) {
+            console.error('Error in getAllPeriods:', error);
+            throw error;
+        }
     }
-    getReputasiScore(year, quarter) {
-        return this.reputasiService.getReputasiScore(year, quarter);
-    }
-    getRiskDistribution(year, quarter) {
-        return this.reputasiService.getRiskLevelDistribution(year, quarter);
-    }
-    findBySection(sectionId, year, quarter) {
-        return this.reputasiService.findBySection(sectionId, year, quarter);
-    }
-    findOne(id) {
-        return this.reputasiService.findOne(id);
-    }
-    update(id, updateReputasiDto) {
-        return this.reputasiService.update(id, updateReputasiDto);
-    }
-    remove(id) {
-        return this.reputasiService.remove(id);
-    }
-    deletePeriod(year, quarter) {
-        return this.reputasiService.deleteByPeriod(year, quarter);
-    }
-    bulkCreate(createReputasiDtos) {
-        return this.reputasiService.bulkCreate(createReputasiDtos);
-    }
-    createSection(createSectionDto) {
-        return this.reputasiService.createSection(createSectionDto);
-    }
-    findAllSections() {
-        return this.reputasiService.findAllSection();
-    }
-    findSectionById(id) {
-        return this.reputasiService.findSectionById(id);
-    }
-    updateSection(id, updateSectionDto) {
-        return this.reputasiService.updateSection(id, updateSectionDto);
-    }
-    deleteSection(id) {
-        return this.reputasiService.deleteSection(id);
+    async duplicateIndikator(id, year, quarter) {
+        return await this.reputasiService.duplicateIndikatorToNewPeriod(id, year, quarter);
     }
 };
 exports.ReputasiController = ReputasiController;
 __decorate([
-    (0, common_1.Post)(),
-    __param(0, (0, common_1.Body)()),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [create_reputasi_dto_1.CreateReputasiDto]),
-    __metadata("design:returntype", void 0)
-], ReputasiController.prototype, "create", null);
-__decorate([
-    (0, common_1.Get)(),
-    __param(0, (0, common_1.Query)('year')),
-    __param(1, (0, common_1.Query)('quarter')),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number, String]),
-    __metadata("design:returntype", void 0)
-], ReputasiController.prototype, "findAll", null);
-__decorate([
-    (0, common_1.Get)('summary'),
-    __param(0, (0, common_1.Query)('year', common_1.ParseIntPipe)),
-    __param(1, (0, common_1.Query)('quarter')),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number, String]),
-    __metadata("design:returntype", void 0)
-], ReputasiController.prototype, "getSummary", null);
-__decorate([
-    (0, common_1.Get)('score'),
-    __param(0, (0, common_1.Query)('year', common_1.ParseIntPipe)),
-    __param(1, (0, common_1.Query)('quarter')),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number, String]),
-    __metadata("design:returntype", void 0)
-], ReputasiController.prototype, "getReputasiScore", null);
-__decorate([
-    (0, common_1.Get)('risk-distribution'),
-    __param(0, (0, common_1.Query)('year', common_1.ParseIntPipe)),
-    __param(1, (0, common_1.Query)('quarter')),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number, String]),
-    __metadata("design:returntype", void 0)
-], ReputasiController.prototype, "getRiskDistribution", null);
-__decorate([
-    (0, common_1.Get)('section/:sectionId'),
-    __param(0, (0, common_1.Param)('sectionId', common_1.ParseIntPipe)),
-    __param(1, (0, common_1.Query)('year')),
-    __param(2, (0, common_1.Query)('quarter')),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number, Number, String]),
-    __metadata("design:returntype", void 0)
-], ReputasiController.prototype, "findBySection", null);
-__decorate([
-    (0, common_1.Get)(':id'),
-    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number]),
-    __metadata("design:returntype", void 0)
-], ReputasiController.prototype, "findOne", null);
-__decorate([
-    (0, common_1.Patch)(':id'),
-    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
-    __param(1, (0, common_1.Body)()),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number, update_reputasi_dto_1.UpdateReputasiDto]),
-    __metadata("design:returntype", void 0)
-], ReputasiController.prototype, "update", null);
-__decorate([
-    (0, common_1.Delete)(':id'),
-    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number]),
-    __metadata("design:returntype", void 0)
-], ReputasiController.prototype, "remove", null);
-__decorate([
-    (0, common_1.Delete)('period'),
-    __param(0, (0, common_1.Query)('year', common_1.ParseIntPipe)),
-    __param(1, (0, common_1.Query)('quarter')),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number, String]),
-    __metadata("design:returntype", void 0)
-], ReputasiController.prototype, "deletePeriod", null);
-__decorate([
-    (0, common_1.Post)('bulk'),
-    __param(0, (0, common_1.Body)()),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Array]),
-    __metadata("design:returntype", void 0)
-], ReputasiController.prototype, "bulkCreate", null);
-__decorate([
     (0, common_1.Post)('sections'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
+    (0, swagger_1.ApiOperation)({ summary: 'Create new reputasi section' }),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [create_reputasi_section_dto_1.CreateReputasiSectionDto]),
-    __metadata("design:returntype", void 0)
+    __metadata("design:returntype", Promise)
 ], ReputasiController.prototype, "createSection", null);
 __decorate([
-    (0, common_1.Get)('sections/all'),
+    (0, common_1.Get)('sections'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get all reputasi sections' }),
+    (0, swagger_1.ApiQuery)({ name: 'isActive', required: false, type: Boolean }),
+    __param(0, (0, common_1.Query)('isActive')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
-    __metadata("design:returntype", void 0)
-], ReputasiController.prototype, "findAllSections", null);
+    __metadata("design:paramtypes", [Boolean]),
+    __metadata("design:returntype", Promise)
+], ReputasiController.prototype, "getSections", null);
 __decorate([
     (0, common_1.Get)('sections/:id'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get reputasi section by ID' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
-    __metadata("design:returntype", void 0)
-], ReputasiController.prototype, "findSectionById", null);
+    __metadata("design:returntype", Promise)
+], ReputasiController.prototype, "getSection", null);
 __decorate([
-    (0, common_1.Patch)('sections/:id'),
+    (0, common_1.Put)('sections/:id'),
+    (0, swagger_1.ApiOperation)({ summary: 'Update reputasi section' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number, update_reputasi_section_dto_1.UpdateReputasiSectionDto]),
-    __metadata("design:returntype", void 0)
+    __metadata("design:returntype", Promise)
 ], ReputasiController.prototype, "updateSection", null);
 __decorate([
     (0, common_1.Delete)('sections/:id'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.NO_CONTENT),
+    (0, swagger_1.ApiOperation)({ summary: 'Delete reputasi section' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
-    __metadata("design:returntype", void 0)
+    __metadata("design:returntype", Promise)
 ], ReputasiController.prototype, "deleteSection", null);
+__decorate([
+    (0, common_1.Get)('indikators/sections-by-period'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get sections with indicators by period' }),
+    __param(0, (0, common_1.Query)('year', new common_1.ParseIntPipe())),
+    __param(1, (0, common_1.Query)('quarter')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, String]),
+    __metadata("design:returntype", Promise)
+], ReputasiController.prototype, "getSectionsWithIndicatorsByPeriod", null);
+__decorate([
+    (0, common_1.Post)('indikators'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
+    (0, swagger_1.ApiOperation)({ summary: 'Create new reputasi indikator' }),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [create_reputasi_dto_1.CreateReputasiDto]),
+    __metadata("design:returntype", Promise)
+], ReputasiController.prototype, "createIndikator", null);
+__decorate([
+    (0, common_1.Get)('indikators'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get all reputasi indikators' }),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], ReputasiController.prototype, "getAllIndikators", null);
+__decorate([
+    (0, common_1.Get)('indikators/period'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get reputasi indikators by period' }),
+    (0, swagger_1.ApiQuery)({ name: 'year', required: true, type: Number }),
+    (0, swagger_1.ApiQuery)({ name: 'quarter', required: true, enum: reputasi_entity_1.Quarter }),
+    __param(0, (0, common_1.Query)('year', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Query)('quarter')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, String]),
+    __metadata("design:returntype", Promise)
+], ReputasiController.prototype, "getIndikatorsByPeriod", null);
+__decorate([
+    (0, common_1.Get)('indikators/search'),
+    (0, swagger_1.ApiOperation)({ summary: 'Search reputasi indikators' }),
+    (0, swagger_1.ApiQuery)({ name: 'query', required: false }),
+    (0, swagger_1.ApiQuery)({ name: 'year', required: false }),
+    (0, swagger_1.ApiQuery)({ name: 'quarter', required: false, enum: reputasi_entity_1.Quarter }),
+    __param(0, (0, common_1.Query)('query')),
+    __param(1, (0, common_1.Query)('year')),
+    __param(2, (0, common_1.Query)('quarter')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Number, String]),
+    __metadata("design:returntype", Promise)
+], ReputasiController.prototype, "searchIndikators", null);
+__decorate([
+    (0, common_1.Get)('indikators/:id'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get reputasi indikator by ID' }),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number]),
+    __metadata("design:returntype", Promise)
+], ReputasiController.prototype, "getIndikator", null);
+__decorate([
+    (0, common_1.Put)('indikators/:id'),
+    (0, swagger_1.ApiOperation)({ summary: 'Update reputasi indikator' }),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, update_reputasi_dto_1.UpdateReputasiDto]),
+    __metadata("design:returntype", Promise)
+], ReputasiController.prototype, "updateIndikator", null);
+__decorate([
+    (0, common_1.Delete)('indikators/:id'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.NO_CONTENT),
+    (0, swagger_1.ApiOperation)({ summary: 'Delete reputasi indikator' }),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number]),
+    __metadata("design:returntype", Promise)
+], ReputasiController.prototype, "deleteIndikator", null);
+__decorate([
+    (0, common_1.Get)('total-weighted'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get total weighted by period' }),
+    (0, swagger_1.ApiQuery)({ name: 'year', required: true }),
+    (0, swagger_1.ApiQuery)({ name: 'quarter', required: true, enum: reputasi_entity_1.Quarter }),
+    __param(0, (0, common_1.Query)('year', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Query)('quarter')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, String]),
+    __metadata("design:returntype", Promise)
+], ReputasiController.prototype, "getTotalWeighted", null);
+__decorate([
+    (0, common_1.Get)('sections/period'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get reputasi sections by period' }),
+    (0, swagger_1.ApiQuery)({ name: 'year', required: true, type: Number }),
+    (0, swagger_1.ApiQuery)({ name: 'quarter', required: true, enum: reputasi_entity_1.Quarter }),
+    __param(0, (0, common_1.Query)('year', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Query)('quarter')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, String]),
+    __metadata("design:returntype", Promise)
+], ReputasiController.prototype, "getSectionsByPeriod", null);
+__decorate([
+    (0, common_1.Get)('periods'),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Get available periods',
+        description: 'Get list of distinct years and quarters that have data',
+    }),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], ReputasiController.prototype, "getAvailablePeriods", null);
+__decorate([
+    (0, common_1.Get)('all-periods'),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Get all periods with count',
+        description: 'Get periods with indicator counts',
+    }),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], ReputasiController.prototype, "getAllPeriods", null);
+__decorate([
+    (0, common_1.Post)('indikators/:id/duplicate'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
+    (0, swagger_1.ApiOperation)({ summary: 'Duplicate indikator to new period' }),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Query)('year', common_1.ParseIntPipe)),
+    __param(2, (0, common_1.Query)('quarter')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, Number, String]),
+    __metadata("design:returntype", Promise)
+], ReputasiController.prototype, "duplicateIndikator", null);
 exports.ReputasiController = ReputasiController = __decorate([
+    (0, swagger_1.ApiTags)('Reputasi'),
     (0, common_1.Controller)('reputasi'),
     __metadata("design:paramtypes", [reputasi_service_1.ReputasiService])
 ], ReputasiController);

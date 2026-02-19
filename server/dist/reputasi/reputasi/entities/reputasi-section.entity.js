@@ -14,16 +14,18 @@ const typeorm_1 = require("typeorm");
 const reputasi_entity_1 = require("./reputasi.entity");
 let ReputasiSection = class ReputasiSection {
     id;
+    year;
+    quarter;
     no;
     bobotSection;
     parameter;
     description;
-    category;
     sortOrder;
+    isActive;
     createdAt;
     updatedAt;
     isDeleted;
-    reputasi;
+    reputasiIndicators;
 };
 exports.ReputasiSection = ReputasiSection;
 __decorate([
@@ -31,7 +33,15 @@ __decorate([
     __metadata("design:type", Number)
 ], ReputasiSection.prototype, "id", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'varchar', length: 50, unique: true }),
+    (0, typeorm_1.Column)({ type: 'int' }),
+    __metadata("design:type", Number)
+], ReputasiSection.prototype, "year", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'enum', enum: ['Q1', 'Q2', 'Q3', 'Q4'] }),
+    __metadata("design:type", String)
+], ReputasiSection.prototype, "quarter", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'varchar', length: 50 }),
     __metadata("design:type", String)
 ], ReputasiSection.prototype, "no", void 0);
 __decorate([
@@ -40,6 +50,7 @@ __decorate([
         type: 'decimal',
         precision: 5,
         scale: 2,
+        default: 100,
     }),
     __metadata("design:type", Number)
 ], ReputasiSection.prototype, "bobotSection", void 0);
@@ -52,10 +63,6 @@ __decorate([
     __metadata("design:type", Object)
 ], ReputasiSection.prototype, "description", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'varchar', length: 100, nullable: true }),
-    __metadata("design:type", Object)
-], ReputasiSection.prototype, "category", void 0);
-__decorate([
     (0, typeorm_1.Column)({
         name: 'sort_order',
         type: 'int',
@@ -63,6 +70,14 @@ __decorate([
     }),
     __metadata("design:type", Number)
 ], ReputasiSection.prototype, "sortOrder", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        name: 'is_active',
+        type: 'boolean',
+        default: true,
+    }),
+    __metadata("design:type", Boolean)
+], ReputasiSection.prototype, "isActive", void 0);
 __decorate([
     (0, typeorm_1.CreateDateColumn)({ name: 'created_at' }),
     __metadata("design:type", Date)
@@ -72,14 +87,19 @@ __decorate([
     __metadata("design:type", Date)
 ], ReputasiSection.prototype, "updatedAt", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ name: 'is_deleted', type: 'boolean', default: false }),
+    (0, typeorm_1.Column)({
+        name: 'is_deleted',
+        type: 'boolean',
+        default: false,
+    }),
     __metadata("design:type", Boolean)
 ], ReputasiSection.prototype, "isDeleted", void 0);
 __decorate([
     (0, typeorm_1.OneToMany)(() => reputasi_entity_1.Reputasi, (reputasi) => reputasi.section),
     __metadata("design:type", Array)
-], ReputasiSection.prototype, "reputasi", void 0);
+], ReputasiSection.prototype, "reputasiIndicators", void 0);
 exports.ReputasiSection = ReputasiSection = __decorate([
-    (0, typeorm_1.Entity)('reputasi_sections')
+    (0, typeorm_1.Entity)('sections_reputasi'),
+    (0, typeorm_1.Index)('IDX_REPUTASI_SECTION_PERIOD_UNIQUE', ['year', 'quarter', 'no', 'parameter'], { unique: true })
 ], ReputasiSection);
 //# sourceMappingURL=reputasi-section.entity.js.map

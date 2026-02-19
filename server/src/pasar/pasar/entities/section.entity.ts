@@ -1,44 +1,77 @@
+// src/entities/strategik/strategik-section.entity.ts
 import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
-  OneToMany,
   CreateDateColumn,
   UpdateDateColumn,
+  OneToMany,
+  Index,
 } from 'typeorm';
-import { IndikatorPasar } from './indikator.entity';
-
+import { Quarter, Pasar } from './indikator.entity';
 @Entity('sections_pasar')
-export class SectionPasar {
+@Index(
+  'IDX_PASAR_SECTION_PERIOD_UNIQUE',
+  ['year', 'quarter', 'no', 'parameter'],
+  { unique: true },
+)
+export class PasarSection {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ type: 'varchar', length: 10 })
-  no_sec: string;
+  // TAMBAHKAN INI - Section HARUS punya periode
+  @Column({ type: 'int' })
+  year: number;
 
-  @Column({ type: 'text' })
-  nama_section: string;
+  @Column({ type: 'enum', enum: Quarter })
+  quarter: Quarter;
 
-  @Column('decimal', { precision: 5, scale: 2 })
-  bobot_par: number;
+  @Column({ type: 'varchar', length: 50 })
+  no: string; // Contoh: "6.1"
 
-  @Column()
-  tahun: number;
-
-  @Column({ type: 'enum', enum: ['Q1', 'Q2', 'Q3', 'Q4'] })
-  triwulan: string;
-
-  @OneToMany(() => IndikatorPasar, (indikator) => indikator.section, {
-    cascade: true,
+  @Column({
+    name: 'bobot_section',
+    type: 'decimal',
+    precision: 5,
+    scale: 2,
+    default: 100,
   })
-  indikators: IndikatorPasar[];
+  bobotSection: number;
 
-  @Column('decimal', { precision: 10, scale: 2, default: 0 })
-  total_weighted: number;
+  @Column({ type: 'varchar', length: 500 })
+  parameter: string; // Nama section
 
-  @CreateDateColumn()
-  created_at: Date;
+  @Column({ type: 'text', nullable: true })
+  description: string | null;
 
-  @UpdateDateColumn()
-  updated_at: Date;
+  @Column({
+    name: 'sort_order',
+    type: 'int',
+    default: 0,
+  })
+  sortOrder: number;
+
+  @Column({
+    name: 'is_active',
+    type: 'boolean',
+    default: true,
+  })
+  isActive: boolean;
+
+  @CreateDateColumn({ name: 'created_at' })
+  createdAt: Date;
+
+  @UpdateDateColumn({ name: 'updated_at' })
+  updatedAt: Date;
+
+  @Column({
+    name: 'is_deleted',
+    type: 'boolean',
+    default: false,
+  })
+  isDeleted: boolean;
+
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+  @OneToMany(() => Pasar, (pasar) => pasar.section)
+  pasarIndicators: Pasar[];
 }

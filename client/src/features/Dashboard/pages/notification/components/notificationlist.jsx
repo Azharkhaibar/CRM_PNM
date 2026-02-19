@@ -1,6 +1,7 @@
+// NotificationList.jsx
 import { motion, AnimatePresence } from 'framer-motion';
 import { BellOff, Loader2, RefreshCw, CheckSquare, Square } from 'lucide-react';
-import NotificationItem from './NotificationItem'; // Pastikan import path benar
+import NotificationItem from './NotificationItem';
 import { useState } from 'react';
 
 export default function NotificationList({ darkMode, notifications, selectedNotifications, getNotificationIcon, getTypeColor, formatTime, onSelectNotification, onMarkAsRead, onDelete, onRefresh, isLoading = false, isRefreshing = false }) {
@@ -9,8 +10,10 @@ export default function NotificationList({ darkMode, notifications, selectedNoti
   const handleRefresh = async () => {
     console.log('🔄 Refreshing notifications...');
     try {
-      await onRefresh?.();
-      console.log('✅ Refresh completed');
+      if (onRefresh) {
+        await onRefresh();
+        console.log('✅ Refresh completed');
+      }
     } catch (error) {
       console.error('❌ Refresh failed:', error);
     }
@@ -18,34 +21,38 @@ export default function NotificationList({ darkMode, notifications, selectedNoti
 
   const handleSelectNotification = (notificationId, isSelected) => {
     console.log('🔘 Selection update:', { notificationId, isSelected });
-
-    let newSelected;
-    if (isSelected) {
-      newSelected = [...selectedNotifications, notificationId];
-    } else {
-      newSelected = selectedNotifications.filter((id) => id !== notificationId);
+    if (onSelectNotification) {
+      onSelectNotification(notificationId, isSelected);
     }
-
-    console.log('📋 New selection:', newSelected);
-    onSelectNotification(newSelected);
   };
 
   const handleSelectAll = () => {
     if (selectedNotifications.length === notifications.length) {
       console.log('❌ Deselecting all notifications');
-      onSelectNotification([]);
+      // Pass all IDs with false to deselect all
+      notifications.forEach((notif) => {
+        if (onSelectNotification) {
+          onSelectNotification(notif.id, false);
+        }
+      });
     } else {
       console.log('✅ Selecting all notifications:', notifications.length);
-      const allIds = notifications.map((n) => n.id);
-      onSelectNotification(allIds);
+      // Pass all IDs with true to select all
+      notifications.forEach((notif) => {
+        if (onSelectNotification) {
+          onSelectNotification(notif.id, true);
+        }
+      });
     }
   };
 
   const handleMarkAsRead = async (notificationId) => {
     console.log('📝 Marking as read:', notificationId);
     try {
-      await onMarkAsRead(notificationId);
-      console.log('✅ Marked as read:', notificationId);
+      if (onMarkAsRead) {
+        await onMarkAsRead(notificationId);
+        console.log('✅ Marked as read:', notificationId);
+      }
     } catch (error) {
       console.error('❌ Failed to mark as read:', error);
     }
@@ -53,16 +60,11 @@ export default function NotificationList({ darkMode, notifications, selectedNoti
 
   const handleDelete = async (notificationId) => {
     console.log('🗑️ Deleting notification:', notificationId);
-
-    // Remove from selection first
-    const newSelected = selectedNotifications.filter((id) => id !== notificationId);
-    if (newSelected.length !== selectedNotifications.length) {
-      onSelectNotification(newSelected);
-    }
-
     try {
-      await onDelete(notificationId);
-      console.log('✅ Deleted notification:', notificationId);
+      if (onDelete) {
+        await onDelete(notificationId);
+        console.log('✅ Deleted notification:', notificationId);
+      }
     } catch (error) {
       console.error('❌ Failed to delete notification:', error);
       alert('Failed to delete notification. Please try again.');
@@ -179,7 +181,7 @@ export default function NotificationList({ darkMode, notifications, selectedNoti
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className={`text-center pt-4 border-t ${darkMode ? 'border-gray-700 text-gray-400' : 'border-gray-200 text-gray-500'}`}>
         <p className="text-sm">
           Showing {notifications.length} notification{notifications.length !== 1 ? 's' : ''}
-          {notifications.some((n) => n.metadata?.is_fallback) && <span className="ml-2 text-yellow-600 dark:text-yellow-400">• Some notifications are stored locally</span>}
+          {notifications.some((n) => n.metadata?.is_local_fallback) && <span className="ml-2 text-yellow-600 dark:text-yellow-400">• Some notifications are stored locally</span>}
           {selectedNotifications.length > 0 && <span className="ml-2 text-blue-600 dark:text-blue-400">• {selectedNotifications.length} selected</span>}
         </p>
       </motion.div>

@@ -1,14 +1,15 @@
+// src/features/Dashboard/pages/RiskProfile/pages/Operasional/operasional.module.ts
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { OperationalService } from './operasional.service'; // Import OperationalService
 import { OperasionalController } from './operasional.controller';
-import { Operational } from './entities/operasional.entity';
-import { SectionOperational } from './entities/operasional-section.entity';
+import { OperasionalService } from './operasional.service';
+import { OperasionalSection } from './entities/operasional-section.entity';
+import { Operasional } from './entities/operasional.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Operational, SectionOperational])],
+  imports: [TypeOrmModule.forFeature([OperasionalSection, Operasional])],
   controllers: [OperasionalController],
-  providers: [OperationalService], // Gunakan OperationalService
-  exports: [OperationalService], // Ekspor juga jika diperlukan
+  providers: [OperasionalService],
+  exports: [OperasionalService],
 })
 export class OperasionalModule {}

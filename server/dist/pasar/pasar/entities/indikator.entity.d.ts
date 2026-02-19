@@ -1,27 +1,56 @@
-import { SectionPasar } from './section.entity';
-export declare class IndikatorPasar {
+import { PasarSection } from './section.entity';
+export declare enum CalculationMode {
+    RASIO = "RASIO",
+    NILAI_TUNGGAL = "NILAI_TUNGGAL",
+    TEKS = "TEKS"
+}
+export declare enum Quarter {
+    Q1 = "Q1",
+    Q2 = "Q2",
+    Q3 = "Q3",
+    Q4 = "Q4"
+}
+export declare class Pasar {
     id: number;
-    section: SectionPasar;
-    nama_indikator: string;
-    bobot_indikator: number;
-    pembilang_label: string | null;
-    pembilang_value: number | null;
-    penyebut_label: string | null;
-    penyebut_value: number | null;
-    sumber_risiko: string;
-    dampak: string;
-    low: string;
-    low_to_moderate: string;
-    moderate: string;
-    moderate_to_high: string;
-    high: string;
+    year: number;
+    quarter: Quarter;
+    sectionId: number;
+    section: PasarSection;
+    no: string;
+    sectionLabel: string;
+    bobotSection: number;
+    subNo: string;
+    indikator: string;
+    bobotIndikator: number;
+    sumberRisiko: string | null;
+    dampak: string | null;
+    low: string | null;
+    lowToModerate: string | null;
+    moderate: string | null;
+    moderateToHigh: string | null;
+    high: string | null;
+    mode: CalculationMode;
+    formula: string | null;
+    isPercent: boolean;
+    pembilangLabel: string | null;
+    pembilangValue: number | null;
+    penyebutLabel: string | null;
+    penyebutValue: number | null;
     hasil: number | null;
+    hasilText: string | null;
     peringkat: number;
     weighted: number;
     keterangan: string | null;
-    mode: string;
-    formula: string | null;
-    is_percent: boolean;
-    created_at: Date;
-    updated_at: Date;
+    isValidated: boolean;
+    validatedAt: Date | null;
+    validatedBy: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+    isDeleted: boolean;
+    deletedAt: Date | null;
+    createdBy: string | null;
+    updatedBy: string | null;
+    deletedBy: string | null;
+    version: number;
+    revisionNotes: string | null;
 }

@@ -1,82 +1,180 @@
-// types/operasional.types.ts
-export enum CalculationMode {
-  RASIO = 'RASIO',
-  NILAI_TUNGGAL = 'NILAI_TUNGGAL',
-}
+// src/types/operasional.types.ts
 
-export enum Quarter {
-  Q1 = 'Q1',
-  Q2 = 'Q2',
-  Q3 = 'Q3',
-  Q4 = 'Q4',
-}
+export type Quarter = 'Q1' | 'Q2' | 'Q3' | 'Q4';
 
-export interface SectionOperational {
+export type CalculationMode = 'RASIO' | 'NILAI_TUNGGAL' | 'TEKS';
+
+export interface OperasionalSection {
   id: number;
-  year: number;
-  quarter: Quarter;
   no: string;
   bobotSection: number;
   parameter: string;
-  createdAt?: Date;
-  updatedAt?: Date;
-  isDeleted?: boolean;
-  deletedAt?: Date | null;
-  indikators?: Operational[];
+  description: string | null;
+  sortOrder: number;
+  isActive: boolean;
+  year: number;
+  quarter: Quarter;
+  createdAt: Date;
+  updatedAt: Date;
+  isDeleted: boolean;
+  createdBy?: string | null;
+  updatedBy?: string | null;
 }
 
-export interface Operational {
+export interface OperasionalIndikator {
   id: number;
   year: number;
   quarter: Quarter;
   sectionId: number;
-  section: SectionOperational;
-  subNo: string;
-  indikator: string; // PERBEDAAN: 'indikator' bukan 'namaIndikator'
-  bobotIndikator: number;
-  sumberRisiko?: string | null;
-  dampak?: string | null;
-  mode: CalculationMode;
-  pembilangLabel?: string | null;
-  pembilangValue?: number | null;
-  penyebutLabel?: string | null;
-  penyebutValue?: number | null;
-  formula?: string | null;
-  isPercent: boolean;
-  hasil?: number | null; // PERBEDAAN: number bukan string
-  peringkat: number;
-  weighted: number;
-  keterangan?: string | null;
-  createdAt?: Date;
-  updatedAt?: Date;
-  isDeleted?: boolean;
-  deletedAt?: Date | null;
-}
-
-// Type untuk form frontend (sesuai dengan operational-tab.jsx)
-export interface OperationalFormData {
-  id?: string | null;
+  no: string;
+  sectionLabel: string;
+  bobotSection: number;
   subNo: string;
   indikator: string;
-  mode: CalculationMode;
-  formula: string;
-  isPercent: boolean;
   bobotIndikator: number;
-  sumberRisiko: string;
-  dampak: string;
-  pembilangLabel: string;
-  pembilangValue: string | number;
-  penyebutLabel: string;
-  penyebutValue: string | number;
+  sumberRisiko: string | null;
+  dampak: string | null;
+  low: string | null;
+  lowToModerate: string | null;
+  moderate: string | null;
+  moderateToHigh: string | null;
+  high: string | null;
+  mode: CalculationMode;
+  formula: string | null;
+  isPercent: boolean;
+  pembilangLabel: string | null;
+  pembilangValue: number | null;
+  penyebutLabel: string | null;
+  penyebutValue: number | null;
+  hasil: number | null;
+  hasilText: string | null;
   peringkat: number;
-  weighted: string | number;
-  hasil: string | number;
-  keterangan: string;
+  weighted: number;
+  keterangan: string | null;
+  isValidated: boolean;
+  version: number;
+  createdAt: Date;
+  updatedAt: Date;
+  isDeleted: boolean;
+  createdBy?: string | null;
+  updatedBy?: string | null;
+  deletedBy?: string | null;
+  section?: OperasionalSection;
 }
 
-export interface SectionFormData {
-  id?: string | null;
+export interface CreateOperasionalSectionData {
   no: string;
-  bobotSection: number;
   parameter: string;
+  bobotSection?: number;
+  description?: string;
+  sortOrder?: number;
+  isActive?: boolean;
+  year: number;
+  quarter: Quarter;
+}
+
+export interface UpdateOperasionalSectionData {
+  no?: string;
+  parameter?: string;
+  bobotSection?: number;
+  description?: string;
+  sortOrder?: number;
+  isActive?: boolean;
+  year?: number;
+  quarter?: Quarter;
+}
+
+export interface CreateOperasionalData {
+  year: number;
+  quarter: Quarter;
+  sectionId: number;
+  no: string;
+  sectionLabel: string;
+  bobotSection: number;
+  subNo: string;
+  indikator: string;
+  bobotIndikator: number;
+  sumberRisiko?: string;
+  dampak?: string;
+  low?: string;
+  lowToModerate?: string;
+  moderate?: string;
+  moderateToHigh?: string;
+  high?: string;
+  mode: CalculationMode;
+  formula?: string;
+  isPercent?: boolean;
+  pembilangLabel?: string;
+  pembilangValue?: number;
+  penyebutLabel?: string;
+  penyebutValue?: number;
+  hasil?: number;
+  hasilText?: string;
+  peringkat: number;
+  weighted: number;
+  keterangan?: string;
+  createdBy?: string;
+}
+
+export interface UpdateOperasionalData {
+  year?: number;
+  quarter?: Quarter;
+  sectionId?: number;
+  no?: string;
+  sectionLabel?: string;
+  bobotSection?: number;
+  subNo?: string;
+  indikator?: string;
+  bobotIndikator?: number;
+  sumberRisiko?: string;
+  dampak?: string;
+  low?: string;
+  lowToModerate?: string;
+  moderate?: string;
+  moderateToHigh?: string;
+  high?: string;
+  mode?: CalculationMode;
+  formula?: string;
+  isPercent?: boolean;
+  pembilangLabel?: string;
+  pembilangValue?: number;
+  penyebutLabel?: string;
+  penyebutValue?: number;
+  hasil?: number;
+  hasilText?: string;
+  peringkat?: number;
+  weighted?: number;
+  keterangan?: string;
+}
+
+export interface TotalWeightedResponse {
+  total: number;
+}
+
+export interface Period {
+  year: number;
+  quarter: Quarter;
+}
+
+export interface SectionWithIndicators {
+  id: number;
+  no: string;
+  parameter: string;
+  bobotSection: number;
+  year: number;
+  quarter: Quarter;
+  indicators: OperasionalIndikator[];
+}
+
+export interface SummaryResponse {
+  year: number;
+  quarter: Quarter;
+  totalItems: number;
+  totalWeighted: number;
+  sections: Array<{
+    section: OperasionalSection;
+    items: OperasionalIndikator[];
+    totalWeighted: number;
+  }>;
+  items: OperasionalIndikator[];
 }

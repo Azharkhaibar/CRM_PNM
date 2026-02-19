@@ -18,7 +18,7 @@ let PasarModule = class PasarModule {
 exports.PasarModule = PasarModule;
 exports.PasarModule = PasarModule = __decorate([
     (0, common_1.Module)({
-        imports: [typeorm_1.TypeOrmModule.forFeature([section_entity_1.SectionPasar, indikator_entity_1.IndikatorPasar])],
+        imports: [typeorm_1.TypeOrmModule.forFeature([section_entity_1.PasarSection, indikator_entity_1.Pasar])],
         controllers: [pasar_controller_1.PasarController],
         providers: [pasar_service_1.PasarService],
         exports: [pasar_service_1.PasarService],

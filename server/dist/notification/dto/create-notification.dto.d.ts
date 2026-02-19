@@ -4,7 +4,7 @@ export declare class CreateNotificationDto {
     type: NotificationType;
     title: string;
     message: string;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, any> | null;
     category?: string;
     expiresAt?: Date | null;
 }

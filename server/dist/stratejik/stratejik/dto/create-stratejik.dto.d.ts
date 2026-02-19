@@ -1,5 +1,5 @@
 import { CalculationMode, Quarter } from '../entities/stratejik.entity';
-export declare class CreateStratejikDto {
+export declare class CreateStrategikDto {
     year: number;
     quarter: Quarter;
     sectionId: number;
@@ -16,16 +16,17 @@ export declare class CreateStratejikDto {
     moderate?: string;
     moderateToHigh?: string;
     high?: string;
-    mode?: CalculationMode;
+    mode: CalculationMode;
+    formula?: string;
+    isPercent?: boolean;
     pembilangLabel?: string;
     pembilangValue?: number;
     penyebutLabel?: string;
     penyebutValue?: number;
-    formula?: string;
-    isPercent?: boolean;
-    hasil?: string;
+    hasil?: number;
     hasilText?: string;
     peringkat: number;
-    weighted?: number;
+    weighted: number;
     keterangan?: string;
+    createdBy?: string;
 }

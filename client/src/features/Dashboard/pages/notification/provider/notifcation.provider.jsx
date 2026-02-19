@@ -1,9 +1,10 @@
+// notification.provider.jsx - PERBAIKAN
 import React, { createContext, useContext } from 'react';
-import { useUserNotifications } from '../hooks/notification.hook';
+import { useNotifications } from '../hooks/notification.hook';
 const NotificationContext = createContext(null);
 
 export const NotificationProvider = ({ children }) => {
-  const notificationApi = useUserNotifications();
+  const notificationApi = useNotifications(); // PASTIKAN NAMA FUNCTION SAMA
   return <NotificationContext.Provider value={notificationApi}>{children}</NotificationContext.Provider>;
 };
 

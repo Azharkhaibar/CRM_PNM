@@ -1,473 +1,557 @@
-import { useState, useCallback, useEffect } from 'react';
-import { reputasiService } from '../../services/reputasi/reputasi.service';
-import { Reputasi, ReputasiSection, CreateReputasiDto, CreateReputasiSectionDto, UpdateReputasiDto, UpdateReputasiSectionDto, Quarter, ReputasiSummary, StructuredReputasi } from '../../types/reputasi.types';
+// src/features/Dashboard/pages/RiskProfile/pages/Reputasi/hooks/useReputasi.ts
+import { useCallback, useEffect, useState } from 'react';
+// import { Quarter, computeHasil, computeWeightedAuto, CreateReputasiData, CreateReputasiSectionData, Period, ReputasiIndikator, ReputasiSection, transformIndicatorToBackend, UpdateReputasiData, UpdateReputasiSectionData, transformSectionToBackend, transformIndicatorToFrontend, reputasiApiService } from '../services/reputasi.service';
 
-export const useReputasi = () => {
-  const [loading, setLoading] = useState(false);
+import { Quarter, computeHasil, computeWeightedAuto, CreateReputasiData, CreateReputasiSectionData, ReputasiSection, ReputasiIndikator, reputasiApiService, transformIndicatorToBackend, transformIndicatorToFrontend, transformSectionToBackend, UpdateReputasiData, UpdateReputasiSectionData, Period } from '../../services/reputasi/reputasi.service';
+
+// EMPTY TEMPLATES - TAMBAHKAN YEAR DAN QUARTER
+export const emptyIndicator = {
+  id: null,
+  subNo: '',
+  indikator: '',
+  mode: 'RASIO' as const,
+  formula: '',
+  isPercent: false,
+  bobotIndikator: 0,
+  sumberRisiko: '',
+  dampak: '',
+  pembilangLabel: '',
+  pembilangValue: '',
+  penyebutLabel: '',
+  penyebutValue: '',
+  peringkat: 1,
+  weighted: '',
+  hasil: '',
+  hasilText: '',
+  keterangan: '',
+  low: '',
+  lowToModerate: '',
+  moderate: '',
+  moderateToHigh: '',
+  high: '',
+  sectionId: null,
+  year: new Date().getFullYear(),
+  quarter: 'Q1' as Quarter,
+};
+
+export const emptySection = {
+  id: null,
+  no: '',
+  bobotSection: 100,
+  parameter: '',
+  description: '',
+  sortOrder: 0,
+  isActive: true,
+  year: new Date().getFullYear(),
+  quarter: 'Q1' as Quarter,
+};
+
+interface UseReputasiOptions {
+  initialYear?: number;
+  initialQuarter?: Quarter;
+  autoLoad?: boolean;
+}
+
+interface UseReputasiReturn {
+  // ========== STATE ==========
+  // Data
+  sections: ReputasiSection[];
+  indikators: ReputasiIndikator[];
+  sectionsWithIndicators: Array<ReputasiSection & { indicators: ReputasiIndikator[] }>;
+  periods: Period[];
+
+  // UI State
+  viewYear: number;
+  viewQuarter: Quarter;
+  query: string;
+  loading: boolean;
+  error: string | null;
+  totalWeighted: number;
+
+  // ========== ACTIONS ==========
+  // State setters
+  setViewYear: (year: number) => void;
+  setViewQuarter: (quarter: Quarter) => void;
+  setQuery: (query: string) => void;
+  clearError: () => void;
+
+  // ========== DATA OPERATIONS ==========
+  // Load data
+  getSections: (isActive?: boolean) => Promise<void>;
+  getAllIndikators: () => Promise<void>;
+  getIndikatorsByPeriod: (year: number, quarter: Quarter) => Promise<ReputasiIndikator[]>;
+  getSectionsWithIndicatorsByPeriod: (year: number, quarter: Quarter) => Promise<Array<ReputasiSection & { indicators: ReputasiIndikator[] }>>;
+  getPeriods: () => Promise<void>;
+  searchIndikators: (query?: string, year?: number, quarter?: Quarter) => Promise<ReputasiIndikator[]>;
+  getAllSections: (isActive?: boolean) => Promise<ReputasiSection[]>;
+
+  // ========== CRUD OPERATIONS ==========
+  // Section CRUD
+  createSection: (data: CreateReputasiSectionData) => Promise<ReputasiSection>;
+  getSectionById: (id: number) => Promise<ReputasiSection>;
+  updateSection: (id: number, data: UpdateReputasiSectionData) => Promise<ReputasiSection>;
+  deleteSection: (id: number) => Promise<void>;
+
+  // Indikator CRUD
+  createIndikator: (data: CreateReputasiData) => Promise<ReputasiIndikator>;
+  getIndikatorById: (id: number) => Promise<ReputasiIndikator>;
+  updateIndikator: (id: number, data: UpdateReputasiData) => Promise<ReputasiIndikator>;
+  deleteIndikator: (id: number) => Promise<void>;
+
+  // ========== HELPER OPERATIONS ==========
+  // Calculations
+  getTotalWeightedByPeriod: (year: number, quarter: Quarter) => Promise<number>;
+  calculateTotalWeighted: () => Promise<void>;
+  duplicateIndikator: (sourceId: number, targetYear: number, targetQuarter: Quarter) => Promise<ReputasiIndikator>;
+
+  // Transformations
+  transformToBackend: typeof transformIndicatorToBackend;
+  transformToFrontend: typeof transformIndicatorToFrontend;
+  transformSectionToBackend: typeof transformSectionToBackend;
+  computeHasil: typeof computeHasil;
+  computeWeightedAuto: typeof computeWeightedAuto;
+
+  // Templates
+  emptyIndicator: typeof emptyIndicator;
+  emptySection: typeof emptySection;
+}
+
+export const useReputasi = (options?: UseReputasiOptions): UseReputasiReturn => {
+  const { initialYear = new Date().getFullYear(), initialQuarter = 'Q1' as Quarter, autoLoad = true } = options || {};
+
+  // ========== STATE ==========
+  const [viewYear, setViewYear] = useState<number>(initialYear);
+  const [viewQuarter, setViewQuarter] = useState<Quarter>(initialQuarter);
+  const [query, setQuery] = useState<string>('');
+
+  const [sections, setSections] = useState<ReputasiSection[]>([]);
+  const [indikators, setIndikators] = useState<ReputasiIndikator[]>([]);
+  const [sectionsWithIndicators, setSectionsWithIndicators] = useState<Array<ReputasiSection & { indicators: ReputasiIndikator[] }>>([]);
+  const [periods, setPeriods] = useState<Period[]>([]);
+  const [totalWeighted, setTotalWeighted] = useState<number>(0);
+
+  const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  // ========== SECTION METHODS ==========
-  const getSections = useCallback(async (): Promise<ReputasiSection[]> => {
-    setLoading(true);
-    setError(null);
-    try {
-      const sections = await reputasiService.getSections();
-
-      if (!sections || sections.length === 0) {
-        console.log('Tidak ada sections dari backend, menggunakan default sections');
-        return reputasiService.generateDefaultSections();
-      }
-
-      return sections;
-    } catch (err: any) {
-      const errorMessage = reputasiService.handleError(err);
-      console.warn('Error mengambil sections, menggunakan defaults:', errorMessage);
-      return reputasiService.generateDefaultSections();
-    } finally {
-      setLoading(false);
+  // ========== EFFECTS ==========
+  useEffect(() => {
+    if (autoLoad) {
+      loadInitialData();
     }
   }, []);
 
-  const createSection = useCallback(async (data: CreateReputasiSectionDto): Promise<ReputasiSection> => {
-    setLoading(true);
-    setError(null);
-    try {
-      const section = await reputasiService.createSection(data);
-      return section;
-    } catch (err: any) {
-      const errorMessage = reputasiService.handleError(err);
-      setError(errorMessage);
-      throw new Error(errorMessage);
-    } finally {
-      setLoading(false);
+  useEffect(() => {
+    if (autoLoad && viewYear && viewQuarter) {
+      loadDataByPeriod();
     }
-  }, []);
+  }, [viewYear, viewQuarter]);
 
-  const updateSection = useCallback(async (id: number, data: UpdateReputasiSectionDto): Promise<ReputasiSection> => {
-    setLoading(true);
-    setError(null);
-    try {
-      const section = await reputasiService.updateSection(id, data);
-      return section;
-    } catch (err: any) {
-      const errorMessage = reputasiService.handleError(err);
-      setError(errorMessage);
-      throw new Error(errorMessage);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const deleteSection = useCallback(async (id: number): Promise<void> => {
-    setLoading(true);
-    setError(null);
-    try {
-      await reputasiService.deleteSection(id);
-    } catch (err: any) {
-      const errorMessage = err.message || 'Gagal menghapus section reputasi';
-      setError(errorMessage);
-      throw new Error(errorMessage);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const getSectionById = useCallback(async (id: number): Promise<ReputasiSection | null> => {
-    setLoading(true);
-    setError(null);
-    try {
-      return await reputasiService.getSectionById(id);
-    } catch (err: any) {
-      const errorMessage = reputasiService.handleError(err);
-      console.warn(`Error mengambil section reputasi ${id}:`, errorMessage);
-      return null;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  // ========== REPUTASI METHODS ==========
-  const getReputasi = useCallback(async (year?: number, quarter?: Quarter): Promise<Reputasi[]> => {
-    setLoading(true);
-    setError(null);
-    try {
-      return await reputasiService.getReputasi(year, quarter);
-    } catch (err: any) {
-      const errorMessage = reputasiService.handleError(err);
-      console.warn('Error mengambil data reputasi:', errorMessage);
-      return [];
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const getReputasiByPeriod = useCallback(async (year: number, quarter: Quarter): Promise<Reputasi[]> => {
-    setLoading(true);
-    setError(null);
-    try {
-      return await reputasiService.getReputasiByPeriod(year, quarter);
-    } catch (err: any) {
-      const errorMessage = reputasiService.handleError(err);
-      console.warn(`Error mengambil data reputasi untuk ${year} ${quarter}:`, errorMessage);
-      return [];
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const getReputasiBySection = useCallback(async (sectionId: number, year?: number, quarter?: Quarter): Promise<Reputasi[]> => {
-    setLoading(true);
-    setError(null);
-    try {
-      return await reputasiService.getReputasiBySection(sectionId, year, quarter);
-    } catch (err: any) {
-      const errorMessage = reputasiService.handleError(err);
-      console.warn(`Error mengambil data reputasi untuk section ${sectionId}:`, errorMessage);
-      return [];
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const getReputasiStructured = useCallback(async (year?: number, quarter?: Quarter): Promise<StructuredReputasi[]> => {
-    setLoading(true);
-    setError(null);
-    try {
-      return await reputasiService.getReputasiStructured(year, quarter);
-    } catch (err: any) {
-      const errorMessage = reputasiService.handleError(err);
-      console.warn('Error mendapatkan data reputasi terstruktur:', errorMessage);
-      return [];
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const getReputasiSummary = useCallback(async (year: number, quarter: Quarter): Promise<ReputasiSummary | null> => {
-    setLoading(true);
-    setError(null);
-    try {
-      return await reputasiService.getReputasiSummary(year, quarter);
-    } catch (err: any) {
-      const errorMessage = reputasiService.handleError(err);
-      console.warn(`Error mengambil summary untuk ${year} ${quarter}:`, errorMessage);
-      return null;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const getReputasiScore = useCallback(async (year: number, quarter: Quarter): Promise<number> => {
-    setLoading(true);
-    setError(null);
-    try {
-      return await reputasiService.getReputasiScore(year, quarter);
-    } catch (err: any) {
-      const errorMessage = reputasiService.handleError(err);
-      console.warn(`Error mengambil skor reputasi untuk ${year} ${quarter}:`, errorMessage);
-      return 0;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const getRiskLevelDistribution = useCallback(async (year: number, quarter: Quarter): Promise<any> => {
-    setLoading(true);
-    setError(null);
-    try {
-      return await reputasiService.getRiskLevelDistribution(year, quarter);
-    } catch (err: any) {
-      const errorMessage = reputasiService.handleError(err);
-      console.warn(`Error mengambil distribusi level risiko untuk ${year} ${quarter}:`, errorMessage);
-      return null;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const getReputasiById = useCallback(async (id: number): Promise<Reputasi | null> => {
-    setLoading(true);
-    setError(null);
-    try {
-      return await reputasiService.getReputasiById(id);
-    } catch (err: any) {
-      const errorMessage = reputasiService.handleError(err);
-      console.warn(`Error mengambil data reputasi ${id}:`, errorMessage);
-      return null;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const createReputasi = useCallback(async (data: CreateReputasiDto): Promise<Reputasi> => {
-    setLoading(true);
-    setError(null);
-    try {
-      return await reputasiService.createReputasi(data);
-    } catch (err: any) {
-      const errorMessage = err.message || 'Gagal membuat indikator reputasi';
-      setError(errorMessage);
-      throw new Error(errorMessage);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const updateReputasi = useCallback(async (id: number, data: UpdateReputasiDto): Promise<Reputasi> => {
-    setLoading(true);
-    setError(null);
-    try {
-      return await reputasiService.updateReputasi(id, data);
-    } catch (err: any) {
-      const errorMessage = reputasiService.handleError(err);
-      setError(errorMessage);
-      throw new Error(errorMessage);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const deleteReputasi = useCallback(async (id: number): Promise<void> => {
-    setLoading(true);
-    setError(null);
-    try {
-      await reputasiService.deleteReputasi(id);
-    } catch (err: any) {
-      const errorMessage = reputasiService.handleError(err);
-      setError(errorMessage);
-      throw new Error(errorMessage);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const deleteByPeriod = useCallback(async (year: number, quarter: Quarter): Promise<void> => {
-    setLoading(true);
-    setError(null);
-    try {
-      await reputasiService.deleteByPeriod(year, quarter);
-    } catch (err: any) {
-      const errorMessage = reputasiService.handleError(err);
-      setError(errorMessage);
-      throw new Error(errorMessage);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const saveReputasiData = useCallback(async (year: number, quarter: Quarter, sections: any[]): Promise<Reputasi[]> => {
-    setLoading(true);
-    setError(null);
-    try {
-      if (!sections || sections.length === 0) {
-        throw new Error('Tidak ada data reputasi untuk disimpan');
-      }
-
-      const results: Reputasi[] = [];
-
-      for (const section of sections) {
-        const sectionId = parseInt(section.id.replace('s-', ''));
-
-        for (const indicator of section.indicators) {
-          const reputasiItem: CreateReputasiDto = {
-            year,
-            quarter,
-            sectionId: sectionId,
-            no: section.no,
-            sectionLabel: section.parameter,
-            bobotSection: section.bobotSection,
-            subNo: indicator.subNo,
-            indikator: indicator.indikator,
-            bobotIndikator: indicator.bobotIndikator || 0,
-            sumberRisiko: indicator.sumberRisiko || null,
-            dampak: indicator.dampak || null,
-            low: indicator.low || null,
-            lowToModerate: indicator.lowToModerate || null,
-            moderate: indicator.moderate || null,
-            moderateToHigh: indicator.moderateToHigh || null,
-            high: indicator.high || null,
-            mode: indicator.mode || 'RASIO',
-            pembilangLabel: indicator.pembilangLabel || null,
-            pembilangValue: indicator.pembilangValue || null,
-            penyebutLabel: indicator.penyebutLabel || null,
-            penyebutValue: indicator.penyebutValue || null,
-            formula: indicator.formula || null,
-            isPercent: indicator.isPercent || false,
-            hasil: indicator.hasil || null,
-            hasilText: indicator.hasilText || null,
-            peringkat: indicator.peringkat || 1,
-            weighted: indicator.weighted || 0,
-            keterangan: indicator.keterangan || null,
-          };
-
-          try {
-            const result = await reputasiService.createReputasi(reputasiItem);
-            results.push(result);
-          } catch (error: any) {
-            console.error(`Gagal menyimpan indikator reputasi ${indicator.subNo}:`, error);
-          }
-        }
-      }
-
-      return results;
-    } catch (err: any) {
-      const errorMessage = err.message || 'Gagal menyimpan data reputasi';
-      setError(errorMessage);
-      throw new Error(errorMessage);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
+  // ========== UTILITIES ==========
   const clearError = useCallback(() => {
     setError(null);
   }, []);
 
-  return {
-    // State
-    loading,
-    error,
+  const handleError = useCallback((err: any, operation: string) => {
+    console.error(`Error during ${operation}:`, err);
+    const errorMessage = err.message || `Gagal melakukan ${operation}`;
+    setError(errorMessage);
+    throw err;
+  }, []);
 
-    // Section methods
-    getSections,
-    createSection,
-    updateSection,
-    deleteSection,
-    getSectionById,
-
-    // Reputasi methods
-    getReputasi,
-    getReputasiByPeriod,
-    getReputasiBySection,
-    getReputasiStructured,
-    getReputasiSummary,
-    getReputasiScore,
-    getRiskLevelDistribution,
-    getReputasiById,
-    createReputasi,
-    updateReputasi,
-    deleteReputasi,
-    deleteByPeriod,
-    saveReputasiData,
-
-    // Utility
-    clearError,
-  };
-};
-
-// Hook untuk data management yang lebih sederhana
-export const useReputasiData = (year?: number, quarter?: Quarter) => {
-  const [data, setData] = useState<{
-    reputasi: Reputasi[];
-    sections: ReputasiSection[];
-    summary: ReputasiSummary | null;
-    structured: StructuredReputasi[];
-    score: number;
-    riskDistribution: any | null;
-  }>({
-    reputasi: [],
-    sections: [],
-    summary: null,
-    structured: [],
-    score: 0,
-    riskDistribution: null,
-  });
-
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const loadData = useCallback(async () => {
-    if (!year || !quarter) return;
-
-    setLoading(true);
-    setError(null);
+  // ========== DATA LOADING ==========
+  const loadInitialData = useCallback(async () => {
     try {
-      const [sectionsResult, reputasiResult, summaryResult, scoreResult, riskResult] = await Promise.allSettled([
-        reputasiService.getSections(),
-        reputasiService.getReputasiByPeriod(year, quarter),
-        reputasiService.getReputasiSummary(year, quarter),
-        reputasiService.getReputasiScore(year, quarter),
-        reputasiService.getRiskLevelDistribution(year, quarter),
-      ]);
-
-      // Handle sections
-      let sections: ReputasiSection[] = [];
-      if (sectionsResult.status === 'fulfilled') {
-        sections = sectionsResult.value;
-      } else {
-        console.warn('Gagal load sections reputasi:', sectionsResult.reason);
-        sections = reputasiService.generateDefaultSections();
-      }
-
-      // Handle reputasi data
-      let reputasi: Reputasi[] = [];
-      if (reputasiResult.status === 'fulfilled') {
-        reputasi = reputasiResult.value;
-      } else {
-        console.warn(`Gagal load data reputasi untuk ${year} ${quarter}:`, reputasiResult.reason);
-      }
-
-      // Handle summary
-      let summary: ReputasiSummary | null = null;
-      if (summaryResult.status === 'fulfilled') {
-        summary = summaryResult.value;
-      } else {
-        console.warn(`Gagal load summary untuk ${year} ${quarter}:`, summaryResult.reason);
-      }
-
-      // Handle score
-      let score = 0;
-      if (scoreResult.status === 'fulfilled') {
-        score = scoreResult.value;
-      } else {
-        console.warn(`Gagal load skor reputasi untuk ${year} ${quarter}:`, scoreResult.reason);
-      }
-
-      // Handle risk distribution
-      let riskDistribution = null;
-      if (riskResult.status === 'fulfilled') {
-        riskDistribution = riskResult.value;
-      } else {
-        console.warn(`Gagal load distribusi risiko untuk ${year} ${quarter}:`, riskResult.reason);
-      }
-
-      const structured = reputasiService.groupBySection(reputasi);
-
-      setData({
-        sections,
-        reputasi,
-        summary,
-        structured,
-        score,
-        riskDistribution,
-      });
-    } catch (err: any) {
-      const errorMessage = reputasiService.handleError(err);
-      setError(errorMessage);
-      console.error('Error loading reputasi data:', errorMessage);
-
-      // Set minimal data untuk UI tetap bekerja
-      setData({
-        sections: reputasiService.generateDefaultSections(),
-        reputasi: [],
-        summary: null,
-        structured: [],
-        score: 0,
-        riskDistribution: null,
-      });
+      setLoading(true);
+      await Promise.all([getSections(), getPeriods(), loadDataByPeriod()]);
+    } catch (err) {
+      handleError(err, 'memuat data awal');
     } finally {
       setLoading(false);
     }
-  }, [year, quarter]);
+  }, [viewYear, viewQuarter]);
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  const loadDataByPeriod = useCallback(async () => {
+    try {
+      setLoading(true);
+      await getSectionsWithIndicatorsByPeriod(viewYear, viewQuarter);
+      await calculateTotalWeighted();
+    } catch (err) {
+      handleError(err, 'memuat data periode');
+    } finally {
+      setLoading(false);
+    }
+  }, [viewYear, viewQuarter]);
 
+  // ========== SECTION OPERATIONS ==========
+  const getSections = useCallback(
+    async (isActive?: boolean) => {
+      try {
+        setLoading(true);
+        const data = await reputasiApiService.getAllSections(isActive);
+        setSections(data);
+        return data;
+      } catch (err) {
+        throw handleError(err, 'mengambil sections');
+      } finally {
+        setLoading(false);
+      }
+    },
+    [handleError]
+  );
+
+  const getAllSections = useCallback(
+    async (isActive?: boolean): Promise<ReputasiSection[]> => {
+      try {
+        setLoading(true);
+        const data = await reputasiApiService.getAllSections(isActive);
+        return data;
+      } catch (err) {
+        throw handleError(err, 'mengambil semua sections');
+      } finally {
+        setLoading(false);
+      }
+    },
+    [handleError]
+  );
+
+  const getSectionById = useCallback(
+    async (id: number): Promise<ReputasiSection> => {
+      try {
+        setLoading(true);
+        const data = await reputasiApiService.getSectionById(id);
+        return data;
+      } catch (err) {
+        throw handleError(err, `mengambil section dengan ID ${id}`);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [handleError]
+  );
+
+  const createSection = useCallback(
+    async (data: CreateReputasiSectionData): Promise<ReputasiSection> => {
+      try {
+        setLoading(true);
+        const newSection = await reputasiApiService.createSection(data);
+        setSections((prev) => [...prev, newSection]);
+        return newSection;
+      } catch (err) {
+        throw handleError(err, 'membuat section');
+      } finally {
+        setLoading(false);
+      }
+    },
+    [handleError]
+  );
+
+  const updateSection = useCallback(
+    async (id: number, data: UpdateReputasiSectionData): Promise<ReputasiSection> => {
+      try {
+        setLoading(true);
+        const updatedSection = await reputasiApiService.updateSection(id, data);
+        setSections((prev) => prev.map((section) => (section.id === id ? updatedSection : section)));
+        return updatedSection;
+      } catch (err) {
+        throw handleError(err, `mengupdate section dengan ID ${id}`);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [handleError]
+  );
+
+  const deleteSection = useCallback(
+    async (id: number): Promise<void> => {
+      try {
+        setLoading(true);
+        await reputasiApiService.deleteSection(id);
+        setSections((prev) => prev.filter((section) => section.id !== id));
+
+        // Remove from sections with indicators
+        setSectionsWithIndicators((prev) => prev.filter((section) => section.id !== id));
+      } catch (err) {
+        throw handleError(err, `menghapus section dengan ID ${id}`);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [handleError]
+  );
+
+  // ========== INDIKATOR OPERATIONS ==========
+  const getAllIndikators = useCallback(async () => {
+    try {
+      setLoading(true);
+      const data = await reputasiApiService.getAllIndikators();
+      setIndikators(data);
+      return data;
+    } catch (err) {
+      throw handleError(err, 'mengambil semua indikator');
+    } finally {
+      setLoading(false);
+    }
+  }, [handleError]);
+
+  const getIndikatorsByPeriod = useCallback(
+    async (year: number, quarter: Quarter): Promise<ReputasiIndikator[]> => {
+      try {
+        setLoading(true);
+        const data = await reputasiApiService.getIndikatorsByPeriod(year, quarter);
+        setIndikators(data);
+        return data;
+      } catch (err) {
+        throw handleError(err, `mengambil indikator periode ${year}-${quarter}`);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [handleError]
+  );
+
+  const getSectionsWithIndicatorsByPeriod = useCallback(
+    async (year: number, quarter: Quarter): Promise<Array<ReputasiSection & { indicators: ReputasiIndikator[] }>> => {
+      try {
+        setLoading(true);
+        const response = await reputasiApiService.getSectionsWithIndicatorsByPeriod(year, quarter);
+
+        // Handle response structure
+        let data = [];
+        if (response && typeof response === 'object') {
+          if (Array.isArray(response.sections)) {
+            data = response.sections;
+          } else if (Array.isArray(response)) {
+            data = response;
+          } else if (response.data && Array.isArray(response.data.sections)) {
+            data = response.data.sections;
+          }
+        }
+
+        setSectionsWithIndicators(data);
+        return data;
+      } catch (err) {
+        throw handleError(err, `mengambil sections dengan indikator periode ${year}-${quarter}`);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [handleError]
+  );
+
+  const searchIndikators = useCallback(
+    async (searchQuery?: string, year?: number, quarter?: Quarter): Promise<ReputasiIndikator[]> => {
+      try {
+        setLoading(true);
+        const data = await reputasiApiService.searchIndikators(searchQuery, year, quarter);
+        return data;
+      } catch (err) {
+        throw handleError(err, 'mencari indikator');
+      } finally {
+        setLoading(false);
+      }
+    },
+    [handleError]
+  );
+
+  const getIndikatorById = useCallback(
+    async (id: number): Promise<ReputasiIndikator> => {
+      try {
+        setLoading(true);
+        const data = await reputasiApiService.getIndikatorById(id);
+        return data;
+      } catch (err) {
+        throw handleError(err, `mengambil indikator dengan ID ${id}`);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [handleError]
+  );
+
+  const createIndikator = useCallback(async (data: CreateReputasiData): Promise<ReputasiIndikator> => {
+    try {
+      setLoading(true);
+      const newIndikator = await reputasiApiService.createIndikator(data);
+
+      // Update indikators list
+      setIndikators((prev) => [...prev, newIndikator]);
+
+      // Update sections with indicators
+      setSectionsWithIndicators((prev) => {
+        const sectionIndex = prev.findIndex((s) => s.id === data.sectionId);
+        if (sectionIndex !== -1) {
+          const updated = [...prev];
+          updated[sectionIndex] = {
+            ...updated[sectionIndex],
+            indicators: [...updated[sectionIndex].indicators, newIndikator],
+          };
+          return updated;
+        }
+        return prev;
+      });
+
+      return newIndikator;
+    } catch (err) {
+      throw handleError(err, 'membuat indikator');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const updateIndikator = useCallback(async (id: number, data: UpdateReputasiData): Promise<ReputasiIndikator> => {
+    try {
+      setLoading(true);
+      const updatedIndikator = await reputasiApiService.updateIndikator(id, data);
+
+      // Update indikators list
+      setIndikators((prev) => prev.map((indikator) => (indikator.id === id ? updatedIndikator : indikator)));
+
+      // Update sections with indicators
+      setSectionsWithIndicators((prev) =>
+        prev.map((section) => {
+          const updatedIndicators = section.indicators.map((indikator) => (indikator.id === id ? updatedIndikator : indikator));
+          return { ...section, indicators: updatedIndicators };
+        })
+      );
+
+      return updatedIndikator;
+    } catch (err) {
+      throw handleError(err, `mengupdate indikator dengan ID ${id}`);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const deleteIndikator = useCallback(async (id: number): Promise<void> => {
+    try {
+      setLoading(true);
+      await reputasiApiService.deleteIndikator(id);
+
+      // Update indikators list
+      setIndikators((prev) => prev.filter((indikator) => indikator.id !== id));
+
+      // Update sections with indicators
+      setSectionsWithIndicators((prev) =>
+        prev.map((section) => ({
+          ...section,
+          indicators: section.indicators.filter((indikator) => indikator.id !== id),
+        }))
+      );
+    } catch (err) {
+      throw handleError(err, `menghapus indikator dengan ID ${id}`);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // ========== HELPER OPERATIONS ==========
+  const getTotalWeightedByPeriod = useCallback(
+    async (year: number, quarter: Quarter): Promise<number> => {
+      try {
+        setLoading(true);
+        const total = await reputasiApiService.getTotalWeightedByPeriod(year, quarter);
+        return total;
+      } catch (err) {
+        throw handleError(err, `menghitung total weighted periode ${year}-${quarter}`);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [handleError]
+  );
+
+  const calculateTotalWeighted = useCallback(async () => {
+    try {
+      const total = await getTotalWeightedByPeriod(viewYear, viewQuarter);
+      setTotalWeighted(total);
+    } catch (err) {
+      setTotalWeighted(0);
+      handleError(err, `menghitung total weighted periode ${viewYear}-${viewQuarter}`);
+    }
+  }, [viewYear, viewQuarter, getTotalWeightedByPeriod, handleError]);
+
+  const getPeriods = useCallback(async () => {
+    try {
+      setLoading(true);
+      const data = await reputasiApiService.getAvailablePeriods();
+      setPeriods(data);
+      return data;
+    } catch (err) {
+      throw handleError(err, 'mengambil periode tersedia');
+    } finally {
+      setLoading(false);
+    }
+  }, [handleError]);
+
+  const duplicateIndikator = useCallback(async (sourceId: number, targetYear: number, targetQuarter: Quarter): Promise<ReputasiIndikator> => {
+    try {
+      setLoading(true);
+      const newIndikator = await reputasiApiService.duplicateIndikator(sourceId, targetYear, targetQuarter);
+
+      // Add to indikators list
+      setIndikators((prev) => [...prev, newIndikator]);
+
+      return newIndikator;
+    } catch (err) {
+      throw handleError(err, 'menduplikasi indikator');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // ========== RETURN ==========
   return {
-    data,
+    // State
+    sections,
+    indikators,
+    sectionsWithIndicators,
+    periods,
+    viewYear,
+    viewQuarter,
+    query,
     loading,
     error,
-    refetch: loadData,
+    totalWeighted,
+
+    // Actions
+    setViewYear,
+    setViewQuarter,
+    setQuery,
+    clearError,
+
+    // Data operations
+    getSections,
+    getAllIndikators,
+    getIndikatorsByPeriod,
+    getSectionsWithIndicatorsByPeriod,
+    getPeriods,
+    searchIndikators,
+    getAllSections,
+
+    // CRUD operations
+    createSection,
+    getSectionById,
+    updateSection,
+    deleteSection,
+    createIndikator,
+    getIndikatorById,
+    updateIndikator,
+    deleteIndikator,
+
+    // Helper operations
+    getTotalWeightedByPeriod,
+    calculateTotalWeighted,
+    duplicateIndikator,
+
+    // Transformations
+    transformToBackend: transformIndicatorToBackend,
+    transformToFrontend: transformIndicatorToFrontend,
+    transformSectionToBackend,
+    computeHasil,
+    computeWeightedAuto,
+
+    // Templates
+    emptyIndicator,
+    emptySection,
   };
 };

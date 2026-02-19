@@ -1,26 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.UpdateIndikatorDto = void 0;
-class UpdateIndikatorDto {
-    sectionId;
-    nama_indikator;
-    bobot_indikator;
-    pembilang_label;
-    pembilang_value;
-    penyebut_label;
-    penyebut_value;
-    sumber_risiko;
-    dampak;
-    low;
-    low_to_moderate;
-    moderate;
-    moderate_to_high;
-    high;
-    peringkat;
-    keterangan;
-    mode;
-    formula;
-    is_percent;
+exports.UpdatePasarDto = void 0;
+const swagger_1 = require("@nestjs/swagger");
+const create_pasar_indikator_dto_1 = require("./create-pasar-indikator.dto");
+class UpdatePasarDto extends (0, swagger_1.PartialType)(create_pasar_indikator_dto_1.CreatePasarDto) {
 }
-exports.UpdateIndikatorDto = UpdateIndikatorDto;
+exports.UpdatePasarDto = UpdatePasarDto;
 //# sourceMappingURL=update-pasar.dto.js.map

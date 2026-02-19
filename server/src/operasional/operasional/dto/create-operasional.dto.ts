@@ -1,147 +1,254 @@
-export class CreateOperasionalDto {}
+// src/features/Dashboard/pages/RiskProfile/pages/Operasional/dto/create-operasional.dto.ts
 import {
+  IsNotEmpty,
   IsString,
   IsNumber,
   IsOptional,
   IsBoolean,
   IsEnum,
+  Min,
+  Max,
+  Length,
+  ValidateIf,
   IsInt,
 } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Quarter } from '../entities/operasional.entity';
-export class CreateSectionOperationalDto {
-  @ApiProperty({ example: '4.1', description: 'Nomor section' })
-  @IsString()
-  no: string;
-
-  @ApiProperty({ example: 100, description: 'Bobot section dalam persen' })
-  @IsNumber()
-  bobotSection: number;
-
-  @ApiProperty({
-    example: 'Kualitas Pengelolaan Risiko Operasional',
-    description: 'Nama section/parameter',
-  })
-  @IsString()
-  parameter: string;
-
-  @ApiProperty({ example: 2024, description: 'Tahun' })
-  @IsInt()
+import { Type } from 'class-transformer';
+import { ApiProperty } from '@nestjs/swagger';
+import { Quarter } from '../entities/operasional-section.entity';
+import { CalculationMode } from '../entities/operasional.entity';
+export class CreateOperasionalDto {
+  // ========== PERIODE ==========
+  @ApiProperty({ example: 2024, description: 'Tahun data' })
+  @IsNotEmpty({ message: 'Tahun tidak boleh kosong' })
+  @IsInt({ message: 'Tahun harus berupa angka bulat' })
+  @Min(2000, { message: 'Tahun minimal 2000' })
+  @Max(2100, { message: 'Tahun maksimal 2100' })
+  @Type(() => Number)
   year: number;
 
-  @ApiProperty({ enum: Quarter, example: 'Q1', description: 'Triwulan' })
-  @IsEnum(Quarter)
+  @ApiProperty({ example: 'Q1', enum: Quarter, description: 'Triwulan' })
+  @IsNotEmpty({ message: 'Quarter tidak boleh kosong' })
+  @IsEnum(Quarter, { message: 'Quarter harus Q1, Q2, Q3, atau Q4' })
   quarter: Quarter;
-}
 
-export class CreateIndikatorOperationalDto {
-  @ApiProperty({ example: 1, description: 'ID section' })
-  @IsInt()
+  // ========== RELASI SECTION ==========
+  @ApiProperty({ example: 1, description: 'ID section dari master' })
+  @IsNotEmpty({ message: 'Section ID tidak boleh kosong' })
+  @IsInt({ message: 'Section ID harus berupa angka bulat' })
+  @Type(() => Number)
   sectionId: number;
 
-  @ApiProperty({ example: '4.1.1', description: 'Sub nomor indikator' })
-  @IsString()
+  // ========== DATA SECTION (Copy dari master) ==========
+  @ApiProperty({ example: '7.1', description: 'Nomor section' })
+  @IsNotEmpty({ message: 'Nomor section tidak boleh kosong' })
+  @IsString({ message: 'Nomor section harus berupa string' })
+  @Length(1, 50, { message: 'Nomor section maksimal 50 karakter' })
+  no: string;
+
+  @ApiProperty({
+    example: 'Manajemen Sumber Daya Manusia',
+    description: 'Label section',
+  })
+  @IsNotEmpty({ message: 'Section label tidak boleh kosong' })
+  @IsString({ message: 'Section label harus berupa string' })
+  @Length(1, 500, { message: 'Section label maksimal 500 karakter' })
+  sectionLabel: string;
+
+  @ApiProperty({ example: 15, description: 'Bobot section dalam persen' })
+  @IsNotEmpty({ message: 'Bobot section tidak boleh kosong' })
+  @IsNumber({}, { message: 'Bobot section harus berupa angka' })
+  @Min(0, { message: 'Bobot section minimal 0' })
+  @Max(100, { message: 'Bobot section maksimal 100' })
+  @Type(() => Number)
+  bobotSection: number;
+
+  // ========== DATA INDIKATOR ==========
+  @ApiProperty({
+    example: '7.1.1',
+    description: 'Nomor sub indikator (unik per periode+section)',
+  })
+  @IsNotEmpty({ message: 'Sub No tidak boleh kosong' })
+  @IsString({ message: 'Sub No harus berupa string' })
+  @Length(1, 50, { message: 'Sub No maksimal 50 karakter' })
   subNo: string;
 
   @ApiProperty({
-    example: 'Jumlah kejadian fraud internal',
+    example: 'Tingkat Kehadiran Karyawan',
     description: 'Nama indikator',
   })
-  @IsString()
+  @IsNotEmpty({ message: 'Indikator tidak boleh kosong' })
+  @IsString({ message: 'Indikator harus berupa string' })
+  @Length(1, 1000, { message: 'Indikator maksimal 1000 karakter' })
   indikator: string;
 
-  @ApiProperty({ example: 50, description: 'Bobot indikator dalam persen' })
-  @IsNumber()
+  @ApiProperty({ example: 25, description: 'Bobot indikator dalam persen' })
+  @IsNotEmpty({ message: 'Bobot indikator tidak boleh kosong' })
+  @IsNumber({}, { message: 'Bobot indikator harus berupa angka' })
+  @Min(0, { message: 'Bobot indikator minimal 0' })
+  @Max(100, { message: 'Bobot indikator maksimal 100' })
+  @Type(() => Number)
   bobotIndikator: number;
 
-  @ApiPropertyOptional({
-    example: 'Kelemahan pengendalian internal, kurangnya pemisahan fungsi.',
-    nullable: true,
+  // ========== ANALISIS RISIKO ==========
+  @ApiProperty({
+    example: 'Tingkat absensi yang tinggi',
+    required: false,
+    description: 'Sumber risiko',
   })
   @IsOptional()
-  @IsString()
-  sumberRisiko?: string | null;
-
-  @ApiPropertyOptional({
-    example: 'Kerugian finansial dan reputasi perusahaan.',
-    nullable: true,
-  })
-  @IsOptional()
-  @IsString()
-  dampak?: string | null;
+  @IsString({ message: 'Sumber risiko harus berupa string' })
+  sumberRisiko?: string;
 
   @ApiProperty({
-    enum: ['RASIO', 'NILAI_TUNGGAL'],
-    example: 'RASIO',
-    description: 'Mode perhitungan',
-  })
-  @IsEnum(['RASIO', 'NILAI_TUNGGAL'])
-  mode: 'RASIO' | 'NILAI_TUNGGAL';
-
-  @ApiPropertyOptional({
-    example: 'Kerugian operasional (juta rupiah)',
-    nullable: true,
+    example: 'Produktivitas menurun',
+    required: false,
+    description: 'Dampak risiko',
   })
   @IsOptional()
-  @IsString()
-  pembilangLabel?: string | null;
+  @IsString({ message: 'Dampak harus berupa string' })
+  dampak?: string;
 
-  @ApiPropertyOptional({ example: 250, nullable: true })
+  // ========== LEVEL RISIKO ==========
+  @ApiProperty({ example: 'x > 95%', required: false })
   @IsOptional()
-  @IsNumber()
-  pembilangValue?: number | null;
+  @IsString({ message: 'Low harus berupa string' })
+  @Length(0, 200, { message: 'Low maksimal 200 karakter' })
+  low?: string;
 
-  @ApiPropertyOptional({
-    example: 'Pendapatan operasional (juta rupiah)',
-    nullable: true,
+  @ApiProperty({ example: '95% ≥ x > 85%', required: false })
+  @IsOptional()
+  @IsString({ message: 'Low to moderate harus berupa string' })
+  @Length(0, 200, { message: 'Low to moderate maksimal 200 karakter' })
+  lowToModerate?: string;
+
+  @ApiProperty({ example: '85% ≥ x > 75%', required: false })
+  @IsOptional()
+  @IsString({ message: 'Moderate harus berupa string' })
+  @Length(0, 200, { message: 'Moderate maksimal 200 karakter' })
+  moderate?: string;
+
+  @ApiProperty({ example: '75% ≥ x > 65%', required: false })
+  @IsOptional()
+  @IsString({ message: 'Moderate to high harus berupa string' })
+  @Length(0, 200, { message: 'Moderate to high maksimal 200 karakter' })
+  moderateToHigh?: string;
+
+  @ApiProperty({ example: 'x < 65%', required: false })
+  @IsOptional()
+  @IsString({ message: 'High harus berupa string' })
+  @Length(0, 200, { message: 'High maksimal 200 karakter' })
+  high?: string;
+
+  // ========== METODE PERHITUNGAN ==========
+  @ApiProperty({
+    example: CalculationMode.RASIO,
+    enum: CalculationMode,
+    default: CalculationMode.RASIO,
   })
-  @IsOptional()
-  @IsString()
-  penyebutLabel?: string | null;
-
-  @ApiPropertyOptional({ example: 10000, nullable: true })
-  @IsOptional()
-  @IsNumber()
-  penyebutValue?: number | null;
-
-  @ApiPropertyOptional({ example: 'pemb / peny', nullable: true })
-  @IsOptional()
-  @IsString()
-  formula?: string | null;
-
-  @ApiPropertyOptional({ example: false })
-  @IsOptional()
-  @IsBoolean()
-  isPercent?: boolean;
-
-  @ApiPropertyOptional({ example: 0.025, nullable: true })
-  @IsOptional()
-  @IsNumber()
-  hasil?: number | null;
-
-  @ApiPropertyOptional({ example: 2 })
-  @IsOptional()
-  @IsInt()
-  peringkat?: number;
-
-  @ApiPropertyOptional({ example: 10.0 })
-  @IsOptional()
-  @IsNumber()
-  weighted?: number;
-
-  @ApiPropertyOptional({
-    example: 'Data per triwulan',
-    nullable: true,
+  @IsNotEmpty({ message: 'Mode tidak boleh kosong' })
+  @IsEnum(CalculationMode, {
+    message: 'Mode harus RASIO, NILAI_TUNGGAL, atau TEKS',
   })
+  mode: CalculationMode = CalculationMode.RASIO;
+
+  @ApiProperty({ example: 'pemb / peny', required: false })
   @IsOptional()
-  @IsString()
-  keterangan?: string | null;
+  @IsString({ message: 'Formula harus berupa string' })
+  formula?: string;
 
-  @ApiProperty({ example: 2024 })
-  @IsInt()
-  year: number;
+  @ApiProperty({ example: false, required: false })
+  @IsOptional()
+  @IsBoolean({ message: 'Is percent harus berupa boolean' })
+  isPercent?: boolean = false;
 
-  @ApiProperty({ enum: Quarter, example: 'Q1' })
-  @IsEnum(Quarter)
-  quarter: Quarter;
+  // ========== FAKTOR PERHITUNGAN ==========
+  @ApiProperty({
+    example: 'Jumlah hari hadir',
+    required: false,
+    description: 'Hanya untuk mode RASIO',
+  })
+  @ValidateIf((o) => o.mode === CalculationMode.RASIO)
+  @IsOptional()
+  @IsString({ message: 'Pembilang label harus berupa string' })
+  @Length(0, 255, { message: 'Pembilang label maksimal 255 karakter' })
+  pembilangLabel?: string;
+
+  @ApiProperty({
+    example: 22,
+    required: false,
+    description: 'Hanya untuk mode RASIO',
+  })
+  @ValidateIf((o) => o.mode === CalculationMode.RASIO)
+  @IsOptional()
+  @IsNumber({}, { message: 'Pembilang value harus berupa angka' })
+  @Type(() => Number)
+  pembilangValue?: number;
+
+  @ApiProperty({
+    example: 'Jumlah hari kerja',
+    required: false,
+    description: 'Tidak untuk mode TEKS',
+  })
+  @ValidateIf((o) => o.mode !== CalculationMode.TEKS)
+  @IsOptional()
+  @IsString({ message: 'Penyebut label harus berupa string' })
+  @Length(0, 255, { message: 'Penyebut label maksimal 255 karakter' })
+  penyebutLabel?: string;
+
+  @ApiProperty({
+    example: 26,
+    required: false,
+    description: 'Tidak untuk mode TEKS',
+  })
+  @ValidateIf((o) => o.mode !== CalculationMode.TEKS)
+  @IsOptional()
+  @IsNumber({}, { message: 'Penyebut value harus berupa angka' })
+  @Type(() => Number)
+  penyebutValue?: number;
+
+  // ========== HASIL ==========
+  @ApiProperty({ example: 0.8462, required: false })
+  @ValidateIf((o) => o.mode !== CalculationMode.TEKS)
+  @IsOptional()
+  @IsNumber({}, { message: 'Hasil harus berupa angka' })
+  @Type(() => Number)
+  hasil?: number;
+
+  @ApiProperty({
+    example: '84.62%',
+    required: false,
+    description: 'Hanya untuk mode TEKS',
+  })
+  @ValidateIf((o) => o.mode === CalculationMode.TEKS)
+  @IsOptional()
+  @IsString({ message: 'Hasil text harus berupa string' })
+  @Length(0, 1000, { message: 'Hasil text maksimal 1000 karakter' })
+  hasilText?: string;
+
+  // ========== SKOR DAN BOBOT ==========
+  @ApiProperty({ example: 1, description: 'Peringkat 1-5' })
+  @IsNotEmpty({ message: 'Peringkat tidak boleh kosong' })
+  @IsInt({ message: 'Peringkat harus berupa angka bulat' })
+  @Min(1, { message: 'Peringkat minimal 1' })
+  @Max(5, { message: 'Peringkat maksimal 5' })
+  @Type(() => Number)
+  peringkat: number;
+
+  @ApiProperty({ example: 0.375, description: 'Weighted value' })
+  @IsNotEmpty({ message: 'Weighted tidak boleh kosong' })
+  @IsNumber({}, { message: 'Weighted harus berupa angka' })
+  @Min(0, { message: 'Weighted minimal 0' })
+  @Type(() => Number)
+  weighted: number;
+
+  @ApiProperty({ example: 'Keterangan tambahan', required: false })
+  @IsOptional()
+  @IsString({ message: 'Keterangan harus berupa string' })
+  keterangan?: string;
+
+  // ========== AUDIT TRAIL (Opsional) ==========
+  @ApiProperty({ example: 'user123', required: false })
+  @IsOptional()
+  @IsString({ message: 'Created by harus berupa string' })
+  createdBy?: string;
 }

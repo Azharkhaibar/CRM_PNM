@@ -56,6 +56,9 @@ let Kepatuhan = class Kepatuhan {
     peringkat;
     weighted;
     keterangan;
+    isValidated;
+    validatedAt;
+    validatedBy;
     createdAt;
     updatedAt;
     isDeleted;
@@ -63,6 +66,8 @@ let Kepatuhan = class Kepatuhan {
     createdBy;
     updatedBy;
     deletedBy;
+    version;
+    revisionNotes;
 };
 exports.Kepatuhan = Kepatuhan;
 __decorate([
@@ -82,9 +87,9 @@ __decorate([
     __metadata("design:type", Number)
 ], Kepatuhan.prototype, "sectionId", void 0);
 __decorate([
-    (0, typeorm_1.ManyToOne)(() => kepatuhan_section_entity_1.KepatuhanSection, (section) => section.kepatuhan, {
+    (0, typeorm_1.ManyToOne)(() => kepatuhan_section_entity_1.KepatuhanSection, (section) => section.kepatuhanIndicators, {
         onUpdate: 'CASCADE',
-        onDelete: 'RESTRICT',
+        onDelete: 'CASCADE',
     }),
     (0, typeorm_1.JoinColumn)({ name: 'section_id' }),
     __metadata("design:type", kepatuhan_section_entity_1.KepatuhanSection)
@@ -94,15 +99,28 @@ __decorate([
     __metadata("design:type", String)
 ], Kepatuhan.prototype, "no", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'varchar', length: 500, name: 'section_label' }),
+    (0, typeorm_1.Column)({
+        type: 'varchar',
+        length: 500,
+        name: 'section_label',
+    }),
     __metadata("design:type", String)
 ], Kepatuhan.prototype, "sectionLabel", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'decimal', precision: 5, scale: 2, name: 'bobot_section' }),
+    (0, typeorm_1.Column)({
+        type: 'decimal',
+        precision: 5,
+        scale: 2,
+        name: 'bobot_section',
+    }),
     __metadata("design:type", Number)
 ], Kepatuhan.prototype, "bobotSection", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'varchar', length: 50, name: 'sub_no' }),
+    (0, typeorm_1.Column)({
+        type: 'varchar',
+        length: 50,
+        name: 'sub_no',
+    }),
     __metadata("design:type", String)
 ], Kepatuhan.prototype, "subNo", void 0);
 __decorate([
@@ -110,11 +128,20 @@ __decorate([
     __metadata("design:type", String)
 ], Kepatuhan.prototype, "indikator", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'decimal', precision: 5, scale: 2, name: 'bobot_indikator' }),
+    (0, typeorm_1.Column)({
+        type: 'decimal',
+        precision: 5,
+        scale: 2,
+        name: 'bobot_indikator',
+    }),
     __metadata("design:type", Number)
 ], Kepatuhan.prototype, "bobotIndikator", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'text', nullable: true, name: 'sumber_risiko' }),
+    (0, typeorm_1.Column)({
+        type: 'text',
+        nullable: true,
+        name: 'sumber_risiko',
+    }),
     __metadata("design:type", Object)
 ], Kepatuhan.prototype, "sumberRisiko", void 0);
 __decorate([
@@ -122,7 +149,11 @@ __decorate([
     __metadata("design:type", Object)
 ], Kepatuhan.prototype, "dampak", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'varchar', length: 200, nullable: true }),
+    (0, typeorm_1.Column)({
+        type: 'varchar',
+        length: 200,
+        nullable: true,
+    }),
     __metadata("design:type", Object)
 ], Kepatuhan.prototype, "low", void 0);
 __decorate([
@@ -135,7 +166,11 @@ __decorate([
     __metadata("design:type", Object)
 ], Kepatuhan.prototype, "lowToModerate", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'varchar', length: 200, nullable: true }),
+    (0, typeorm_1.Column)({
+        type: 'varchar',
+        length: 200,
+        nullable: true,
+    }),
     __metadata("design:type", Object)
 ], Kepatuhan.prototype, "moderate", void 0);
 __decorate([
@@ -148,7 +183,11 @@ __decorate([
     __metadata("design:type", Object)
 ], Kepatuhan.prototype, "moderateToHigh", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'varchar', length: 200, nullable: true }),
+    (0, typeorm_1.Column)({
+        type: 'varchar',
+        length: 200,
+        nullable: true,
+    }),
     __metadata("design:type", Object)
 ], Kepatuhan.prototype, "high", void 0);
 __decorate([
@@ -164,7 +203,11 @@ __decorate([
     __metadata("design:type", Object)
 ], Kepatuhan.prototype, "formula", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'boolean', default: false, name: 'is_percent' }),
+    (0, typeorm_1.Column)({
+        type: 'boolean',
+        default: false,
+        name: 'is_percent',
+    }),
     __metadata("design:type", Boolean)
 ], Kepatuhan.prototype, "isPercent", void 0);
 __decorate([
@@ -206,11 +249,21 @@ __decorate([
     __metadata("design:type", Object)
 ], Kepatuhan.prototype, "penyebutValue", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'decimal', precision: 10, scale: 6, nullable: true }),
+    (0, typeorm_1.Column)({
+        type: 'decimal',
+        precision: 15,
+        scale: 6,
+        nullable: true,
+    }),
     __metadata("design:type", Object)
 ], Kepatuhan.prototype, "hasil", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'varchar', length: 1000, nullable: true, name: 'hasil_text' }),
+    (0, typeorm_1.Column)({
+        type: 'varchar',
+        length: 1000,
+        nullable: true,
+        name: 'hasil_text',
+    }),
     __metadata("design:type", Object)
 ], Kepatuhan.prototype, "hasilText", void 0);
 __decorate([
@@ -218,13 +271,42 @@ __decorate([
     __metadata("design:type", Number)
 ], Kepatuhan.prototype, "peringkat", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'decimal', precision: 10, scale: 4 }),
+    (0, typeorm_1.Column)({
+        type: 'decimal',
+        precision: 10,
+        scale: 4,
+    }),
     __metadata("design:type", Number)
 ], Kepatuhan.prototype, "weighted", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: 'text', nullable: true }),
     __metadata("design:type", Object)
 ], Kepatuhan.prototype, "keterangan", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        name: 'is_validated',
+        type: 'boolean',
+        default: false,
+    }),
+    __metadata("design:type", Boolean)
+], Kepatuhan.prototype, "isValidated", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        type: 'timestamp',
+        nullable: true,
+        name: 'validated_at',
+    }),
+    __metadata("design:type", Object)
+], Kepatuhan.prototype, "validatedAt", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        type: 'varchar',
+        length: 100,
+        nullable: true,
+        name: 'validated_by',
+    }),
+    __metadata("design:type", Object)
+], Kepatuhan.prototype, "validatedBy", void 0);
 __decorate([
     (0, typeorm_1.CreateDateColumn)({ name: 'created_at' }),
     __metadata("design:type", Date)
@@ -234,29 +316,69 @@ __decorate([
     __metadata("design:type", Date)
 ], Kepatuhan.prototype, "updatedAt", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'boolean', default: false, name: 'is_deleted' }),
+    (0, typeorm_1.Column)({
+        name: 'is_deleted',
+        type: 'boolean',
+        default: false,
+    }),
     __metadata("design:type", Boolean)
 ], Kepatuhan.prototype, "isDeleted", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'timestamp', nullable: true, name: 'deleted_at' }),
+    (0, typeorm_1.Column)({
+        type: 'timestamp',
+        nullable: true,
+        name: 'deleted_at',
+    }),
     __metadata("design:type", Object)
 ], Kepatuhan.prototype, "deletedAt", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'varchar', length: 100, nullable: true, name: 'created_by' }),
+    (0, typeorm_1.Column)({
+        type: 'varchar',
+        length: 100,
+        nullable: true,
+        name: 'created_by',
+    }),
     __metadata("design:type", Object)
 ], Kepatuhan.prototype, "createdBy", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'varchar', length: 100, nullable: true, name: 'updated_by' }),
+    (0, typeorm_1.Column)({
+        type: 'varchar',
+        length: 100,
+        nullable: true,
+        name: 'updated_by',
+    }),
     __metadata("design:type", Object)
 ], Kepatuhan.prototype, "updatedBy", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'varchar', length: 100, nullable: true, name: 'deleted_by' }),
+    (0, typeorm_1.Column)({
+        type: 'varchar',
+        length: 100,
+        nullable: true,
+        name: 'deleted_by',
+    }),
     __metadata("design:type", Object)
 ], Kepatuhan.prototype, "deletedBy", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        type: 'int',
+        default: 1,
+    }),
+    __metadata("design:type", Number)
+], Kepatuhan.prototype, "version", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        type: 'varchar',
+        length: 50,
+        nullable: true,
+        name: 'revision_notes',
+    }),
+    __metadata("design:type", Object)
+], Kepatuhan.prototype, "revisionNotes", void 0);
 exports.Kepatuhan = Kepatuhan = __decorate([
     (0, typeorm_1.Entity)('indikators_kepatuhan'),
+    (0, typeorm_1.Unique)('UQ_KEPATUHAN_PERIOD_SUBNO', ['year', 'quarter', 'subNo', 'sectionId']),
     (0, typeorm_1.Index)('IDX_KEPATUHAN_PERIOD', ['year', 'quarter']),
     (0, typeorm_1.Index)('IDX_KEPATUHAN_SECTION', ['sectionId']),
-    (0, typeorm_1.Index)('IDX_KEPATUHAN_SUBNO', ['subNo'])
+    (0, typeorm_1.Index)('IDX_KEPATUHAN_YEAR_QUARTER', ['year', 'quarter'])
 ], Kepatuhan);
 //# sourceMappingURL=kepatuhan.entity.js.map

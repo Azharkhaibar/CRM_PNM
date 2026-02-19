@@ -3,4 +3,6 @@ import { CreateReputasiSectionDto } from './create-reputasi-section.dto';
 
 export class UpdateReputasiSectionDto extends PartialType(
   CreateReputasiSectionDto,
-) {}
+) {
+  no: string;
+}

@@ -29,6 +29,7 @@ export enum ModuleType {
   REPUTASI = 'REPUTASI',
   USER_MANAGEMENT = 'USER_MANAGEMENT',
   SYSTEM = 'SYSTEM',
+  RAS = 'RAS',
 }
 
 @Entity('audit_log')

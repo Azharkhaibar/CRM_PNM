@@ -1,4 +1,4 @@
-import { IsNumber, IsString, IsEnum, IsInstance, IsIn } from 'class-validator';
+import { IsNumber, IsString, IsIn } from 'class-validator';
 
 export class UserStatusDto {
   @IsNumber()

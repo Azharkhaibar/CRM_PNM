@@ -1,437 +1,511 @@
-// service/pasar/pasar.service.ts - Perbaikan error handling
-import axios, { AxiosError } from 'axios';
-import { SectionPasar, IndikatorPasar, SummaryResponse, CreateSectionDto, UpdateSectionDto, CreateIndikatorDto, UpdateIndikatorDto, GroupedSection, FormattedIndikatorData, ExportData } from '../types/pasar.types';
+// src/features/Dashboard/pages/RiskProfile/pages/Pasar/services/pasar.service.ts
+import axios, { AxiosResponse } from 'axios';
 
-const API_BASE_URL = 'http://localhost:5530/api/v1/pasar';
+// ENUMS
+export enum CalculationMode {
+  RASIO = 'RASIO',
+  NILAI_TUNGGAL = 'NILAI_TUNGGAL',
+  TEKS = 'TEKS',
+}
 
-// Interceptor untuk debug request/response
-const api_pasar = axios.create({
-  baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-  timeout: 30000, // Increase timeout
-});
+export enum Quarter {
+  Q1 = 'Q1',
+  Q2 = 'Q2',
+  Q3 = 'Q3',
+  Q4 = 'Q4',
+}
 
-// Request interceptor untuk logging
-api_pasar.interceptors.request.use(
-  (config) => {
-    console.log('📤 Request:', {
-      url: config.url,
-      method: config.method,
-      data: config.data,
-      params: config.params,
-    });
-    return config;
-  },
-  (error) => {
-    console.error('❌ Request error:', error);
-    return Promise.reject(error);
-  }
-);
+// INTERFACES
+export interface PasarSection {
+  id: number;
+  no: string;
+  bobotSection: number;
+  parameter: string;
+  description: string | null;
+  sortOrder: number;
+  isActive: boolean;
+  year: number;
+  quarter: Quarter;
+  createdAt: Date;
+  updatedAt: Date;
+  isDeleted: boolean;
+  createdBy?: string | null;
+  updatedBy?: string | null;
+}
 
-// Response interceptor untuk logging
-api_pasar.interceptors.response.use(
-  (response) => {
-    console.log('📥 Response:', {
-      url: response.config.url,
-      status: response.status,
-      data: response.data,
-    });
-    return response;
-  },
-  (error) => {
-    console.error('❌ Response error:', {
-      url: error.config?.url,
-      status: error.response?.status,
-      data: error.response?.data,
-      message: error.message,
-    });
-    return Promise.reject(error);
-  }
-);
+export interface PasarIndikator {
+  id: number;
+  year: number;
+  quarter: Quarter;
+  sectionId: number;
+  no: string;
+  sectionLabel: string;
+  bobotSection: number;
+  subNo: string;
+  indikator: string;
+  bobotIndikator: number;
+  sumberRisiko: string | null;
+  dampak: string | null;
+  low: string | null;
+  lowToModerate: string | null;
+  moderate: string | null;
+  moderateToHigh: string | null;
+  high: string | null;
+  mode: CalculationMode;
+  formula: string | null;
+  isPercent: boolean;
+  pembilangLabel: string | null;
+  pembilangValue: number | null;
+  penyebutLabel: string | null;
+  penyebutValue: number | null;
+  hasil: number | null;
+  hasilText: string | null;
+  peringkat: number;
+  weighted: number;
+  keterangan: string | null;
+  isValidated: boolean;
+  version: number;
+  createdAt: Date;
+  updatedAt: Date;
+  isDeleted: boolean;
+  createdBy?: string | null;
+  updatedBy?: string | null;
+  deletedBy?: string | null;
+  section?: PasarSection;
+}
 
-export class PasarService {
-  // ==================== SECTION METHODS ====================
+export interface CreatePasarSectionData {
+  no: string;
+  parameter: string;
+  bobotSection?: number;
+  description?: string;
+  sortOrder?: number;
+  isActive?: boolean;
+  year: number;
+  quarter: Quarter;
+}
 
-  async getSections(): Promise<SectionPasar[]> {
+export interface UpdatePasarSectionData {
+  no?: string;
+  parameter?: string;
+  bobotSection?: number;
+  description?: string;
+  sortOrder?: number;
+  isActive?: boolean;
+  year?: number;
+  quarter?: Quarter;
+}
+
+export interface CreatePasarData {
+  year: number;
+  quarter: Quarter;
+  sectionId: number;
+  no: string;
+  sectionLabel: string;
+  bobotSection: number;
+  subNo: string;
+  indikator: string;
+  bobotIndikator: number;
+  sumberRisiko?: string;
+  dampak?: string;
+  low?: string;
+  lowToModerate?: string;
+  moderate?: string;
+  moderateToHigh?: string;
+  high?: string;
+  mode: CalculationMode;
+  formula?: string;
+  isPercent?: boolean;
+  pembilangLabel?: string;
+  pembilangValue?: number;
+  penyebutLabel?: string;
+  penyebutValue?: number;
+  hasil?: number;
+  hasilText?: string;
+  peringkat: number;
+  weighted: number;
+  keterangan?: string;
+  createdBy?: string;
+}
+
+export interface UpdatePasarData {
+  year?: number;
+  quarter?: Quarter;
+  sectionId?: number;
+  no?: string;
+  sectionLabel?: string;
+  bobotSection?: number;
+  subNo?: string;
+  indikator?: string;
+  bobotIndikator?: number;
+  sumberRisiko?: string;
+  dampak?: string;
+  low?: string;
+  lowToModerate?: string;
+  moderate?: string;
+  moderateToHigh?: string;
+  high?: string;
+  mode?: CalculationMode;
+  formula?: string;
+  isPercent?: boolean;
+  pembilangLabel?: string;
+  pembilangValue?: number;
+  penyebutLabel?: string;
+  penyebutValue?: number;
+  hasil?: number;
+  hasilText?: string;
+  peringkat?: number;
+  weighted?: number;
+  keterangan?: string;
+}
+
+export interface TotalWeightedResponse {
+  total: number;
+}
+
+export interface Period {
+  year: number;
+  quarter: Quarter;
+  indicatorCount?: number;
+}
+
+export interface SectionsWithIndicatorsResponse {
+  success: boolean;
+  year: number;
+  quarter: Quarter;
+  sections: Array<
+    PasarSection & {
+      indicators: PasarIndikator[];
+      totalWeighted?: number;
+      indicatorCount: number;
+      hasIndicators: boolean;
+    }
+  >;
+  sectionsWithIndicators: Array<
+    PasarSection & {
+      indicators: PasarIndikator[];
+      totalWeighted?: number;
+      indicatorCount: number;
+      hasIndicators: boolean;
+    }
+  >;
+  overallTotalWeighted: number;
+  sectionCount: number;
+  totalIndicators: number;
+}
+
+// UTILITY FUNCTIONS
+export const fmtNumber = (v: any): string => {
+  if (v === '' || v == null) return '';
+  const n = Number(v);
+  if (isNaN(n)) return String(v);
+  return new Intl.NumberFormat('en-US').format(n);
+};
+
+export const formatHasilNumber = (value: any, maxDecimals = 4): string => {
+  if (value === '' || value == null) return '';
+  const n = Number(value);
+  if (!isFinite(n) || isNaN(n)) return '';
+
+  // batasi maxDecimals, lalu buang .0000 di belakang
+  const fixed = n.toFixed(maxDecimals);
+  return fixed.replace(/\.?0+$/, ''); // "1.2300" -> "1.23", "0.0000" -> "0"
+};
+
+export const parseNum = (v: any): number => {
+  if (v == null || v === '') return 0;
+  if (typeof v === 'number') return v;
+
+  // buang koma, spasi, dll biar "1,000" -> "1000"
+  const cleaned = String(v).replace(/,/g, '').replace(/\s/g, '');
+  const n = Number(cleaned);
+  return isNaN(n) ? 0 : n;
+};
+
+export const computeHasil = (ind: any): number | null => {
+  const mode = ind?.mode || 'RASIO';
+  if (mode === 'TEKS') return null;
+
+  const pemb = parseNum(ind.pembilangValue);
+  const peny = parseNum(ind.penyebutValue);
+
+  if (ind.formula && ind.formula.trim() !== '') {
     try {
-      const response = await api_pasar.get<SectionPasar[]>('/sections');
-      return response.data;
-    } catch (error) {
-      console.error('Error in getSections:', error);
-      throw error;
+      const expr = ind.formula
+        .replace(/\bpembilang\b/gi, pemb.toString())
+        .replace(/\bpenyebut\b/gi, peny.toString())
+        .replace(/\bpemb\b/g, pemb.toString())
+        .replace(/\bpeny\b/g, peny.toString());
+
+      const fn = new Function('pemb', 'peny', `return (${expr});`);
+      const res = fn(pemb, peny);
+      if (!isFinite(res) || isNaN(res)) return null;
+      return Number(res);
+    } catch (e) {
+      console.warn('[PASAR] Invalid formula:', ind.formula, e);
+      return null;
     }
   }
 
-  async getSectionsByPeriod(tahun: number, triwulan: string): Promise<SectionPasar[]> {
-    try {
-      const response = await api_pasar.get<SectionPasar[]>('/sections/period', {
-        params: { tahun, triwulan },
-      });
-      return response.data;
-    } catch (error) {
-      console.error('Error in getSectionsByPeriod:', error);
-      throw error;
-    }
+  // 🔹 NILAI_TUNGGAL → langsung pakai nilai penyebut
+  if (mode === 'NILAI_TUNGGAL') {
+    if (ind.penyebutValue === '' || ind.penyebutValue == null) return null;
+    return peny; // boleh 0, 10, 100, dll
   }
 
-  async getSectionById(id: number): Promise<SectionPasar> {
-    try {
-      const response = await api_pasar.get<SectionPasar>(`/sections/${id}`);
-      return response.data;
-    } catch (error) {
-      console.error('Error in getSectionById:', error);
-      throw error;
-    }
+  // 🔹 RASIO (default) → pemb / peny
+  if (peny === 0) return null;
+  const result = pemb / peny;
+  if (!isFinite(result) || isNaN(result)) return null;
+  return Number(result);
+};
+
+export const computeWeightedAuto = (ind: any, sectionBobot: number): number => {
+  const sectionB = Number(sectionBobot || 0);
+  const bobotInd = Number(ind.bobotIndikator || 0);
+  const peringkat = Number(ind.peringkat || 0);
+  const res = (sectionB * bobotInd * peringkat) / 10000;
+  if (!isFinite(res) || isNaN(res)) return 0;
+  return res;
+};
+
+export const transformIndicatorToBackend = (indicatorData: any, year: number, quarter: Quarter, sectionId: number, sectionData: any): CreatePasarData => {
+  const hasilNum = computeHasil(indicatorData);
+
+  return {
+    year,
+    quarter,
+    sectionId,
+    no: sectionData?.no || '',
+    sectionLabel: sectionData?.parameter || '',
+    bobotSection: Number(sectionData?.bobotSection) || 0,
+    subNo: indicatorData.subNo?.toString().trim() || '',
+    indikator: indicatorData.indikator?.toString().trim() || '',
+    bobotIndikator: Number(indicatorData.bobotIndikator) || 0,
+    sumberRisiko: indicatorData.sumberRisiko?.trim() || undefined,
+    dampak: indicatorData.dampak?.trim() || undefined,
+    low: indicatorData.low?.trim() || undefined,
+    lowToModerate: indicatorData.lowToModerate?.trim() || undefined,
+    moderate: indicatorData.moderate?.trim() || undefined,
+    moderateToHigh: indicatorData.moderateToHigh?.trim() || undefined,
+    high: indicatorData.high?.trim() || undefined,
+    mode: indicatorData.mode || CalculationMode.RASIO,
+    formula: indicatorData.formula?.trim() || undefined,
+    isPercent: Boolean(indicatorData.isPercent || false),
+    pembilangLabel: indicatorData.pembilangLabel?.trim() || undefined,
+    pembilangValue: indicatorData.pembilangValue !== undefined && indicatorData.pembilangValue !== '' ? Number(indicatorData.pembilangValue) : undefined,
+    penyebutLabel: indicatorData.penyebutLabel?.trim() || undefined,
+    penyebutValue: indicatorData.penyebutValue !== undefined && indicatorData.penyebutValue !== '' ? Number(indicatorData.penyebutValue) : undefined,
+    hasil: hasilNum !== null ? hasilNum : undefined,
+    hasilText: indicatorData.mode === CalculationMode.TEKS ? indicatorData.hasilText || indicatorData.keterangan || '' : undefined,
+    peringkat: Number(indicatorData.peringkat) || 1,
+    weighted: computeWeightedAuto(indicatorData, Number(sectionData?.bobotSection) || 0),
+    keterangan: indicatorData.keterangan?.trim() || undefined,
+  };
+};
+
+export const transformIndicatorToFrontend = (indikator: PasarIndikator): any => {
+  return {
+    id: indikator.id,
+    subNo: indikator.subNo || '',
+    indikator: indikator.indikator || '',
+    bobotIndikator: indikator.bobotIndikator || 0,
+    sumberRisiko: indikator.sumberRisiko || '',
+    dampak: indikator.dampak || '',
+    pembilangLabel: indikator.pembilangLabel || '',
+    pembilangValue: indikator.pembilangValue !== null ? indikator.pembilangValue.toString() : '',
+    penyebutLabel: indikator.penyebutLabel || '',
+    penyebutValue: indikator.penyebutValue !== null ? indikator.penyebutValue.toString() : '',
+    peringkat: indikator.peringkat || 1,
+    weighted: indikator.weighted || '',
+    hasil: indikator.hasil !== null ? indikator.hasil.toString() : '',
+    hasilText: indikator.hasilText || '',
+    keterangan: indikator.keterangan || '',
+    isPercent: Boolean(indikator.isPercent),
+    mode: indikator.mode || CalculationMode.RASIO,
+    formula: indikator.formula || '',
+    low: indikator.low || '',
+    lowToModerate: indikator.lowToModerate || '',
+    moderate: indikator.moderate || '',
+    moderateToHigh: indikator.moderateToHigh || '',
+    high: indikator.high || '',
+    sectionId: indikator.sectionId,
+    no: indikator.no,
+    sectionLabel: indikator.sectionLabel,
+    bobotSection: indikator.bobotSection,
+    year: indikator.year,
+    quarter: indikator.quarter,
+    section: indikator.section,
+  };
+};
+
+export const transformSectionToBackend = (sectionData: any, year: number, quarter: Quarter): CreatePasarSectionData => {
+  return {
+    no: String(sectionData.no),
+    bobotSection: Number(sectionData.bobotSection || 0),
+    parameter: sectionData.parameter,
+    description: sectionData.description || undefined,
+    sortOrder: sectionData.sortOrder || 0,
+    isActive: sectionData.isActive ?? true,
+    year,
+    quarter,
+  };
+};
+
+export const rowsPerIndicator = (ind: any): number => {
+  return 1 + (ind.mode === 'RASIO' ? 2 : 1);
+};
+
+// API SERVICE
+class PasarApiService {
+  private baseUrl: string;
+
+  constructor() {
+    this.baseUrl = 'http://localhost:5530/api/v1';
   }
 
-  async createSection(data: CreateSectionDto): Promise<SectionPasar> {
-    try {
-      console.log('Creating section with data:', data);
-      const response = await api_pasar.post<SectionPasar>('/sections', data);
-      return response.data;
-    } catch (error) {
-      console.error('Error in createSection:', error);
-      throw error;
-    }
+  async createSection(data: CreatePasarSectionData): Promise<PasarSection> {
+    return this.request<PasarSection>('post', '/pasar/sections', data);
   }
 
-  async updateSection(id: number, data: UpdateSectionDto): Promise<SectionPasar> {
-    try {
-      const response = await api_pasar.patch<SectionPasar>(`/sections/${id}`, data);
-      return response.data;
-    } catch (error) {
-      console.error('Error in updateSection:', error);
-      throw error;
-    }
+  async getAllSections(isActive?: boolean): Promise<PasarSection[]> {
+    const params = isActive !== undefined ? { isActive } : {};
+    return this.request<PasarSection[]>('get', '/pasar/sections', null, params);
+  }
+
+  async getSectionById(id: number): Promise<PasarSection> {
+    return this.request<PasarSection>('get', `/pasar/sections/${id}`);
+  }
+
+  async updateSection(id: number, data: UpdatePasarSectionData): Promise<PasarSection> {
+    return this.request<PasarSection>('put', `/pasar/sections/${id}`, data);
   }
 
   async deleteSection(id: number): Promise<void> {
-    try {
-      await api_pasar.delete(`/sections/${id}`);
-    } catch (error) {
-      console.error('Error in deleteSection:', error);
-      throw error;
-    }
+    return this.request<void>('delete', `/pasar/sections/${id}`);
   }
 
-  // ==================== INDIKATOR METHODS ====================
-
-  async getAllIndikators(): Promise<IndikatorPasar[]> {
-    try {
-      const response = await api_pasar.get<IndikatorPasar[]>('/indikators');
-      return response.data;
-    } catch (error) {
-      console.error('Error in getAllIndikators:', error);
-      throw error;
-    }
+  async getSectionsByPeriod(year: number, quarter: Quarter): Promise<PasarSection[]> {
+    return this.request<PasarSection[]>('get', '/pasar/sections/period', null, { year, quarter });
   }
 
-  async getIndikatorsBySection(sectionId: number): Promise<IndikatorPasar[]> {
-    try {
-      const response = await api_pasar.get<IndikatorPasar[]>('/indikators/section', {
-        params: { sectionId },
-      });
-      return response.data;
-    } catch (error) {
-      console.error('Error in getIndikatorsBySection:', error);
-      throw error;
-    }
+  // ========== INDIKATOR API ==========
+  async createIndikator(data: CreatePasarData): Promise<PasarIndikator> {
+    return this.request<PasarIndikator>('post', '/pasar/indikators', data);
   }
 
-  async getIndikatorById(id: number): Promise<IndikatorPasar> {
-    try {
-      const response = await api_pasar.get<IndikatorPasar>(`/indikators/${id}`);
-      return response.data;
-    } catch (error) {
-      console.error('Error in getIndikatorById:', error);
-      throw error;
-    }
+  async getAllIndikators(): Promise<PasarIndikator[]> {
+    return this.request<PasarIndikator[]>('get', '/pasar/indikators');
   }
 
-  async createIndikator(data: CreateIndikatorDto): Promise<IndikatorPasar> {
-    try {
-      console.log('Creating indikator with data:', JSON.stringify(data, null, 2));
-
-      // Clean data: remove undefined and null values
-      const cleanData = this.cleanDataForRequest(data);
-      console.log('Cleaned data for request:', JSON.stringify(cleanData, null, 2));
-
-      const response = await api_pasar.post<IndikatorPasar>('/indikators', cleanData);
-      return response.data;
-    } catch (error) {
-      console.error('Error in createIndikator:', error);
-      throw error;
-    }
+  async getIndikatorsByPeriod(year: number, quarter: Quarter): Promise<PasarIndikator[]> {
+    return this.request<PasarIndikator[]>('get', '/pasar/indikators/period', null, { year, quarter });
   }
 
-  async updateIndikator(id: number, data: UpdateIndikatorDto): Promise<IndikatorPasar> {
-    try {
-      // Clean data: remove undefined and null values
-      const cleanData = this.cleanDataForRequest(data);
+  async getSectionsWithIndicatorsByPeriod(year: number, quarter: Quarter): Promise<SectionsWithIndicatorsResponse> {
+    return this.request<SectionsWithIndicatorsResponse>('get', '/pasar/indikators/sections-by-period', null, { year, quarter });
+  }
 
-      const response = await api_pasar.patch<IndikatorPasar>(`/indikators/${id}`, cleanData);
-      return response.data;
-    } catch (error) {
-      console.error('Error in updateIndikator:', error);
-      throw error;
-    }
+  async searchIndikators(query?: string, year?: number, quarter?: Quarter): Promise<PasarIndikator[]> {
+    const params: any = {};
+    if (query) params.query = query;
+    if (year) params.year = year;
+    if (quarter) params.quarter = quarter;
+
+    return this.request<PasarIndikator[]>('get', '/pasar/indikators/search', null, params);
+  }
+
+  async getIndikatorById(id: number): Promise<PasarIndikator> {
+    return this.request<PasarIndikator>('get', `/pasar/indikators/${id}`);
+  }
+
+  async updateIndikator(id: number, data: UpdatePasarData): Promise<PasarIndikator> {
+    return this.request<PasarIndikator>('put', `/pasar/indikators/${id}`, data);
   }
 
   async deleteIndikator(id: number): Promise<void> {
-    try {
-      await api_pasar.delete(`/indikators/${id}`);
-    } catch (error) {
-      console.error('Error in deleteIndikator:', error);
-      throw error;
-    }
+    return this.request<void>('delete', `/pasar/indikators/${id}`);
   }
 
-  async searchIndikators(query: string): Promise<IndikatorPasar[]> {
+  async getTotalWeightedByPeriod(year: number, quarter: Quarter): Promise<number> {
+    const response = await this.request<TotalWeightedResponse>('get', '/pasar/total-weighted', null, { year, quarter });
+    return response.total;
+  }
+
+  async getAvailablePeriods(): Promise<Period[]> {
+    return this.request<Period[]>('get', '/pasar/periods');
+  }
+
+  async getAllPeriods(): Promise<Array<Period & { indicatorCount: number }>> {
+    return this.request<Array<Period & { indicatorCount: number }>>('get', '/pasar/all-periods');
+  }
+
+  async duplicateIndikator(sourceId: number, targetYear: number, targetQuarter: Quarter): Promise<PasarIndikator> {
+    return this.request<PasarIndikator>('post', `/pasar/indikators/${sourceId}/duplicate`, null, { year: targetYear, quarter: targetQuarter });
+  }
+
+  // ========== HELPER METHODS ==========
+  private async request<T>(method: 'get' | 'post' | 'put' | 'delete', endpoint: string, data?: any, params?: any): Promise<T> {
     try {
-      const response = await api_pasar.get<IndikatorPasar[]>('/indikators/search', {
-        params: { query },
-      });
+      const config = {
+        method,
+        url: `${this.baseUrl}${endpoint}`,
+        data,
+        params,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      };
+
+      console.log(`[PASAR API] ${method.toUpperCase()} ${endpoint}`, { data, params });
+
+      const response: AxiosResponse<T> = await axios(config);
+      console.log(`[PASAR API] Response from ${endpoint}:`, response.data);
       return response.data;
     } catch (error) {
-      console.error('Error in searchIndikators:', error);
+      this.handleError(error);
       throw error;
     }
   }
 
-  // ==================== DASHBOARD & SUMMARY METHODS ====================
-
-  async getOverallSummary(tahun: number, triwulan: string): Promise<SummaryResponse> {
-    try {
-      const response = await api_pasar.get<SummaryResponse>('/dashboard/summary', {
-        params: { tahun, triwulan },
-      });
-      return response.data;
-    } catch (error) {
-      console.error('Error in getOverallSummary:', error);
-      throw error;
-    }
-  }
-
-  // ==================== UTILITY METHODS ====================
-
-  calculateHasil(pembilang: number, penyebut: number): number {
-    if (!penyebut || penyebut === 0) return 0;
-    return Number((pembilang / penyebut).toFixed(6));
-  }
-
-  calculateWeighted(bobotSection: number, bobotIndikator: number, peringkat: number): number {
-    return Number(((bobotSection * bobotIndikator * peringkat) / 10000).toFixed(2));
-  }
-
-  determineRiskLevel(hasil: number): string {
-    const percent = hasil * 100;
-    if (percent <= 1) return 'low';
-    if (percent <= 2) return 'low_to_moderate';
-    if (percent <= 3) return 'moderate';
-    if (percent <= 4) return 'moderate_to_high';
-    return 'high';
-  }
-
-  // Helper untuk membersihkan data sebelum dikirim ke API
-  cleanDataForRequest(data: any): any {
-    const cleanData: any = {};
-
-    Object.keys(data).forEach((key) => {
-      const value = data[key];
-
-      // Skip undefined values
-      if (value === undefined) {
-        return;
-      }
-
-      // Convert empty strings to null for optional fields
-      if (value === '' && this.isOptionalField(key)) {
-        cleanData[key] = null;
-      }
-      // Keep other values as is
-      else {
-        cleanData[key] = value;
-      }
-    });
-
-    return cleanData;
-  }
-
-  // Helper untuk menentukan field yang optional
-  private isOptionalField(field: string): boolean {
-    const optionalFields = ['pembilang_label', 'pembilang_value', 'penyebut_label', 'penyebut_value', 'keterangan', 'formula'];
-    return optionalFields.includes(field);
-  }
-
-  // Helper untuk handle error dengan detail
-  handleError(error: any): string {
-    console.error('🔄 Full error details:', {
-      error,
-      response: error.response,
-      request: error.request,
-      message: error.message,
-    });
-
+  private handleError(error: any): void {
     if (axios.isAxiosError(error)) {
-      const axiosError = error as AxiosError<{
-        message?: string | string[] | any;
-        errors?: any[];
-        statusCode?: number;
-        error?: string;
-      }>;
+      if (error.response) {
+        const message = error.response.data?.message || 'Terjadi kesalahan pada server';
+        const status = error.response.status;
+        const data = error.response.data;
 
-      if (axiosError.response) {
-        const { data, status, statusText } = axiosError.response;
+        console.error(`[PASAR API Error ${status}]:`, message, data);
 
-        console.log('🔍 Server Response:', {
-          status,
-          statusText,
-          data,
-        });
-
-        // Handle validation errors
-        if (status === 400) {
-          if (data?.message) {
-            // Handle array of validation errors
-            if (Array.isArray(data.message)) {
-              return data.message
-                .map((item: any) => {
-                  if (typeof item === 'string') return item;
-                  if (item.constraints) {
-                    const field = item.property || 'field';
-                    const errors = Object.values(item.constraints).join(', ');
-                    return `${field}: ${errors}`;
-                  }
-                  return JSON.stringify(item);
-                })
-                .join('\n');
-            }
-            // Handle string message
-            if (typeof data.message === 'string') {
-              return data.message;
-            }
-            // Handle object message
-            if (typeof data.message === 'object') {
-              return JSON.stringify(data.message);
-            }
-          }
-
-          // Handle errors array
-          if (data?.errors && Array.isArray(data.errors)) {
-            return data.errors.map((err: any) => `${err.field || 'field'}: ${err.message}`).join('\n');
-          }
-
-          return `Validation failed: ${statusText || 'Bad Request'}`;
+        switch (status) {
+          case 400:
+            throw new Error(`Bad Request: ${message}`);
+          case 401:
+            throw new Error('Unauthorized: Silakan login kembali');
+          case 403:
+            throw new Error('Forbidden: Anda tidak memiliki akses');
+          case 404:
+            throw new Error(`Not Found: ${message}`);
+          case 409:
+            throw new Error(`Conflict: ${message}`);
+          case 500:
+            throw new Error('Server Error: Silakan coba lagi nanti');
+          default:
+            throw new Error(`Server Error [${status}]: ${message}`);
         }
-
-        // Handle 500 errors
-        if (status >= 500) {
-          return `Server error: ${statusText || 'Internal Server Error'}`;
-        }
-
-        // Handle other errors
-        return `Error ${status}: ${statusText || 'Unknown error'}`;
+      } else if (error.request) {
+        console.error('[PASAR API] Network Error:', error.message);
+        throw new Error('Koneksi jaringan bermasalah. Periksa koneksi internet Anda.');
+      } else {
+        console.error('[PASAR API] Request Error:', error.message);
+        throw new Error(`Gagal membuat permintaan: ${error.message}`);
       }
-
-      // Handle network errors
-      if (axiosError.request) {
-        return 'Network error: Tidak dapat terhubung ke server. Periksa koneksi internet Anda.';
-      }
+    } else {
+      console.error('[PASAR API] Unexpected Error:', error);
+      throw new Error('Terjadi kesalahan yang tidak diketahui');
     }
-
-    // Handle other types of errors
-    return error.message || 'Terjadi kesalahan yang tidak diketahui';
-  }
-
-  // Format data untuk transformasi
-  formatIndikatorData(formData: any, sectionId: number): CreateIndikatorDto {
-    const cleanData: CreateIndikatorDto = {
-      sectionId: sectionId,
-      nama_indikator: formData.nama_indikator?.trim() || '',
-      bobot_indikator: Number(formData.bobot_indikator || 0),
-      sumber_risiko: formData.sumber_risiko?.trim() || '',
-      dampak: formData.dampak?.trim() || '',
-      low: formData.low?.trim() || '',
-      low_to_moderate: formData.low_to_moderate?.trim() || '',
-      moderate: formData.moderate?.trim() || '',
-      moderate_to_high: formData.moderate_to_high?.trim() || '',
-      high: formData.high?.trim() || '',
-      peringkat: Number(formData.peringkat || 1),
-      mode: formData.mode || 'RASIO',
-      is_percent: Boolean(formData.is_percent || false),
-    };
-
-    // Optional fields - only include if they have values
-    if (formData.pembilang_label?.trim()) {
-      cleanData.pembilang_label = formData.pembilang_label.trim();
-    }
-
-    if (formData.pembilang_value !== undefined && formData.pembilang_value !== null && formData.pembilang_value !== '') {
-      cleanData.pembilang_value = Number(formData.pembilang_value);
-    }
-
-    if (formData.penyebut_label?.trim()) {
-      cleanData.penyebut_label = formData.penyebut_label.trim();
-    }
-
-    if (formData.penyebut_value !== undefined && formData.penyebut_value !== null && formData.penyebut_value !== '') {
-      cleanData.penyebut_value = Number(formData.penyebut_value);
-    }
-
-    if (formData.keterangan?.trim()) {
-      cleanData.keterangan = formData.keterangan.trim();
-    }
-
-    if (formData.formula?.trim()) {
-      cleanData.formula = formData.formula.trim();
-    }
-
-    return cleanData;
-  }
-
-  // Group data untuk display
-  groupBySection(sections: SectionPasar[]): GroupedSection[] {
-    return sections.map((section) => ({
-      section,
-      indikators: section.indikators || [],
-      total_weighted: section.total_weighted || 0,
-    }));
-  }
-
-  // Format untuk export
-  formatForExport(sections: SectionPasar[], year: number, quarter: string): ExportData[] {
-    return sections.map((section) => ({
-      year,
-      quarter,
-      sectionNo: section.no_sec,
-      sectionLabel: section.nama_section,
-      bobotSection: section.bobot_par,
-      rows: (section.indikators || []).map(
-        (indikator): FormattedIndikatorData => ({
-          indikator: indikator.nama_indikator,
-          bobotIndikator: indikator.bobot_indikator,
-          sumberRisiko: indikator.sumber_risiko,
-          dampak: indikator.dampak,
-          pembilangLabel: indikator.pembilang_label,
-          pembilangValue: indikator.pembilang_value,
-          penyebutLabel: indikator.penyebut_label,
-          penyebutValue: indikator.penyebut_value,
-          low: indikator.low,
-          lowToModerate: indikator.low_to_moderate,
-          moderate: indikator.moderate,
-          moderateToHigh: indikator.moderate_to_high,
-          high: indikator.high,
-          peringkat: indikator.peringkat,
-          weighted: indikator.weighted,
-          hasil: indikator.hasil,
-          keterangan: indikator.keterangan,
-        })
-      ),
-    }));
   }
 }
 
-export const pasarService = new PasarService();
-export default PasarService;
+// Export singleton instance
+export const pasarApiService = new PasarApiService();

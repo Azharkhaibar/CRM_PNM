@@ -56,6 +56,9 @@ let Reputasi = class Reputasi {
     peringkat;
     weighted;
     keterangan;
+    isValidated;
+    validatedAt;
+    validatedBy;
     createdAt;
     updatedAt;
     isDeleted;
@@ -63,6 +66,8 @@ let Reputasi = class Reputasi {
     createdBy;
     updatedBy;
     deletedBy;
+    version;
+    revisionNotes;
 };
 exports.Reputasi = Reputasi;
 __decorate([
@@ -82,9 +87,9 @@ __decorate([
     __metadata("design:type", Number)
 ], Reputasi.prototype, "sectionId", void 0);
 __decorate([
-    (0, typeorm_1.ManyToOne)(() => reputasi_section_entity_1.ReputasiSection, (section) => section.reputasi, {
+    (0, typeorm_1.ManyToOne)(() => reputasi_section_entity_1.ReputasiSection, (section) => section.reputasiIndicators, {
         onUpdate: 'CASCADE',
-        onDelete: 'RESTRICT',
+        onDelete: 'CASCADE',
     }),
     (0, typeorm_1.JoinColumn)({ name: 'section_id' }),
     __metadata("design:type", reputasi_section_entity_1.ReputasiSection)
@@ -94,15 +99,28 @@ __decorate([
     __metadata("design:type", String)
 ], Reputasi.prototype, "no", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'varchar', length: 500, name: 'section_label' }),
+    (0, typeorm_1.Column)({
+        type: 'varchar',
+        length: 500,
+        name: 'section_label',
+    }),
     __metadata("design:type", String)
 ], Reputasi.prototype, "sectionLabel", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'decimal', precision: 5, scale: 2, name: 'bobot_section' }),
+    (0, typeorm_1.Column)({
+        type: 'decimal',
+        precision: 5,
+        scale: 2,
+        name: 'bobot_section',
+    }),
     __metadata("design:type", Number)
 ], Reputasi.prototype, "bobotSection", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'varchar', length: 50, name: 'sub_no' }),
+    (0, typeorm_1.Column)({
+        type: 'varchar',
+        length: 50,
+        name: 'sub_no',
+    }),
     __metadata("design:type", String)
 ], Reputasi.prototype, "subNo", void 0);
 __decorate([
@@ -110,11 +128,20 @@ __decorate([
     __metadata("design:type", String)
 ], Reputasi.prototype, "indikator", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'decimal', precision: 5, scale: 2, name: 'bobot_indikator' }),
+    (0, typeorm_1.Column)({
+        type: 'decimal',
+        precision: 5,
+        scale: 2,
+        name: 'bobot_indikator',
+    }),
     __metadata("design:type", Number)
 ], Reputasi.prototype, "bobotIndikator", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'text', nullable: true, name: 'sumber_risiko' }),
+    (0, typeorm_1.Column)({
+        type: 'text',
+        nullable: true,
+        name: 'sumber_risiko',
+    }),
     __metadata("design:type", Object)
 ], Reputasi.prototype, "sumberRisiko", void 0);
 __decorate([
@@ -122,33 +149,45 @@ __decorate([
     __metadata("design:type", Object)
 ], Reputasi.prototype, "dampak", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'varchar', length: 500, nullable: true }),
+    (0, typeorm_1.Column)({
+        type: 'varchar',
+        length: 200,
+        nullable: true,
+    }),
     __metadata("design:type", Object)
 ], Reputasi.prototype, "low", void 0);
 __decorate([
     (0, typeorm_1.Column)({
         type: 'varchar',
-        length: 500,
+        length: 200,
         nullable: true,
         name: 'low_to_moderate',
     }),
     __metadata("design:type", Object)
 ], Reputasi.prototype, "lowToModerate", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'varchar', length: 500, nullable: true }),
+    (0, typeorm_1.Column)({
+        type: 'varchar',
+        length: 200,
+        nullable: true,
+    }),
     __metadata("design:type", Object)
 ], Reputasi.prototype, "moderate", void 0);
 __decorate([
     (0, typeorm_1.Column)({
         type: 'varchar',
-        length: 500,
+        length: 200,
         nullable: true,
         name: 'moderate_to_high',
     }),
     __metadata("design:type", Object)
 ], Reputasi.prototype, "moderateToHigh", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'varchar', length: 500, nullable: true }),
+    (0, typeorm_1.Column)({
+        type: 'varchar',
+        length: 200,
+        nullable: true,
+    }),
     __metadata("design:type", Object)
 ], Reputasi.prototype, "high", void 0);
 __decorate([
@@ -164,7 +203,11 @@ __decorate([
     __metadata("design:type", Object)
 ], Reputasi.prototype, "formula", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'boolean', default: false, name: 'is_percent' }),
+    (0, typeorm_1.Column)({
+        type: 'boolean',
+        default: false,
+        name: 'is_percent',
+    }),
     __metadata("design:type", Boolean)
 ], Reputasi.prototype, "isPercent", void 0);
 __decorate([
@@ -206,11 +249,21 @@ __decorate([
     __metadata("design:type", Object)
 ], Reputasi.prototype, "penyebutValue", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'decimal', precision: 10, scale: 6, nullable: true }),
+    (0, typeorm_1.Column)({
+        type: 'decimal',
+        precision: 15,
+        scale: 6,
+        nullable: true,
+    }),
     __metadata("design:type", Object)
 ], Reputasi.prototype, "hasil", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'varchar', length: 1000, nullable: true, name: 'hasil_text' }),
+    (0, typeorm_1.Column)({
+        type: 'varchar',
+        length: 1000,
+        nullable: true,
+        name: 'hasil_text',
+    }),
     __metadata("design:type", Object)
 ], Reputasi.prototype, "hasilText", void 0);
 __decorate([
@@ -218,13 +271,42 @@ __decorate([
     __metadata("design:type", Number)
 ], Reputasi.prototype, "peringkat", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'decimal', precision: 10, scale: 4 }),
+    (0, typeorm_1.Column)({
+        type: 'decimal',
+        precision: 10,
+        scale: 4,
+    }),
     __metadata("design:type", Number)
 ], Reputasi.prototype, "weighted", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: 'text', nullable: true }),
     __metadata("design:type", Object)
 ], Reputasi.prototype, "keterangan", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        name: 'is_validated',
+        type: 'boolean',
+        default: false,
+    }),
+    __metadata("design:type", Boolean)
+], Reputasi.prototype, "isValidated", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        type: 'timestamp',
+        nullable: true,
+        name: 'validated_at',
+    }),
+    __metadata("design:type", Object)
+], Reputasi.prototype, "validatedAt", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        type: 'varchar',
+        length: 100,
+        nullable: true,
+        name: 'validated_by',
+    }),
+    __metadata("design:type", Object)
+], Reputasi.prototype, "validatedBy", void 0);
 __decorate([
     (0, typeorm_1.CreateDateColumn)({ name: 'created_at' }),
     __metadata("design:type", Date)
@@ -234,29 +316,69 @@ __decorate([
     __metadata("design:type", Date)
 ], Reputasi.prototype, "updatedAt", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'boolean', default: false, name: 'is_deleted' }),
+    (0, typeorm_1.Column)({
+        name: 'is_deleted',
+        type: 'boolean',
+        default: false,
+    }),
     __metadata("design:type", Boolean)
 ], Reputasi.prototype, "isDeleted", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'timestamp', nullable: true, name: 'deleted_at' }),
+    (0, typeorm_1.Column)({
+        type: 'timestamp',
+        nullable: true,
+        name: 'deleted_at',
+    }),
     __metadata("design:type", Object)
 ], Reputasi.prototype, "deletedAt", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'varchar', length: 100, nullable: true, name: 'created_by' }),
+    (0, typeorm_1.Column)({
+        type: 'varchar',
+        length: 100,
+        nullable: true,
+        name: 'created_by',
+    }),
     __metadata("design:type", Object)
 ], Reputasi.prototype, "createdBy", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'varchar', length: 100, nullable: true, name: 'updated_by' }),
+    (0, typeorm_1.Column)({
+        type: 'varchar',
+        length: 100,
+        nullable: true,
+        name: 'updated_by',
+    }),
     __metadata("design:type", Object)
 ], Reputasi.prototype, "updatedBy", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'varchar', length: 100, nullable: true, name: 'deleted_by' }),
+    (0, typeorm_1.Column)({
+        type: 'varchar',
+        length: 100,
+        nullable: true,
+        name: 'deleted_by',
+    }),
     __metadata("design:type", Object)
 ], Reputasi.prototype, "deletedBy", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        type: 'int',
+        default: 1,
+    }),
+    __metadata("design:type", Number)
+], Reputasi.prototype, "version", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        type: 'varchar',
+        length: 50,
+        nullable: true,
+        name: 'revision_notes',
+    }),
+    __metadata("design:type", Object)
+], Reputasi.prototype, "revisionNotes", void 0);
 exports.Reputasi = Reputasi = __decorate([
     (0, typeorm_1.Entity)('indikators_reputasi'),
+    (0, typeorm_1.Unique)('UQ_REPUTASI_PERIOD_SUBNO', ['year', 'quarter', 'subNo', 'sectionId']),
     (0, typeorm_1.Index)('IDX_REPUTASI_PERIOD', ['year', 'quarter']),
     (0, typeorm_1.Index)('IDX_REPUTASI_SECTION', ['sectionId']),
-    (0, typeorm_1.Index)('IDX_REPUTASI_SUBNO', ['subNo'])
+    (0, typeorm_1.Index)('IDX_REPUTASI_YEAR_QUARTER', ['year', 'quarter'])
 ], Reputasi);
 //# sourceMappingURL=reputasi.entity.js.map

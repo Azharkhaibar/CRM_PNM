@@ -1,11 +1,12 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { Download, Trash2, Edit3, Search, Plus, ChevronDown, CheckCircle, XCircle } from 'lucide-react';
-import { RiskField, YearInput, QuarterSelect } from '../components/Inputs.jsx';
-import { exportKPMRPasarToExcel } from '../utils/excelexportpasar.jsx';
-import { useAuditLog } from '../../../../audit-log/hooks/audit-log.hooks.js';
-import { useAuth } from '../../../../../../auth/hooks/useAuth.hook.js';
-import { usePasarCRUD } from '../hooks/pasar/pasar.hook.ts';
+// src/features/Dashboard/pages/RiskProfile/pages/Pasar/tabs/pasartab.jsx
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { Download, Trash2, Edit3, Search, Plus, ChevronDown, RefreshCw, CheckCircle, XCircle } from 'lucide-react';
 
+// Import components
+import { YearInput, QuarterSelect } from '../../pasar/components/Inputs.jsx';
+import { exportKPMRPasarToExcel } from '../../pasar/utils/excelexportpasar.jsx';
+import { usePasar } from '../hooks/pasar/pasar.hook.js';
+import { exportPasarToExcel } from '../components/exportpasartoexcel.jsx';
 // ===================== Brand =====================
 const PNM_BRAND = {
   primary: '#0068B3',
@@ -13,7 +14,94 @@ const PNM_BRAND = {
   gradient: 'bg-gradient-to-r from-[#0076C6]/90 via-[#00A3DA]/90 to-[#33C2B5]/90',
 };
 
-// Formatters
+// ===================== Calculation Mode =====================
+const CalculationMode = {
+  RASIO: 'RASIO',
+  NILAI_TUNGGAL: 'NILAI_TUNGGAL',
+  TEKS: 'TEKS',
+};
+
+// ===================== RiskBox Component =====================
+const RiskBox = ({ label, value, onChange, color, textColor = '#111827', placeholder, className = '' }) => {
+  const handleChange = (e) => {
+    onChange && onChange(e.target.value);
+  };
+
+  const handleInput = (e) => {
+    e.target.style.height = 'auto';
+    e.target.style.height = `${e.target.scrollHeight}px`;
+  };
+
+  return (
+    <div className={className}>
+      <div
+        style={{
+          border: '2px solid #0f1a0f',
+          borderRadius: 14,
+          overflow: 'hidden',
+          background: '#E9F7E6',
+          boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.06)',
+          display: 'flex',
+          flexDirection: 'column',
+          minHeight: 44 + 4 + 44,
+        }}
+      >
+        {/* Header */}
+        <div
+          style={{
+            background: color || '#93D24D',
+            color: textColor === '#111827' ? '#111' : textColor,
+            height: 44,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontWeight: 700,
+            fontSize: 16,
+            padding: '0 12px',
+            textAlign: 'center',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+          }}
+          title={label}
+        >
+          {label}
+        </div>
+
+        {/* Garis pemisah */}
+        <div style={{ height: 4, background: '#0f1a0f', flex: '0 0 auto' }} />
+
+        {/* Area isi */}
+        <div style={{ padding: 8, flex: '1 0 auto' }}>
+          <textarea
+            value={value}
+            onChange={handleChange}
+            onInput={handleInput}
+            placeholder={placeholder}
+            rows={2}
+            style={{
+              width: '100%',
+              minHeight: 44,
+              textAlign: 'center',
+              fontWeight: 700,
+              fontSize: 16,
+              color: '#0f1a0f',
+              background: '#E9F7E6',
+              border: 'none',
+              outline: 'none',
+              borderRadius: 10,
+              resize: 'none',
+              overflow: 'hidden',
+              whiteSpace: 'pre-wrap',
+            }}
+          />
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ===================== Helper Functions =====================
 const fmtNumber = (v) => {
   if (v === '' || v == null) return '';
   const n = Number(v);
@@ -21,860 +109,972 @@ const fmtNumber = (v) => {
   return new Intl.NumberFormat('en-US').format(n);
 };
 
-const formatHasilNumber = (value, maxDecimals = 4) => {
-  if (value === '' || value == null) return '';
-  const n = Number(value);
-  if (!isFinite(n) || isNaN(n)) return '';
-  const fixed = n.toFixed(maxDecimals);
-  return fixed.replace(/\.?0+$/, '');
-};
-
 const parseNum = (v) => {
-  if (v == null || v === '') return 0;
-  if (typeof v === 'number') return v;
-  const cleaned = String(v).replace(/,/g, '').replace(/\s/g, '');
-  if (cleaned.includes('%')) {
-    const numValue = Number(cleaned.replace('%', ''));
-    if (isNaN(numValue)) return 0;
-    return numValue / 100;
+  if (v == null || v === '' || v === undefined) return 0;
+
+  // Jika string, hilangkan koma, spasi, dll
+  if (typeof v === 'string') {
+    const cleaned = v.replace(/[^\d.-]/g, '');
+    const n = Number(cleaned);
+    return isNaN(n) ? 0 : n;
   }
-  const n = Number(cleaned);
+
+  const n = Number(v);
   return isNaN(n) ? 0 : n;
 };
 
-// Empty indicator dengan semua field yang diperlukan
+// Empty indicator template
 const emptyIndicator = {
   id: null,
-  nama_indikator: '',
-  bobot_indikator: 0,
-  sumber_risiko: '',
-  dampak: '',
-  pembilang_label: '',
-  pembilang_value: 0,
-  penyebut_label: '',
-  penyebut_value: 0,
-  low: '',
-  low_to_moderate: '',
-  moderate: '',
-  moderate_to_high: '',
-  high: '',
-  peringkat: 1,
-  weighted: 0,
-  hasil: 0,
-  keterangan: '',
-  mode: 'RASIO',
+  subNo: '',
+  indikator: '',
+  mode: CalculationMode.RASIO,
   formula: '',
-  is_percent: false,
+  isPercent: false,
+  bobotIndikator: 0,
+  sumberRisiko: '',
+  dampak: '',
+  pembilangLabel: '',
+  pembilangValue: '',
+  penyebutLabel: '',
+  penyebutValue: '',
+  peringkat: 1,
+  weighted: '',
+  hasil: '',
+  hasilText: '',
+  low: '',
+  lowToModerate: '',
+  moderate: '',
+  moderateToHigh: '',
+  high: '',
+  keterangan: '',
   sectionId: null,
+  year: new Date().getFullYear(),
+  quarter: 'Q1',
 };
 
-// PERBAIKAN: Transform functions untuk konversi data - DIPERBAIKI LAGI
-const transformIndicatorToBackend = (indicatorData) => {
-  console.log('🔧 Transform indicator data (original):', indicatorData);
+// Transform functions untuk pasar
+const transformIndicatorToBackendPasar = (indicatorData, year, quarter, sectionId, sectionData) => {
+  // Hitung hasil dan weighted
+  const hasil = computeHasil(indicatorData);
+  const weighted = computeWeightedAuto(indicatorData, sectionData?.bobotSection || 100);
 
-  // Konversi semua nilai numerik dengan hati-hati
-  const bobotIndikator = Number(indicatorData.bobot_indikator);
-  const pembilangValue = indicatorData.pembilang_value !== undefined && indicatorData.pembilang_value !== null && indicatorData.pembilang_value !== '' ? Number(indicatorData.pembilang_value) : undefined;
-  const penyebutValue = indicatorData.penyebut_value !== undefined && indicatorData.penyebut_value !== null && indicatorData.penyebut_value !== '' ? Number(indicatorData.penyebut_value) : undefined;
-  const peringkat = Number(indicatorData.peringkat || 1);
-  const hasil = Number(indicatorData.hasil || 0);
-  const weighted = Number(indicatorData.weighted || 0);
+  return {
+    // ========== PERIODE ==========
+    year: Number(year),
+    quarter: quarter,
 
-  // Hanya kirim field yang diperlukan oleh backend
-  const cleanData = {
-    sectionId: Number(indicatorData.sectionId),
-    nama_indikator: indicatorData.nama_indikator?.trim() || '',
-    bobot_indikator: bobotIndikator,
-    sumber_risiko: indicatorData.sumber_risiko?.trim() || '',
-    dampak: indicatorData.dampak?.trim() || '',
-    low: indicatorData.low?.trim() || '',
-    low_to_moderate: indicatorData.low_to_moderate?.trim() || '',
-    moderate: indicatorData.moderate?.trim() || '',
-    moderate_to_high: indicatorData.moderate_to_high?.trim() || '',
-    high: indicatorData.high?.trim() || '',
-    peringkat: peringkat,
-    hasil: hasil,
+    // ========== RELASI SECTION ==========
+    sectionId: Number(sectionId),
+
+    // ========== DATA SECTION ==========
+    no: sectionData?.no || '',
+    sectionLabel: sectionData?.parameter || '',
+    bobotSection: Number(sectionData?.bobotSection || 0),
+
+    // ========== DATA INDIKATOR ==========
+    subNo: indicatorData.subNo?.toString().trim() || '',
+    indikator: indicatorData.indikator?.toString().trim() || '',
+    bobotIndikator: Number(indicatorData.bobotIndikator) || 0,
+
+    // ========== ANALISIS RISIKO ==========
+    sumberRisiko: indicatorData.sumberRisiko?.trim() || undefined,
+    dampak: indicatorData.dampak?.trim() || undefined,
+
+    // ========== LEVEL RISIKO ==========
+    low: indicatorData.low?.trim() || undefined,
+    lowToModerate: indicatorData.lowToModerate?.trim() || undefined,
+    moderate: indicatorData.moderate?.trim() || undefined,
+    moderateToHigh: indicatorData.moderateToHigh?.trim() || undefined,
+    high: indicatorData.high?.trim() || undefined,
+
+    // ========== METODE PERHITUNGAN ==========
+    mode: indicatorData.mode || CalculationMode.RASIO,
+    formula: indicatorData.formula?.trim() || undefined,
+    isPercent: Boolean(indicatorData.isPercent || false),
+
+    // ========== FAKTOR PERHITUNGAN ==========
+    pembilangLabel: indicatorData.pembilangLabel?.trim() || undefined,
+    pembilangValue: indicatorData.pembilangValue !== undefined && indicatorData.pembilangValue !== '' ? Number(indicatorData.pembilangValue) : undefined,
+    penyebutLabel: indicatorData.penyebutLabel?.trim() || undefined,
+    penyebutValue: indicatorData.penyebutValue !== undefined && indicatorData.penyebutValue !== '' ? Number(indicatorData.penyebutValue) : undefined,
+
+    // ========== HASIL ==========
+    hasil: hasil !== null && hasil !== '' ? Number(hasil) : undefined,
+    hasilText: indicatorData.mode === CalculationMode.TEKS ? indicatorData.hasilText?.trim() || undefined : undefined,
+
+    // ========== SKOR DAN BOBOT ==========
+    peringkat: Number(indicatorData.peringkat || 1),
     weighted: weighted,
-    mode: indicatorData.mode || 'RASIO',
-    is_percent: Boolean(indicatorData.is_percent || false),
+
+    // ========== KETERANGAN ==========
+    keterangan: indicatorData.keterangan?.trim() || undefined,
+
+    // ========== AUDIT TRAIL ==========
+    createdBy: 'admin',
   };
-
-  // Optional fields - hanya kirim jika ada value (jangan kirim null atau empty string)
-  if (indicatorData.pembilang_label?.trim()) {
-    cleanData.pembilang_label = indicatorData.pembilang_label.trim();
-  }
-
-  if (pembilangValue !== undefined) {
-    cleanData.pembilang_value = pembilangValue;
-  }
-
-  if (indicatorData.penyebut_label?.trim()) {
-    cleanData.penyebut_label = indicatorData.penyebut_label.trim();
-  }
-
-  if (penyebutValue !== undefined) {
-    cleanData.penyebut_value = penyebutValue;
-  }
-
-  if (indicatorData.keterangan?.trim()) {
-    cleanData.keterangan = indicatorData.keterangan.trim();
-  }
-
-  if (indicatorData.formula?.trim()) {
-    cleanData.formula = indicatorData.formula.trim();
-  }
-
-  console.log('🔧 Cleaned indicator data untuk backend:', cleanData);
-  return cleanData;
 };
 
-export default function Pasar() {
-  // Periode & search
+const transformIndicatorToFrontendPasar = (indikator) => {
+  return {
+    id: indikator.id,
+    subNo: indikator.subNo || '',
+    indikator: indikator.indikator || '',
+    bobotIndikator: indikator.bobotIndikator || 0,
+    sumberRisiko: indikator.sumberRisiko || '',
+    dampak: indikator.dampak || '',
+    pembilangLabel: indikator.pembilangLabel || '',
+    pembilangValue: indikator.pembilangValue !== null ? indikator.pembilangValue.toString() : '',
+    penyebutLabel: indikator.penyebutLabel || '',
+    penyebutValue: indikator.penyebutValue !== null ? indikator.penyebutValue.toString() : '',
+    peringkat: indikator.peringkat || 1,
+    weighted: indikator.weighted || '',
+    hasil: indikator.hasil !== null ? indikator.hasil.toString() : '',
+    hasilText: indikator.hasilText || '',
+    keterangan: indikator.keterangan || '',
+    isPercent: Boolean(indikator.isPercent),
+    mode: indikator.mode || CalculationMode.RASIO,
+    formula: indikator.formula || '',
+    low: indikator.low || '',
+    lowToModerate: indikator.lowToModerate || '',
+    moderate: indikator.moderate || '',
+    moderateToHigh: indikator.moderateToHigh || '',
+    high: indikator.high || '',
+    sectionId: indikator.sectionId,
+    year: indikator.year,
+    quarter: indikator.quarter,
+  };
+};
+
+// Transform functions untuk section pasar
+const transformSectionToBackendPasar = (sectionData, year, quarter) => {
+  return {
+    no: sectionData.no,
+    parameter: sectionData.parameter,
+    bobotSection: Number(sectionData.bobotSection || 0),
+    description: sectionData.description || '',
+    sortOrder: sectionData.sortOrder || 0,
+    isActive: sectionData.isActive !== undefined ? sectionData.isActive : true,
+    // TAMBAHKAN YEAR DAN QUARTER
+    year: Number(year),
+    quarter: quarter,
+  };
+};
+
+// ===================== Calculation Functions =====================
+const computeHasil = (ind) => {
+  const mode = ind?.mode || CalculationMode.RASIO;
+  if (mode === CalculationMode.TEKS) return null;
+
+  const pemb = parseNum(ind.pembilangValue);
+  const peny = parseNum(ind.penyebutValue);
+
+  const formula = ind.formula || '';
+  if (formula.trim() !== '') {
+    try {
+      const expr = formula.replace(/\bpemb\b/g, 'pemb').replace(/\bpeny\b/g, 'peny');
+      const fn = new Function('pemb', 'peny', `return (${expr});`);
+      const res = fn(pemb, peny);
+      if (!isFinite(res) || isNaN(res)) return null;
+      return Number(res);
+    } catch (e) {
+      console.warn('Invalid formula (Pasar):', formula, e);
+      return null;
+    }
+  }
+
+  if (mode === CalculationMode.NILAI_TUNGGAL) {
+    if (ind.penyebutValue === '' || ind.penyebutValue == null) return null;
+    return Number(peny);
+  }
+
+  if (peny === 0) return null;
+  const result = pemb / peny;
+  if (!isFinite(result) || isNaN(result)) return null;
+  return Number(result);
+};
+
+const computeWeightedAuto = (ind, sectionBobot) => {
+  const sectionB = Number(sectionBobot || 0);
+  const bobotInd = Number(ind.bobotIndikator || 0);
+  const peringkat = Number(ind.peringkat || 0);
+  const res = (sectionB * bobotInd * peringkat) / 10000;
+  if (!isFinite(res) || isNaN(res)) return 0;
+  return res;
+};
+
+// Total baris per indikator
+const rowsPerIndicator = (ind) => {
+  return 1 + (ind.mode === CalculationMode.RASIO ? 2 : 1);
+};
+
+// ===================== MAIN COMPONENT =====================
+export default function PasarTab() {
+  // ====== STATES UTAMA ======
   const [viewYear, setViewYear] = useState(new Date().getFullYear());
   const [viewQuarter, setViewQuarter] = useState('Q1');
   const [query, setQuery] = useState('');
 
-  // State untuk notifikasi
+  // ====== HOOK PASAR ======
+  const {
+    // State dari hook
+    sectionsWithIndicators,
+    loading,
+    error,
+    totalWeighted,
+
+    // Actions dari hook
+    clearError,
+
+    // CRUD operations
+    getSectionsWithIndicatorsByPeriod,
+    createSection,
+    updateSection,
+    deleteSection,
+    createIndikator,
+    updateIndikator,
+    deleteIndikator,
+    getAllSections,
+  } = usePasar({
+    initialYear: viewYear,
+    initialQuarter: viewQuarter,
+    autoLoad: true, // Auto load aktif
+  });
+
+  // ====== States Lain ======
+  const [sections, setSections] = useState([]);
+  const [loadingData, setLoadingData] = useState(false);
+  const [localError, setLocalError] = useState(null);
+  const [allSections, setAllSections] = useState([]);
   const [notification, setNotification] = useState({
-    type: '', // 'success' atau 'error'
+    type: '',
     message: '',
     show: false,
   });
+  const [loadingAllSections, setLoadingAllSections] = useState(false);
 
-  // ====== Audit Log Integration ======
-  const { user: authUser } = useAuth();
-  const { logUpdate, logDelete, logExport, logCreate } = useAuditLog();
-
-  // GUNAKAN HANYA usePasarCRUD
-  const { sections, summary, loading, error: crudError, refetch, createSection, createIndikator, updateSection, updateIndikator, deleteSection, deleteIndikator, clearError } = usePasarCRUD(viewYear, viewQuarter);
-
-  // State untuk form
+  // State section form
   const [sectionForm, setSectionForm] = useState({
     id: null,
-    no_sec: '',
-    nama_section: '',
-    bobot_par: 0,
-    tahun: viewYear,
-    triwulan: viewQuarter,
+    no: '',
+    bobotSection: 100,
+    parameter: '',
+    description: '',
+    year: viewYear,
+    quarter: viewQuarter,
+    isActive: true,
+    sortOrder: 0,
   });
 
   const [indicatorForm, setIndicatorForm] = useState({
     ...emptyIndicator,
     sectionId: null,
+    year: viewYear,
+    quarter: viewQuarter,
   });
 
   const [isEditingSection, setIsEditingSection] = useState(false);
   const [isEditingIndicator, setIsEditingIndicator] = useState(false);
-  const [error, setError] = useState(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // ====== Fungsi untuk menampilkan notifikasi ======
-  const showNotification = (type, message) => {
+  const showNotification = useCallback((type, message) => {
     setNotification({ type, message, show: true });
 
     // Auto hide setelah 4 detik
     setTimeout(() => {
-      setNotification({ type: '', message: '', show: false });
+      hideNotification();
     }, 4000);
-  };
+  }, []);
 
-  const hideNotification = () => {
+  const hideNotification = useCallback(() => {
     setNotification({ type: '', message: '', show: false });
+  }, []);
+
+  // Fungsi untuk handle perubahan tahun
+  const handleYearChange = (year) => {
+    const newYear = Number(year);
+    setViewYear(newYear);
+
+    // Reset section form jika ada
+    if (sectionForm.id) {
+      resetSectionForm();
+    }
+
+    // Reset indicator form dengan tahun baru
+    setIndicatorForm((prev) => ({
+      ...emptyIndicator,
+      year: newYear,
+      quarter: viewQuarter,
+      sectionId: sectionForm.id,
+    }));
   };
 
-  // ====== Fungsi Audit Log ======
-  const handleAuditLog = async (action, description, isSuccess = true, metadata = {}) => {
+  // Fungsi untuk handle perubahan quarter
+  const handleQuarterChange = (quarter) => {
+    setViewQuarter(quarter);
+
+    // Reset section form jika ada
+    if (sectionForm.id) {
+      resetSectionForm();
+    }
+
+    // Reset indicator form dengan quarter baru
+    setIndicatorForm((prev) => ({
+      ...emptyIndicator,
+      year: viewYear,
+      quarter: quarter,
+      sectionId: sectionForm.id,
+    }));
+  };
+
+  // ====== Fungsi untuk load data ======
+  const loadData = useCallback(async () => {
+    console.log('🔄 Loading data for:', viewYear, viewQuarter);
+
+    setLoadingData(true);
+    setLocalError(null);
+
     try {
-      const userId = authUser?.user_id || authUser?.id;
-      const auditData = {
-        action,
-        module: 'PASAR',
-        description,
-        isSuccess,
-        userId: userId || null,
-        metadata: {
-          year: viewYear,
-          quarter: viewQuarter,
-          authUserId: userId,
-          authUserAvailable: !!authUser,
-          ...metadata,
-        },
-      };
-
-      console.log('📝 [PASAR AUDIT] Audit data:', auditData);
-
-      switch (action) {
-        case 'CREATE':
-          await logCreate('PASAR', description, {
-            isSuccess,
-            userId: userId || null,
-            metadata: auditData.metadata,
-          });
-          break;
-        case 'UPDATE':
-          await logUpdate('PASAR', description, {
-            isSuccess,
-            userId: userId || null,
-            metadata: auditData.metadata,
-          });
-          break;
-        case 'DELETE':
-          await logDelete('PASAR', description, {
-            isSuccess,
-            userId: userId || null,
-            metadata: auditData.metadata,
-          });
-          break;
-        case 'EXPORT':
-          await logExport('PASAR', description, {
-            isSuccess,
-            userId: userId || null,
-            metadata: auditData.metadata,
-          });
-          break;
-        default:
-          break;
+      if (!viewYear || !viewQuarter) {
+        throw new Error('Tahun dan quarter harus diisi');
       }
 
-      console.log('✅ [PASAR AUDIT] Audit logged successfully');
-    } catch (error) {
-      console.error('❌ [PASAR AUDIT] Audit failed:', error);
+      const quarterUpper = String(viewQuarter).toUpperCase();
+      if (!['Q1', 'Q2', 'Q3', 'Q4'].includes(quarterUpper)) {
+        throw new Error(`Quarter tidak valid: ${viewQuarter}`);
+      }
+
+      // Panggil API melalui hook
+      const data = await getSectionsWithIndicatorsByPeriod(viewYear, quarterUpper);
+
+      console.log('📥 Data loaded:', data);
+
+      // Pastikan data ada dan formatnya benar
+      if (!data || !Array.isArray(data)) {
+        console.warn('Data tidak valid:', data);
+        setSections([]);
+      } else {
+        setSections(data);
+      }
+    } catch (err) {
+      console.error('❌ Error loading data:', err);
+      setLocalError(err.message || 'Gagal memuat data pasar');
+      showNotification('error', err.message || 'Gagal memuat data pasar');
+      setSections([]);
+    } finally {
+      setLoadingData(false);
+    }
+  }, [viewYear, viewQuarter, getSectionsWithIndicatorsByPeriod, showNotification]);
+
+  // Load semua section dari database
+  const loadAllSections = useCallback(async () => {
+    setLoadingAllSections(true);
+    try {
+      console.log('🔄 [PASAR] Loading all sections...');
+
+      const allSectionsData = await getAllSections(true); // Hanya ambil yang aktif
+
+      // Transform data
+      const transformedSections = allSectionsData.map((s) => ({
+        id: s.id,
+        no: s.no,
+        parameter: s.parameter,
+        bobotSection: s.bobotSection,
+        description: s.description || '',
+        year: s.year || viewYear,
+        quarter: s.quarter || viewQuarter,
+        isActive: s.isActive,
+        sortOrder: s.sortOrder,
+      }));
+
+      setAllSections(transformedSections);
+      console.log('✅ [PASAR] All sections loaded:', transformedSections.length);
+    } catch (err) {
+      console.error('❌ [PASAR] Error loading all sections:', err);
+      showNotification('error', 'Gagal memuat daftar section');
+    } finally {
+      setLoadingAllSections(false);
+    }
+  }, [getAllSections, viewYear, viewQuarter, showNotification]);
+
+  // ====== Effects ======
+  useEffect(() => {
+    // Load data saat tahun/quarter berubah
+    if (viewYear && viewQuarter) {
+      loadData();
+    }
+  }, [viewYear, viewQuarter]); // Trigger saat tahun/quarter berubah
+
+  // Effect untuk menampilkan error dari API dengan notification
+  useEffect(() => {
+    if (error) {
+      showNotification('error', error);
+      clearError();
+    }
+  }, [error, clearError, showNotification]);
+
+  useEffect(() => {
+    setIndicatorForm((prev) => ({
+      ...prev,
+      year: viewYear,
+      quarter: viewQuarter,
+    }));
+  }, [viewYear, viewQuarter]);
+
+  // Effect untuk auto-calculate
+  useEffect(() => {
+    if (sectionForm.id) {
+      const hasil = computeHasil(indicatorForm);
+      const weighted = computeWeightedAuto(indicatorForm, sectionForm.bobotSection);
+
+      setIndicatorForm((prev) => ({
+        ...prev,
+        hasil: hasil !== null ? hasil.toString() : '',
+        weighted: weighted,
+      }));
+    }
+  }, [indicatorForm.pembilangValue, indicatorForm.penyebutValue, indicatorForm.mode, indicatorForm.formula, indicatorForm.peringkat, indicatorForm.bobotIndikator, sectionForm.bobotSection]);
+
+  // ====== Helper Functions untuk Sections ======
+  const getUniqueSections = useMemo(() => {
+    // Filter hanya sections untuk periode saat ini
+    const sectionsForCurrentPeriod = sections.filter((section) => {
+      return section.year === viewYear && section.quarter === viewQuarter;
+    });
+
+    console.log('📊 Sections for current period:', sectionsForCurrentPeriod.length);
+
+    const uniqueMap = new Map();
+
+    sectionsForCurrentPeriod.forEach((section) => {
+      const key = `${section.no}-${section.parameter}`;
+      if (!uniqueMap.has(key)) {
+        uniqueMap.set(key, {
+          id: section.id,
+          no: section.no,
+          name: section.parameter,
+          bobotSection: section.bobotSection,
+          description: section.description,
+          year: section.year,
+          quarter: section.quarter,
+        });
+      }
+    });
+
+    const result = Array.from(uniqueMap.values()).sort((a, b) => {
+      const numA = parseInt(a.no) || 0;
+      const numB = parseInt(b.no) || 0;
+      return numA - numB;
+    });
+
+    return result;
+  }, [sections, viewYear, viewQuarter]);
+
+  // ====== Helper Functions ======
+  const setIndicatorField = (field, value) => {
+    setIndicatorForm((prev) => ({
+      ...prev,
+      [field]: value === null ? '' : value,
+    }));
+  };
+
+  const selectSection = (sectionId) => {
+    console.log('📝 [SELECT SECTION] Selecting section ID:', sectionId);
+
+    // Jika memilih "new" untuk buat section baru
+    if (sectionId === 'new') {
+      resetSectionForm();
+      return;
+    }
+
+    // Cari section berdasarkan ID
+    const section = sections.find((s) => s.id === sectionId);
+    if (!section) {
+      console.log('❌ [SELECT SECTION] Section not found in current period, checking all sections...');
+
+      // Coba cari di allSections
+      const sectionFromAll = allSections.find((s) => s.id === sectionId);
+      if (sectionFromAll) {
+        console.log('✅ [SELECT SECTION] Found in allSections:', sectionFromAll);
+        setSectionForm({
+          id: sectionFromAll.id,
+          no: sectionFromAll.no,
+          bobotSection: sectionFromAll.bobotSection,
+          parameter: sectionFromAll.parameter,
+          description: sectionFromAll.description || '',
+          year: sectionFromAll.year || viewYear,
+          quarter: sectionFromAll.quarter || viewQuarter,
+          isActive: sectionFromAll.isActive,
+          sortOrder: sectionFromAll.sortOrder,
+        });
+        setIsEditingSection(true);
+        setIndicatorForm((prev) => ({
+          ...prev,
+          sectionId: sectionFromAll.id,
+        }));
+      } else {
+        console.log('❌ [SELECT SECTION] Section not found anywhere');
+        showNotification('error', 'Section tidak ditemukan');
+      }
+      return;
+    }
+
+    console.log('✅ [SELECT SECTION] Section found:', section);
+
+    // Set section form
+    setSectionForm({
+      id: section.id,
+      no: section.no,
+      bobotSection: section.bobotSection,
+      parameter: section.parameter,
+      description: section.description || '',
+      year: section.year || viewYear,
+      quarter: section.quarter || viewQuarter,
+      isActive: section.isActive !== undefined ? section.isActive : true,
+      sortOrder: section.sortOrder || 0,
+    });
+
+    setIsEditingSection(true);
+    setIndicatorForm((prev) => ({
+      ...prev,
+      sectionId: section.id,
+    }));
+
+    console.log('✅ [SELECT SECTION] Section form set:', section.parameter);
+  };
+
+  const resetSectionForm = () => {
+    setSectionForm({
+      id: null,
+      no: '',
+      bobotSection: 100,
+      parameter: '',
+      description: '',
+      year: viewYear,
+      quarter: viewQuarter,
+      isActive: true,
+      sortOrder: 0,
+    });
+    setIsEditingSection(false);
+    setIndicatorForm((prev) => ({ ...prev, sectionId: null }));
+  };
+
+  const resetIndicatorForm = () => {
+    setIndicatorForm({
+      ...emptyIndicator,
+      sectionId: sectionForm.id,
+      year: viewYear,
+      quarter: viewQuarter,
+    });
+    setIsEditingIndicator(false);
+    setLocalError(null);
+  };
+
+  const handleEditIndicator = (indikator) => {
+    console.log('📝 Editing indicator:', indikator);
+
+    const formData = {
+      id: indikator.id,
+      subNo: indikator.subNo || '',
+      indikator: indikator.indikator || '',
+      bobotIndikator: indikator.bobotIndikator || 0,
+      sumberRisiko: indikator.sumberRisiko || '',
+      dampak: indikator.dampak || '',
+      pembilangLabel: indikator.pembilangLabel || '',
+      pembilangValue: indikator.pembilangValue || '',
+      penyebutLabel: indikator.penyebutLabel || '',
+      penyebutValue: indikator.penyebutValue || '',
+      peringkat: indikator.peringkat || 1,
+      weighted: indikator.weighted || '',
+      hasil: indikator.hasil || '',
+      hasilText: indikator.hasilText || '',
+      low: indikator.low || '',
+      lowToModerate: indikator.lowToModerate || '',
+      moderate: indikator.moderate || '',
+      moderateToHigh: indikator.moderateToHigh || '',
+      high: indikator.high || '',
+      keterangan: indikator.keterangan || '',
+      isPercent: Boolean(indikator.isPercent),
+      mode: indikator.mode || CalculationMode.RASIO,
+      formula: indikator.formula || '',
+      sectionId: sectionForm.id,
+    };
+
+    setIndicatorForm(formData);
+    setIsEditingIndicator(true);
+    console.log('✅ Form set for editing:', formData.indikator);
+  };
+
+  // ====== Validation Functions ======
+  const validateSectionForm = () => {
+    if (!sectionForm.no?.trim()) {
+      setLocalError('No Section harus diisi');
+      showNotification('error', 'No Section harus diisi');
+      return false;
+    }
+
+    if (!sectionForm.parameter?.trim()) {
+      setLocalError('Nama Section harus diisi');
+      showNotification('error', 'Nama Section harus diisi');
+      return false;
+    }
+
+    const bobot = Number(sectionForm.bobotSection);
+    if (isNaN(bobot) || bobot <= 0 || bobot > 100) {
+      setLocalError('Bobot Section harus antara 1-100');
+      showNotification('error', 'Bobot Section harus antara 1-100');
+      return false;
+    }
+
+    return true;
+  };
+
+  const validateIndicatorForm = () => {
+    if (!sectionForm.id) {
+      setLocalError('Pilih section terlebih dahulu');
+      showNotification('error', 'Pilih section terlebih dahulu');
+      return false;
+    }
+
+    if (!indicatorForm.subNo?.trim()) {
+      setLocalError('Sub No harus diisi');
+      showNotification('error', 'Sub No harus diisi');
+      return false;
+    }
+
+    if (!indicatorForm.indikator?.trim()) {
+      setLocalError('Nama Indikator harus diisi');
+      showNotification('error', 'Nama Indikator harus diisi');
+      return false;
+    }
+
+    const bobotIndikator = Number(indicatorForm.bobotIndikator);
+    if (isNaN(bobotIndikator) || bobotIndikator <= 0 || bobotIndikator > 100) {
+      setLocalError('Bobot Indikator harus antara 1-100');
+      showNotification('error', 'Bobot Indikator harus antara 1-100');
+      return false;
+    }
+
+    // Validasi khusus untuk mode RASIO
+    if (indicatorForm.mode === CalculationMode.RASIO) {
+      if (indicatorForm.penyebutValue === '' || indicatorForm.penyebutValue == null) {
+        setLocalError('Nilai penyebut harus diisi untuk mode RASIO');
+        showNotification('error', 'Nilai penyebut harus diisi untuk mode RASIO');
+        return false;
+      }
+    }
+
+    // Validasi untuk mode NILAI_TUNGGAL
+    if (indicatorForm.mode === CalculationMode.NILAI_TUNGGAL) {
+      if (indicatorForm.penyebutValue === '' || indicatorForm.penyebutValue == null) {
+        setLocalError('Nilai penyebut harus diisi untuk mode NILAI_TUNGGAL');
+        showNotification('error', 'Nilai penyebut harus diisi untuk mode NILAI_TUNGGAL');
+        return false;
+      }
+    }
+
+    // Validasi untuk mode TEKS
+    if (indicatorForm.mode === CalculationMode.TEKS) {
+      if (!indicatorForm.hasilText?.trim()) {
+        setLocalError('Hasil teks harus diisi untuk mode TEKS');
+        showNotification('error', 'Hasil teks harus diisi untuk mode TEKS');
+        return false;
+      }
+    }
+
+    return true;
+  };
+
+  // ====== CRUD Operations dengan Notification ======
+  const handleCreateSection = async () => {
+    setLocalError(null);
+
+    if (!validateSectionForm()) return;
+
+    // HAPUS VALIDASI DUPLIKASI DI FRONTEND
+    // Biarkan backend yang menangani dengan sistem reactivation
+
+    setIsCreating(true);
+    try {
+      const sectionData = transformSectionToBackendPasar(sectionForm, viewYear, viewQuarter);
+
+      console.log('📤 Creating section with data:', sectionData);
+
+      await createSection(sectionData);
+      showNotification('success', `✅ Section "${sectionForm.parameter}" berhasil dibuat/diaktifkan kembali`);
+
+      resetSectionForm();
+      await loadData();
+      await loadAllSections();
+    } catch (err) {
+      console.error('❌ Error creating section:', err);
+      const errorMessage = err.response?.data?.message || err.message || 'Terjadi kesalahan';
+
+      // Tampilkan pesan error yang lebih jelas
+      if (err.response?.status === 409) {
+        // Conflict - data sudah ada (tidak dihapus)
+        setLocalError(`Section "${sectionForm.no} - ${sectionForm.parameter}" sudah ada di periode ini.`);
+        showNotification('error', `Section sudah aktif di periode ${viewYear}-${viewQuarter}`);
+      } else {
+        setLocalError(`Gagal membuat section: ${errorMessage}`);
+        showNotification('error', `❌ Gagal: ${errorMessage}`);
+      }
+    } finally {
+      setIsCreating(false);
     }
   };
 
-  // Filter sections berdasarkan query
+  const handleUpdateSection = async () => {
+    setLocalError(null);
+    if (!sectionForm.id) return;
+
+    if (!validateSectionForm()) return;
+
+    setIsUpdating(true);
+    try {
+      const updateData = transformSectionToBackendPasar(sectionForm, viewYear, viewQuarter);
+
+      console.log('📤 Updating section with data:', updateData);
+
+      await updateSection(sectionForm.id, updateData);
+      showNotification('success', `✅ Section "${sectionForm.parameter}" berhasil diperbarui`);
+
+      resetSectionForm();
+      await loadData();
+      await loadAllSections(); // Refresh daftar section
+    } catch (err) {
+      console.error('❌ Error updating section:', err);
+      const errorMessage = err.response?.data?.message || err.message || 'Terjadi kesalahan';
+      setLocalError(`Gagal update section: ${errorMessage}`);
+      showNotification('error', `❌ Gagal update section: ${errorMessage}`);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleDeleteSection = async (sectionId) => {
+    if (!confirm('Apakah Anda yakin ingin menghapus section ini? Semua indikator dalam section ini juga akan dihapus.')) return;
+
+    setIsDeleting(true);
+    try {
+      await deleteSection(sectionId);
+      showNotification('success', '✅ Section berhasil dihapus');
+
+      if (sectionForm.id === sectionId) {
+        resetSectionForm();
+      }
+
+      await loadData();
+      await loadAllSections(); // Refresh daftar section
+    } catch (err) {
+      console.error('❌ Error deleting section:', err);
+      const errorMessage = err.response?.data?.message || err.message || 'Terjadi kesalahan';
+      setLocalError(`Gagal menghapus section: ${errorMessage}`);
+      showNotification('error', `❌ Gagal menghapus section: ${errorMessage}`);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleCreateIndicator = async () => {
+    setLocalError(null);
+
+    if (!validateIndicatorForm()) return;
+
+    setIsCreating(true);
+    try {
+      const indicatorData = transformIndicatorToBackendPasar(indicatorForm, viewYear, viewQuarter, sectionForm.id, sectionForm);
+
+      console.log('📤 Creating indicator with data:', indicatorData);
+
+      await createIndikator(indicatorData);
+      showNotification('success', `✅ Indikator "${indicatorForm.indikator}" berhasil dibuat/diaktifkan kembali`);
+
+      resetIndicatorForm();
+      await loadData();
+    } catch (err) {
+      console.error('❌ Error creating indicator:', err);
+      const errorMessage = err.response?.data?.message || err.message || 'Terjadi kesalahan';
+
+      // Tampilkan pesan error yang lebih jelas
+      if (err.response?.status === 409) {
+        // Conflict - data sudah ada (tidak dihapus)
+        setLocalError(`Indikator dengan nomor "${indicatorForm.subNo}" sudah ada di section ini.`);
+        showNotification('error', `Indikator sudah aktif di section ini`);
+      } else {
+        setLocalError(`Gagal membuat indikator: ${errorMessage}`);
+        showNotification('error', `❌ Gagal: ${errorMessage}`);
+      }
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  const handleUpdateIndicator = async () => {
+    if (!indicatorForm.id) {
+      setLocalError('ID indikator tidak ditemukan');
+      showNotification('error', 'ID indikator tidak ditemukan');
+      return;
+    }
+
+    setIsUpdating(true);
+    try {
+      const updateData = {
+        subNo: indicatorForm.subNo,
+        indikator: indicatorForm.indikator,
+        bobotIndikator: Number(indicatorForm.bobotIndikator),
+        sumberRisiko: indicatorForm.sumberRisiko || undefined,
+        dampak: indicatorForm.dampak || undefined,
+        low: indicatorForm.low || undefined,
+        lowToModerate: indicatorForm.lowToModerate || undefined,
+        moderate: indicatorForm.moderate || undefined,
+        moderateToHigh: indicatorForm.moderateToHigh || undefined,
+        high: indicatorForm.high || undefined,
+        mode: indicatorForm.mode,
+        formula: indicatorForm.formula || undefined,
+        isPercent: indicatorForm.isPercent || false,
+        pembilangLabel: indicatorForm.pembilangLabel || undefined,
+        pembilangValue: indicatorForm.pembilangValue ? Number(indicatorForm.pembilangValue) : undefined,
+        penyebutLabel: indicatorForm.penyebutLabel || undefined,
+        penyebutValue: indicatorForm.penyebutValue ? Number(indicatorForm.penyebutValue) : undefined,
+        hasil: indicatorForm.hasil ? Number(indicatorForm.hasil) : undefined,
+        hasilText: indicatorForm.hasilText || undefined,
+        peringkat: Number(indicatorForm.peringkat),
+        weighted: computeWeightedAuto(indicatorForm, sectionForm.bobotSection),
+        keterangan: indicatorForm.keterangan || undefined,
+      };
+
+      console.log('📤 Updating indicator with data:', updateData);
+
+      await updateIndikator(indicatorForm.id, updateData);
+      showNotification('success', `✅ Indikator "${indicatorForm.indikator}" berhasil diperbarui`);
+
+      resetIndicatorForm();
+      await loadData();
+    } catch (err) {
+      console.error('❌ Error updating indicator:', err);
+      const errorMessage = err.response?.data?.message || err.message || 'Terjadi kesalahan';
+      setLocalError(`Gagal update indikator: ${errorMessage}`);
+      showNotification('error', `❌ Gagal update indikator: ${errorMessage}`);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleDeleteIndicator = async (indikatorId) => {
+    if (!confirm('Apakah Anda yakin ingin menghapus indikator ini?')) return;
+
+    setIsDeleting(true);
+    try {
+      await deleteIndikator(indikatorId);
+      showNotification('success', `✅ Indikator berhasil dihapus`);
+
+      await loadData();
+    } catch (err) {
+      console.error('❌ Error deleting indicator:', err);
+
+      let errorMessage = 'Terjadi kesalahan';
+      if (err.response?.data?.message) {
+        errorMessage = err.response.data.message;
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+
+      setLocalError(`Gagal menghapus indikator: ${errorMessage}`);
+      showNotification('error', `❌ Gagal menghapus indikator: ${errorMessage}`);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  // ====== Export Function ======
+  const handleExportPasar = () => {
+    exportPasarToExcel({
+      year: viewYear,
+      quarter: viewQuarter,
+      sections: sections,
+      filename: `Pasar_${viewYear}_${viewQuarter}`,
+    });
+  };
+
+  // ====== Memoized Values ======
   const filteredSections = useMemo(() => {
-    if (!query.trim()) return sections;
-    const q = query.toLowerCase();
+    const searchQuery = query || '';
+    if (!searchQuery.trim()) return sections;
+
+    const q = searchQuery.toLowerCase();
+
     return sections
       .map((s) => {
-        const matchedIndicators = s.indikators?.filter((it) => {
-          return `${it.nama_indikator} ${it.pembilang_label} ${it.penyebut_label} ${it.sumber_risiko} ${it.dampak} ${it.keterangan}`.toLowerCase().includes(q);
+        const inds = s.indicators || [];
+        const matchedIndicators = inds.filter((it) => {
+          const indikatorText = it.indikator || '';
+          const subNo = it.subNo || '';
+          const pembilangLabel = it.pembilangLabel || '';
+          const penyebutLabel = it.penyebutLabel || '';
+          const sumberRisiko = it.sumberRisiko || '';
+          const dampak = it.dampak || '';
+          const keterangan = it.keterangan || '';
+          const hasilText = it.hasilText || '';
+
+          return `${subNo} ${indikatorText} ${pembilangLabel} ${penyebutLabel} ${sumberRisiko} ${dampak} ${keterangan} ${hasilText}`.toLowerCase().includes(q);
         });
-        if (s.nama_section.toLowerCase().includes(q) || matchedIndicators?.length > 0) {
-          return { ...s, indikators: matchedIndicators?.length ? matchedIndicators : s.indikators };
+
+        const sectionName = s.parameter || '';
+        if (sectionName.toLowerCase().includes(q) || matchedIndicators.length > 0) {
+          return { ...s, indicators: matchedIndicators.length ? matchedIndicators : inds };
         }
         return null;
       })
       .filter(Boolean);
   }, [sections, query]);
 
-  // Total weighted dari summary
-  const totalWeighted = useMemo(() => {
-    return summary?.total_weighted || 0;
-  }, [summary]);
+  const totalWeightedCalc = useMemo(() => {
+    return sections.reduce((sum, section) => {
+      const inds = section.indicators || [];
+      const sectionTotal = inds.reduce((sectionSum, indikator) => {
+        const weighted = Number(indikator.weighted);
+        return sectionSum + (isNaN(weighted) ? 0 : weighted);
+      }, 0);
+      return sum + sectionTotal;
+    }, 0);
+  }, [sections]);
 
-  useEffect(() => {
-    setSectionForm((prev) => ({
-      ...prev,
-      tahun: viewYear,
-      triwulan: viewQuarter,
-    }));
-  }, [viewYear, viewQuarter]);
-
-  useEffect(() => {
-    if (error) setError(null);
-  }, [sectionForm, indicatorForm]);
-
-  function selectSection(id) {
-    const section = sections.find((s) => s.id === id);
-    if (section) {
-      setSectionForm({
-        id: section.id,
-        no_sec: section.no_sec,
-        nama_section: section.nama_section,
-        bobot_par: section.bobot_par,
-        tahun: section.tahun,
-        triwulan: section.triwulan,
-      });
-      setIsEditingSection(true);
-      setIndicatorForm((prev) => ({
-        ...prev,
-        sectionId: Number(section.id),
-      }));
-    }
-  }
-
-  function resetSectionForm() {
-    setSectionForm({
-      id: null,
-      no_sec: '',
-      nama_section: '',
-      bobot_par: 0,
-      tahun: viewYear,
-      triwulan: viewQuarter,
-    });
-    setIsEditingSection(false);
-    setIndicatorForm((prev) => ({ ...prev, sectionId: null }));
-  }
-
-  // PERBAIKAN: Fungsi handleCreateSection dengan debugging dan notifikasi
-  async function handleCreateSection() {
-    if (isSubmitting) return;
-
-    setIsSubmitting(true);
-    setError(null);
-
-    console.log('🔄 handleCreateSection called with:', sectionForm);
-
-    // Validasi sesuai entity
-    if (!sectionForm.no_sec || sectionForm.no_sec.trim() === '') {
-      setError('No Section harus diisi');
-      setIsSubmitting(false);
-      return;
+  const hasilPreview = useMemo(() => {
+    if (indicatorForm.mode === CalculationMode.TEKS) {
+      return indicatorForm.hasilText || '';
     }
 
-    if (!sectionForm.nama_section || sectionForm.nama_section.trim() === '') {
-      setError('Nama Section harus diisi');
-      setIsSubmitting(false);
-      return;
+    const raw = computeHasil(indicatorForm);
+    if (raw === null || raw === '') return '';
+
+    if (indicatorForm.isPercent) {
+      const pct = Number(raw) * 100;
+      if (!isFinite(pct) || isNaN(pct)) return '';
+      return `${pct.toFixed(2)}%`;
     }
 
-    const bobotPar = parseFloat(sectionForm.bobot_par);
-    if (isNaN(bobotPar) || bobotPar < 0.01 || bobotPar > 100) {
-      setError('Bobot Section harus antara 0.01 dan 100');
-      setIsSubmitting(false);
-      return;
+    if (indicatorForm.mode === CalculationMode.NILAI_TUNGGAL) {
+      return fmtNumber(raw);
     }
 
-    // Data HARUS PERSIS seperti di entity
-    const sectionData = {
-      no_sec: sectionForm.no_sec.trim(), // varchar(10)
-      nama_section: sectionForm.nama_section.trim(), // text
-      bobot_par: bobotPar, // decimal(5,2)
-      tahun: viewYear, // integer
-      triwulan: viewQuarter, // enum: 'Q1','Q2','Q3','Q4'
-    };
-
-    console.log('📤 Data section (SNAKE_CASE - sesuai entity):', sectionData);
-
-    try {
-      await createSection(sectionData, {
-        onSuccess: () => {
-          console.log('✅ Section created successfully');
-          showNotification('success', `✅ Section "${sectionForm.no_sec}" berhasil ditambahkan`);
-          handleAuditLog('CREATE', `Menambahkan section pasar - No: ${sectionForm.no_sec}`, true);
-          resetSectionForm();
-        },
-        onError: (error) => {
-          console.error('❌ Error in createSection:', error);
-          console.error('❌ Error response data:', error.response?.data);
-
-          // Debug lebih detail
-          if (error.response?.data?.errors) {
-            console.error('❌ Validation errors:', error.response.data.errors);
-          }
-
-          const errorMessage = error.response?.data?.message || error.message || 'Terjadi kesalahan';
-          showNotification('error', `❌ Gagal membuat section: ${errorMessage}`);
-          setError(`Gagal membuat section: ${errorMessage}`);
-        },
-      });
-    } catch (err) {
-      console.error('❌ Unexpected error:', err);
-      showNotification('error', '❌ Terjadi kesalahan tak terduga');
-      setError('Terjadi kesalahan tak terduga');
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
-
-  async function handleUpdateSection() {
-    if (isSubmitting || !sectionForm.id) return;
-
-    setIsSubmitting(true);
-    setError(null);
-
-    // Validasi sesuai entity
-    if (!sectionForm.no_sec || sectionForm.no_sec.trim() === '') {
-      setError('No Section harus diisi');
-      setIsSubmitting(false);
-      return;
-    }
-
-    if (!sectionForm.nama_section || sectionForm.nama_section.trim() === '') {
-      setError('Nama Section harus diisi');
-      setIsSubmitting(false);
-      return;
-    }
-
-    const bobotPar = parseFloat(sectionForm.bobot_par);
-    if (isNaN(bobotPar) || bobotPar < 0.01 || bobotPar > 100) {
-      setError('Bobot Section harus antara 0.01 dan 100');
-      setIsSubmitting(false);
-      return;
-    }
-
-    // Data update - SNAKE_CASE sesuai entity
-    const updateData = {
-      no_sec: sectionForm.no_sec.trim(),
-      nama_section: sectionForm.nama_section.trim(),
-      bobot_par: bobotPar,
-    };
-
-    console.log('📤 Data update section (SNAKE_CASE):', updateData);
-
-    try {
-      await updateSection(
-        { id: sectionForm.id, data: updateData },
-        {
-          onSuccess: () => {
-            showNotification('success', `✅ Section "${sectionForm.no_sec}" berhasil diperbarui`);
-            handleAuditLog('UPDATE', `Mengupdate section pasar - No: ${sectionForm.no_sec}`, true);
-            resetSectionForm();
-          },
-          onError: (error) => {
-            console.error('❌ Update section error:', error.response?.data);
-            const errorMessage = error.response?.data?.message || error.message || 'Terjadi kesalahan';
-            showNotification('error', `❌ Gagal update section: ${errorMessage}`);
-            setError(`Gagal update section: ${errorMessage}`);
-          },
-        }
-      );
-    } catch (err) {
-      showNotification('error', '❌ Terjadi kesalahan tak terduga');
-      setError('Terjadi kesalahan tak terduga');
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
-
-  // PERBAIKAN: Fungsi handleDeleteSection dengan notifikasi
-  async function handleDeleteSection(id) {
-    if (!confirm('Apakah Anda yakin ingin menghapus section ini? Semua indikator dalam section ini juga akan dihapus.')) return;
-
-    const sectionToDelete = sections.find((s) => s.id === id);
-
-    try {
-      await deleteSection(id, {
-        onSuccess: () => {
-          showNotification('success', `✅ Section "${sectionToDelete?.no_sec}" berhasil dihapus`);
-          handleAuditLog('DELETE', `Menghapus section pasar - No: ${sectionToDelete?.no_sec}, Nama: "${sectionToDelete?.nama_section}"`, true, {
-            section_id: id,
-            section_no: sectionToDelete?.no_sec,
-            section_name: sectionToDelete?.nama_section,
-            total_indicators: sectionToDelete?.indikators?.length || 0,
-          });
-
-          resetSectionForm();
-        },
-        onError: (error) => {
-          const errorMessage = error?.message || 'Terjadi kesalahan';
-          showNotification('error', `❌ Gagal menghapus section: ${errorMessage}`);
-          handleAuditLog('DELETE', `Gagal menghapus section pasar - No: ${sectionToDelete?.no_sec}, Nama: "${sectionToDelete?.nama_section}"`, false, {
-            section_id: id,
-            section_no: sectionToDelete?.no_sec,
-            section_name: sectionToDelete?.nama_section,
-            error: errorMessage,
-          });
-          setError(`Gagal menghapus section: ${errorMessage}`);
-        },
-      });
-    } catch (err) {
-      showNotification('error', '❌ Terjadi kesalahan tak terduga');
-      setError('Terjadi kesalahan tak terduga');
-    }
-  }
-
-  // Handler untuk indicator
-  function setIndicatorField(field, value) {
-    setIndicatorForm((prev) => ({ ...prev, [field]: value }));
-  }
-
-  function resetIndicatorForm() {
-    setIndicatorForm({
-      ...emptyIndicator,
-      sectionId: sectionForm.id,
-    });
-    setIsEditingIndicator(false);
-  }
-
-  // ----- perhitungan hasil & weighted -----
-  const computeHasil = (ind) => {
-    const mode = ind.mode || 'RASIO';
-    const pemb = parseNum(ind.pembilang_value);
-    const peny = parseNum(ind.penyebut_value);
-
-    if (ind.formula && ind.formula.trim() !== '') {
-      try {
-        const expr = ind.formula.replace(/\bpemb\b/g, 'pemb').replace(/\bpeny\b/g, 'peny');
-        const fn = new Function('pemb', 'peny', `return (${expr});`);
-        const res = fn(pemb, peny);
-        if (!isFinite(res) || isNaN(res)) return 0;
-        return Number(res);
-      } catch (e) {
-        console.warn('Invalid formula (Pasar):', ind.formula, e);
-        return 0;
-      }
-    }
-
-    if (mode === 'NILAI_TUNGGAL') {
-      return peny;
-    }
-
-    if (peny === 0) return 0;
-    const result = pemb / peny;
-    if (!isFinite(result) || isNaN(result)) return 0;
-    return Number(result);
-  };
-
-  function computeWeightedAuto(ind, sectionBobot) {
-    const sectionB = Number(sectionBobot || 0);
-    const bobotInd = Number(ind.bobot_indikator || 0);
-    const peringkat = Number(ind.peringkat || 0);
-    const res = (sectionB * bobotInd * peringkat) / 10000;
-    if (!isFinite(res) || isNaN(res)) return 0;
-    return res;
-  }
-
-  // PERBAIKAN BESAR: Fungsi handleCreateIndicator dengan validasi lebih ketat dan notifikasi
-  async function handleCreateIndicator() {
-    if (isSubmitting) return;
-
-    setIsSubmitting(true);
-    setError(null);
-
-    console.log('🔄 handleCreateIndicator called with sectionForm:', sectionForm);
-    console.log('🔄 indicatorForm data:', indicatorForm);
-
-    // **DEBUG: Cek apakah nama_indikator ada**
-    console.log('🔍 DEBUG - nama_indikator:', {
-      value: indicatorForm.nama_indikator,
-      trimmed: indicatorForm.nama_indikator?.trim(),
-      length: indicatorForm.nama_indikator?.length,
-      isTruthy: !!indicatorForm.nama_indikator,
-    });
-
-    // **PERBAIKAN: Hapus validasi frontend atau minimalisir**
-    // Biarkan backend yang handle validasi lengkap
-
-    if (!sectionForm.id || isNaN(Number(sectionForm.id))) {
-      setError('Pilih section terlebih dahulu');
-      setIsSubmitting(false);
-      return;
-    }
-
-    // **VALIDASI MINIMAL SAJA:**
-    if (!indicatorForm.nama_indikator?.trim()) {
-      setError('Nama Indikator harus diisi');
-      setIsSubmitting(false);
-      return;
-    }
-
-    // Hitung hasil dan weighted
-    const hasil = computeHasil(indicatorForm);
-    const weighted = computeWeightedAuto(indicatorForm, sectionForm.bobot_par);
-
-    // **PERBAIKAN: Pastikan data sudah clean sebelum dikirim ke hook**
-    const createData = transformIndicatorToBackend({
-      ...indicatorForm,
-      sectionId: sectionForm.id,
-      hasil: hasil || 0,
-      weighted: weighted || 0,
-    });
-
-    console.log('📤 Data untuk createIndikator:', JSON.stringify(createData, null, 2));
-
-    // **Cek khusus nama_indikator**
-    console.log('✅ Nama indikator dalam createData:', {
-      exists: !!createData.nama_indikator,
-      value: createData.nama_indikator,
-      trimmed: createData.nama_indikator?.trim(),
-      isEmpty: createData.nama_indikator?.trim() === '',
-    });
-
-    try {
-      await createIndikator(createData, {
-        onSuccess: () => {
-          console.log('✅ Indicator created successfully');
-          showNotification('success', `✅ Indikator "${indicatorForm.nama_indikator}" berhasil ditambahkan`);
-          handleAuditLog('CREATE', `Menambahkan indikator pasar - "${indicatorForm.nama_indikator}"`, true);
-          resetIndicatorForm();
-        },
-        onError: (error) => {
-          console.error('❌ Error in createIndikator:', error);
-          console.error('❌ Full error object:', JSON.stringify(error, null, 2));
-
-          // **PERBAIKAN: Tangani error dengan lebih spesifik**
-          let errorMessage = 'Terjadi kesalahan';
-
-          // Jika error dari backend validation
-          if (error.response?.data?.message) {
-            // Handle array atau string
-            if (Array.isArray(error.response.data.message)) {
-              errorMessage = error.response.data.message.join(', ');
-            } else {
-              errorMessage = error.response.data.message;
-            }
-          } else if (error.message) {
-            errorMessage = error.message;
-          }
-
-          // Jika error adalah "Nama Indikator harus diisi", cek datanya
-          if (errorMessage.includes('Nama Indikator')) {
-            console.error('🔍 Data yang dikirim ke backend:', createData);
-            console.error('🔍 nama_indikator value:', createData.nama_indikator);
-          }
-
-          showNotification('error', `❌ Gagal membuat indikator: ${errorMessage}`);
-          setError(`Gagal membuat indikator: ${errorMessage}`);
-        },
-      });
-    } catch (err) {
-      console.error('❌ Unexpected error:', err);
-      showNotification('error', '❌ Terjadi kesalahan tak terduga');
-      setError('Terjadi kesalahan tak terduga');
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
-
-  function handleEditIndicator(indikator) {
-    setIndicatorForm({
-      id: indikator.id,
-      nama_indikator: indikator.nama_indikator || '',
-      bobot_indikator: indikator.bobot_indikator || 0,
-      sumber_risiko: indikator.sumber_risiko || '',
-      dampak: indikator.dampak || '',
-      pembilang_label: indikator.pembilang_label || '',
-      pembilang_value: indikator.pembilang_value || 0,
-      penyebut_label: indikator.penyebut_label || '',
-      penyebut_value: indikator.penyebut_value || 0,
-      low: indikator.low || '',
-      low_to_moderate: indikator.low_to_moderate || '',
-      moderate: indikator.moderate || '',
-      moderate_to_high: indikator.moderate_to_high || '',
-      high: indikator.high || '',
-      peringkat: indikator.peringkat || 1,
-      weighted: indikator.weighted || 0,
-      hasil: indikator.hasil || 0,
-      keterangan: indikator.keterangan || '',
-      mode: indikator.mode || 'RASIO',
-      formula: indikator.formula || '',
-      is_percent: indikator.is_percent || false,
-      sectionId: sectionForm.id,
-    });
-    setIsEditingIndicator(true);
-  }
-
-  // PERBAIKAN BESAR: Fungsi handleUpdateIndicator dengan validasi lebih ketat dan notifikasi
-  async function handleUpdateIndicator() {
-    if (isSubmitting || !indicatorForm.id) return;
-
-    setIsSubmitting(true);
-    setError(null);
-
-    console.log('🔍 DEBUG - indicatorForm.id:', {
-      id: indicatorForm.id,
-      type: typeof indicatorForm.id,
-      isNumber: typeof indicatorForm.id === 'number',
-      value: indicatorForm.id,
-    });
-
-    // Validasi minimal
-    if (!indicatorForm.nama_indikator?.trim()) {
-      setError('Nama Indikator harus diisi');
-      setIsSubmitting(false);
-      return;
-    }
-
-    const hasil = computeHasil(indicatorForm);
-    const weighted = computeWeightedAuto(indicatorForm, sectionForm.bobot_par);
-
-    // PERBAIKAN: Pastikan ID adalah number
-    const updateData = transformIndicatorToBackend({
-      ...indicatorForm,
-      sectionId: sectionForm.id,
-      hasil: hasil || 0,
-      weighted: weighted || 0,
-    });
-
-    console.log('📤 Data update indikator:', updateData);
-    console.log('🔢 ID yang akan dikirim:', {
-      id: indicatorForm.id,
-      converted: Number(indicatorForm.id),
-    });
-
-    try {
-      // ===== PERBAIKAN UTAMA =====
-      // Hook mengharapkan: updateIndikator(id, data, options)
-      // BUKAN: updateIndikator({id, data}, options)
-
-      const indicatorId = Number(indicatorForm.id);
-
-      console.log('🚀 Calling updateIndikator with:', {
-        id: indicatorId,
-        data: updateData,
-      });
-
-      // PERBAIKAN: Panggil dengan parameter yang benar
-      await updateIndikator(
-        indicatorId, // Parameter 1: id (number)
-        updateData, // Parameter 2: data
-        {
-          // Parameter 3: options (callback)
-          onSuccess: () => {
-            console.log('✅ Indicator updated successfully');
-            showNotification('success', `✅ Indikator "${indicatorForm.nama_indikator}" berhasil diperbarui`);
-            handleAuditLog('UPDATE', `Mengupdate indikator pasar - "${indicatorForm.nama_indikator}"`, true);
-            resetIndicatorForm();
-          },
-          onError: (error) => {
-            console.error('❌ Update indikator error (from callback):', error);
-            console.error('❌ Error details:', error.response?.data || error.message);
-
-            // PERBAIKAN: Ambil pesan error yang lebih spesifik
-            let errorMessage = error.message || 'Terjadi kesalahan';
-            if (error.response?.data?.message) {
-              errorMessage = error.response.data.message;
-            }
-
-            showNotification('error', `❌ Gagal update indikator: ${errorMessage}`);
-            setError(`Gagal update indikator: ${errorMessage}`);
-          },
-        }
-      );
-    } catch (err) {
-      // PERBAIKAN: Error handling jika promise reject
-      console.error('❌ Update indikator error (from catch):', err);
-
-      let errorMessage = err.message || 'Terjadi kesalahan tak terduga';
-      if (err.response?.data?.message) {
-        errorMessage = err.response.data.message;
-      }
-
-      showNotification('error', `❌ Gagal update indikator: ${errorMessage}`);
-      setError(`Gagal update indikator: ${errorMessage}`);
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
-
-  // PERBAIKAN: Fungsi handleDeleteIndicator dengan notifikasi
-  async function handleDeleteIndicator(indikatorId) {
-    if (!confirm('Apakah Anda yakin ingin menghapus indikator ini?')) return;
-
-    const indicatorToDelete = sections.flatMap((s) => s.indikators || []).find((it) => it.id === indikatorId);
-
-    try {
-      await deleteIndikator(indikatorId, {
-        onSuccess: () => {
-          showNotification('success', `✅ Indikator "${indicatorToDelete?.nama_indikator}" berhasil dihapus`);
-          handleAuditLog('DELETE', `Menghapus indikator pasar - "${indicatorToDelete?.nama_indikator}"`, true, {
-            indicator_id: indikatorId,
-            section_id: sectionForm.id,
-            section_no: sectionForm.no_sec,
-            indicator_name: indicatorToDelete?.nama_indikator,
-          });
-        },
-        onError: (error) => {
-          const errorMessage = error?.message || 'Terjadi kesalahan';
-          showNotification('error', `❌ Gagal menghapus indikator: ${errorMessage}`);
-          handleAuditLog('DELETE', `Gagal menghapus indikator pasar - "${indicatorToDelete?.nama_indikator}"`, false, {
-            indicator_id: indikatorId,
-            section_id: sectionForm.id,
-            section_no: sectionForm.no_sec,
-            indicator_name: indicatorToDelete?.nama_indikator,
-            error: errorMessage,
-          });
-          setError(`Gagal menghapus indikator: ${errorMessage}`);
-        },
-      });
-    } catch (err) {
-      showNotification('error', '❌ Terjadi kesalahan tak terduga');
-      setError('Terjadi kesalahan tak terduga');
-    }
-  }
-
-  // Export function dengan audit log dan notifikasi
-  function handleExportPasar() {
-    const selectedSection = sections.find((s) => s.id === sectionForm.id) || sections[0];
-
-    if (!selectedSection) {
-      showNotification('error', '❌ Belum ada section untuk diexport');
-      return;
-    }
-
-    const rows = selectedSection.indikators || [];
-    if (!rows.length) {
-      showNotification('error', '❌ Section ini belum punya indikator untuk diexport');
-      return;
-    }
-
-    try {
-      const exportData = rows.map((indikator) => ({
-        indikator: indikator.nama_indikator,
-        bobotIndikator: indikator.bobot_indikator,
-        sumberRisiko: indikator.sumber_risiko,
-        dampak: indikator.dampak,
-        pembilangLabel: indikator.pembilang_label,
-        pembilangValue: indikator.pembilang_value,
-        penyebutLabel: indikator.penyebut_label,
-        penyebutValue: indikator.penyebut_value,
-        low: indikator.low,
-        lowToModerate: indikator.low_to_moderate,
-        moderate: indikator.moderate,
-        moderateToHigh: indikator.moderate_to_high,
-        high: indikator.high,
-        peringkat: indikator.peringkat,
-        weighted: indikator.weighted,
-        hasil: indikator.hasil,
-        keterangan: indikator.keterangan,
-      }));
-
-      handleAuditLog('EXPORT', `Export data Excel pasar - Periode: ${viewYear}-${viewQuarter}, Section: ${selectedSection.no_sec}, Jumlah Data: ${rows.length}`, true, {
-        year: viewYear,
-        quarter: viewQuarter,
-        section_id: selectedSection.id,
-        section_no: selectedSection.no_sec,
-        section_name: selectedSection.nama_section,
-        total_records: rows.length,
-        file_type: 'excel',
-      });
-
-      showNotification('success', `✅ Data berhasil diexport (${rows.length} indikator)`);
-
-      exportKPMRPasarToExcel({
-        year: viewYear,
-        quarter: viewQuarter,
-        sectionNo: selectedSection.no_sec,
-        sectionLabel: selectedSection.nama_section,
-        bobotSection: selectedSection.bobot_par,
-        rows: exportData,
-      });
-    } catch (err) {
-      showNotification('error', '❌ Gagal melakukan export. Silakan coba lagi.');
-      handleAuditLog('EXPORT', `Gagal export data Excel pasar - Periode: ${viewYear}-${viewQuarter}`, false, {
-        year: viewYear,
-        quarter: viewQuarter,
-        section_id: selectedSection?.id,
-        section_no: selectedSection?.no_sec,
-        error: err.message,
-      });
-      console.error('Gagal export Excel:', err);
-    }
-  }
-
-  const rowsPerIndicator = 3;
-
-  // Clear error handler
-  useEffect(() => {
-    if (error || crudError) {
-      const timer = setTimeout(() => {
-        setError(null);
-        clearError?.();
-      }, 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [error, crudError, clearError]);
-
-  // ==================== RENDER ====================
+    return Number(raw).toFixed(4);
+  }, [indicatorForm]);
+
+  const weightedPreview = useMemo(() => {
+    if (!sectionForm.id) return 0;
+    const weighted = computeWeightedAuto(indicatorForm, sectionForm.bobotSection);
+    return weighted;
+  }, [sectionForm.id, indicatorForm, sectionForm.bobotSection]);
+
+  // ====== Render ======
   return (
-    <div className="  min-h-screen">
-      {/* HERO */}
-
-      <div className="bg-white rounded-2xl shadow-md p-6">
-        {/* NOTIFICATION AREA - Posisi optimal setelah header */}
+    <div className="space-y-6 p-4">
+      <div className="bg-white rounded-2xl">
+        {/* NOTIFICATION AREA */}
         {notification.show && (
           <div className={`mb-4 rounded-lg shadow-md border animate-slideIn ${notification.type === 'success' ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
             <div className="p-4 flex items-center justify-between">
@@ -901,44 +1101,59 @@ export default function Pasar() {
           </div>
         )}
 
-        <header className="px-4 py-4 flex items-center justify-between gap-3">
-          <h2 className="text-xl sm:text-2xl font-semibold">Form – Pasar</h2>
+        <header className="flex items-center justify-between gap-3 px-4 py-4">
+          <h2 className="text-xl sm:text-2xl font-semibold">Form – Risiko Pasar</h2>
           <div className="flex items-end gap-4">
             {/* tahun + triwulan */}
-            <div className="hidden md:flex items-end gap-4">
+            <div className="flex items-end gap-4">
               <div className="flex flex-col gap-1">
-                <YearInput value={viewYear} onChange={(v) => setViewYear(v)} />
+                <label className="text-xs text-gray-600 font-medium mb-1">Tahun</label>
+                <YearInput value={viewYear} onChange={handleYearChange} />
               </div>
               <div className="flex flex-col gap-1">
-                <QuarterSelect value={viewQuarter} onChange={(v) => setViewQuarter(v)} />
+                <label className="text-xs text-gray-600 font-medium mb-1">Triwulan</label>
+                <QuarterSelect value={viewQuarter} onChange={handleQuarterChange} />
               </div>
             </div>
 
             {/* search + export */}
             <div className="flex items-end gap-2">
               <div className="relative">
-                <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Cari no/sub/indikator…" className="pl-9 pr-3 py-2 rounded-xl border w-64" />
+                <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Cari no/sub/indikator/keterangan…" className="pl-9 pr-3 py-2 rounded-xl border w-64" />
                 <Search size={16} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
               </div>
 
-              <button onClick={handleExportPasar} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 border bg-gray-900 text-white hover:bg-black" disabled={sections.length === 0}>
-                <Download size={18} /> Export {viewYear}-{viewQuarter}
+              {/* Backend Actions */}
+              <button
+                onClick={() => {
+                  loadData();
+                  loadAllSections();
+                }}
+                disabled={loadingData || loading}
+                className="inline-flex items-center gap-2 rounded-xl px-4 py-2 border bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+              >
+                <RefreshCw size={18} /> {loadingData ? 'Loading...' : 'Refresh Data'}
+              </button>
+
+              <button onClick={handleExportPasar} disabled={loadingData || sections.length === 0} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 border bg-gray-900 text-white hover:bg-black disabled:opacity-50">
+                <Download size={18} />
+                {loadingData ? 'Loading...' : `Export ${viewYear}-${viewQuarter}`}
               </button>
             </div>
           </div>
         </header>
 
         {/* Error Display */}
-        {(error || crudError) && (
+        {(localError || error) && (
           <div className="mx-4 mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded flex items-center justify-between">
             <div className="flex items-center gap-2">
               <XCircle className="w-5 h-5" />
-              <span>{error || crudError}</span>
+              <span>{localError || error}</span>
             </div>
             <button
               onClick={() => {
-                setError(null);
-                clearError?.();
+                setLocalError(null);
+                clearError();
               }}
               className="text-red-700 hover:text-red-900"
             >
@@ -948,379 +1163,426 @@ export default function Pasar() {
         )}
 
         {/* Loading Indicator */}
-        {loading && (
+        {(loadingData || loading || isCreating || isUpdating || isDeleting || loadingAllSections) && (
           <div className="mx-4 mb-4 p-3 bg-blue-100 border border-blue-400 text-blue-700 rounded flex items-center gap-2">
             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-            Memuat data...
+            {loadingAllSections ? 'Memuat daftar section...' : 'Memuat data...'}
           </div>
         )}
 
-        {/* top toolbar with section */}
+        {/* ===== FORM SECTION + INDIKATOR ===== */}
         <div className="relative rounded-2xl overflow-hidden mb-6 shadow-sm bg-gradient-to-r from-[#0076C6]/90 via-[#00A3DA]/90 to-[#33C2B5]/90">
+          {/* SECTION HEADER */}
           <div className="rounded-2xl border-2 border-gray-300 p-4 shadow-sm mb-6">
-            <h2 className="text-white font-semibold text-lg sm:text-xl mb-6">Form Pasar</h2>
+            <h2 className="text-white font-semibold text-lg sm:text-xl mb-6">Form Section – Pasar</h2>
 
-            {/* Row with No Sec | Bobot Sec | Section | Buttons */}
+            {/* Row untuk memilih section yang sudah ada */}
+            <div className="mb-4">
+              <label className="text-xs text-white font-medium mb-1 block">Pilih Section yang Sudah Ada</label>
+              <div className="relative">
+                <select
+                  className="w-full px-4 py-3 rounded-lg border-2 border-gray-300 font-medium appearance-none bg-white cursor-pointer pr-10"
+                  value={sectionForm.id || ''}
+                  onChange={(e) => {
+                    const selectedId = e.target.value;
+                    if (selectedId === 'new') {
+                      resetSectionForm();
+                    } else if (selectedId === '') {
+                      resetSectionForm();
+                    } else {
+                      selectSection(Number(selectedId));
+                    }
+                  }}
+                  disabled={loadingAllSections}
+                >
+                  <option value="">-- Pilih Section yang sudah ada --</option>
+
+                  {/* Sections dari periode saat ini */}
+                  {sections.length > 0 ? (
+                    sections.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.no} - {s.parameter} ({s.bobotSection}%)
+                      </option>
+                    ))
+                  ) : (
+                    <option value="" disabled>
+                      Tidak ada section untuk periode {viewYear}-{viewQuarter}
+                    </option>
+                  )}
+
+                  {/* Sections dari database yang belum ada di periode ini */}
+                  {allSections.length > 0 && sections.length > 0 && (
+                    <optgroup label="Section dari database">
+                      {allSections
+                        .filter((section) => !sections.some((s) => s.id === section.id))
+                        .map((section) => (
+                          <option key={section.id} value={section.id}>
+                            {section.no} - {section.parameter} ({section.bobotSection}%)
+                          </option>
+                        ))}
+                    </optgroup>
+                  )}
+
+                  <option value="new">+ Buat Section Baru</option>
+                </select>
+                <ChevronDown className="absolute right-4 top-9 pointer-events-none text-gray-400" size={20} />
+              </div>
+            </div>
+
+            {/* Form input untuk edit section */}
             <div className="flex items-end gap-4 mb-4">
               {/* No Sec */}
               <div className="flex flex-col">
                 <label className="text-xs text-white font-medium mb-1">No Sec</label>
                 <input
                   className="w-20 h-10 px-3 rounded-lg border-2 border-gray-300 text-center font-medium bg-white"
-                  value={sectionForm.no_sec}
-                  onChange={(e) => setSectionForm((f) => ({ ...f, no_sec: e.target.value }))}
-                  placeholder="2.1"
+                  value={sectionForm.no}
+                  onChange={(e) => setSectionForm((f) => ({ ...f, no: e.target.value }))}
+                  placeholder="6.1"
+                  list="section-no-suggestions"
                 />
+                <datalist id="section-no-suggestions">
+                  {getUniqueSections.map((section) => (
+                    <option key={`no-${section.no}`} value={section.no} />
+                  ))}
+                </datalist>
               </div>
 
               {/* Bobot Sec */}
               <div className="flex flex-col">
-                <label className="text-xs text-white font-medium mb-1">Bobot Par</label>
+                <label className="text-xs text-white font-medium mb-1">Bobot Sec (%)</label>
                 <input
                   type="number"
                   className="w-28 h-10 px-3 rounded-lg border-2 border-gray-300 text-center font-medium bg-white"
-                  value={sectionForm.bobot_par ?? ''}
-                  onChange={(e) => setSectionForm((f) => ({ ...f, bobot_par: e.target.value }))}
-                  min="0.01"
+                  value={sectionForm.bobotSection}
+                  onChange={(e) => setSectionForm((f) => ({ ...f, bobotSection: e.target.value }))}
+                  min="0"
                   max="100"
                   step="0.01"
                 />
               </div>
 
-              {/* Section (flex-grow) */}
+              {/* Section */}
               <div className="flex-1 flex flex-col">
-                <label className="text-xs text-white font-medium mb-1">Section</label>
+                <label className="text-xs text-white font-medium mb-1">Nama Section</label>
                 <input
                   className="w-full h-10 px-4 rounded-lg border-2 border-gray-300 font-medium bg-white"
-                  value={sectionForm.nama_section}
-                  onChange={(e) => setSectionForm((f) => ({ ...f, nama_section: e.target.value }))}
-                  placeholder="Volume dan Komposisi Portfolio Asset dan liabilitas yang terekspos risiko pasar"
+                  value={sectionForm.parameter}
+                  onChange={(e) => setSectionForm((f) => ({ ...f, parameter: e.target.value }))}
+                  placeholder="Uraian section risiko pasar"
+                  list="section-name-suggestions"
                 />
+                <datalist id="section-name-suggestions">
+                  {getUniqueSections.map((section) => (
+                    <option key={`name-${section.no}`} value={section.name} />
+                  ))}
+                </datalist>
               </div>
 
-              {/* Buttons (align to bottom of inputs) */}
+              {/* Buttons */}
               <div className="flex gap-2 self-end">
                 {!isEditingSection ? (
                   <button
-                    className="w-10 h-10 rounded-lg bg-green-500 hover:bg-green-600 text-white flex items-center justify-center disabled:bg-gray-400 transition-colors"
+                    className="w-10 h-10 rounded-lg bg-green-500 hover:bg-green-600 text-white flex items-center justify-center disabled:bg-gray-400"
                     onClick={handleCreateSection}
-                    disabled={loading || isSubmitting}
+                    disabled={isCreating || !sectionForm.no || !sectionForm.parameter}
                     title="Tambah Section"
                   >
-                    {loading || isSubmitting ? <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div> : <Plus size={20} />}
+                    {isCreating ? '...' : <Plus size={20} />}
                   </button>
                 ) : (
                   <>
-                    <button
-                      className="w-10 h-10 rounded-lg bg-blue-500 hover:bg-blue-600 text-white flex items-center justify-center disabled:bg-gray-400 transition-colors"
-                      onClick={handleUpdateSection}
-                      disabled={loading || isSubmitting}
-                      title="Update Section"
-                    >
-                      {loading || isSubmitting ? <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div> : <Edit3 size={20} />}
+                    <button className="w-10 h-10 rounded-lg bg-yellow-400 hover:bg-yellow-500 text-white flex items-center justify-center disabled:bg-gray-400" onClick={handleUpdateSection} disabled={isUpdating} title="Update Section">
+                      {isUpdating ? '...' : <Edit3 size={20} />}
                     </button>
-                    <button className="w-10 h-10 rounded-lg bg-gray-500 hover:bg-gray-600 text-white flex items-center justify-center transition-colors" onClick={resetSectionForm} title="Batal">
+                    <button className="w-10 h-10 rounded-lg bg-gray-500 hover:bg-gray-600 text-white flex items-center justify-center" onClick={resetSectionForm} title="Batal">
                       ✕
                     </button>
                   </>
                 )}
-                {isEditingSection && (
+                {isEditingSection && sectionForm.id && (
                   <button
-                    className="w-10 h-10 rounded-lg bg-red-500 hover:bg-red-600 text-white flex items-center justify-center disabled:bg-gray-400 transition-colors"
-                    onClick={() => handleDeleteSection(sectionForm.id)}
-                    disabled={loading || isSubmitting}
+                    className="w-10 h-10 rounded-lg bg-red-500 hover:bg-red-600 text-white flex items-center justify-center disabled:bg-gray-400"
+                    onClick={() => {
+                      handleDeleteSection(sectionForm.id);
+                    }}
+                    disabled={isDeleting}
                     title="Hapus Section"
                   >
-                    {loading || isSubmitting ? <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div> : <Trash2 size={20} />}
+                    {isDeleting ? '...' : <Trash2 size={20} />}
                   </button>
                 )}
               </div>
             </div>
 
-            {/* Section Dropdown */}
-            <div className="relative">
-              <label className="text-xs text-white font-medium mb-1 block">Pilih Section</label>
-              <select
-                className="w-full px-4 py-3 rounded-lg border-2 border-gray-300 font-medium appearance-none bg-white cursor-pointer pr-10 transition-colors hover:border-gray-400"
-                value={sectionForm.id || ''}
-                onChange={(e) => {
-                  const selectedId = e.target.value ? Number(e.target.value) : null;
-                  if (selectedId) {
-                    selectSection(selectedId);
-                  } else {
-                    resetSectionForm();
-                  }
-                }}
-              >
-                <option value="">-- Pilih Section --</option>
-                {sections.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.no_sec} - {s.nama_section}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="absolute right-4 top-9 pointer-events-none text-gray-400" size={20} />
+            {/* Info Section yang dipilih */}
+            {sectionForm.id && (
+              <div className="mt-3 p-2 bg-blue-50 border border-blue-200 rounded">
+                <div className="text-sm text-blue-800">
+                  <span className="font-medium">Section dipilih:</span> {sectionForm.no} - {sectionForm.parameter}
+                </div>
+                <div className="text-xs text-blue-600">
+                  Bobot: {sectionForm.bobotSection}% | Periode: {viewYear}-{viewQuarter} | Data akan disimpan untuk periode ini
+                </div>
+              </div>
+            )}
+
+            {/* Tombol refresh sections */}
+            <div className="mt-4 flex justify-end">
+              <button onClick={loadAllSections} className="flex items-center gap-2 text-sm text-white hover:text-white/80" disabled={loadingAllSections}>
+                <RefreshCw size={14} />
+                Refresh Daftar Section
+              </button>
             </div>
           </div>
 
-          {/* main body: indicator form - Hanya tampil jika section dipilih */}
+          {/* main body: indicator form */}
           {sectionForm.id && (
             <div className="rounded-xl border-2 border-gray-300 shadow-sm p-6 mb-6">
-              <h3 className="text-white font-semibold text-lg mb-4">Tambah Indikator</h3>
+              <h3 className="text-white font-semibold text-lg mb-4">{isEditingIndicator ? 'Edit Indikator' : 'Tambah Indikator'}</h3>
 
-              {/* Indikator & Bobot Par Row */}
+              {/* Sub No & Indikator & Bobot Par Row */}
               <div className="grid grid-cols-12 gap-4 mb-4">
-                <div className="col-span-9">
+                <div className="col-span-2">
+                  <label className="text-sm font-medium mb-2 block text-white">No Indikator</label>
+                  <input className="w-full rounded-lg border-2 border-gray-300 px-3 py-3 text-sm bg-white" value={indicatorForm.subNo} onChange={(e) => setIndicatorField('subNo', e.target.value)} placeholder="6.1.1" />
+                </div>
+                <div className="col-span-7">
                   <label className="text-sm font-medium mb-2 block text-white">Indikator</label>
                   <input
-                    className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-sm bg-white transition-colors hover:border-gray-400 focus:border-blue-500 focus:outline-none"
-                    value={indicatorForm.nama_indikator}
-                    onChange={(e) => setIndicatorField('nama_indikator', e.target.value)}
-                    placeholder="Frekuensi pencairan dengan nilai pencairan > 100 Milyar/nasabah dalam waktu singkat..."
-                    required
+                    className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-sm bg-white"
+                    value={indicatorForm.indikator}
+                    onChange={(e) => setIndicatorField('indikator', e.target.value)}
+                    placeholder="Teks indikator risiko pasar…"
                   />
                 </div>
                 <div className="col-span-3">
-                  <label className="text-sm font-medium mb-2 block text-right text-white">Bobot Indikator</label>
+                  <label className="text-sm font-medium mb-2 block text-right text-white">Bobot Indikator (%)</label>
                   <input
                     type="number"
-                    className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-sm text-right bg-white transition-colors hover:border-gray-400 focus:border-blue-500 focus:outline-none"
-                    value={indicatorForm.bobot_indikator}
-                    onChange={(e) => setIndicatorField('bobot_indikator', e.target.value)}
-                    placeholder="50"
-                    min="0.01"
+                    className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-sm text-right bg-white"
+                    value={indicatorForm.bobotIndikator || ''}
+                    onChange={(e) => setIndicatorField('bobotIndikator', e.target.value)}
+                    placeholder="100"
+                    min="0"
                     max="100"
                     step="0.01"
-                    required
                   />
                 </div>
               </div>
 
-              {/* Metode Penghitungan + Rumus */}
+              {/* Metode Penghitungan + Rumus / Hasil Teks */}
               <div className="grid grid-cols-12 gap-4 mb-4">
                 <div className="col-span-4">
                   <label className="text-sm font-medium mb-2 block text-white">Metode Penghitungan</label>
                   <select
-                    className="w-full rounded-lg border-2 border-gray-300 px-3 py-3 text-sm bg-white transition-colors hover:border-gray-400 focus:border-blue-500 focus:outline-none"
-                    value={indicatorForm.mode || 'RASIO'}
+                    className="w-full rounded-lg border-2 border-gray-300 px-3 py-3 text-sm bg-white"
+                    value={indicatorForm.mode || CalculationMode.RASIO}
                     onChange={(e) => {
                       const v = e.target.value;
                       setIndicatorField('mode', v);
+                      if (v === CalculationMode.TEKS) {
+                        setIndicatorForm((prev) => ({
+                          ...prev,
+                          formula: '',
+                          isPercent: false,
+                          pembilangLabel: '',
+                          pembilangValue: '',
+                          penyebutLabel: '',
+                          penyebutValue: '',
+                          hasil: '',
+                        }));
+                      }
                     }}
                   >
-                    <option value="RASIO">Rasio (Pembilang / Penyebut)</option>
-                    <option value="NILAI_TUNGGAL">Nilai tunggal (hanya penyebut)</option>
+                    <option value={CalculationMode.RASIO}>Rasio (Pembilang / Penyebut)</option>
+                    <option value={CalculationMode.NILAI_TUNGGAL}>Nilai tunggal (hanya penyebut)</option>
+                    <option value={CalculationMode.TEKS}>Kualitatif (hasil berupa teks)</option>
                   </select>
                 </div>
 
                 <div className="col-span-8">
-                  <label className="text-sm font-medium mb-2 block text-white">
-                    Rumus Parameter (opsional) &nbsp;
-                    <span className="text-xs">
-                      gunakan variabel <b>pemb</b> dan <b>peny</b>
-                    </span>
-                  </label>
-                  <div className="flex items-center gap-4">
-                    <input
-                      type="text"
-                      className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-sm bg-white transition-colors hover:border-gray-400 focus:border-blue-500 focus:outline-none"
-                      placeholder={indicatorForm.mode === 'NILAI_TUNGGAL' ? 'Contoh: peny / 1000' : 'Contoh: peny / pemb'}
-                      value={indicatorForm.formula || ''}
-                      onChange={(e) => setIndicatorField('formula', e.target.value)}
-                    />
-                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                  {indicatorForm.mode === CalculationMode.TEKS ? (
+                    <>
+                      <label className="text-sm font-medium mb-2 block text-white">Hasil (Teks) – akan muncul di kolom "Hasil"</label>
                       <input
-                        type="checkbox"
-                        checked={indicatorForm.is_percent || false}
-                        onChange={(e) => setIndicatorField('is_percent', e.target.checked)}
-                        className="w-6 h-6 rounded border-2 border-gray-300 text-blue-600 focus:ring-blue-500 transition-colors"
+                        className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-sm bg-white"
+                        value={indicatorForm.hasilText}
+                        onChange={(e) => setIndicatorField('hasilText', e.target.value)}
+                        placeholder="misal: kondisi pasar sesuai harapan"
                       />
-                      <div
-                        className="w-12 h-12 flex items-center justify-center rounded-lg border-2 border-gray-300 bg-gray-100 text-lg font-bold cursor-pointer transition-colors hover:bg-gray-200"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setIndicatorField('is_percent', !indicatorForm.is_percent);
-                        }}
-                      >
-                        %
+                    </>
+                  ) : (
+                    <>
+                      <label className="text-sm font-medium mb-2 block text-white">
+                        Rumus Parameter (opsional) &nbsp;
+                        <span className="text-xs">
+                          gunakan variabel <b>pemb</b> dan <b>peny</b>
+                        </span>
+                      </label>
+                      <div className="flex items-center gap-4">
+                        <input
+                          type="text"
+                          className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-sm bg-white"
+                          placeholder={indicatorForm.mode === CalculationMode.NILAI_TUNGGAL ? 'Contoh: peny / 1000' : 'Contoh: pemb / peny'}
+                          value={indicatorForm.formula || ''}
+                          onChange={(e) => setIndicatorField('formula', e.target.value)}
+                        />
+                        <label className="flex items-center gap-2 cursor-pointer select-none">
+                          <input
+                            type="checkbox"
+                            checked={indicatorForm.isPercent || false}
+                            onChange={(e) => setIndicatorField('isPercent', e.target.checked)}
+                            className="w-6 h-6 rounded-full border-2 border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          <div
+                            className="w-12 h-12 flex items-center justify-center rounded-lg border-2 border-gray-300 bg-gray-100 text-lg font-bold cursor-pointer"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setIndicatorField('isPercent', !indicatorForm.isPercent);
+                            }}
+                          >
+                            %
+                          </div>
+                        </label>
                       </div>
-                    </label>
-                  </div>
+                    </>
+                  )}
                 </div>
               </div>
 
-              {/* Faktor Pembilang & Value Row - hanya untuk mode RASIO */}
-              {indicatorForm.mode === 'RASIO' && (
+              {/* Faktor Pembilang (hanya untuk RASIO) */}
+              {indicatorForm.mode === CalculationMode.RASIO && (
                 <div className="grid grid-cols-2 gap-4 mb-4">
                   <div>
                     <label className="text-sm font-medium mb-2 block text-white">Faktor Pembilang</label>
                     <input
-                      className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-sm bg-white transition-colors hover:border-gray-400 focus:border-blue-500 focus:outline-none"
-                      value={indicatorForm.pembilang_label}
-                      onChange={(e) => setIndicatorField('pembilang_label', e.target.value)}
-                      placeholder="Jumlah nasabah yang melakukan pencairan >100 Milyar/transaksi"
+                      className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-sm bg-white"
+                      value={indicatorForm.pembilangLabel}
+                      onChange={(e) => setIndicatorField('pembilangLabel', e.target.value)}
+                      placeholder="Penjualan aktual, market share riil, dll."
                     />
                   </div>
                   <div>
-                    <label className="text-sm font-medium mb-2 block text-white">Value Pembilang</label>
+                    <label className="text-sm font-medium mb-2 block text-white">Nilai Pembilang</label>
                     <input
-                      type="number"
-                      className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-sm bg-white transition-colors hover:border-gray-400 focus:border-blue-500 focus:outline-none"
-                      value={indicatorForm.pembilang_value}
-                      onChange={(e) => setIndicatorField('pembilang_value', e.target.value)}
-                      placeholder="4000"
-                      step="0.01"
+                      className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-sm bg-white"
+                      value={indicatorForm.pembilangValue ?? ''}
+                      onChange={(e) => setIndicatorField('pembilangValue', e.target.value)}
+                      placeholder="75.5"
                     />
                   </div>
                 </div>
               )}
 
-              {/* Faktor Penyebut & Value Row */}
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div>
-                  <label className="text-sm font-medium mb-2 block text-white">Faktor Penyebut</label>
-                  <input
-                    className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-sm bg-white transition-colors hover:border-gray-400 focus:border-blue-500 focus:outline-none"
-                    value={indicatorForm.penyebut_label}
-                    onChange={(e) => setIndicatorField('penyebut_label', e.target.value)}
-                    placeholder="Jumlah nasabah yang melakukan pencairan >100 Milyar/transaksi"
-                  />
+              {/* Faktor Penyebut (non TEKS) */}
+              {indicatorForm.mode !== CalculationMode.TEKS && (
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label className="text-sm font-medium mb-2 block text-white">Faktor Penyebut</label>
+                    <input
+                      className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-sm bg-white"
+                      value={indicatorForm.penyebutLabel}
+                      onChange={(e) => setIndicatorField('penyebutLabel', e.target.value)}
+                      placeholder="Target penjualan, total market, dll."
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium mb-2 block text-white">Nilai Penyebut</label>
+                    <input className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-sm bg-white" value={indicatorForm.penyebutValue ?? ''} onChange={(e) => setIndicatorField('penyebutValue', e.target.value)} placeholder="100" />
+                  </div>
                 </div>
-                <div>
-                  <label className="text-sm font-medium mb-2 block text-white">Value Penyebut</label>
-                  <input
-                    type="number"
-                    className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-sm bg-white transition-colors hover:border-gray-400 focus:border-blue-500 focus:outline-none"
-                    value={indicatorForm.penyebut_value}
-                    onChange={(e) => setIndicatorField('penyebut_value', e.target.value)}
-                    placeholder="4000"
-                    step="0.01"
-                  />
-                </div>
-              </div>
+              )}
 
-              {/* Sumber Resiko & Dampak Row */}
+              {/* Sumber risiko & dampak */}
               <div className="grid grid-cols-2 gap-4 mb-4">
                 <div>
-                  <label className="text-sm font-medium mb-2 block text-white">Sumber Resiko</label>
+                  <label className="text-sm font-medium mb-2 block text-white">Sumber Risiko</label>
                   <textarea
                     rows={4}
-                    className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-sm resize-none bg-white transition-colors hover:border-gray-400 focus:border-blue-500 focus:outline-none"
-                    value={indicatorForm.sumber_risiko}
-                    onChange={(e) => setIndicatorField('sumber_risiko', e.target.value)}
-                    placeholder="1. Kelolaan dalam pemilihan aset portofolio,atau
-                      2. Penurunan rating emiten setelah menjadi aset portofolio..."
+                    className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-sm resize-none bg-white"
+                    value={indicatorForm.sumberRisiko}
+                    onChange={(e) => setIndicatorField('sumberRisiko', e.target.value)}
+                    placeholder="Contoh: persaingan pasar, fluktuasi harga, regulasi, perubahan permintaan konsumen"
                   />
                 </div>
                 <div>
                   <label className="text-sm font-medium mb-2 block text-white">Dampak</label>
                   <textarea
                     rows={4}
-                    className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-sm resize-none bg-white transition-colors hover:border-gray-400 focus:border-blue-500 focus:outline-none"
+                    className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-sm resize-none bg-white"
                     value={indicatorForm.dampak}
                     onChange={(e) => setIndicatorField('dampak', e.target.value)}
-                    placeholder="Penurunan laba berjalan atau penurunan kepercayaan pemegang saham dan stakeholder lainnya"
+                    placeholder="Contoh: penurunan penjualan, hilangnya pelanggan, margin yang menyusut"
                   />
                 </div>
               </div>
 
-              {/* Bottom Section: Hasil Preview, Peringkat, Weighted, Legend & Button */}
-              <div className="grid grid-cols-12 gap-4">
-                {/* Left side: Preview boxes */}
-                <div className="col-span-6 flex gap-4">
-                  <div className="flex-1">
-                    <label className="text-sm font-medium mb-2 block text-white">Hasil Preview</label>
-                    <input
-                      className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-sm bg-gray-50"
-                      value={(() => {
-                        const raw = computeHasil(indicatorForm);
-                        if (raw === '' || raw == null || isNaN(Number(raw))) return '';
+              {/* Risk Levels Grid */}
+              <div className="mt-6 rounded-2xl border-2 border-white/70 bg-white/5 p-4">
+                <div className="grid grid-cols-12 gap-4">
+                  {/* KIRI: Preview + peringkat + weighted */}
+                  <div className="col-span-6 space-y-4">
+                    <div className="grid grid-cols-3 gap-4">
+                      <div>
+                        <label className="text-sm font-medium mb-2 block text-white">Peringkat (1 – 5)</label>
+                        <input
+                          type="number"
+                          min="1"
+                          max="5"
+                          className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-sm bg-white"
+                          value={indicatorForm.peringkat || ''}
+                          onChange={(e) => setIndicatorField('peringkat', e.target.value)}
+                        />
+                      </div>
 
-                        const pembHasPercent = String(indicatorForm.pembilang_value).includes('%');
-                        const penyHasPercent = String(indicatorForm.penyebut_value).includes('%');
+                      <div>
+                        <label className="text-sm font-medium mb-2 block text-white">Weighted (auto)</label>
+                        <input className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-sm bg-gray-50" value={weightedPreview.toFixed(2)} readOnly />
+                      </div>
 
-                        if (pembHasPercent && penyHasPercent) {
-                          return formatHasilNumber(raw, 4);
-                        }
-
-                        const showAsPercent = indicatorForm.is_percent !== false;
-
-                        if (showAsPercent) {
-                          const pct = Number(raw) * 100;
-                          if (!isFinite(pct) || isNaN(pct)) return '';
-                          return pct.toFixed(2) + '%';
-                        }
-
-                        return formatHasilNumber(raw, 4);
-                      })()}
-                      readOnly
-                    />
+                      <div>
+                        <label className="text-sm font-medium mb-2 block text-white">Preview value</label>
+                        <input className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-sm bg-gray-50" value={hasilPreview} readOnly />
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex-1">
-                    <label className="text-sm font-medium mb-2 block text-white">Peringkat (1 - 5)</label>
-                    <input
-                      type="number"
-                      min="1"
-                      max="5"
-                      className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-sm bg-white transition-colors hover:border-gray-400 focus:border-blue-500 focus:outline-none"
-                      value={indicatorForm.peringkat ?? ''}
-                      onChange={(e) => setIndicatorField('peringkat', e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="flex-1">
-                    <label className="text-sm font-medium mb-2 block text-white">Weighted(auto)</label>
-                    <input className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-sm bg-gray-50" value={sectionForm.id ? computeWeightedAuto(indicatorForm, Number(sectionForm.bobot_par || 0)).toFixed(2) : ''} readOnly />
-                  </div>
-                </div>
 
-                {/* Right side: Legend */}
-                <div className="col-span-6 grid grid-cols-5 gap-3 items-stretch">
-                  <RiskField className="w-full" label="Low" value={indicatorForm.low} onChange={(v) => setIndicatorField('low', v)} color="#B7E1A1" textColor="#0B3D2E" placeholder="x ≤ 1%" />
-                  <RiskField className="w-full" label="Low to Moderate" value={indicatorForm.low_to_moderate} onChange={(v) => setIndicatorField('low_to_moderate', v)} color="#CFE0FF" textColor="#0B2545" placeholder="1% < x ≤ 2%" />
-                  <RiskField className="w-full" label="Moderate" value={indicatorForm.moderate} onChange={(v) => setIndicatorField('moderate', v)} color="#FFEEAD" textColor="#4B3A00" placeholder="2% < x ≤ 3%" />
-                  <RiskField className="w-full" label="Moderate to High" value={indicatorForm.moderate_to_high} onChange={(v) => setIndicatorField('moderate_to_high', v)} color="#FAD2A7" textColor="#5A2E00" placeholder="3% < x ≤ 4%" />
-                  <RiskField className="w-full" label="High" value={indicatorForm.high} onChange={(v) => setIndicatorField('high', v)} color="#E57373" textColor="#FFFFFF" placeholder="x > 4%" />
+                  {/* KANAN: Risk level (Low s/d High) vertikal */}
+                  <div className="col-span-6 grid grid-cols-1 gap-3 items-stretch">
+                    <RiskBox className="w-full" label="Low" value={indicatorForm.low} onChange={(v) => setIndicatorField('low', v)} color="#B7E1A1" textColor="#0B3D2E" placeholder="x > 90%" />
+                    <RiskBox className="w-full" label="Low to Moderate" value={indicatorForm.lowToModerate} onChange={(v) => setIndicatorField('lowToModerate', v)} color="#CFE0FF" textColor="#0B2545" placeholder="90% ≥ x > 70%" />
+                    <RiskBox className="w-full" label="Moderate" value={indicatorForm.moderate} onChange={(v) => setIndicatorField('moderate', v)} color="#FFEEAD" textColor="#4B3A00" placeholder="70% ≥ x > 50%" />
+                    <RiskBox className="w-full" label="Moderate to High" value={indicatorForm.moderateToHigh} onChange={(v) => setIndicatorField('moderateToHigh', v)} color="#FAD2A7" textColor="#5A2E00" placeholder="50% ≥ x > 30%" />
+                    <RiskBox className="w-full" label="High" value={indicatorForm.high} onChange={(v) => setIndicatorField('high', v)} color="#E57373" textColor="#FFFFFF" placeholder="x < 30%" />
+                  </div>
                 </div>
               </div>
 
               {/* Keterangan */}
               <div className="mt-4">
                 <label className="text-sm font-medium mb-2 block text-white">Keterangan</label>
-                <input
-                  className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-sm bg-white transition-colors hover:border-gray-400 focus:border-blue-500 focus:outline-none"
+                <textarea
+                  rows={2}
+                  className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-sm bg-white"
                   value={indicatorForm.keterangan}
                   onChange={(e) => setIndicatorField('keterangan', e.target.value)}
-                  placeholder="Loading"
+                  placeholder="Keterangan tambahan..."
                 />
               </div>
 
               {/* Add/Save Button */}
               <div className="mt-6 flex justify-end">
                 {!isEditingIndicator ? (
-                  <button onClick={handleCreateIndicator} disabled={isSubmitting || loading} className="px-8 py-3 rounded-lg bg-green-500 hover:bg-green-600 text-white font-semibold disabled:bg-gray-400 transition-colors">
-                    {isSubmitting || loading ? (
-                      <div className="flex items-center gap-2">
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                        Menyimpan...
-                      </div>
-                    ) : (
-                      '+ Tambah Indikator'
-                    )}
+                  <button onClick={handleCreateIndicator} disabled={isCreating} className="px-8 py-3 rounded-lg bg-green-500 hover:bg-green-600 text-white font-semibold disabled:bg-gray-400">
+                    {isCreating ? 'Menyimpan...' : '+ Tambah Indikator'}
                   </button>
                 ) : (
                   <div className="flex gap-3">
-                    <button onClick={handleUpdateIndicator} disabled={isSubmitting || loading} className="px-8 py-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold disabled:bg-gray-400 transition-colors">
-                      {isSubmitting || loading ? (
-                        <div className="flex items-center gap-2">
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                          Menyimpan...
-                        </div>
-                      ) : (
-                        'Simpan Perubahan'
-                      )}
+                    <button onClick={handleUpdateIndicator} disabled={isUpdating} className="px-8 py-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold disabled:bg-gray-400">
+                      {isUpdating ? 'Menyimpan...' : 'Simpan Perubahan'}
                     </button>
-                    <button onClick={resetIndicatorForm} className="px-8 py-3 rounded-lg border-2 border-gray-300 hover:bg-gray-50 font-semibold transition-colors">
+                    <button onClick={resetIndicatorForm} className="px-8 py-3 rounded-lg border-2 border-gray-300 hover:bg-gray-50 font-semibold">
                       Batal
                     </button>
                   </div>
@@ -1330,62 +1592,77 @@ export default function Pasar() {
           )}
         </div>
 
-        {/* table area */}
+        {/* ===== TABEL PASAR ===== */}
         <section className="mt-4">
           <div className="bg-white rounded-2xl shadow overflow-hidden">
             <div className="relative h-[350px]">
               <div className="absolute inset-0 overflow-x-auto overflow-y-auto">
-                <table className="min-w-[1400px] text-sm border border-gray-300 border-collapse">
+                <table className="min-w-[1450px] text-sm border border-gray-300 border-collapse">
                   <thead>
                     <tr className="bg-[#1f4e79] text-white">
-                      <th className="border border-black px-3 py-2 text-left" style={{ width: 60 }}>
+                      <th className="border border-black px-3 py-2 text-left" rowSpan={2} style={{ width: 60 }}>
                         No
                       </th>
-                      <th className="border border-black px-3 py-2 text-left" style={{ width: 80 }}>
+                      <th className="border border-black px-3 py-2 text-left" rowSpan={2} style={{ width: 80 }}>
                         Bobot
                       </th>
-                      <th className="border border-black px-3 py-2 text-left" style={{ minWidth: 340 }}>
-                        Parameter / Section
+                      <th className="border border-black px-3 py-2 text-left" colSpan={3}>
+                        Parameter atau Indikator
                       </th>
-                      <th className="border border-black px-3 py-2 text-left" style={{ minWidth: 360 }}>
-                        Indikator & Pembilang/Penyebut
-                      </th>
-                      <th className="border border-black px-3 py-2 text-center" style={{ width: 90 }}>
+                      <th className="border border-black px-3 py-2 text-center" rowSpan={2} style={{ width: 90 }}>
                         Bobot Indikator
                       </th>
-                      <th className="border border-black px-3 py-2 text-left" style={{ minWidth: 220 }}>
+                      <th className="border border-black px-3 py-2 text-left" rowSpan={2} style={{ minWidth: 220 }}>
                         Sumber Risiko
                       </th>
-                      <th className="border border-black px-3 py-2 text-left" style={{ minWidth: 240 }}>
+                      <th className="border border-black px-3 py-2 text-left" rowSpan={2} style={{ minWidth: 240 }}>
                         Dampak
                       </th>
-                      <th className="border border-black px-3 py-2 bg-[#b7d7a8] text-left text-black">Low</th>
-                      <th className="border border-black px-3 py-2 bg-[#c9daf8] text-left text-black">Low to Moderate</th>
-                      <th className="border border-black px-3 py-2 bg-[#fff2cc] text-left text-black">Moderate</th>
-                      <th className="border border-black px-3 py-2 bg-[#f9cb9c] text-left text-black">Moderate to High</th>
-                      <th className="border border-black px-3 py-2 bg-[#e06666] ">High</th>
-                      <th className="border border-black px-3 py-2 bg-[#2e75b6] border border-black" style={{ width: 100 }}>
+                      <th className="border border-black px-3 py-2 bg-[#b7d7a8] text-center text-black" rowSpan={2}>
+                        Low
+                      </th>
+                      <th className="border border-black px-3 py-2 bg-[#c9daf8] text-left text-black" rowSpan={2}>
+                        Low to Moderate
+                      </th>
+                      <th className="border border-black px-3 py-2 bg-[#fff2cc] text-left text-black" rowSpan={2}>
+                        Moderate
+                      </th>
+                      <th className="border border-black px-3 py-2 bg-[#f9cb9c] text-left text-black" rowSpan={2}>
+                        Moderate to High
+                      </th>
+                      <th className="border border-black px-3 py-2 bg-[#e06666] text-center" rowSpan={2}>
+                        High
+                      </th>
+                      <th className="border border-black px-3 py-2 bg-[#2e75b6]" rowSpan={2} style={{ width: 100 }}>
                         Hasil
                       </th>
-                      <th className="px-3 py-2 bg-[#2e75b6] text-left border border-black" style={{ width: 70 }}>
+                      <th className="border border-black px-3 py-2 bg-[#2e75b6]" rowSpan={2} style={{ width: 70 }}>
                         Peringkat
                       </th>
-                      <th className="px-3 py-2 bg-[#2e75b6] text-left text-white border border-black" style={{ width: 90 }}>
+                      <th className="border border-black px-3 py-2 bg-[#2e75b6] text-white" rowSpan={2} style={{ width: 90 }}>
                         Weighted
                       </th>
-                      <th className="border border-black px-3 py-2 bg-[#1f4e79] text-left" style={{ width: 220 }}>
-                        Keterangan
-                      </th>
-                      <th className="border border-black border px-3 py-2 text-center" style={{ width: 80 }}>
+                      <th className="border border-black px-3 py-2 text-center" rowSpan={2} style={{ width: 80 }}>
                         Aksi
+                      </th>
+                    </tr>
+                    <tr className="bg-[#1f4e79] text-white">
+                      <th className="border border-black px-3 py-2 text-left" style={{ minWidth: 260 }}>
+                        Section
+                      </th>
+                      <th className="border border-black px-3 py-2 text-left" style={{ width: 70 }}>
+                        Sub No
+                      </th>
+                      <th className="border border-black px-3 py-2 text-left" style={{ minWidth: 360 }}>
+                        Indikator
                       </th>
                     </tr>
                   </thead>
 
                   <tbody>
-                    {loading ? (
+                    {loadingData ? (
                       <tr>
-                        <td className="border px-3 py-8 text-center text-gray-500" colSpan={17}>
+                        <td className="border px-3 py-6 text-center text-gray-500" colSpan={17}>
                           <div className="flex items-center justify-center gap-2">
                             <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
                             Memuat data...
@@ -1395,148 +1672,151 @@ export default function Pasar() {
                     ) : filteredSections.length === 0 ? (
                       <tr>
                         <td className="border px-3 py-6 text-center text-gray-500" colSpan={17}>
-                          {sections.length === 0 ? 'Belum ada data section' : 'Tidak ada data yang sesuai dengan pencarian'}
+                          Belum ada data
                         </td>
                       </tr>
                     ) : (
                       filteredSections.map((s) => {
-                        const inds = s.indikators || [];
+                        const inds = s.indicators || [];
+
                         if (!inds.length) {
                           return (
                             <tr key={s.id} className="bg-[#e9f5e1]">
-                              <td className="border px-3 py-3 text-center">{s.no_sec}</td>
-                              <td className="border px-3 py-3 text-center">{s.bobot_par}%</td>
-                              <td className="border px-3 py-3">{s.nama_section}</td>
-                              <td className="border px-3 py-3 text-center" colSpan={14}>
-                                Belum ada indikator
+                              <td className="border px-3 py-3 text-center">{s.no}</td>
+                              <td className="border px-3 py-3 text-center">{s.bobotSection}%</td>
+                              <td className="border px-3 py-3" colSpan={15}>
+                                {s.parameter} – Belum ada indikator
                               </td>
                             </tr>
                           );
                         }
 
+                        // Hitung rowSpan per section
+                        const sectionRowSpan = inds.reduce((sum, it) => {
+                          const rowCount = it.mode === CalculationMode.TEKS ? 1 : rowsPerIndicator(it);
+                          return sum + rowCount;
+                        }, 0);
+
                         return (
                           <React.Fragment key={s.id}>
                             {inds.map((it, idx) => {
                               const firstOfSection = idx === 0;
+                              const transformed = transformIndicatorToFrontendPasar(it);
 
                               let hasilDisplay = '';
-                              if (it.hasil !== '' && it.hasil != null && !isNaN(Number(it.hasil))) {
-                                const pembHasPercent = String(it.pembilang_value).includes('%');
-                                const penyHasPercent = String(it.penyebut_value).includes('%');
-
-                                if (pembHasPercent && penyHasPercent) {
-                                  hasilDisplay = formatHasilNumber(it.hasil, 4);
+                              if (transformed.mode === CalculationMode.TEKS) {
+                                hasilDisplay = transformed.hasilText || '';
+                              } else if (transformed.hasil !== '' && transformed.hasil != null && !isNaN(Number(transformed.hasil))) {
+                                if (transformed.isPercent) {
+                                  hasilDisplay = (Number(transformed.hasil) * 100).toFixed(2) + '%';
                                 } else {
-                                  const showAsPercent = it.is_percent !== false;
-
-                                  if (showAsPercent) {
-                                    const pct = Number(it.hasil) * 100;
-                                    if (!isFinite(pct) || isNaN(pct)) {
-                                      hasilDisplay = '';
-                                    } else {
-                                      hasilDisplay = pct.toFixed(2) + '%';
-                                    }
-                                  } else {
-                                    hasilDisplay = formatHasilNumber(it.hasil, 4);
-                                  }
+                                  hasilDisplay = Number(transformed.hasil).toFixed(4);
                                 }
                               }
 
-                              const weightedDisplay = (typeof it.weighted === 'number' || (typeof it.weighted === 'string' && it.weighted !== '')) && it.weighted != null ? Number(it.weighted).toFixed(2) : '';
+                              const weightedDisplay = transformed.weighted !== '' && transformed.weighted != null && !isNaN(Number(transformed.weighted)) ? Number(transformed.weighted).toFixed(2) : '';
 
                               return (
-                                <React.Fragment key={it.id}>
+                                <React.Fragment key={transformed.id}>
+                                  {/* ── baris utama indikator ── */}
                                   <tr>
                                     {firstOfSection && (
                                       <>
-                                        <td rowSpan={inds.length * rowsPerIndicator} className="border px-3 py-3 align-top bg-[#d9eefb] text-center font-semibold">
-                                          {s.no_sec}
+                                        <td rowSpan={sectionRowSpan} className="border px-3 py-3 align-top bg-[#d9eefb] text-center font-semibold">
+                                          {s.no}
                                         </td>
-                                        <td rowSpan={inds.length * rowsPerIndicator} className="border px-3 py-3 align-top bg-[#d9eefb] text-center">
-                                          {s.bobot_par}%
+                                        <td rowSpan={sectionRowSpan} className="border px-3 py-3 align-top bg-[#d9eefb] text-center">
+                                          {s.bobotSection}%
                                         </td>
-                                        <td rowSpan={inds.length * rowsPerIndicator} className="border px-3 py-3 align-top bg-[#d9eefb]">
-                                          {s.nama_section}
+                                        <td rowSpan={sectionRowSpan} className="border px-3 py-3 align-top bg-[#d9eefb]">
+                                          {s.parameter}
                                         </td>
                                       </>
                                     )}
 
+                                    <td className="border px-3 py-3 text-center align-top bg-[#d9eefb]">{transformed.subNo}</td>
                                     <td className="border px-3 py-3 align-top bg-[#d9eefb]">
-                                      <div className="font-medium">{it.nama_indikator}</div>
+                                      <div className="font-medium whitespace-pre-wrap">{transformed.indikator}</div>
                                     </td>
-                                    <td className="border px-3 py-3 text-center align-top bg-[#d9eefb]">{it.bobot_indikator}%</td>
-                                    <td className="border px-3 py-3 align-top bg-[#d9eefb]">{it.sumber_risiko}</td>
-                                    <td className="border px-3 py-3 align-top bg-[#d9eefb]">{it.dampak}</td>
 
-                                    <td className="border px-3 py-3 text-center bg-green-700/10">{it.low}</td>
-                                    <td className="border px-3 py-3 text-center bg-green-700/10">{it.low_to_moderate}</td>
-                                    <td className="border px-3 py-3 text-center bg-green-700/10">{it.moderate}</td>
-                                    <td className="border px-3 py-3 text-center bg-green-700/10">{it.moderate_to_high}</td>
-                                    <td className="border px-3 py-3 text-center bg-green-700/10">{it.high}</td>
+                                    <td className="border px-3 py-3 text-center align-top bg-[#d9eefb]">{transformed.bobotIndikator}%</td>
+                                    <td className="border px-3 py-3 align-top bg-[#d9eefb] whitespace-pre-wrap">{transformed.sumberRisiko}</td>
+                                    <td className="border px-3 py-3 align-top bg-[#d9eefb] whitespace-pre-wrap">{transformed.dampak}</td>
 
-                                    <td className="border px-3 py-3 text-right bg-gray-400/20">{hasilDisplay}</td>
+                                    <td className="border px-3 py-3 text-center bg-green-700/10 whitespace-pre-wrap">{transformed.low}</td>
+                                    <td className="border px-3 py-3 text-center bg-green-700/10 whitespace-pre-wrap">{transformed.lowToModerate}</td>
+                                    <td className="border px-3 py-3 text-center bg-green-700/10 whitespace-pre-wrap">{transformed.moderate}</td>
+                                    <td className="border px-3 py-3 text-center bg-green-700/10 whitespace-pre-wrap">{transformed.moderateToHigh}</td>
+                                    <td className="border px-3 py-3 text-center bg-green-700/10 whitespace-pre-wrap">{transformed.high}</td>
+
+                                    <td className="border px-3 py-3 text-right bg-gray-400/20 whitespace-pre-wrap">{hasilDisplay}</td>
 
                                     <td className="border px-3 py-3 text-center">
                                       <div style={{ minWidth: 36, minHeight: 24 }} className="inline-block rounded bg-yellow-300 px-2">
-                                        {it.peringkat}
+                                        {transformed.peringkat}
                                       </div>
                                     </td>
 
                                     <td className="border px-3 py-3 text-right bg-gray-400/20">{weightedDisplay}</td>
-                                    <td className="border px-3 py-3">{it.keterangan}</td>
 
                                     <td className="border px-3 py-3 text-center">
                                       <div className="flex items-center justify-center gap-2">
-                                        <button onClick={() => handleEditIndicator(it)} className="px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
+                                        <button onClick={() => handleEditIndicator(transformed)} className="px-2 py-1 rounded border hover:bg-gray-100" disabled={loadingData || isUpdating || isDeleting}>
                                           <Edit3 size={14} />
                                         </button>
-                                        <button onClick={() => handleDeleteIndicator(it.id)} className="px-2 py-1 rounded border text-red-600 hover:bg-red-50 transition-colors">
+                                        <button onClick={() => handleDeleteIndicator(transformed.id)} className="px-2 py-1 rounded border text-red-600 hover:bg-red-50" disabled={loadingData || isDeleting}>
                                           <Trash2 size={14} />
                                         </button>
                                       </div>
                                     </td>
                                   </tr>
 
-                                  {/* Pembilang row – hanya untuk mode RASIO */}
-                                  {it.mode === 'RASIO' && (
-                                    <tr className="bg-white">
-                                      <td className="border px-3 py-2">
-                                        <div className="text-sm text-gray-700 mt-1">{it.pembilang_label || '-'}</div>
-                                      </td>
-                                      <td className="border px-3 py-2"></td>
-                                      <td className="border px-3 py-2"></td>
-                                      <td className="border px-3 py-2"></td>
-                                      <td className="border px-3 py-2"></td>
-                                      <td className="border px-3 py-2"></td>
-                                      <td className="border px-3 py-2"></td>
-                                      <td className="border px-3 py-2"></td>
-                                      <td className="border px-3 py-2"></td>
-                                      <td className="border px-3 py-2 bg-[#c6d9a7] text-right">{it.pembilang_value ? fmtNumber(it.pembilang_value) : ''}</td>
-                                      <td className="border px-3 py-2"></td>
-                                      <td className="border px-3 py-2"></td>
-                                      <td className="border px-3 py-2"></td>
-                                      <td className="border px-3 py-2"></td>
-                                    </tr>
+                                  {/* ── baris penyebut ── */}
+                                  {transformed.mode !== CalculationMode.TEKS && (
+                                    <>
+                                      {/* baris penyebut */}
+                                      <tr className="bg-white">
+                                        <td className="border px-3 py-2 text-center"></td>
+                                        <td className="border px-3 py-2">
+                                          <div className="text-sm text-gray-700 mt-1">{transformed.penyebutLabel || '-'}</div>
+                                        </td>
+                                        <td className="border px-3 py-2"></td>
+                                        <td className="border px-3 py-2"></td>
+                                        <td className="border px-3 py-2"></td>
+                                        <td className="border px-3 py-2"></td>
+                                        <td className="border px-3 py-2"></td>
+                                        <td className="border px-3 py-2"></td>
+                                        <td className="border px-3 py-2"></td>
+                                        <td className="border px-3 py-2"></td>
+                                        <td className="border px-3 py-2 bg-[#c6d9a7] text-right">{transformed.penyebutValue ? fmtNumber(transformed.penyebutValue) : ''}</td>
+                                        <td className="border px-3 py-2"></td>
+                                        <td className="border px-3 py-2"></td>
+                                        <td className="border px-3 py-2"></td>
+                                      </tr>
+
+                                      {/* baris pembilang (hanya untuk RASIO) */}
+                                      {transformed.mode === CalculationMode.RASIO && (
+                                        <tr className="bg-white">
+                                          <td className="border px-3 py-2 text-center"></td>
+                                          <td className="border px-3 py-2">
+                                            <div className="text-sm text-gray-700 mt-1">{transformed.pembilangLabel || '-'}</div>
+                                          </td>
+                                          <td className="border px-3 py-2"></td>
+                                          <td className="border px-3 py-2"></td>
+                                          <td className="border px-3 py-2"></td>
+                                          <td className="border px-3 py-2"></td>
+                                          <td className="border px-3 py-2"></td>
+                                          <td className="border px-3 py-2"></td>
+                                          <td className="border px-3 py-2"></td>
+                                          <td className="border px-3 py-2"></td>
+                                          <td className="border px-3 py-2 bg-[#c6d9a7] text-right">{transformed.pembilangValue ? fmtNumber(transformed.pembilangValue) : ''}</td>
+                                          <td className="border px-3 py-2"></td>
+                                          <td className="border px-3 py-2"></td>
+                                          <td className="border px-3 py-2"></td>
+                                        </tr>
+                                      )}
+                                    </>
                                   )}
-                                  {/* Penyebut row */}
-                                  <tr className="bg-white">
-                                    <td className="border px-3 py-2">
-                                      <div className="text-sm text-gray-700 mt-1">{it.penyebut_label || '-'}</div>
-                                    </td>
-                                    <td className="border px-3 py-2"></td>
-                                    <td className="border px-3 py-2"></td>
-                                    <td className="border px-3 py-2"></td>
-                                    <td className="border px-3 py-2"></td>
-                                    <td className="border px-3 py-2"></td>
-                                    <td className="border px-3 py-2"></td>
-                                    <td className="border px-3 py-2"></td>
-                                    <td className="border px-3 py-2"></td>
-                                    <td className="border px-3 py-2 bg-[#c6d9a7] text-right">{it.penyebut_value ? fmtNumber(it.penyebut_value) : ''}</td>
-                                    <td className="border px-3 py-2"></td>
-                                    <td className="border px-3 py-2"></td>
-                                    <td className="border px-3 py-2"></td>
-                                    <td className="border px-3 py-2"></td>
-                                  </tr>
                                 </React.Fragment>
                               );
                             })}
@@ -1548,12 +1828,19 @@ export default function Pasar() {
 
                   <tfoot>
                     <tr>
-                      <td className="border border-gray-400" colSpan={12}></td>
+                      {/* sampai kolom High */}
+                      <td className="border border-gray-400" colSpan={13}></td>
+
+                      {/* Summary memanjang sampai kolom Peringkat (Hasil + Peringkat) */}
                       <td className="border border-gray-400 text-white font-semibold text-center bg-[#0b3861]" colSpan={2}>
                         Summary
                       </td>
-                      <td className="border border-gray-400 text-white font-semibold text-center bg-[#8fce00]">{totalWeighted.toFixed(2)}</td>
-                      <td className="border border-gray-400" colSpan={2}></td>
+
+                      {/* Nilai total di bawah kolom Weighted */}
+                      <td className="border border-gray-400 text-white font-semibold text-center bg-[#8fce00]">{Number(totalWeighted || totalWeightedCalc || 0).toFixed(2)}</td>
+
+                      {/* Kolom Aksi (kosong) */}
+                      <td className="border border-gray-400"></td>
                     </tr>
                   </tfoot>
                 </table>

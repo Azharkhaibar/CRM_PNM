@@ -1,38 +1,35 @@
-import { CreateStratejikDto } from './dto/create-stratejik.dto';
-import { UpdateStratejikDto } from './dto/update-stratejik.dto';
 import { Repository } from 'typeorm';
-import { Stratejik, Quarter } from './entities/stratejik.entity';
-import { StratejikSection } from './entities/stratejik-section.entity';
-import { CreateStratejikSectionDto } from './dto/create-stratejik-section.dto';
-import { UpdateStratejikSectionDto } from './dto/update-stratejik-section.dto';
-export declare class StratejikService {
-    private stratejikRepo;
-    private sectionRepo;
-    constructor(stratejikRepo: Repository<Stratejik>, sectionRepo: Repository<StratejikSection>);
-    createSection(data: CreateStratejikSectionDto): Promise<StratejikSection>;
-    findAllSection(): Promise<StratejikSection[]>;
-    findSectionById(id: number): Promise<StratejikSection>;
-    updateSection(id: number, data: UpdateStratejikSectionDto): Promise<StratejikSection>;
+import { StrategikSection } from './entities/stratejik-section.entity';
+import { Strategik, Quarter } from './entities/stratejik.entity';
+import { CreateStrategikSectionDto } from './dto/create-stratejik-section.dto';
+import { UpdateStrategikSectionDto } from './dto/update-stratejik-section.dto';
+import { CreateStrategikDto } from './dto/create-stratejik.dto';
+import { UpdateStrategikDto } from './dto/update-stratejik.dto';
+export declare class StrategikService {
+    private readonly strategikSectionRepository;
+    private readonly strategikRepository;
+    constructor(strategikSectionRepository: Repository<StrategikSection>, strategikRepository: Repository<Strategik>);
+    createSection(createDto: CreateStrategikSectionDto, createdBy?: string): Promise<StrategikSection>;
+    findAllSections(isActive?: boolean): Promise<StrategikSection[]>;
+    findSectionById(id: number): Promise<StrategikSection>;
+    findSectionsByPeriod(year: number, quarter: Quarter): Promise<StrategikSection[]>;
+    updateSection(id: number, updateDto: UpdateStrategikSectionDto, updatedBy?: string): Promise<StrategikSection>;
     deleteSection(id: number): Promise<void>;
-    findAll(): Promise<Stratejik[]>;
-    findOne(id: number): Promise<Stratejik>;
-    remove(id: number): Promise<void>;
-    findByPeriod(year: number, quarter: Quarter): Promise<Stratejik[]>;
-    findById(id: number): Promise<Stratejik>;
-    private calculateHasil;
-    private calculateWeight;
-    create(data: CreateStratejikDto): Promise<Stratejik>;
-    update(id: number, data: UpdateStratejikDto): Promise<Stratejik>;
-    delete(id: number): Promise<void>;
-    bulkCreate(data: CreateStratejikDto[]): Promise<Stratejik[]>;
-    findByYear(year: number): Promise<Stratejik[]>;
-    getSummary(year: number, quarter: Quarter): Promise<{
+    createIndikator(createDto: CreateStrategikDto, createdBy?: string): Promise<Strategik>;
+    findIndikatorsByPeriod(year: number, quarter: Quarter): Promise<Strategik[]>;
+    findAllIndikators(): Promise<Strategik[]>;
+    findIndikatorById(id: number): Promise<Strategik>;
+    updateIndikator(id: number, updateDto: UpdateStrategikDto, updatedBy?: string): Promise<Strategik>;
+    deleteIndikator(id: number): Promise<void>;
+    searchIndikators(query?: string, year?: number, quarter?: Quarter): Promise<Strategik[]>;
+    getTotalWeightedByPeriod(year: number, quarter: Quarter): Promise<number>;
+    private validateModeSpecificFields;
+    private calculateWeighted;
+    duplicateIndikatorToNewPeriod(sourceId: number, targetYear: number, targetQuarter: Quarter, createdBy?: string): Promise<Strategik>;
+    getIndikatorCountByPeriod(year: number, quarter: Quarter): Promise<number>;
+    getSectionsWithIndicatorsByPeriod(year: number, quarter: Quarter): Promise<any>;
+    getPeriods(): Promise<Array<{
         year: number;
         quarter: Quarter;
-        totalItems: number;
-        totalWeighted: number;
-        sections: unknown[];
-        items: Stratejik[];
-    }>;
-    findBySection(sectionId: number, year?: number, quarter?: Quarter): Promise<Stratejik[]>;
+    }>>;
 }

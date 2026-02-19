@@ -18,7 +18,7 @@ let LikuiditasModule = class LikuiditasModule {
 exports.LikuiditasModule = LikuiditasModule;
 exports.LikuiditasModule = LikuiditasModule = __decorate([
     (0, common_1.Module)({
-        imports: [typeorm_1.TypeOrmModule.forFeature([section_likuiditas_entity_1.SectionLikuiditas, likuiditas_entity_1.Likuiditas])],
+        imports: [typeorm_1.TypeOrmModule.forFeature([section_likuiditas_entity_1.LikuiditasSection, likuiditas_entity_1.Likuiditas])],
         controllers: [likuiditas_controller_1.LikuiditasController],
         providers: [likuiditas_service_1.LikuiditasService],
         exports: [likuiditas_service_1.LikuiditasService],

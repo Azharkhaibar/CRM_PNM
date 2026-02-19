@@ -1,3 +1,4 @@
+// NotificationItem.jsx
 import { motion } from 'framer-motion';
 import { CheckCircle, AlertTriangle, Info, Settings, X } from 'lucide-react';
 
@@ -28,13 +29,22 @@ export default function NotificationItem({ notification, index, darkMode, isSele
       : 'ring-1 ring-blue-200 bg-blue-50/50'
   }`;
 
-  const { icon, color } = getNotificationIcon(notification.type);
+  // Handle jika getNotificationIcon tidak tersedia
+  const iconInfo = getNotificationIcon
+    ? getNotificationIcon(notification.type)
+    : {
+        icon: 'Info',
+        color: darkMode ? 'text-blue-400' : 'text-blue-500',
+        bgColor: darkMode ? 'bg-blue-900/20' : 'bg-blue-100',
+      };
 
   const handleMarkAsRead = (e) => {
     e.stopPropagation();
     e.preventDefault();
     console.log('📝 Marking notification as read:', notification.id);
-    onMarkAsRead(notification.id);
+    if (onMarkAsRead) {
+      onMarkAsRead(notification.id);
+    }
   };
 
   const handleDelete = (e) => {
@@ -45,24 +55,60 @@ export default function NotificationItem({ notification, index, darkMode, isSele
 
     if (confirmDelete) {
       console.log('🗑️ Deleting notification:', notification.id);
-      onDelete(notification.id);
+      if (onDelete) {
+        onDelete(notification.id);
+      }
     }
   };
 
   const handleSelect = (e) => {
     if (e.target.type === 'checkbox') {
       console.log('🔘 Selecting notification:', notification.id, 'checked:', e.target.checked);
-      onSelect(notification.id, e.target.checked);
+      if (onSelect) {
+        onSelect(notification.id, e.target.checked);
+      }
     }
   };
 
   const handleCardClick = (e) => {
+    // Skip jika target adalah button atau checkbox
     if (e.target.tagName === 'BUTTON' || e.target.type === 'checkbox') {
       return;
     }
 
     console.log('🟦 Toggling notification selection:', notification.id);
-    onSelect(notification.id, !isSelected);
+    if (onSelect) {
+      onSelect(notification.id, !isSelected);
+    }
+  };
+
+  // Format time fallback
+  const formatTimeLocal = (date) => {
+    if (formatTime && typeof formatTime === 'function') {
+      return formatTime(date);
+    }
+
+    // Fallback
+    if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
+      return 'Unknown';
+    }
+
+    const now = new Date();
+    const diff = now.getTime() - date.getTime();
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+
+    if (minutes < 1) return 'Just now';
+    if (minutes < 60) return `${minutes}m ago`;
+    if (hours < 24) return `${hours}h ago`;
+    if (days < 7) return `${days}d ago`;
+
+    return date.toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    });
   };
 
   return (
@@ -85,25 +131,19 @@ export default function NotificationItem({ notification, index, darkMode, isSele
     >
       <div className="p-4">
         <div className="flex items-start gap-3">
-          <input
-            type="checkbox"
-            checked={isSelected}
-            onChange={handleSelect}
-            onClick={(e) => e.stopPropagation()} // Prevent card click ketika checkbox diklik
-            className="mt-1.5 w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 focus:ring-2 cursor-pointer"
-          />
+          <input type="checkbox" checked={isSelected} onChange={handleSelect} onClick={(e) => e.stopPropagation()} className="mt-1.5 w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 focus:ring-2 cursor-pointer" />
           <div className="flex-shrink-0 mt-0.5">
-            <IconComponent iconName={icon} className={`w-5 h-5 ${color}`} />
+            <IconComponent iconName={iconInfo.icon} className={`w-5 h-5 ${iconInfo.color || ''}`} />
           </div>
 
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between mb-2">
               <div className="flex items-center gap-2 flex-wrap">
                 <h3 className={`font-semibold text-base leading-tight ${!notification.read ? 'font-bold' : ''}`}>{notification.title}</h3>
-                {notification.category && <span className={`text-xs px-2 py-1 rounded-full border ${getTypeColor(notification.type)}`}>{notification.category}</span>}
+                {notification.category && <span className={`text-xs px-2 py-1 rounded-full border ${iconInfo.bgColor || getTypeColor ? getTypeColor(notification.type) : ''}`}>{notification.category}</span>}
               </div>
               <div className="flex items-center gap-2 flex-shrink-0 ml-2">
-                <span className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{formatTime(notification.timestamp)}</span>
+                <span className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{formatTimeLocal(notification.timestamp)}</span>
                 {!notification.read && <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>}
               </div>
             </div>
@@ -148,7 +188,7 @@ export default function NotificationItem({ notification, index, darkMode, isSele
               </button>
 
               {/* Status badges */}
-              {notification.metadata?.is_fallback && <span className={`text-xs px-2 py-1 rounded ${darkMode ? 'bg-yellow-900/50 text-yellow-300' : 'bg-yellow-100 text-yellow-700'}`}>Local</span>}
+              {notification.metadata?.is_local_fallback && <span className={`text-xs px-2 py-1 rounded ${darkMode ? 'bg-yellow-900/50 text-yellow-300' : 'bg-yellow-100 text-yellow-700'}`}>Local</span>}
               {notification.metadata?.activity_type && <span className={`text-xs px-2 py-1 rounded ${darkMode ? 'bg-blue-900/50 text-blue-300' : 'bg-blue-100 text-blue-700'}`}>{notification.metadata.activity_type}</span>}
             </div>
           </div>

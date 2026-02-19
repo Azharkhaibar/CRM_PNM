@@ -11,6 +11,8 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CreateInvestasiDto = void 0;
 const class_validator_1 = require("class-validator");
+const class_transformer_1 = require("class-transformer");
+const swagger_1 = require("@nestjs/swagger");
 const new_investasi_entity_1 = require("../entities/new-investasi.entity");
 class CreateInvestasiDto {
     year;
@@ -24,162 +26,277 @@ class CreateInvestasiDto {
     bobotIndikator;
     sumberRisiko;
     dampak;
-    low = 'x ≤ 1%';
-    lowToModerate = '1% < x ≤ 2%';
-    moderate = '2% < x ≤ 3%';
-    moderateToHigh = '3% < x ≤ 4%';
-    high = 'x > 4%';
+    low;
+    lowToModerate;
+    moderate;
+    moderateToHigh;
+    high;
     mode = new_investasi_entity_1.CalculationMode.RASIO;
-    numeratorLabel;
-    numeratorValue;
-    denominatorLabel;
-    denominatorValue;
     formula;
     isPercent = false;
+    pembilangLabel;
+    pembilangValue;
+    penyebutLabel;
+    penyebutValue;
     hasil;
+    hasilText;
     peringkat;
     weighted;
     keterangan;
+    createdBy;
 }
 exports.CreateInvestasiDto = CreateInvestasiDto;
 __decorate([
-    (0, class_validator_1.IsNumber)(),
-    (0, class_validator_1.IsNotEmpty)(),
+    (0, swagger_1.ApiProperty)({ example: 2024, description: 'Tahun data' }),
+    (0, class_validator_1.IsNotEmpty)({ message: 'Tahun tidak boleh kosong' }),
+    (0, class_validator_1.IsInt)({ message: 'Tahun harus berupa angka bulat' }),
+    (0, class_validator_1.Min)(2000, { message: 'Tahun minimal 2000' }),
+    (0, class_validator_1.Max)(2100, { message: 'Tahun maksimal 2100' }),
+    (0, class_transformer_1.Type)(() => Number),
     __metadata("design:type", Number)
 ], CreateInvestasiDto.prototype, "year", void 0);
 __decorate([
-    (0, class_validator_1.IsEnum)(new_investasi_entity_1.Quarter),
-    (0, class_validator_1.IsNotEmpty)(),
+    (0, swagger_1.ApiProperty)({ example: 'Q1', enum: new_investasi_entity_1.Quarter, description: 'Triwulan' }),
+    (0, class_validator_1.IsNotEmpty)({ message: 'Quarter tidak boleh kosong' }),
+    (0, class_validator_1.IsEnum)(new_investasi_entity_1.Quarter, { message: 'Quarter harus Q1, Q2, Q3, atau Q4' }),
     __metadata("design:type", String)
 ], CreateInvestasiDto.prototype, "quarter", void 0);
 __decorate([
-    (0, class_validator_1.IsNumber)(),
-    (0, class_validator_1.IsNotEmpty)(),
+    (0, swagger_1.ApiProperty)({ example: 1, description: 'ID section dari master' }),
+    (0, class_validator_1.IsNotEmpty)({ message: 'Section ID tidak boleh kosong' }),
+    (0, class_validator_1.IsInt)({ message: 'Section ID harus berupa angka bulat' }),
+    (0, class_transformer_1.Type)(() => Number),
     __metadata("design:type", Number)
 ], CreateInvestasiDto.prototype, "sectionId", void 0);
 __decorate([
-    (0, class_validator_1.IsString)(),
-    (0, class_validator_1.IsNotEmpty)(),
+    (0, swagger_1.ApiProperty)({ example: '6.1', description: 'Nomor section' }),
+    (0, class_validator_1.IsNotEmpty)({ message: 'Nomor section tidak boleh kosong' }),
+    (0, class_validator_1.IsString)({ message: 'Nomor section harus berupa string' }),
+    (0, class_validator_1.Length)(1, 50, { message: 'Nomor section maksimal 50 karakter' }),
     __metadata("design:type", String)
 ], CreateInvestasiDto.prototype, "no", void 0);
 __decorate([
-    (0, class_validator_1.IsString)(),
-    (0, class_validator_1.IsNotEmpty)(),
+    (0, swagger_1.ApiProperty)({
+        example: 'Pencapaian Rencana Bisnis Perusahaan',
+        description: 'Label section',
+    }),
+    (0, class_validator_1.IsNotEmpty)({ message: 'Section label tidak boleh kosong' }),
+    (0, class_validator_1.IsString)({ message: 'Section label harus berupa string' }),
+    (0, class_validator_1.Length)(1, 500, { message: 'Section label maksimal 500 karakter' }),
     __metadata("design:type", String)
 ], CreateInvestasiDto.prototype, "sectionLabel", void 0);
 __decorate([
-    (0, class_validator_1.IsNumber)(),
-    (0, class_validator_1.Min)(0),
-    (0, class_validator_1.Max)(100),
+    (0, swagger_1.ApiProperty)({ example: 10, description: 'Bobot section dalam persen' }),
+    (0, class_validator_1.IsNotEmpty)({ message: 'Bobot section tidak boleh kosong' }),
+    (0, class_validator_1.IsNumber)({}, { message: 'Bobot section harus berupa angka' }),
+    (0, class_validator_1.Min)(0, { message: 'Bobot section minimal 0' }),
+    (0, class_validator_1.Max)(100, { message: 'Bobot section maksimal 100' }),
+    (0, class_transformer_1.Type)(() => Number),
     __metadata("design:type", Number)
 ], CreateInvestasiDto.prototype, "bobotSection", void 0);
 __decorate([
-    (0, class_validator_1.IsString)(),
-    (0, class_validator_1.IsNotEmpty)(),
+    (0, swagger_1.ApiProperty)({
+        example: '6.1.1',
+        description: 'Nomor sub indikator (unik per periode+section)',
+    }),
+    (0, class_validator_1.IsNotEmpty)({ message: 'Sub No tidak boleh kosong' }),
+    (0, class_validator_1.IsString)({ message: 'Sub No harus berupa string' }),
+    (0, class_validator_1.Length)(1, 50, { message: 'Sub No maksimal 50 karakter' }),
     __metadata("design:type", String)
 ], CreateInvestasiDto.prototype, "subNo", void 0);
 __decorate([
-    (0, class_validator_1.IsString)(),
-    (0, class_validator_1.IsNotEmpty)(),
+    (0, swagger_1.ApiProperty)({
+        example: 'Pencapaian KPI Kuartal',
+        description: 'Nama indikator',
+    }),
+    (0, class_validator_1.IsNotEmpty)({ message: 'Indikator tidak boleh kosong' }),
+    (0, class_validator_1.IsString)({ message: 'Indikator harus berupa string' }),
+    (0, class_validator_1.Length)(1, 1000, { message: 'Indikator maksimal 1000 karakter' }),
     __metadata("design:type", String)
 ], CreateInvestasiDto.prototype, "indikator", void 0);
 __decorate([
-    (0, class_validator_1.IsNumber)(),
-    (0, class_validator_1.Min)(0),
-    (0, class_validator_1.Max)(100),
-    (0, class_validator_1.IsNotEmpty)(),
+    (0, swagger_1.ApiProperty)({ example: 25, description: 'Bobot indikator dalam persen' }),
+    (0, class_validator_1.IsNotEmpty)({ message: 'Bobot indikator tidak boleh kosong' }),
+    (0, class_validator_1.IsNumber)({}, { message: 'Bobot indikator harus berupa angka' }),
+    (0, class_validator_1.Min)(0, { message: 'Bobot indikator minimal 0' }),
+    (0, class_validator_1.Max)(100, { message: 'Bobot indikator maksimal 100' }),
+    (0, class_transformer_1.Type)(() => Number),
     __metadata("design:type", Number)
 ], CreateInvestasiDto.prototype, "bobotIndikator", void 0);
 __decorate([
-    (0, class_validator_1.IsString)(),
+    (0, swagger_1.ApiProperty)({
+        example: 'Target KPI yang terlalu ambisius atau tidak realistis',
+        required: false,
+        description: 'Sumber risiko',
+    }),
     (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)({ message: 'Sumber risiko harus berupa string' }),
     __metadata("design:type", String)
 ], CreateInvestasiDto.prototype, "sumberRisiko", void 0);
 __decorate([
-    (0, class_validator_1.IsString)(),
+    (0, swagger_1.ApiProperty)({
+        example: 'Tujuan tahunan organisasi bisa meleset',
+        required: false,
+        description: 'Dampak risiko',
+    }),
     (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)({ message: 'Dampak harus berupa string' }),
     __metadata("design:type", String)
 ], CreateInvestasiDto.prototype, "dampak", void 0);
 __decorate([
-    (0, class_validator_1.IsString)(),
+    (0, swagger_1.ApiProperty)({ example: 'x > 90%', required: false }),
     (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)({ message: 'Low harus berupa string' }),
+    (0, class_validator_1.Length)(0, 200, { message: 'Low maksimal 200 karakter' }),
     __metadata("design:type", String)
 ], CreateInvestasiDto.prototype, "low", void 0);
 __decorate([
-    (0, class_validator_1.IsString)(),
+    (0, swagger_1.ApiProperty)({ example: '90% ≥ x > 70%', required: false }),
     (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)({ message: 'Low to moderate harus berupa string' }),
+    (0, class_validator_1.Length)(0, 200, { message: 'Low to moderate maksimal 200 karakter' }),
     __metadata("design:type", String)
 ], CreateInvestasiDto.prototype, "lowToModerate", void 0);
 __decorate([
-    (0, class_validator_1.IsString)(),
+    (0, swagger_1.ApiProperty)({ example: '70% ≥ x > 50%', required: false }),
     (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)({ message: 'Moderate harus berupa string' }),
+    (0, class_validator_1.Length)(0, 200, { message: 'Moderate maksimal 200 karakter' }),
     __metadata("design:type", String)
 ], CreateInvestasiDto.prototype, "moderate", void 0);
 __decorate([
-    (0, class_validator_1.IsString)(),
+    (0, swagger_1.ApiProperty)({ example: '50% ≥ x > 30%', required: false }),
     (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)({ message: 'Moderate to high harus berupa string' }),
+    (0, class_validator_1.Length)(0, 200, { message: 'Moderate to high maksimal 200 karakter' }),
     __metadata("design:type", String)
 ], CreateInvestasiDto.prototype, "moderateToHigh", void 0);
 __decorate([
-    (0, class_validator_1.IsString)(),
+    (0, swagger_1.ApiProperty)({ example: 'x < 30%', required: false }),
     (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)({ message: 'High harus berupa string' }),
+    (0, class_validator_1.Length)(0, 200, { message: 'High maksimal 200 karakter' }),
     __metadata("design:type", String)
 ], CreateInvestasiDto.prototype, "high", void 0);
 __decorate([
-    (0, class_validator_1.IsEnum)(new_investasi_entity_1.CalculationMode),
-    (0, class_validator_1.IsOptional)(),
+    (0, swagger_1.ApiProperty)({
+        example: new_investasi_entity_1.CalculationMode.RASIO,
+        enum: new_investasi_entity_1.CalculationMode,
+        default: new_investasi_entity_1.CalculationMode.RASIO,
+    }),
+    (0, class_validator_1.IsNotEmpty)({ message: 'Mode tidak boleh kosong' }),
+    (0, class_validator_1.IsEnum)(new_investasi_entity_1.CalculationMode, {
+        message: 'Mode harus RASIO, NILAI_TUNGGAL, atau TEKS',
+    }),
     __metadata("design:type", String)
 ], CreateInvestasiDto.prototype, "mode", void 0);
 __decorate([
-    (0, class_validator_1.IsString)(),
+    (0, swagger_1.ApiProperty)({ example: 'pemb / peny', required: false }),
     (0, class_validator_1.IsOptional)(),
-    __metadata("design:type", String)
-], CreateInvestasiDto.prototype, "numeratorLabel", void 0);
-__decorate([
-    (0, class_validator_1.IsNumber)(),
-    (0, class_validator_1.IsOptional)(),
-    __metadata("design:type", Number)
-], CreateInvestasiDto.prototype, "numeratorValue", void 0);
-__decorate([
-    (0, class_validator_1.IsString)(),
-    (0, class_validator_1.IsNotEmpty)(),
-    __metadata("design:type", String)
-], CreateInvestasiDto.prototype, "denominatorLabel", void 0);
-__decorate([
-    (0, class_validator_1.IsNumber)(),
-    (0, class_validator_1.IsNotEmpty)(),
-    __metadata("design:type", Number)
-], CreateInvestasiDto.prototype, "denominatorValue", void 0);
-__decorate([
-    (0, class_validator_1.IsString)(),
-    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)({ message: 'Formula harus berupa string' }),
     __metadata("design:type", String)
 ], CreateInvestasiDto.prototype, "formula", void 0);
 __decorate([
-    (0, class_validator_1.IsBoolean)(),
+    (0, swagger_1.ApiProperty)({ example: false, required: false }),
     (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsBoolean)({ message: 'Is percent harus berupa boolean' }),
     __metadata("design:type", Boolean)
 ], CreateInvestasiDto.prototype, "isPercent", void 0);
 __decorate([
-    (0, class_validator_1.IsNumber)(),
+    (0, swagger_1.ApiProperty)({
+        example: 'Actual KPI',
+        required: false,
+        description: 'Hanya untuk mode RASIO',
+    }),
+    (0, class_validator_1.ValidateIf)((o) => o.mode === new_investasi_entity_1.CalculationMode.RASIO),
     (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)({ message: 'Pembilang label harus berupa string' }),
+    (0, class_validator_1.Length)(0, 255, { message: 'Pembilang label maksimal 255 karakter' }),
+    __metadata("design:type", String)
+], CreateInvestasiDto.prototype, "pembilangLabel", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        example: 96.55,
+        required: false,
+        description: 'Hanya untuk mode RASIO',
+    }),
+    (0, class_validator_1.ValidateIf)((o) => o.mode === new_investasi_entity_1.CalculationMode.RASIO),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsNumber)({}, { message: 'Pembilang value harus berupa angka' }),
+    (0, class_transformer_1.Type)(() => Number),
+    __metadata("design:type", Number)
+], CreateInvestasiDto.prototype, "pembilangValue", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        example: 'Target KPI',
+        required: false,
+        description: 'Tidak untuk mode TEKS',
+    }),
+    (0, class_validator_1.ValidateIf)((o) => o.mode !== new_investasi_entity_1.CalculationMode.TEKS),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)({ message: 'Penyebut label harus berupa string' }),
+    (0, class_validator_1.Length)(0, 255, { message: 'Penyebut label maksimal 255 karakter' }),
+    __metadata("design:type", String)
+], CreateInvestasiDto.prototype, "penyebutLabel", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        example: 100,
+        required: false,
+        description: 'Tidak untuk mode TEKS',
+    }),
+    (0, class_validator_1.ValidateIf)((o) => o.mode !== new_investasi_entity_1.CalculationMode.TEKS),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsNumber)({}, { message: 'Penyebut value harus berupa angka' }),
+    (0, class_transformer_1.Type)(() => Number),
+    __metadata("design:type", Number)
+], CreateInvestasiDto.prototype, "penyebutValue", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 0.9655, required: false }),
+    (0, class_validator_1.ValidateIf)((o) => o.mode !== new_investasi_entity_1.CalculationMode.TEKS),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsNumber)({}, { message: 'Hasil harus berupa angka' }),
+    (0, class_transformer_1.Type)(() => Number),
     __metadata("design:type", Number)
 ], CreateInvestasiDto.prototype, "hasil", void 0);
 __decorate([
-    (0, class_validator_1.IsNumber)(),
-    (0, class_validator_1.Min)(1),
-    (0, class_validator_1.Max)(5),
-    (0, class_validator_1.IsNotEmpty)(),
+    (0, swagger_1.ApiProperty)({
+        example: '96.55%',
+        required: false,
+        description: 'Hanya untuk mode TEKS',
+    }),
+    (0, class_validator_1.ValidateIf)((o) => o.mode === new_investasi_entity_1.CalculationMode.TEKS),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)({ message: 'Hasil text harus berupa string' }),
+    (0, class_validator_1.Length)(0, 1000, { message: 'Hasil text maksimal 1000 karakter' }),
+    __metadata("design:type", String)
+], CreateInvestasiDto.prototype, "hasilText", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 1, description: 'Peringkat 1-5' }),
+    (0, class_validator_1.IsNotEmpty)({ message: 'Peringkat tidak boleh kosong' }),
+    (0, class_validator_1.IsInt)({ message: 'Peringkat harus berupa angka bulat' }),
+    (0, class_validator_1.Min)(1, { message: 'Peringkat minimal 1' }),
+    (0, class_validator_1.Max)(5, { message: 'Peringkat maksimal 5' }),
+    (0, class_transformer_1.Type)(() => Number),
     __metadata("design:type", Number)
 ], CreateInvestasiDto.prototype, "peringkat", void 0);
 __decorate([
-    (0, class_validator_1.IsNumber)(),
-    (0, class_validator_1.IsNotEmpty)(),
+    (0, swagger_1.ApiProperty)({ example: 0.5, description: 'Weighted value' }),
+    (0, class_validator_1.IsNotEmpty)({ message: 'Weighted tidak boleh kosong' }),
+    (0, class_validator_1.IsNumber)({}, { message: 'Weighted harus berupa angka' }),
+    (0, class_validator_1.Min)(0, { message: 'Weighted minimal 0' }),
+    (0, class_transformer_1.Type)(() => Number),
     __metadata("design:type", Number)
 ], CreateInvestasiDto.prototype, "weighted", void 0);
 __decorate([
-    (0, class_validator_1.IsString)(),
+    (0, swagger_1.ApiProperty)({ example: 'Keterangan tambahan', required: false }),
     (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)({ message: 'Keterangan harus berupa string' }),
     __metadata("design:type", String)
 ], CreateInvestasiDto.prototype, "keterangan", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 'user123', required: false }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)({ message: 'Created by harus berupa string' }),
+    __metadata("design:type", String)
+], CreateInvestasiDto.prototype, "createdBy", void 0);
 //# sourceMappingURL=create-new-investasi.dto.js.map

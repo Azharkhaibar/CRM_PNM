@@ -18,7 +18,8 @@ export declare enum ModuleType {
     KEPATUHAN = "KEPATUHAN",
     REPUTASI = "REPUTASI",
     USER_MANAGEMENT = "USER_MANAGEMENT",
-    SYSTEM = "SYSTEM"
+    SYSTEM = "SYSTEM",
+    RAS = "RAS"
 }
 export declare class AuditLog {
     id: number;

@@ -3,6 +3,9 @@ export declare class CreateHukumDto {
     year: number;
     quarter: Quarter;
     sectionId: number;
+    no: string;
+    sectionLabel: string;
+    bobotSection: number;
     subNo: string;
     indikator: string;
     bobotIndikator: number;
@@ -20,9 +23,10 @@ export declare class CreateHukumDto {
     pembilangValue?: number;
     penyebutLabel?: string;
     penyebutValue?: number;
-    hasil?: string;
+    hasil?: number;
     hasilText?: string;
     peringkat: number;
-    weighted?: number;
+    weighted: number;
     keterangan?: string;
+    createdBy?: string;
 }

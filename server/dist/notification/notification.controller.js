@@ -16,10 +16,11 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.NotificationController = void 0;
 const common_1 = require("@nestjs/common");
 const notification_service_1 = require("./notification.service");
+const notification_gateway_1 = require("./notification.gateway");
 const create_notification_dto_1 = require("./dto/create-notification.dto");
 const update_notification_dto_1 = require("./dto/update-notification.dto");
 const user_status_dto_1 = require("./dto/user-status.dto");
-const notification_gateway_1 = require("./notification.gateway");
+const get_user_decorator_1 = require("./decorator/get-user.decorator");
 let NotificationController = NotificationController_1 = class NotificationController {
     notificationService;
     notificationGateway;
@@ -31,6 +32,14 @@ let NotificationController = NotificationController_1 = class NotificationContro
     async findAll() {
         this.logger.log('Fetching all notifications');
         return await this.notificationService.findAll();
+    }
+    async getMyNotifications(userId, unreadOnly, limit, page) {
+        this.logger.log(`Fetching notifications for user ${userId}`);
+        return await this.notificationService.findAllForUser(userId, {
+            unreadOnly: unreadOnly === 'true',
+            limit,
+            page,
+        });
     }
     async findByUser(user_id, unreadOnly, limit, page) {
         this.logger.log(`Fetching personal notifications for user ${user_id}`);
@@ -65,38 +74,102 @@ let NotificationController = NotificationController_1 = class NotificationContro
         this.logger.log(`Fetching notification ${id}`);
         return await this.notificationService.findOne(id);
     }
-    async create(createNotificationDto) {
-        this.logger.log('Creating new notification');
-        return await this.notificationService.create(createNotificationDto);
+    async create(userId, createNotificationDto) {
+        this.logger.log(`Creating notification for user ${userId}`);
+        this.logger.debug('Incoming DTO:', {
+            dto: createNotificationDto,
+            metadata: createNotificationDto.metadata,
+            hasMetadata: !!createNotificationDto.metadata,
+            metadataType: typeof createNotificationDto.metadata,
+        });
+        const dto = {
+            ...createNotificationDto,
+            user_id: createNotificationDto.user_id || userId,
+        };
+        const notification = await this.notificationService.create(dto);
+        this.logger.debug('Created notification:', {
+            notificationId: notification.notification_id,
+            metadata: notification.metadata,
+            hasMetadata: !!notification.metadata,
+        });
+        if (notification.user_id) {
+            this.notificationGateway.sendNotificationToUser(notification.user_id, notification);
+        }
+        else {
+            this.notificationGateway.sendNotificationToAll(notification);
+        }
+        return notification;
     }
     async createMultiple(createNotificationDtos) {
         this.logger.log(`Creating ${createNotificationDtos.length} notifications`);
-        return await this.notificationService.createMultiple(createNotificationDtos);
+        const notifications = await this.notificationService.createMultiple(createNotificationDtos);
+        notifications.forEach((notification) => {
+            if (notification.user_id) {
+                this.notificationGateway.sendNotificationToUser(notification.user_id, notification);
+            }
+            else {
+                this.notificationGateway.sendNotificationToAll(notification);
+            }
+        });
+        return notifications;
     }
     async broadcast(dto) {
-        const saved = await this.notificationService.create(dto);
-        this.notificationGateway.sendNotificationToAll(saved);
-        return saved;
+        this.logger.log('Creating broadcast notification');
+        const notification = await this.notificationService.create(dto);
+        this.notificationGateway.sendNotificationToAll(notification);
+        return notification;
     }
     async userStatusNotification(userStatusDto) {
         this.logger.log(`User status change: ${userStatusDto.userName} is ${userStatusDto.status}`);
-        return await this.notificationService.notifyUserStatusChange(userStatusDto.userId, userStatusDto.userName, userStatusDto.status);
+        const notification = await this.notificationService.create({
+            user_id: null,
+            type: 'SYSTEM',
+            title: 'User Status Update',
+            message: `${userStatusDto.userName} is now ${userStatusDto.status}`,
+            category: 'user-status',
+            metadata: {
+                userId: userStatusDto.userId,
+                userName: userStatusDto.userName,
+                status: userStatusDto.status,
+                timestamp: new Date(),
+                isStatusUpdate: true,
+            },
+            expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        });
+        this.notificationGateway.broadcastUserStatus(userStatusDto.userId, userStatusDto.status);
+        this.notificationGateway.sendNotificationToAll(notification);
+        return notification;
     }
     async update(id, updateNotificationDto) {
         this.logger.log(`Updating notification ${id}`);
-        return await this.notificationService.update(id, updateNotificationDto);
+        const updated = await this.notificationService.update(id, updateNotificationDto);
+        if (updated.user_id) {
+            this.notificationGateway.sendNotificationToUser(updated.user_id, updated);
+        }
+        else {
+            this.notificationGateway.sendNotificationToAll(updated);
+        }
+        return updated;
     }
-    async markAsRead(id) {
-        this.logger.log(`Marking notification ${id} as read`);
-        return await this.notificationService.markAsRead(id);
+    async markAsRead(userId, id) {
+        this.logger.log(`Marking notification ${id} as read by user ${userId}`);
+        const notification = await this.notificationService.findOne(id);
+        if (notification.user_id !== userId) {
+            throw new common_1.NotFoundException('Notification not found');
+        }
+        const updated = await this.notificationService.markAsRead(id);
+        if (updated.user_id) {
+            this.notificationGateway.sendNotificationToUser(updated.user_id, updated);
+        }
+        return updated;
     }
-    async markAllAsRead(user_id) {
-        this.logger.log(`Marking all notifications as read for user ${user_id}`);
-        await this.notificationService.markAllAsRead(user_id);
+    async markAllAsRead(userId) {
+        this.logger.log(`Marking all notifications as read for user ${userId}`);
+        await this.notificationService.markAllAsRead(userId);
         return {
             success: true,
             message: 'All notifications marked as read',
-            user_id,
+            user_id: userId,
         };
     }
     async getRecentUserNotifications(user_id, hours) {
@@ -128,6 +201,16 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)
 ], NotificationController.prototype, "findAll", null);
+__decorate([
+    (0, common_1.Get)('my'),
+    __param(0, (0, get_user_decorator_1.GetUser)('user_id')),
+    __param(1, (0, common_1.Query)('unreadOnly')),
+    __param(2, (0, common_1.Query)('limit', new common_1.DefaultValuePipe(20), common_1.ParseIntPipe)),
+    __param(3, (0, common_1.Query)('page', new common_1.DefaultValuePipe(1), common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, String, Number, Number]),
+    __metadata("design:returntype", Promise)
+], NotificationController.prototype, "getMyNotifications", null);
 __decorate([
     (0, common_1.Get)('user/:user_id'),
     __param(0, (0, common_1.Param)('user_id', common_1.ParseIntPipe)),
@@ -173,9 +256,10 @@ __decorate([
 ], NotificationController.prototype, "findOne", null);
 __decorate([
     (0, common_1.Post)(),
-    __param(0, (0, common_1.Body)()),
+    __param(0, (0, get_user_decorator_1.GetUser)('user_id')),
+    __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [create_notification_dto_1.CreateNotificationDto]),
+    __metadata("design:paramtypes", [Number, create_notification_dto_1.CreateNotificationDto]),
     __metadata("design:returntype", Promise)
 ], NotificationController.prototype, "create", null);
 __decorate([
@@ -209,14 +293,15 @@ __decorate([
 ], NotificationController.prototype, "update", null);
 __decorate([
     (0, common_1.Patch)(':id/read'),
-    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(0, (0, get_user_decorator_1.GetUser)('user_id')),
+    __param(1, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number]),
+    __metadata("design:paramtypes", [Number, Number]),
     __metadata("design:returntype", Promise)
 ], NotificationController.prototype, "markAsRead", null);
 __decorate([
-    (0, common_1.Patch)('user/:user_id/mark-all-read'),
-    __param(0, (0, common_1.Param)('user_id', common_1.ParseIntPipe)),
+    (0, common_1.Patch)('mark-all-read'),
+    __param(0, (0, get_user_decorator_1.GetUser)('user_id')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
     __metadata("design:returntype", Promise)
@@ -245,6 +330,7 @@ __decorate([
 exports.NotificationController = NotificationController = NotificationController_1 = __decorate([
     (0, common_1.Controller)('notifications'),
     (0, common_1.UsePipes)(new common_1.ValidationPipe({ whitelist: true, transform: true })),
+    __param(1, (0, common_1.Inject)(notification_gateway_1.NotificationGateway)),
     __metadata("design:paramtypes", [notification_service_1.NotificationService,
         notification_gateway_1.NotificationGateway])
 ], NotificationController);

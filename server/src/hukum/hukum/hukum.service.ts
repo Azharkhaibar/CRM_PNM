@@ -3,15 +3,17 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ConflictException,
 } from '@nestjs/common';
 import { CreateHukumDto } from './dto/create-hukum.dto';
 import { UpdateHukumDto } from './dto/update-hukum.dto';
-import { Repository } from 'typeorm';
+import { Like, Not, Repository } from 'typeorm';
 import { Hukum, CalculationMode, Quarter } from './entities/hukum.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { HukumSection } from './entities/hukum-section.entity';
 import { CreateHukumSectionDto } from './dto/create-hukum-section.dto';
 import { UpdateHukumSectionDto } from './dto/update-hukum-section.dto';
+import { HukumModule } from './hukum.module';
 
 @Injectable()
 export class HukumService {
@@ -22,129 +24,393 @@ export class HukumService {
     private sectionRepo: Repository<HukumSection>,
   ) {}
 
-  // ============ SECTION METHODS ============
-  async createSection(data: CreateHukumSectionDto): Promise<HukumSection> {
-    // Cek dengan withDeleted: true untuk melihat semua data
-    const existing = await this.sectionRepo.findOne({
-      where: { no: data.no },
-      withDeleted: true,
+  // HELPER METHODS
+
+  private validateModeSpecificFields(dto: Partial<CreateHukumDto>): void {
+    const mode = dto.mode;
+
+    if (mode === CalculationMode.RASIO) {
+      if (dto.pembilangValue !== undefined && dto.pembilangValue < 0) {
+        throw new BadRequestException(
+          'Pembilang value tidak boleh negatif untuk mode RASIO',
+        );
+      }
+      if (dto.penyebutValue !== undefined && dto.penyebutValue <= 0) {
+        throw new BadRequestException(
+          'Penyebut value harus lebih besar dari 0 untuk mode RASIO',
+        );
+      }
+    } else if (mode === CalculationMode.NILAI_TUNGGAL) {
+      if (dto.penyebutValue !== undefined && dto.penyebutValue < 0) {
+        throw new BadRequestException(
+          'Nilai penyebut tidak boleh negatif untuk mode NILAI_TUNGGAL',
+        );
+      }
+    } else if (mode === CalculationMode.TEKS) {
+      // Untuk mode TEKS, hasil harus berupa text
+      if (!dto.hasilText && !dto.hasilText?.trim()) {
+        throw new BadRequestException('Hasil text wajib diisi untuk mode TEKS');
+      }
+    }
+  }
+
+  private calculateWeighted(
+    bobotSection: number,
+    bobotIndikator: number,
+    peringkat: number,
+  ): number {
+    // Formula: (bobotSection * bobotIndikator * peringkat) / 10000
+    return (bobotSection * bobotIndikator * peringkat) / 10000;
+  }
+
+  async duplicateIndikatorToNewPeriod(
+    sourceId: number,
+    targetYear: number,
+    targetQuarter: Quarter,
+    createdBy?: string,
+  ): Promise<Hukum> {
+    const source = await this.findIndikatorById(sourceId);
+
+    // Cek apakah sudah ada di periode target
+    const existing = await this.hukumRepo.findOne({
+      where: {
+        year: targetYear,
+        quarter: targetQuarter,
+        sectionId: source.sectionId,
+        subNo: source.subNo,
+        isDeleted: false,
+      },
     });
 
     if (existing) {
-      // Jika data sudah ada dan aktif, throw error biasa
-      if (!existing.isDeleted) {
-        throw new BadRequestException(
-          `Section dengan nomor "${data.no}" sudah ada`,
-        );
-      }
-
-      // Jika data sudah di-delete, kita RESTORE dengan data baru
-      existing.isDeleted = false;
-      Object.assign(existing, data);
-      return await this.sectionRepo.save(existing);
+      throw new ConflictException(
+        `Indikator dengan subNo "${source.subNo}" sudah ada pada periode ${targetYear}-${targetQuarter}`,
+      );
     }
 
-    // Jika tidak ada data dengan no yang sama, buat baru
-    const section = this.sectionRepo.create(data);
-    return await this.sectionRepo.save(section);
+    // Duplikasi dengan periode baru
+    const newIndikatorData: Partial<Hukum> = {
+      ...source,
+      id: undefined,
+      year: targetYear,
+      quarter: targetQuarter,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      version: 1,
+      revisionNotes: `Duplikasi dari periode ${source.year}-${source.quarter}`,
+      isDeleted: false,
+    };
+
+    if (createdBy) {
+      newIndikatorData.createdBy = createdBy;
+    }
+
+    const newIndikator = this.hukumRepo.create(newIndikatorData);
+    return await this.hukumRepo.save(newIndikator);
   }
 
-  async findAllSection(): Promise<HukumSection[]> {
+  // ============ SECTION METHODS ============
+  async createSection(
+    createDto: CreateHukumSectionDto,
+    createdBy?: string,
+  ): Promise<HukumSection> {
+    // cek untuk data apakah sudh di hapus
+    const deletedSection = await this.sectionRepo.findOne({
+      where: {
+        no: createDto.no,
+        parameter: createDto.parameter,
+        year: createDto.year,
+        quarter: createDto.quarter,
+        isDeleted: true,
+      },
+    });
+
+    if (deletedSection) {
+      console.log(
+        ` reactiving deleted section: ${deletedSection.no} - ${deletedSection.parameter}`,
+      );
+      deletedSection.isDeleted = false;
+      deletedSection.isActive = createDto.isActive ?? true;
+      deletedSection.description =
+        createDto.description || deletedSection.description;
+      deletedSection.sortOrder =
+        createDto.sortOrder || deletedSection.sortOrder;
+
+      if (createdBy) {
+        deletedSection['updatedBy'] = createdBy;
+        deletedSection['updatedAt'] = new Date();
+      }
+
+      return await this.sectionRepo.save(deletedSection);
+    }
+
+    const existingSection = await this.sectionRepo.findOne({
+      where: {
+        no: createDto.no,
+        parameter: createDto.parameter,
+        year: createDto.year,
+        quarter: createDto.quarter,
+        isDeleted: false,
+      },
+    });
+
+    if (existingSection) {
+      throw new ConflictException(
+        `Section dengan nomor "${createDto.no}" dan nama "${createDto.parameter}" sudah ada pada periode ${createDto.year}-${createDto.quarter}`,
+      );
+    }
+
+    const sectionData: Partial<HukumSection> = {
+      no: createDto.no,
+      parameter: createDto.parameter,
+      bobotSection: createDto.bobotSection,
+      description: createDto.description,
+      sortOrder: createDto.sortOrder,
+      year: createDto.year,
+      quarter: createDto.quarter,
+      isActive: createDto.isActive,
+      isDeleted: false,
+    };
+
+    if (createdBy) {
+      sectionData['createdBy'] = createdBy;
+    }
+
+    const section = this.sectionRepo.create(sectionData);
+    return await this.sectionRepo.save(section);
+
+    // if (existing) {
+    //   // Jika data sudah ada dan aktif, throw error biasa
+    //   if (!existing.isDeleted) {
+    //     throw new BadRequestException(
+    //       `Section dengan nomor "${data.no}" sudah ada`,
+    //     );
+    //   }
+
+    //   // Jika data sudah di-delete, kita RESTORE dengan data baru
+    //   existing.isDeleted = false;
+    //   Object.assign(existing, data);
+    //   return await this.sectionRepo.save(existing);
+    // }
+
+    // Jika tidak ada data dengan no yang sama, buat baru
+  }
+
+  async findAllSections(isActive?: boolean): Promise<HukumSection[]> {
+    const where: any = { isDeleted: false }; // Hanya ambil yang tidak dihapus
+
+    if (isActive !== undefined) {
+      where.isActive = isActive;
+    }
+
     return await this.sectionRepo.find({
-      where: { isDeleted: false },
-      order: { sortOrder: 'ASC', no: 'ASC' },
+      where,
+      order: { year: 'DESC', quarter: 'DESC', sortOrder: 'ASC', no: 'ASC' },
     });
   }
 
   async findSectionById(id: number): Promise<HukumSection> {
-    const section = await this.sectionRepo.findOne({
-      where: { id, isDeleted: false },
-    });
+    try {
+      console.log(`service finding by id: ${id}`);
 
-    if (!section) {
-      throw new NotFoundException(`Section with ID ${id} not found`);
+      const section = await this.sectionRepo
+        .createQueryBuilder('section')
+        .where('section.id = :id', { id })
+        .andWhere('section.is_deleted = false')
+        .getOne();
+
+      if (!section) {
+        throw new NotFoundException(`section dengan ID ${id} tidak ditemukan`);
+      }
+
+      return section;
+    } catch (error) {
+      console.error(`error in find sectionByID service`, error);
+      throw error;
     }
-    return section;
+  }
+
+  async findSectionsByPeriod(
+    year: number,
+    quarter: Quarter,
+  ): Promise<HukumSection[]> {
+    return await this.sectionRepo.find({
+      where: {
+        year,
+        quarter,
+        isDeleted: false, // Hanya ambil yang tidak dihapus
+        isActive: true,
+      },
+      order: { sortOrder: 'ASC', no: 'ASC' },
+    });
   }
 
   async updateSection(
     id: number,
-    data: UpdateHukumSectionDto,
+    updateDto: UpdateHukumSectionDto,
+    updatedBy?: string,
   ): Promise<HukumSection> {
     const section = await this.findSectionById(id);
 
-    // Jika nomor diubah
-    if (data.no !== undefined && data.no !== section.no) {
-      // Cek dengan withDeleted: true
-      const existing = await this.sectionRepo.findOne({
-        where: { no: data.no },
-        withDeleted: true,
-      });
+    // Jika ada perubahan no/parameter/year/quarter, cek duplikasi
+    const checkNo = updateDto.no || section.no;
+    const checkParam = updateDto.parameter || section.parameter;
+    const checkYear = updateDto.year || section.year;
+    const checkQuarter = updateDto.quarter || section.quarter;
 
-      // Jika ada data dengan nomor yang baru
-      if (existing) {
-        // Jika data aktif (dan bukan data yang sama), throw error
-        if (!existing.isDeleted && existing.id !== id) {
-          throw new BadRequestException(
-            `Section dengan nomor "${data.no}" sudah ada`,
-          );
-        }
+    // Cek apakah ada section lain dengan no+parameter+year+quarter yang sama
+    const existing = await this.sectionRepo.findOne({
+      where: {
+        no: checkNo,
+        parameter: checkParam,
+        year: checkYear,
+        quarter: checkQuarter,
+        isDeleted: false,
+        id: Not(id), // Exclude current section
+      },
+    });
 
-        // Jika data sudah di-delete, hard delete untuk memberi jalan
-        if (existing.isDeleted) {
-          await this.sectionRepo.remove(existing);
-        }
-      }
+    if (existing) {
+      throw new ConflictException(
+        `Section dengan nomor "${checkNo}" dan nama "${checkParam}" sudah ada pada periode ${checkYear}-${checkQuarter}`,
+      );
     }
 
-    Object.assign(section, data);
+    // Update field
+    if (updateDto.no !== undefined) section.no = updateDto.no;
+    if (updateDto.parameter !== undefined)
+      section.parameter = updateDto.parameter;
+    if (updateDto.bobotSection !== undefined)
+      section.bobotSection = updateDto.bobotSection;
+    if (updateDto.description !== undefined)
+      section.description = updateDto.description;
+    if (updateDto.sortOrder !== undefined)
+      section.sortOrder = updateDto.sortOrder;
+    if (updateDto.isActive !== undefined) section.isActive = updateDto.isActive;
+    if (updateDto.year !== undefined) section.year = updateDto.year;
+    if (updateDto.quarter !== undefined) section.quarter = updateDto.quarter;
+
+    if (updatedBy) {
+      // Jika ada updatedBy field di entity
+      section['updatedBy'] = updatedBy;
+    }
+
     return await this.sectionRepo.save(section);
   }
 
   async deleteSection(id: number): Promise<void> {
-    const section = await this.findSectionById(id);
-    section.isDeleted = true;
-    await this.sectionRepo.save(section);
+    const section = await this.sectionRepo.findOne({
+      where: { id },
+    });
+
+    if (!section) {
+      throw new NotFoundException(`Section dengan ID ${id} tidak ditemukan`);
+    }
+
+    const indikatorCount = await this.hukumRepo.count({
+      where: { sectionId: id },
+    });
+
+    if (indikatorCount > 0) {
+      throw new ConflictException(
+        `Section tidak dapat dihapus karena masih digunakan oleh ${indikatorCount} indikator`,
+      );
+    }
+
+    await this.sectionRepo.delete(id);
   }
 
-  // ============ HUKUM METHODS ============
-  async findAll(): Promise<Hukum[]> {
+  // ============ HUKUM METHODS (HUKUM INDIKATORS) SERVICES ============
+  // async findAll(): Promise<Hukum[]> {
+  //   return await this.hukumRepo.find({
+  //     where: { isDeleted: false },
+  //     relations: ['section'],
+  //     order: { year: 'DESC', quarter: 'ASC', no: 'ASC', subNo: 'ASC' },
+  //   });
+  // }
+
+  // async findOne(id: number): Promise<Hukum> {
+  //   const hukum = await this.hukumRepo.findOne({
+  //     where: { id, isDeleted: false },
+  //     relations: ['section'],
+  //   });
+
+  //   if (!hukum) {
+  //     throw new NotFoundException(`Hukum with id ${id} not found`);
+  //   }
+  //   return hukum;
+  // }
+
+  // async remove(id: number): Promise<void> {
+  //   const hukum = await this.findOne(id);
+  //   hukum.isDeleted = true;
+  //   hukum.deletedAt = new Date();
+  //   await this.hukumRepo.save(hukum);
+  // }
+
+  // async findByPeriod(year: number, quarter: Quarter): Promise<Hukum[]> {
+  //   return await this.hukumRepo.find({
+  //     where: { year, quarter, isDeleted: false },
+  //     relations: ['section'],
+  //     order: { no: 'ASC', subNo: 'ASC' },
+  //   });
+  // }
+
+  // async findById(id: number): Promise<Hukum> {
+  //   return this.findOne(id);
+  // }
+
+  async findIndikatorsByPeriod(
+    year: number,
+    quarter: Quarter,
+  ): Promise<Hukum[]> {
+    return await this.hukumRepo.find({
+      where: {
+        year,
+        quarter,
+        isDeleted: false,
+      },
+      relations: ['section'],
+      order: {
+        no: 'ASC',
+        subNo: 'ASC',
+      },
+    });
+  }
+
+  async findAllIndikators(): Promise<Hukum[]> {
     return await this.hukumRepo.find({
       where: { isDeleted: false },
       relations: ['section'],
-      order: { year: 'DESC', quarter: 'ASC', no: 'ASC', subNo: 'ASC' },
+      order: {
+        year: 'DESC',
+        quarter: 'DESC',
+        no: 'ASC',
+        subNo: 'ASC',
+      },
     });
   }
 
-  async findOne(id: number): Promise<Hukum> {
-    const hukum = await this.hukumRepo.findOne({
+  async findIndikatorById(id: number): Promise<Hukum> {
+    const indikator = await this.hukumRepo.findOne({
       where: { id, isDeleted: false },
       relations: ['section'],
+      
     });
 
-    if (!hukum) {
-      throw new NotFoundException(`Hukum with id ${id} not found`);
+    if (!indikator) {
+      throw new NotFoundException(`indikator id ${id} ga ada`);
     }
-    return hukum;
+
+    return indikator;
   }
 
-  async remove(id: number): Promise<void> {
-    const hukum = await this.findOne(id);
-    hukum.isDeleted = true;
-    hukum.deletedAt = new Date();
-    await this.hukumRepo.save(hukum);
-  }
-
-  async findByPeriod(year: number, quarter: Quarter): Promise<Hukum[]> {
+  async findByYear(year: number): Promise<Hukum[]> {
     return await this.hukumRepo.find({
-      where: { year, quarter, isDeleted: false },
+      where: { year, isDeleted: false },
       relations: ['section'],
-      order: { no: 'ASC', subNo: 'ASC' },
+      order: { quarter: 'ASC', no: 'ASC', subNo: 'ASC' },
     });
-  }
-
-  async findById(id: number): Promise<Hukum> {
-    return this.findOne(id);
   }
 
   private calculateHasil(data: {
@@ -202,266 +468,473 @@ export class HukumService {
     return result.toString(); // <-- Pastikan return string
   }
 
-  private calculateWeight(
-    data: CreateHukumDto | UpdateHukumDto,
-    sectionBobot: number,
-  ): number {
-    const indicatorBobot = data.bobotIndikator || 0;
-    const peringkat = data.peringkat || 1;
+  // CREATE INDIKATORS HUKUM
 
-    return (sectionBobot * indicatorBobot * peringkat) / 10000;
-  }
+  async createIndikator(
+    createDto: CreateHukumDto,
+    createdBy?: string,
+  ): Promise<Hukum> {
+    // 1. Validasi section exist
+    const section = await this.findSectionById(createDto.sectionId);
 
-  async create(data: CreateHukumDto): Promise<Hukum> {
-    const section = await this.findSectionById(data.sectionId);
-
-    // Validasi duplicate
-    const existing = await this.hukumRepo.findOne({
+    // 2. Cek apakah ada indikator yang sudah dihapus dengan data yang sama
+    const deletedIndikator = await this.hukumRepo.findOne({
       where: {
-        year: data.year,
-        quarter: data.quarter,
-        sectionId: data.sectionId,
-        subNo: data.subNo,
-        isDeleted: false,
+        year: createDto.year,
+        quarter: createDto.quarter,
+        sectionId: createDto.sectionId,
+        subNo: createDto.subNo,
+        isDeleted: true, // Hanya cek yang sudah dihapus
       },
     });
 
-    if (existing) {
-      throw new BadRequestException(
-        `Hukum dengan subNo ${data.subNo} sudah ada untuk periode ${data.year} ${data.quarter} di section ini`,
+    // 3. Jika ada data yang sudah dihapus, REACTIVATE
+    if (deletedIndikator) {
+      console.log(
+        `🔄 Reactivating deleted indicator: ${deletedIndikator.subNo} - ${deletedIndikator.indikator}`,
+      );
+
+      // Update data dengan nilai baru
+      deletedIndikator.isDeleted = false;
+      deletedIndikator.indikator = createDto.indikator;
+      deletedIndikator.bobotIndikator = createDto.bobotIndikator;
+      deletedIndikator.sumberRisiko = createDto.sumberRisiko || null;
+      deletedIndikator.dampak = createDto.dampak || null;
+      deletedIndikator.mode = createDto.mode;
+      deletedIndikator.formula = createDto.formula || null;
+      deletedIndikator.isPercent = createDto.isPercent || false;
+      deletedIndikator.pembilangLabel = createDto.pembilangLabel || null;
+      deletedIndikator.pembilangValue = createDto.pembilangValue || null;
+      deletedIndikator.penyebutLabel = createDto.penyebutLabel || null;
+      deletedIndikator.penyebutValue = createDto.penyebutValue || null;
+      deletedIndikator.hasil = createDto.hasil || null;
+      deletedIndikator.hasilText = createDto.hasilText || null;
+      deletedIndikator.peringkat = createDto.peringkat;
+
+      // Hitung weighted baru
+      deletedIndikator.weighted =
+        createDto.weighted ||
+        this.calculateWeighted(
+          section.bobotSection,
+          createDto.bobotIndikator,
+          createDto.peringkat,
+        );
+
+      deletedIndikator.keterangan = createDto.keterangan || null;
+      deletedIndikator.version += 1;
+
+      if (createdBy) {
+        deletedIndikator.updatedBy = createdBy;
+      }
+
+      return await this.hukumRepo.save(deletedIndikator);
+    }
+
+    // 4. Cek duplikasi hanya untuk data yang TIDAK dihapus
+    const existingIndikator = await this.hukumRepo.findOne({
+      where: {
+        year: createDto.year,
+        quarter: createDto.quarter,
+        sectionId: createDto.sectionId,
+        subNo: createDto.subNo,
+        isDeleted: false, // Hanya cek yang tidak dihapus
+      },
+    });
+
+    if (existingIndikator) {
+      throw new ConflictException(
+        `Indikator dengan subNo "${createDto.subNo}" sudah ada pada periode ${createDto.year}-${createDto.quarter} di section ini`,
       );
     }
 
-    // Hitung hasil dan weighted
-    const hasil = this.calculateHasil(data);
-    const weighted =
-      data.weighted || this.calculateWeight(data, section.bobotSection);
+    // 5. Validasi mode-specific fields
+    this.validateModeSpecificFields(createDto);
 
-    const hukumData: Partial<Hukum> = {
-      year: data.year,
-      quarter: data.quarter,
-      sectionId: data.sectionId,
-      section,
+    // 6. Hitung weighted jika belum diisi
+    const weighted =
+      createDto.weighted ||
+      this.calculateWeighted(
+        section.bobotSection,
+        createDto.bobotIndikator,
+        createDto.peringkat,
+      );
+
+    // 7. Handle nullable fields
+    const strategikData: Partial<Hukum> = {
+      year: createDto.year,
+      quarter: createDto.quarter,
+      sectionId: createDto.sectionId,
       no: section.no,
       sectionLabel: section.parameter,
       bobotSection: section.bobotSection,
-      subNo: data.subNo,
-      indikator: data.indikator,
-      bobotIndikator: data.bobotIndikator,
-      sumberRisiko: data.sumberRisiko || null,
-      dampak: data.dampak || null,
-      low: data.low || null,
-      lowToModerate: data.lowToModerate || null,
-      moderate: data.moderate || null,
-      moderateToHigh: data.moderateToHigh || null,
-      high: data.high || null,
-      mode: data.mode,
-      formula: data.formula || null,
-      isPercent: data.isPercent || false,
-      pembilangLabel: data.pembilangLabel || null,
-      pembilangValue:
-        data.pembilangValue !== undefined ? data.pembilangValue : null,
-      penyebutLabel: data.penyebutLabel || null,
-      penyebutValue:
-        data.penyebutValue !== undefined ? data.penyebutValue : null,
-      hasil: hasil, // <-- Langsung string
-      hasilText: data.hasilText || null,
-      peringkat: data.peringkat,
+      subNo: createDto.subNo,
+      indikator: createDto.indikator,
+      bobotIndikator: createDto.bobotIndikator,
+      sumberRisiko: createDto.sumberRisiko || null,
+      dampak: createDto.dampak || null,
+      low: createDto.low || null,
+      lowToModerate: createDto.lowToModerate || null,
+      moderate: createDto.moderate || null,
+      moderateToHigh: createDto.moderateToHigh || null,
+      high: createDto.high || null,
+      mode: createDto.mode,
+      formula: createDto.formula || null,
+      isPercent: createDto.isPercent || false,
+      pembilangLabel: createDto.pembilangLabel || null,
+      pembilangValue: createDto.pembilangValue || null,
+      penyebutLabel: createDto.penyebutLabel || null,
+      penyebutValue: createDto.penyebutValue || null,
+      hasil: createDto.hasil || null,
+      hasilText: createDto.hasilText || null,
+      peringkat: createDto.peringkat,
       weighted: weighted,
-      keterangan: data.keterangan || null,
-    };
-
-    const hukum = this.hukumRepo.create(hukumData);
-    return await this.hukumRepo.save(hukum);
-  }
-
-  async update(id: number, data: UpdateHukumDto): Promise<Hukum> {
-    const hukum = await this.findOne(id);
-
-    // Jika sectionId diubah
-    if (data.sectionId && data.sectionId !== hukum.sectionId) {
-      const newSection = await this.findSectionById(data.sectionId);
-      hukum.section = newSection;
-      hukum.sectionId = newSection.id;
-      hukum.sectionLabel = newSection.parameter;
-      hukum.no = newSection.no;
-      hukum.bobotSection = newSection.bobotSection;
-    }
-
-    // Update field yang diubah
-    if (data.subNo !== undefined) hukum.subNo = data.subNo;
-    if (data.indikator !== undefined) hukum.indikator = data.indikator;
-    if (data.bobotIndikator !== undefined)
-      hukum.bobotIndikator = data.bobotIndikator;
-    if (data.mode !== undefined) hukum.mode = data.mode;
-    if (data.peringkat !== undefined) hukum.peringkat = data.peringkat;
-    if (data.weighted !== undefined) hukum.weighted = data.weighted;
-    if (data.isPercent !== undefined) hukum.isPercent = data.isPercent;
-
-    // Update nullable fields
-    if (data.hasilText !== undefined) hukum.hasilText = data.hasilText || null;
-    if (data.pembilangLabel !== undefined)
-      hukum.pembilangLabel = data.pembilangLabel || null;
-    if (data.pembilangValue !== undefined)
-      hukum.pembilangValue = data.pembilangValue;
-    if (data.penyebutLabel !== undefined)
-      hukum.penyebutLabel = data.penyebutLabel || null;
-    if (data.penyebutValue !== undefined)
-      hukum.penyebutValue = data.penyebutValue;
-    if (data.formula !== undefined) hukum.formula = data.formula || null;
-    if (data.sumberRisiko !== undefined)
-      hukum.sumberRisiko = data.sumberRisiko || null;
-    if (data.dampak !== undefined) hukum.dampak = data.dampak || null;
-    if (data.keterangan !== undefined)
-      hukum.keterangan = data.keterangan || null;
-    if (data.low !== undefined) hukum.low = data.low || null;
-    if (data.lowToModerate !== undefined)
-      hukum.lowToModerate = data.lowToModerate || null;
-    if (data.moderate !== undefined) hukum.moderate = data.moderate || null;
-    if (data.moderateToHigh !== undefined)
-      hukum.moderateToHigh = data.moderateToHigh || null;
-    if (data.high !== undefined) hukum.high = data.high || null;
-
-    // Hitung ulang hasil jika diperlukan
-    const shouldRecalculateHasil =
-      data.mode !== undefined ||
-      data.pembilangValue !== undefined ||
-      data.penyebutValue !== undefined ||
-      data.formula !== undefined ||
-      data.isPercent !== undefined ||
-      data.hasilText !== undefined;
-
-    if (shouldRecalculateHasil) {
-      const mode = data.mode !== undefined ? data.mode : hukum.mode;
-
-      const calculationData = {
-        mode,
-        pembilangValue: hukum.pembilangValue,
-        penyebutValue: hukum.penyebutValue,
-        formula: hukum.formula,
-        isPercent: hukum.isPercent,
-        hasilText: hukum.hasilText,
-      };
-
-      const newHasil = this.calculateHasil(calculationData);
-      hukum.hasil = newHasil; // <-- Langsung assign string
-    }
-
-    // Hitung ulang weighted jika diperlukan
-    const shouldRecalculateWeight =
-      data.bobotIndikator !== undefined ||
-      data.peringkat !== undefined ||
-      (data.sectionId && data.sectionId !== hukum.sectionId);
-
-    if (shouldRecalculateWeight && !data.weighted) {
-      const weightData: any = {
-        bobotIndikator:
-          data.bobotIndikator !== undefined
-            ? data.bobotIndikator
-            : hukum.bobotIndikator,
-        peringkat:
-          data.peringkat !== undefined ? data.peringkat : hukum.peringkat,
-      };
-      hukum.weighted = this.calculateWeight(weightData, hukum.bobotSection);
-    }
-
-    return await this.hukumRepo.save(hukum);
-  }
-
-  async delete(id: number): Promise<void> {
-    const hukum = await this.findOne(id);
-    hukum.isDeleted = true;
-    hukum.deletedAt = new Date();
-    await this.hukumRepo.save(hukum);
-  }
-
-  async bulkCreate(data: CreateHukumDto[]): Promise<Hukum[]> {
-    const createdItems: Hukum[] = [];
-
-    for (const item of data) {
-      try {
-        const created = await this.create(item);
-        createdItems.push(created);
-      } catch (error) {
-        // Jika ada error, batalkan semua yang sudah dibuat
-        for (const created of createdItems) {
-          await this.hukumRepo.remove(created);
-        }
-        throw error;
-      }
-    }
-
-    return createdItems;
-  }
-
-  async findByYear(year: number): Promise<Hukum[]> {
-    return await this.hukumRepo.find({
-      where: { year, isDeleted: false },
-      relations: ['section'],
-      order: { quarter: 'ASC', no: 'ASC', subNo: 'ASC' },
-    });
-  }
-
-  async getSummary(year: number, quarter: Quarter) {
-    const items = await this.findByPeriod(year, quarter);
-
-    const totalWeighted = items.reduce(
-      (sum, item) => sum + (item.weighted || 0),
-      0,
-    );
-
-    // Group by section
-    const sections = items.reduce((acc, item) => {
-      const sectionId = item.sectionId;
-      if (!acc[sectionId]) {
-        acc[sectionId] = {
-          section: item.section,
-          items: [],
-          totalWeighted: 0,
-        };
-      }
-      acc[sectionId].items.push(item);
-      acc[sectionId].totalWeighted += item.weighted || 0;
-      return acc;
-    }, {});
-
-    return {
-      year,
-      quarter,
-      totalItems: items.length,
-      totalWeighted,
-      sections: Object.values(sections),
-      items,
-    };
-  }
-
-  async findBySection(
-    sectionId: number,
-    year?: number,
-    quarter?: Quarter,
-  ): Promise<Hukum[]> {
-    const where: any = {
-      sectionId,
+      keterangan: createDto.keterangan || null,
+      isValidated: false,
+      version: 1,
       isDeleted: false,
     };
 
-    if (year !== undefined) {
-      where.year = year;
+    if (createdBy) {
+      strategikData.createdBy = createdBy;
     }
 
-    if (quarter !== undefined) {
-      where.quarter = quarter;
+    const strategik = this.hukumRepo.create(strategikData);
+    return await this.hukumRepo.save(strategik);
+  }
+
+  async updateIndikator(
+    id: number,
+    updateDto: UpdateHukumDto,
+    updatedBy?: string,
+  ): Promise<Hukum> {
+    const indikator = await this.findIndikatorById(id);
+
+    // 1. Validasi jika ada perubahan sectionId
+    if (updateDto.sectionId && updateDto.sectionId !== indikator.sectionId) {
+      const newSection = await this.findSectionById(updateDto.sectionId);
+
+      // Update data section yang denormalized
+      updateDto.no = newSection.no;
+      updateDto.sectionLabel = newSection.parameter;
+      updateDto.bobotSection = newSection.bobotSection;
+    }
+
+    // 2. Validasi jika ada perubahan periode atau subNo
+    if (
+      (updateDto.year && updateDto.year !== indikator.year) ||
+      (updateDto.quarter && updateDto.quarter !== indikator.quarter) ||
+      (updateDto.subNo && updateDto.subNo !== indikator.subNo)
+    ) {
+      const year = updateDto.year || indikator.year;
+      const quarter = updateDto.quarter || indikator.quarter;
+      const sectionId = updateDto.sectionId || indikator.sectionId;
+      const subNo = updateDto.subNo || indikator.subNo;
+
+      const existing = await this.hukumRepo.findOne({
+        where: {
+          year,
+          quarter,
+          sectionId,
+          subNo,
+          isDeleted: false,
+          id: Not(id), // Exclude current
+        },
+      });
+
+      if (existing) {
+        throw new ConflictException(
+          `Indikator dengan subNo "${subNo}" sudah ada pada periode ${year}-${quarter} di section ini`,
+        );
+      }
+    }
+
+    // 3. Validasi mode-specific fields
+    if (updateDto.mode) {
+      const validationDto: Partial<CreateHukumDto> = {
+        mode: updateDto.mode,
+        pembilangValue: updateDto.pembilangValue,
+        penyebutValue: updateDto.penyebutValue,
+        hasilText: updateDto.hasilText,
+      };
+      this.validateModeSpecificFields(validationDto);
+    }
+
+    // 4. Hitung weighted baru jika ada perubahan bobot/peringkat
+    if (
+      updateDto.bobotSection ||
+      updateDto.bobotIndikator ||
+      updateDto.peringkat
+    ) {
+      const bobotSection = updateDto.bobotSection || indikator.bobotSection;
+      const bobotIndikator =
+        updateDto.bobotIndikator || indikator.bobotIndikator;
+      const peringkat = updateDto.peringkat || indikator.peringkat;
+
+      updateDto.weighted = this.calculateWeighted(
+        bobotSection,
+        bobotIndikator,
+        peringkat,
+      );
+    }
+
+    // 5. Update field yang ada di updateDto
+    Object.keys(updateDto).forEach((key) => {
+      if (updateDto[key] !== undefined) {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        indikator[key] = updateDto[key];
+      }
+    });
+
+    if (updatedBy) {
+      indikator.updatedBy = updatedBy;
+      indikator.version += 1;
+    }
+
+    return await this.hukumRepo.save(indikator);
+  }
+
+  async deleteIndikator(id: number): Promise<void> {
+    const indikator = await this.hukumRepo.findOne({
+      where: { id },
+    });
+
+    if (!indikator) {
+      throw new NotFoundException(`indikator id ${id} ga ada`);
+    }
+
+    indikator.isDeleted = true;
+    await this.hukumRepo.delete(id);
+  }
+
+  async searchIndikators(
+    query?: string,
+    year?: number,
+    quarter?: Quarter,
+  ): Promise<Hukum[]> {
+    const where: any = { isDeleted: false };
+
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    if (year) where.year = year;
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    if (quarter) where.quarter = quarter;
+
+    if (query) {
+      const searchConditions = [
+        { subNo: Like(`%${query}%`), ...where },
+        { indikator: Like(`%${query}%`), ...where },
+        { sumberRisiko: Like(`%${query}%`), ...where },
+        { dampak: Like(`%${query}%`), ...where },
+        { keterangan: Like(`%${query}%`), ...where },
+        { hasilText: Like(`%${query}%`), ...where },
+      ];
+
+      return await this.hukumRepo.find({
+        where: searchConditions,
+        relations: ['section'],
+      });
     }
 
     return await this.hukumRepo.find({
       where,
       relations: ['section'],
-      order: {
-        year: 'DESC',
-        quarter: 'ASC',
-        subNo: 'ASC',
-      },
     });
+  }
+
+  // async bulkCreate(data: CreateHukumDto[]): Promise<Hukum[]> {
+  //   const createdItems: Hukum[] = [];
+
+  //   for (const item of data) {
+  //     try {
+  //       const created = await this.create(item);
+  //       createdItems.push(created);
+  //     } catch (error) {
+  //       // Jika ada error, batalkan semua yang sudah dibuat
+  //       for (const created of createdItems) {
+  //         await this.hukumRepo.remove(created);
+  //       }
+  //       throw error;
+  //     }
+  //   }
+
+  //   return createdItems;
+  // }
+
+  async getTotalWeightedByPeriod(
+    year: number,
+    quarter: Quarter,
+  ): Promise<number> {
+    const result = await this.hukumRepo
+      .createQueryBuilder('hukum')
+      .select('SUM(hukum.weighted)', 'total')
+      .where('hukum.year = :year', { year })
+      .andWhere('hukum.quarter = :quarter', { quarter })
+      .andWhere('hukum.is_deleted = false')
+      .getRawOne();
+
+    return parseFloat(result?.total || 0) || 0;
+  }
+
+  async getIndikatorCountByPeriod(
+    year: number,
+    quarter: Quarter,
+  ): Promise<number> {
+    try {
+      const result = await this.hukumRepo
+        .createQueryBuilder('hukum')
+        .select('COUNT(hukum.id)', 'count')
+        .where('hukum.year = :year', { year })
+        .andWhere('hukum.quarter = :quarter', { quarter })
+        .andWhere('hukum.is_deleted = false')
+        .getRawOne();
+
+      return parseInt(result?.count || 0) || 0;
+    } catch (error) {
+      console.error('Error in getIndikatorCountByPeriod:', error);
+      return 0;
+    }
+  }
+
+  // async findBySection(
+  //   sectionId: number,
+  //   year?: number,
+  //   quarter?: Quarter,
+  // ): Promise<Hukum[]> {
+  //   const where: any = {
+  //     sectionId,
+  //     isDeleted: false,
+  //   };
+
+  //   if (year !== undefined) {
+  //     where.year = year;
+  //   }
+
+  //   if (quarter !== undefined) {
+  //     where.quarter = quarter;
+  //   }
+
+  //   return await this.hukumRepo.find({
+  //     where,
+  //     relations: ['section'],
+  //     order: {
+  //       year: 'DESC',
+  //       quarter: 'ASC',
+  //       subNo: 'ASC',
+  //     },
+  //   });
+  // }
+
+  async getSectionsWithIndicatorsByPeriod(
+    year: number,
+    quarter: Quarter,
+  ): Promise<any> {
+    try {
+      console.log(
+        `Loading sections with indicators for period: ${year}-${quarter}`,
+      );
+
+      // 1. Ambil sections untuk periode ini saja
+      const sections = await this.sectionRepo.find({
+        where: {
+          year,
+          quarter,
+          isDeleted: false,
+          isActive: true,
+        },
+        order: { sortOrder: 'ASC', no: 'ASC' },
+      });
+
+      console.log(
+        `Total sections for period ${year}-${quarter}: ${sections.length}`,
+      );
+
+      const sectionsWithIndicators = await Promise.all(
+        sections.map(async (section) => {
+          const indicators = await this.hukumRepo.find({
+            where: {
+              sectionId: section.id,
+              year,
+              quarter,
+              isDeleted: false,
+            },
+            order: { subNo: 'ASC' },
+          });
+
+          console.log(`Section ${section.no}: ${indicators.length} indicators`);
+
+          const totalWeighted = indicators.reduce(
+            (sum, indicator) => sum + (Number(indicator.weighted) || 0),
+            0,
+          );
+
+          return {
+            id: section.id,
+            no: section.no,
+            parameter: section.parameter,
+            bobotSection: section.bobotSection,
+            description: section.description,
+            year: section.year,
+            quarter: section.quarter,
+            isActive: section.isActive,
+            indicators: indicators.map((indicator) => ({
+              id: indicator.id,
+              subNo: indicator.subNo,
+              indikator: indicator.indikator,
+              bobotIndikator: indicator.bobotIndikator,
+              mode: indicator.mode,
+              hasil: indicator.hasil,
+              hasilText: indicator.hasilText,
+              peringkat: indicator.peringkat,
+              weighted: indicator.weighted,
+              sumberRisiko: indicator.sumberRisiko,
+              dampak: indicator.dampak,
+              keterangan: indicator.keterangan,
+              isValidated: indicator.isValidated,
+              pembilangLabel: indicator.pembilangLabel,
+              pembilangValue: indicator.pembilangValue,
+              penyebutLabel: indicator.penyebutLabel,
+              penyebutValue: indicator.penyebutValue,
+              formula: indicator.formula,
+              isPercent: indicator.isPercent,
+              low: indicator.low,
+              lowToModerate: indicator.lowToModerate,
+              moderate: indicator.moderate,
+              moderateToHigh: indicator.moderateToHigh,
+              high: indicator.high,
+            })),
+            totalWeighted,
+            indicatorCount: indicators.length,
+            hasIndicators: indicators.length > 0,
+          };
+        }),
+      );
+
+      // Filter hanya sections yang punya indikator
+      const sectionsWithData = sectionsWithIndicators.filter(
+        (s) => s.indicators.length > 0,
+      );
+
+      const overallTotalWeighted = sectionsWithData.reduce(
+        (sum, section) => sum + (section.totalWeighted || 0),
+        0,
+      );
+
+      return {
+        success: true,
+        year,
+        quarter,
+        sections: sectionsWithIndicators,
+        sectionsWithIndicators: sectionsWithData,
+        overallTotalWeighted,
+        sectionCount: sectionsWithIndicators.length,
+        totalIndicators: sectionsWithData.reduce(
+          (sum, section) => sum + section.indicatorCount,
+          0,
+        ),
+      };
+    } catch (error) {
+      console.error('Error in getSectionsWithIndicatorsByPeriod:', error);
+      throw error;
+    }
   }
 
   async deleteByPeriod(year: number, quarter: Quarter): Promise<number> {
@@ -472,31 +945,19 @@ export class HukumService {
     return result.affected || 0;
   }
 
-  async getStructuredData(year: number, quarter: Quarter) {
-    const items = await this.findByPeriod(year, quarter);
+  async getPeriods(): Promise<Array<{ year: number; quarter: Quarter }>> {
+    const periods = await this.hukumRepo
+      .createQueryBuilder('hukum')
+      .select(['hukum.year', 'hukum.quarter'])
+      .where('hukum.is_deleted = false')
+      .groupBy('hukum.year, hukum.quarter')
+      .orderBy('hukum.year', 'DESC')
+      .addOrderBy('hukum.quarter', 'DESC')
+      .getRawMany();
 
-    // Group by section
-    const grouped = items.reduce((acc, item) => {
-      const sectionId = item.sectionId;
-      if (!acc[sectionId]) {
-        acc[sectionId] = {
-          section: item.section,
-          indicators: [],
-        };
-      }
-      acc[sectionId].indicators.push(item);
-      return acc;
-    }, {});
-
-    // Convert to array and sort by section.no
-    const sectionsArray = Object.values(grouped);
-    sectionsArray.sort((a: any, b: any) => {
-      return a.section.no.localeCompare(b.section.no, undefined, {
-        numeric: true,
-        sensitivity: 'base',
-      });
-    });
-
-    return sectionsArray;
+    return periods.map((p) => ({
+      year: p.hukum_year,
+      quarter: p.hukum_quarter,
+    }));
   }
 }

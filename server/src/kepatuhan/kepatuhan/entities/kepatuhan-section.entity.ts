@@ -1,4 +1,4 @@
-// src/entities/kepatuhan/kepatuhan-section.entity.ts
+// src/entities/strategik/kepatuhan-section.entity.ts
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -6,50 +6,74 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   OneToMany,
+  Index,
 } from 'typeorm';
-import { Kepatuhan } from './kepatuhan.entity';
 
-@Entity('kepatuhan_sections')
+import { Kepatuhan, Quarter } from './kepatuhan.entity';
+
+@Entity('sections_kepatuhan')
+@Index(
+  'IDX_STRATEGIK_SECTION_PERIOD_UNIQUE',
+  ['year', 'quarter', 'no', 'parameter'],
+  { unique: true },
+)
 export class KepatuhanSection {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ type: 'varchar', length: 50, unique: true })
-  no: string; // Contoh: "7.1"
+  // TAMBAHKAN INI - Section HARUS punya periode
+  @Column({ type: 'int' })
+  year: number;
+
+  @Column({ type: 'enum', enum: Quarter })
+  quarter: Quarter;
+
+  @Column({ type: 'varchar', length: 50 })
+  no: string; // Contoh: "6.1"
 
   @Column({
-    name: 'bobot_section', // ✅ TAMBAHKAN INI
+    name: 'bobot_section',
     type: 'decimal',
     precision: 5,
     scale: 2,
+    default: 100,
   })
   bobotSection: number;
 
   @Column({ type: 'varchar', length: 500 })
-  parameter: string; // Deskripsi section
+  parameter: string; // Nama section
 
   @Column({ type: 'text', nullable: true })
-  description: string | null; // Deskripsi tambahan
-
-  @Column({ type: 'varchar', length: 100, nullable: true })
-  category: string | null; // Kategori risiko
+  description: string | null;
 
   @Column({
-    name: 'sort_order', // ✅ TAMBAHKAN INI
+    name: 'sort_order',
     type: 'int',
     default: 0,
   })
   sortOrder: number;
 
-  @CreateDateColumn({ name: 'created_at' }) // ✅ TAMBAHKAN INI
+  @Column({
+    name: 'is_active',
+    type: 'boolean',
+    default: true,
+  })
+  isActive: boolean;
+
+  @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
-  @UpdateDateColumn({ name: 'updated_at' }) // ✅ TAMBAHKAN INI
+  @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
 
-  @Column({ name: 'is_deleted', type: 'boolean', default: false })
-  isDeleted: boolean; // Tetap gunakan camelCase di TypeScript
+  @Column({
+    name: 'is_deleted',
+    type: 'boolean',
+    default: false,
+  })
+  isDeleted: boolean;
 
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-return
   @OneToMany(() => Kepatuhan, (kepatuhan) => kepatuhan.section)
-  kepatuhan: Kepatuhan[];
+  kepatuhanIndicators: Kepatuhan[];
 }

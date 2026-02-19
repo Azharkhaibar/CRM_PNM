@@ -1,4 +1,4 @@
-// src/entities/kepatuhan/kepatuhan.entity.ts
+// src/entities/strategik/kepatuhan.entity.ts
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -8,9 +8,10 @@ import {
   ManyToOne,
   JoinColumn,
   Index,
+  Unique,
 } from 'typeorm';
-import { KepatuhanSection } from './kepatuhan-section.entity';
 
+import { KepatuhanSection } from './kepatuhan-section.entity';
 export enum CalculationMode {
   RASIO = 'RASIO',
   NILAI_TUNGGAL = 'NILAI_TUNGGAL',
@@ -25,14 +26,15 @@ export enum Quarter {
 }
 
 @Entity('indikators_kepatuhan')
+@Unique('UQ_KEPATUHAN_PERIOD_SUBNO', ['year', 'quarter', 'subNo', 'sectionId'])
 @Index('IDX_KEPATUHAN_PERIOD', ['year', 'quarter'])
 @Index('IDX_KEPATUHAN_SECTION', ['sectionId'])
-@Index('IDX_KEPATUHAN_SUBNO', ['subNo'])
+@Index('IDX_KEPATUHAN_YEAR_QUARTER', ['year', 'quarter'])
 export class Kepatuhan {
   @PrimaryGeneratedColumn()
   id: number;
 
-  // ========== PERIODE ==========
+  // ========== PERIODE (Wajib) ==========
   @Column({ type: 'int' })
   year: number;
 
@@ -43,43 +45,69 @@ export class Kepatuhan {
   @Column({ name: 'section_id' })
   sectionId: number;
 
-  @ManyToOne(() => KepatuhanSection, (section) => section.kepatuhan, {
+  @ManyToOne(() => KepatuhanSection, (section) => section.kepatuhanIndicators, {
     onUpdate: 'CASCADE',
-    onDelete: 'RESTRICT',
+    onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'section_id' })
   section: KepatuhanSection;
 
-  // ========== DATA SECTION ==========
+  // ========== DATA SECTION (Copy dari master) ==========
   @Column({ type: 'varchar', length: 50 })
-  no: string; // No section, contoh: "7.1"
+  no: string; // No section, contoh: "6.1"
 
-  @Column({ type: 'varchar', length: 500, name: 'section_label' })
-  sectionLabel: string; // Parameter section
+  @Column({
+    type: 'varchar',
+    length: 500,
+    name: 'section_label',
+  })
+  sectionLabel: string;
 
-  @Column({ type: 'decimal', precision: 5, scale: 2, name: 'bobot_section' })
+  @Column({
+    type: 'decimal',
+    precision: 5,
+    scale: 2,
+    name: 'bobot_section',
+  })
   bobotSection: number;
 
   // ========== DATA INDIKATOR ==========
-  @Column({ type: 'varchar', length: 50, name: 'sub_no' })
-  subNo: string; // Contoh: "7.1.1"
+  @Column({
+    type: 'varchar',
+    length: 50,
+    name: 'sub_no',
+  })
+  subNo: string; // Contoh: "6.1.1" - UNIK per periode+section
 
   @Column({ type: 'varchar', length: 1000 })
-  indikator: string; // Deskripsi indikator
+  indikator: string;
 
-  @Column({ type: 'decimal', precision: 5, scale: 2, name: 'bobot_indikator' })
+  @Column({
+    type: 'decimal',
+    precision: 5,
+    scale: 2,
+    name: 'bobot_indikator',
+  })
   bobotIndikator: number;
 
   // ========== ANALISIS RISIKO ==========
-  @Column({ type: 'text', nullable: true, name: 'sumber_risiko' })
+  @Column({
+    type: 'text',
+    nullable: true,
+    name: 'sumber_risiko',
+  })
   sumberRisiko: string | null;
 
   @Column({ type: 'text', nullable: true })
   dampak: string | null;
 
   // ========== LEVEL RISIKO ==========
-  @Column({ type: 'varchar', length: 200, nullable: true })
-  low: string | null; // Contoh: "x ≤ 0.1%"
+  @Column({
+    type: 'varchar',
+    length: 200,
+    nullable: true,
+  })
+  low: string | null;
 
   @Column({
     type: 'varchar',
@@ -87,10 +115,14 @@ export class Kepatuhan {
     nullable: true,
     name: 'low_to_moderate',
   })
-  lowToModerate: string | null; // Contoh: "0.1% < x ≤ 0.5%"
+  lowToModerate: string | null;
 
-  @Column({ type: 'varchar', length: 200, nullable: true })
-  moderate: string | null; // Contoh: "0.5% < x ≤ 1%"
+  @Column({
+    type: 'varchar',
+    length: 200,
+    nullable: true,
+  })
+  moderate: string | null;
 
   @Column({
     type: 'varchar',
@@ -98,10 +130,14 @@ export class Kepatuhan {
     nullable: true,
     name: 'moderate_to_high',
   })
-  moderateToHigh: string | null; // Contoh: "1% < x ≤ 2%"
+  moderateToHigh: string | null;
 
-  @Column({ type: 'varchar', length: 200, nullable: true })
-  high: string | null; // Contoh: "x > 2%"
+  @Column({
+    type: 'varchar',
+    length: 200,
+    nullable: true,
+  })
+  high: string | null;
 
   // ========== METODE PERHITUNGAN ==========
   @Column({
@@ -112,9 +148,13 @@ export class Kepatuhan {
   mode: CalculationMode;
 
   @Column({ type: 'text', nullable: true })
-  formula: string | null; // Rumus custom jika ada
+  formula: string | null;
 
-  @Column({ type: 'boolean', default: false, name: 'is_percent' })
+  @Column({
+    type: 'boolean',
+    default: false,
+    name: 'is_percent',
+  })
   isPercent: boolean;
 
   // ========== FAKTOR PERHITUNGAN ==========
@@ -124,7 +164,7 @@ export class Kepatuhan {
     nullable: true,
     name: 'pembilang_label',
   })
-  pembilangLabel: string | null; // Label pembilang
+  pembilangLabel: string | null;
 
   @Column({
     type: 'decimal',
@@ -133,7 +173,7 @@ export class Kepatuhan {
     nullable: true,
     name: 'pembilang_value',
   })
-  pembilangValue: number | null; // Nilai pembilang
+  pembilangValue: number | null;
 
   @Column({
     type: 'varchar',
@@ -141,7 +181,7 @@ export class Kepatuhan {
     nullable: true,
     name: 'penyebut_label',
   })
-  penyebutLabel: string | null; // Label penyebut
+  penyebutLabel: string | null;
 
   @Column({
     type: 'decimal',
@@ -150,24 +190,61 @@ export class Kepatuhan {
     nullable: true,
     name: 'penyebut_value',
   })
-  penyebutValue: number | null; // Nilai penyebut
+  penyebutValue: number | null;
 
-  // ========== HASIL (Dihitung di frontend, disimpan di sini) ==========
-  @Column({ type: 'decimal', precision: 10, scale: 6, nullable: true })
-  hasil: string | null; // Hasil numerik yang sudah dihitung
+  // ========== HASIL ==========
+  @Column({
+    type: 'decimal',
+    precision: 15,
+    scale: 6,
+    nullable: true,
+  })
+  hasil: number | null;
 
-  @Column({ type: 'varchar', length: 1000, nullable: true, name: 'hasil_text' })
-  hasilText: string | null; // Hasil teks untuk mode TEKS
+  @Column({
+    type: 'varchar',
+    length: 1000,
+    nullable: true,
+    name: 'hasil_text',
+  })
+  hasilText: string | null;
 
   // ========== SKOR DAN BOBOT ==========
   @Column({ type: 'int' })
-  peringkat: number; // 1-5
+  peringkat: number;
 
-  @Column({ type: 'decimal', precision: 10, scale: 4 })
-  weighted: number; // Bobot tertimbang yang sudah dihitung
+  @Column({
+    type: 'decimal',
+    precision: 10,
+    scale: 4,
+  })
+  weighted: number;
 
   @Column({ type: 'text', nullable: true })
-  keterangan: string | null; // Keterangan tambahan
+  keterangan: string | null;
+
+  // ========== VALIDASI DATA ==========
+  @Column({
+    name: 'is_validated',
+    type: 'boolean',
+    default: false,
+  })
+  isValidated: boolean;
+
+  @Column({
+    type: 'timestamp',
+    nullable: true,
+    name: 'validated_at',
+  })
+  validatedAt: Date | null;
+
+  @Column({
+    type: 'varchar',
+    length: 100,
+    nullable: true,
+    name: 'validated_by',
+  })
+  validatedBy: string | null;
 
   // ========== AUDIT TRAIL ==========
   @CreateDateColumn({ name: 'created_at' })
@@ -176,18 +253,56 @@ export class Kepatuhan {
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
 
-  @Column({ type: 'boolean', default: false, name: 'is_deleted' })
+  @Column({
+    name: 'is_deleted',
+    type: 'boolean',
+    default: false,
+  })
   isDeleted: boolean;
 
-  @Column({ type: 'timestamp', nullable: true, name: 'deleted_at' })
+  @Column({
+    type: 'timestamp',
+    nullable: true,
+    name: 'deleted_at',
+  })
   deletedAt: Date | null;
 
-  @Column({ type: 'varchar', length: 100, nullable: true, name: 'created_by' })
+  @Column({
+    type: 'varchar',
+    length: 100,
+    nullable: true,
+    name: 'created_by',
+  })
   createdBy: string | null;
 
-  @Column({ type: 'varchar', length: 100, nullable: true, name: 'updated_by' })
+  @Column({
+    type: 'varchar',
+    length: 100,
+    nullable: true,
+    name: 'updated_by',
+  })
   updatedBy: string | null;
 
-  @Column({ type: 'varchar', length: 100, nullable: true, name: 'deleted_by' })
+  @Column({
+    type: 'varchar',
+    length: 100,
+    nullable: true,
+    name: 'deleted_by',
+  })
   deletedBy: string | null;
+
+  // ========== VERSIONING ==========
+  @Column({
+    type: 'int',
+    default: 1,
+  })
+  version: number;
+
+  @Column({
+    type: 'varchar',
+    length: 50,
+    nullable: true,
+    name: 'revision_notes',
+  })
+  revisionNotes: string | null;
 }

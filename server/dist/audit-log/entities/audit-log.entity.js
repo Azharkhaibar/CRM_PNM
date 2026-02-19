@@ -34,6 +34,7 @@ var ModuleType;
     ModuleType["REPUTASI"] = "REPUTASI";
     ModuleType["USER_MANAGEMENT"] = "USER_MANAGEMENT";
     ModuleType["SYSTEM"] = "SYSTEM";
+    ModuleType["RAS"] = "RAS";
 })(ModuleType || (exports.ModuleType = ModuleType = {}));
 let AuditLog = class AuditLog {
     id;

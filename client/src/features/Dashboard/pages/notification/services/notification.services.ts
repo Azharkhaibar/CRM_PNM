@@ -1,11 +1,10 @@
-// notification.services.ts
-import { Notification, useNotificationStore } from '../stores/notification.stores';
+// notification.services.ts - FIXED VERSION
+import { Notification, useNotificationStore, BackendNotification as StoreBackendNotification } from '../stores/notification.stores';
 
 export interface BackendNotification {
-  id: number;
   notification_id: number;
   user_id: number | null;
-  type: 'info' | 'success' | 'warning' | 'error';
+  type: 'info' | 'success' | 'warning' | 'error' | 'system';
   title: string;
   message: string;
   read: boolean;
@@ -16,8 +15,8 @@ export interface BackendNotification {
 }
 
 export interface CreateNotificationDto {
-  userId?: number | null;
-  type: 'info' | 'success' | 'warning' | 'error';
+  user_id?: number | null;
+  type: 'info' | 'success' | 'warning' | 'error' | 'system';
   title: string;
   message: string;
   category?: string;
@@ -25,637 +24,81 @@ export interface CreateNotificationDto {
   expiresAt?: Date;
 }
 
+export interface FindNotificationsOptions {
+  unreadOnly?: boolean;
+  limit?: number;
+  page?: number;
+}
+
 export class NotificationService {
-  private static baseUrl = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/notifications` : '/api/v1/notifications';
+  // ✅ BACKEND PORT 5530 - Sesuai dengan backend
+  private static baseUrl = `${import.meta.env.VITE_API_URL ?? 'http://localhost:5530'}/notifications`;
+  private static wsUrl = import.meta.env.VITE_WS_URL ?? 'ws://localhost:5530';
+  private static socket: any = null;
+  private static isConnecting = false;
 
-  private static pollingIntervals = new Map<string, number>();
+  // Instance-specific properties
+  private instanceId: string;
+  private instanceListeners = new Map<string, Function[]>();
+  private pollingIntervalId: number | null = null;
 
+  constructor(instanceId?: string) {
+    this.instanceId = instanceId || `instance-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+  }
+
+  // ==================== STATIC METHODS ====================
   private static debugLog(action: string, data?: any) {
-    console.log(`🔔 [NotificationService] ${action}:`, data || '');
+    if (import.meta.env.DEV) {
+      console.log(`🔔 [NotificationService] ${action}:`, data || '');
+    }
   }
 
   private static errorLog(action: string, error: any, context?: any) {
     console.error(`🔔 [NotificationService] ERROR in ${action}:`, error, context || '');
   }
 
-  private static async handleResponse<T>(response: Response): Promise<T> {
-    if (!response.ok) {
-      const errorText = await response.text();
-      let errorData: any = null;
-
-      try {
-        errorData = errorText ? JSON.parse(errorText) : null;
-      } catch {
-        errorData = { message: errorText };
-      }
-
-      const message = errorData?.message || errorData?.error || `HTTP ${response.status}: ${response.statusText}`;
-      throw new Error(message);
-    }
-
-    if (response.status === 204 || response.headers.get('content-length') === '0') {
-      return {} as T;
-    }
-
-    return (await response.json()) as T;
-  }
-
-  private static isTemporaryId(id: string): boolean {
-    return !id || id.startsWith('temp-') || isNaN(Number(id.replace('temp-', '')));
-  }
-
-  static async getUserNotifications(userId: string, options?: { unreadOnly?: boolean; limit?: number; page?: number }): Promise<{ notifications: Notification[]; total: number }> {
+  // ==================== JWT HANDLING ====================
+  private static decodeJWT(token: string): { userId?: number; sub?: string } | null {
     try {
-      this.debugLog('getUserNotifications', { userId, options });
-
-      const params = new URLSearchParams();
-      if (options?.unreadOnly) params.append('unreadOnly', 'true');
-      if (options?.limit) params.append('limit', options.limit.toString());
-      if (options?.page) params.append('page', options.page.toString());
-
-      const url = `${this.baseUrl}/user/${userId}?${params.toString()}`;
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          Accept: 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('access_token')}`,
-        },
-        credentials: 'include',
-      });
-
-      const data = await this.handleResponse<{ notifications: BackendNotification[]; total: number }>(response);
-
-      const result = {
-        notifications: data.notifications.map((notif) => this.convertFromBackend(notif)),
-        total: data.total,
-      };
-
-      this.debugLog('getUserNotifications success', {
-        userId,
-        count: result.notifications.length,
-        total: result.total,
-      });
-
-      return result;
+      // Base64 URL decode
+      const base64Url = token.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const decoded = atob(base64);
+      return JSON.parse(decoded);
     } catch (error) {
-      this.errorLog('getUserNotifications', error, { userId, options });
-      throw error;
+      this.errorLog('decodeJWT', error);
+      return null;
     }
   }
 
-  static async getBroadcastNotifications(options?: { unreadOnly?: boolean; limit?: number; page?: number }): Promise<{ notifications: Notification[]; total: number }> {
+  private static getUserIdFromToken(token: string): number | null {
     try {
-      this.debugLog('getBroadcastNotifications', { options });
+      const payload = this.decodeJWT(token);
+      if (!payload) return null;
 
-      const params = new URLSearchParams();
-      if (options?.unreadOnly) params.append('unreadOnly', 'true');
-      if (options?.limit) params.append('limit', options.limit.toString());
-      if (options?.page) params.append('page', options.page.toString());
+      // Support both 'sub' and 'userId' claims
+      const userId = payload.userId || payload.sub;
+      if (!userId) return null;
 
-      const url = `${this.baseUrl}/broadcast?${params.toString()}`;
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          Accept: 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('access_token')}`,
-        },
-        credentials: 'include',
-      });
-
-      const data = await this.handleResponse<{ notifications: BackendNotification[]; total: number }>(response);
-
-      const result = {
-        notifications: data.notifications.map((notif) => this.convertFromBackend(notif)),
-        total: data.total,
-      };
-
-      this.debugLog('getBroadcastNotifications success', {
-        count: result.notifications.length,
-        total: result.total,
-      });
-
-      return result;
-    } catch (error) {
-      this.errorLog('getBroadcastNotifications', error, { options });
-      return { notifications: [], total: 0 };
+      const numId = Number(userId);
+      return isNaN(numId) ? null : numId;
+    } catch {
+      return null;
     }
   }
 
-  static async getAllNotifications(userId: string, options?: { unreadOnly?: boolean; limit?: number; page?: number }): Promise<{ notifications: Notification[]; total: number }> {
-    try {
-      this.debugLog('getAllNotifications', { userId, options });
-      const params = new URLSearchParams();
-      if (options?.unreadOnly) params.append('unreadOnly', 'true');
-      if (options?.limit) params.append('limit', options.limit.toString());
-      if (options?.page) params.append('page', options.page.toString());
-
-      const url = `${this.baseUrl}/user/${userId}/all${params.toString() ? `?${params.toString()}` : ''}`;
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          Accept: 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('access_token')}`,
-        },
-        credentials: 'include',
-      });
-
-      const data = await this.handleResponse<{ notifications: BackendNotification[]; total: number }>(response);
-
-      const result = {
-        notifications: data.notifications.map((notif) => this.convertFromBackend(notif)),
-        total: data.total,
-      };
-
-      this.debugLog('getAllNotifications success (new endpoint)', {
-        userId,
-        count: result.notifications.length,
-        total: result.total,
-      });
-
-      return result;
-    } catch (error) {
-      this.errorLog('getAllNotifications new endpoint failed', error, { userId, options });
-      try {
-        this.debugLog('Falling back to combined approach');
-
-        const [userNotifications, broadcastNotifications] = await Promise.allSettled([this.getUserNotifications(userId, options), this.getBroadcastNotifications(options)]);
-
-        let userNotifsResult = { notifications: [] as Notification[], total: 0 };
-        let broadcastNotifsResult = { notifications: [] as Notification[], total: 0 };
-        if (userNotifications.status === 'fulfilled') {
-          userNotifsResult = userNotifications.value;
-        } else {
-          this.errorLog('getAllNotifications - user failed', userNotifications.reason);
-        }
-
-        if (broadcastNotifications.status === 'fulfilled') {
-          broadcastNotifsResult = broadcastNotifications.value;
-        } else {
-          this.errorLog('getAllNotifications - broadcast failed', broadcastNotifications.reason);
-        }
-
-        const allNotifications = [...userNotifsResult.notifications, ...broadcastNotifsResult.notifications].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-
-        const result = {
-          notifications: allNotifications,
-          total: userNotifsResult.total + broadcastNotifsResult.total,
-        };
-
-        this.debugLog('getAllNotifications fallback success', {
-          userId,
-          userCount: userNotifsResult.notifications.length,
-          broadcastCount: broadcastNotifsResult.notifications.length,
-          total: result.total,
-        });
-
-        return result;
-      } catch (fallbackError) {
-        this.errorLog('Complete failure in getAllNotifications', fallbackError);
-
-        try {
-          const userNotifications = await this.getUserNotifications(userId, options);
-          return userNotifications;
-        } catch (finalError) {
-          this.errorLog('Final fallback failed', finalError);
-          return {
-            notifications: [],
-            total: 0,
-          };
-        }
-      }
-    }
-  }
-
-  static async createNotification(notificationData: CreateNotificationDto): Promise<BackendNotification> {
-    try {
-      this.debugLog('createNotification', notificationData);
-
-      // ✅ Payload sesuai dengan backend CreateNotificationDto
-      const payload = {
-        user_id: notificationData.userId ?? null,
-        type: notificationData.type,
-        title: notificationData.title,
-        message: notificationData.message,
-        category: notificationData.category ?? null,
-        metadata: notificationData.metadata ?? null,
-        expires_at: notificationData.expiresAt ? notificationData.expiresAt.toISOString() : null,
-      };
-
-      const response = await fetch(this.baseUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('access_token')}`,
-        },
-        credentials: 'include',
-        body: JSON.stringify(payload),
-      });
-
-      const result = await this.handleResponse<BackendNotification>(response);
-
-      this.debugLog('createNotification success', {
-        id: result.notification_id,
-        userId: notificationData.userId,
-      });
-
-      return result;
-    } catch (error) {
-      this.errorLog('createNotification', error, notificationData);
-      throw error;
-    }
-  }
-
-  static async createLoginNotification(userId: number, username: string): Promise<BackendNotification> {
-    try {
-      this.debugLog('createLoginNotification', { userId, username });
-
-      const notificationData: CreateNotificationDto = {
-        userId: userId,
-        type: 'success',
-        title: 'Login Successful',
-        message: `Welcome back, ${username}! You have successfully logged in.`,
-        category: 'security',
-        metadata: {
-          login_time: new Date().toISOString(),
-          activity_type: 'login',
-          user_id: userId,
-          ip_address: 'system',
-          username: username,
-        },
-      };
-
-      const result = await this.createNotification(notificationData);
-
-      this.debugLog('createLoginNotification success', {
-        id: result.notification_id,
-        userId: userId,
-      });
-
-      return result;
-    } catch (error) {
-      this.errorLog('createLoginNotification', error, { userId, username });
-
-      console.warn('Login notification failed to send to backend. Skipping local fallback.');
-
-      throw error;
-    }
-  }
-
-  static async createLogoutNotification(userId: number, username: string): Promise<BackendNotification> {
-    try {
-      this.debugLog('createLogoutNotification', { userId, username });
-
-      const notificationData: CreateNotificationDto = {
-        userId: userId,
-        type: 'info',
-        title: 'Logout Successful',
-        message: `You have successfully logged out. See you soon, ${username}!`,
-        category: 'security',
-        metadata: {
-          logout_time: new Date().toISOString(),
-          activity_type: 'logout',
-          user_id: userId,
-          username: username,
-        },
-      };
-
-      const result = await this.createNotification(notificationData);
-
-      this.debugLog('createLogoutNotification success', {
-        id: result.notification_id,
-        userId: userId,
-      });
-
-      return result;
-    } catch (error) {
-      this.errorLog('createLogoutNotification', error, { userId, username });
-
-      console.warn('Logout notification failed to send to backend. Skipping local fallback.');
-
-      throw error;
-    }
-  }
-
-  static async createUserStatusBroadcast(userId: number, username: string, status: string): Promise<BackendNotification> {
-    try {
-      this.debugLog('createUserStatusBroadcast', { userId, username, status });
-
-      const payload = {
-        userId,
-        userName: username,
-        status,
-      };
-
-      const response = await fetch(`/api/v1/notifications/user-status`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('access_token')}`,
-        },
-        credentials: 'include',
-        body: JSON.stringify(payload),
-      });
-
-      const result = await this.handleResponse<BackendNotification>(response);
-
-      this.debugLog('createUserStatusBroadcast success', {
-        id: result.notification_id,
-        status: status,
-      });
-
-      return result;
-    } catch (error) {
-      this.errorLog('createUserStatusBroadcast', error, { userId, username, status });
-
-      const notificationData: CreateNotificationDto = {
-        userId: null,
-        type: 'info',
-        title: 'User Status Update',
-        message: `${username} is now ${status}`,
-        category: 'user-status',
-        metadata: {
-          userId: userId,
-          userName: username,
-          status: status,
-          timestamp: new Date().toISOString(),
-        },
-      };
-
-      return await this.createNotification(notificationData);
-    }
-  }
-
-  private static createLocalFallbackNotification(userId: number, username: string, action: 'login' | 'logout') {
-    try {
-      const store = useNotificationStore.getState();
-
-      const fallbackNotification = {
-        userId: String(userId),
-        type: action === 'login' ? 'success' : ('info' as const),
-        title: action === 'login' ? 'Login Successful' : 'Logout Successful',
-        message: action === 'login' ? `Welcome back, ${username}! (Local Fallback)` : `You have successfully logged out. (Local Fallback)`,
-        category: 'security',
-        metadata: {
-          timestamp: new Date().toISOString(),
-          activity_type: action,
-          user_id: userId,
-          username: username,
-          is_fallback: true,
-        },
-      };
-
-      store.addNotification(fallbackNotification);
-
-      this.debugLog('Local fallback notification created', {
-        userId,
-        username,
-        action,
-      });
-    } catch (fallbackError) {
-      this.errorLog('createLocalFallbackNotification', fallbackError, { userId, username, action });
-    }
-  }
-
-  static async markAsRead(notificationId: string): Promise<BackendNotification> {
-    try {
-      this.debugLog('markAsRead', { notificationId });
-
-      if (this.isTemporaryId(notificationId)) {
-        this.debugLog('markAsRead - skipping backend for temporary ID', { notificationId });
-        return {
-          notification_id: 0,
-          user_id: null,
-          type: 'info',
-          title: 'Local Notification',
-          message: 'This is a local notification',
-          read: true,
-          metadata: null,
-          category: null,
-          created_at: new Date().toISOString(),
-          expires_at: null,
-        };
-      }
-
-      const response = await fetch(`${this.baseUrl}/${notificationId}/read`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('access_token')}`,
-        },
-        credentials: 'include',
-      });
-
-      const result = await this.handleResponse<BackendNotification>(response);
-
-      this.debugLog('markAsRead success', { notificationId });
-      return result;
-    } catch (error) {
-      this.errorLog('markAsRead', error, { notificationId });
-      throw error;
-    }
-  }
-
-  static async markAllAsRead(userId: string): Promise<void> {
-    try {
-      this.debugLog('markAllAsRead', { userId });
-
-      const response = await fetch(`${this.baseUrl}/user/${userId}/mark-all-read`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('access_token')}`,
-        },
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        await this.handleResponse(response);
-      }
-
-      this.debugLog('markAllAsRead success', { userId });
-    } catch (error) {
-      this.errorLog('markAllAsRead', error, { userId });
-      throw error;
-    }
-  }
-
-  static async deleteNotification(notificationId: string): Promise<void> {
-    try {
-      this.debugLog('deleteNotification', { notificationId });
-
-      if (!notificationId || notificationId.startsWith('temp-') || isNaN(Number(notificationId))) {
-        this.debugLog('deleteNotification - skipping backend for temporary ID', { notificationId });
-        return;
-      }
-
-      if (!notificationId || isNaN(Number(notificationId))) {
-        throw new Error(`Invalid notification ID: ${notificationId}`);
-      }
-
-      const response = await fetch(`${this.baseUrl}/${notificationId}`, {
-        method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('access_token')}`,
-        },
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        await this.handleResponse(response);
-      }
-
-      this.debugLog('deleteNotification success', { notificationId });
-    } catch (error) {
-      this.errorLog('deleteNotification', error, { notificationId });
-      throw error;
-    }
-  }
-
-  static async syncWithBackend(userId: string): Promise<Notification[]> {
-    try {
-      this.debugLog('syncWithBackend', { userId });
-
-      const { notifications: backendNotifications } = await this.getAllNotifications(userId);
-      const store = useNotificationStore.getState();
-
-      store.syncWithBackendData(backendNotifications);
-
-      this.debugLog('syncWithBackend success', {
-        userId,
-        count: backendNotifications.length,
-      });
-
-      return backendNotifications;
-    } catch (error) {
-      this.errorLog('syncWithBackend', error, { userId });
-      return [];
-    }
-  }
-
-  static async syncBroadcastNotifications(): Promise<Notification[]> {
-    try {
-      this.debugLog('syncBroadcastNotifications');
-
-      const { notifications: broadcastNotifications } = await this.getBroadcastNotifications();
-      const store = useNotificationStore.getState();
-
-      let addedCount = 0;
-      broadcastNotifications.forEach((notif) => {
-        if (!store.notifications.find((n) => n.id === notif.id)) {
-          store.addNotification(notif);
-          addedCount++;
-        }
-      });
-
-      this.debugLog('syncBroadcastNotifications success', {
-        broadcastCount: broadcastNotifications.length,
-        addedCount: addedCount,
-      });
-
-      return broadcastNotifications;
-    } catch (error) {
-      this.errorLog('syncBroadcastNotifications', error);
-      return [];
-    }
-  }
-
-  static async deleteAllUserNotifications(userId: string): Promise<void> {
-    try {
-      this.debugLog('deleteAllUserNotifications', { userId });
-
-      const response = await fetch(`${this.baseUrl}/user/${userId}`, {
-        method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('access_token')}`,
-        },
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        await this.handleResponse(response);
-      }
-
-      this.debugLog('deleteAllUserNotifications success', { userId });
-    } catch (error) {
-      this.errorLog('deleteAllUserNotifications', error, { userId });
-      throw error;
-    }
-  }
-
-  static startPolling(userId: string, interval: number = 30000): number {
-    this.debugLog('startPolling', { userId, interval });
-
-    this.stopPolling(userId);
-
-    const intervalId = window.setInterval(async () => {
-      try {
-        await this.syncWithBackend(userId);
-        await this.getUnreadCount(userId); // Update unread count
-      } catch (error) {
-        this.errorLog('Polling error', error, { userId });
-      }
-    }, interval);
-
-    this.pollingIntervals.set(userId, intervalId);
-    return intervalId;
-  }
-  static async getUnreadCount(userId: string): Promise<number> {
-    try {
-      this.debugLog('getUnreadCount', { userId });
-
-      const response = await fetch(`${this.baseUrl}/user/${userId}/unread-count`, {
-        method: 'GET',
-        headers: {
-          Accept: 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('access_token')}`,
-        },
-        credentials: 'include',
-      });
-
-      const data = await this.handleResponse<{ count: number }>(response);
-
-      this.debugLog('getUnreadCount success', { userId, count: data.count });
-      return data.count;
-    } catch (error) {
-      this.errorLog('getUnreadCount', error, { userId });
-      return 0;
-    }
-  }
-
-  static stopPolling(userId: string): void {
-    const intervalId = this.pollingIntervals.get(userId);
-    if (intervalId) {
-      clearInterval(intervalId);
-      this.pollingIntervals.delete(userId);
-      this.debugLog('stopPolling', { userId });
-    }
-  }
-
-  // async private readonl (userId: string): void {
-  //   const intervalID = this.pollingIntervals.get(userId)
-  //   if (interval)
-  // }
-
-  static stopAllPolling(): void {
-    this.pollingIntervals.forEach((intervalId, userId) => {
-      clearInterval(intervalId);
-      this.debugLog('stopAllPolling - stopped', { userId, intervalId });
-    });
-    this.pollingIntervals.clear();
-    this.debugLog('stopAllPolling - all stopped');
-  }
-
+  // ==================== CONVERSION ====================
   private static convertFromBackend(backendNotif: BackendNotification): Notification {
+    const isBroadcast = backendNotif.user_id === null;
+
     return {
       id: backendNotif.notification_id.toString(),
-      userId: backendNotif.user_id ? backendNotif.user_id.toString() : 'broadcast',
+      userId: isBroadcast ? 'broadcast' : backendNotif.user_id!.toString(),
       type: backendNotif.type,
       title: backendNotif.title,
       message: backendNotif.message,
-      read: backendNotif.read,
+      // Mode A: Broadcast selalu read = true
+      read: isBroadcast ? true : backendNotif.read,
       category: backendNotif.category || undefined,
       timestamp: new Date(backendNotif.created_at),
       metadata: backendNotif.metadata || {},
@@ -663,59 +106,531 @@ export class NotificationService {
     };
   }
 
-  static async cleanupExpiredNotifications(): Promise<void> {
-    try {
-      this.debugLog('cleanupExpiredNotifications');
+  private static ensureNotificationArray(backendNotifications: BackendNotification[]): Notification[] {
+    return backendNotifications.map((notif) => this.convertFromBackend(notif));
+  }
 
-      const response = await fetch(`${this.baseUrl}/cleanup/expired`, {
-        method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('access_token')}`,
+  // ==================== STATIC HELPER METHODS ====================
+  static async createLoginNotification(userId: number, username: string): Promise<Notification> {
+    try {
+      const service = new NotificationService(`login-${userId}`);
+      return await service.create({
+        user_id: userId,
+        type: 'success',
+        title: 'Login Successful',
+        message: `Welcome back, ${username}!`,
+        category: 'security',
+        metadata: {
+          activity_type: 'login',
+          action: 'login',
+          user_id: userId,
+          username: username,
+          login_time: new Date().toISOString(),
         },
+      });
+    } catch (error) {
+      this.errorLog('createLoginNotification', error, { userId, username });
+      throw error;
+    }
+  }
+
+  static async createLogoutNotification(userId: number, username: string): Promise<Notification> {
+    try {
+      const service = new NotificationService(`logout-${userId}`);
+      return await service.create({
+        user_id: userId,
+        type: 'info',
+        title: 'Logout Successful',
+        message: `You have successfully logged out.`,
+        category: 'security',
+        metadata: {
+          activity_type: 'logout',
+          action: 'logout',
+          user_id: userId,
+          username: username,
+          logout_time: new Date().toISOString(),
+        },
+      });
+    } catch (error) {
+      this.errorLog('createLogoutNotification', error, { userId, username });
+      throw error;
+    }
+  }
+
+  static async createUserStatusBroadcast(userId: number, username: string, action: 'login' | 'logout'): Promise<Notification> {
+    try {
+      const service = new NotificationService(`broadcast-${action}-${userId}`);
+      return await service.create({
+        user_id: null, // Broadcast
+        type: action === 'login' ? 'success' : 'info',
+        title: action === 'login' ? 'User Logged In' : 'User Logged Out',
+        message: action === 'login' ? `${username} has logged into the system.` : `${username} has logged out of the system.`,
+        category: 'system',
+        metadata: {
+          activity_type: 'user_status',
+          action: action,
+          user_id: userId,
+          username: username,
+          timestamp: new Date().toISOString(),
+        },
+      });
+    } catch (error) {
+      this.errorLog('createUserStatusBroadcast', error, { userId, username, action });
+      throw error;
+    }
+  }
+
+  // ==================== INSTANCE METHODS ====================
+  async connectSocket(token: string): Promise<void> {
+    if (NotificationService.isConnecting || NotificationService.socket?.connected) {
+      NotificationService.debugLog('Socket already connecting/connected');
+      return;
+    }
+
+    if (typeof window === 'undefined') {
+      NotificationService.debugLog('Skipping WebSocket on server side');
+      return;
+    }
+
+    NotificationService.isConnecting = true;
+
+    try {
+      const io = await this.getSocketIO();
+      if (!io) {
+        throw new Error('Socket.io client not available');
+      }
+
+      NotificationService.socket = io(`${NotificationService.wsUrl}`, {
+        auth: { token },
+        transports: ['websocket', 'polling'],
+        reconnection: true,
+        reconnectionAttempts: 5,
+        reconnectionDelay: 1000,
+        timeout: 20000,
+        path: '/socket.io',
+        query: { token },
+      });
+
+      // Set up global socket listeners
+      this.setupSocketListeners();
+
+      NotificationService.debugLog('WebSocket connection initiated', { instanceId: this.instanceId });
+    } catch (error) {
+      NotificationService.isConnecting = false;
+      NotificationService.errorLog('connectSocket', error, { instanceId: this.instanceId });
+
+      // Fallback ke polling
+      const userId = NotificationService.getUserIdFromToken(token);
+      if (userId) {
+        this.startPolling(userId);
+      }
+
+      throw error;
+    }
+  }
+
+  private async getSocketIO() {
+    if (typeof window === 'undefined') return null;
+
+    try {
+      const socketModule = await import('socket.io-client');
+      return socketModule.default || socketModule.io;
+    } catch (error) {
+      NotificationService.errorLog('getSocketIO', error);
+      return null;
+    }
+  }
+
+  private setupSocketListeners() {
+    if (!NotificationService.socket) return;
+
+    NotificationService.socket.on('connect', () => {
+      NotificationService.isConnecting = false;
+      NotificationService.debugLog('WebSocket connected', {
+        socketId: NotificationService.socket?.id,
+        instanceId: this.instanceId,
+      });
+      this.emitEvent('connected');
+    });
+
+    NotificationService.socket.on('notification', (data: any) => {
+      const converted = NotificationService.convertFromBackend(data);
+      useNotificationStore.getState().addNotification(converted);
+      this.emitEvent('notification', converted);
+    });
+
+    NotificationService.socket.on('notification:broadcast', (data: any) => {
+      const converted = NotificationService.convertFromBackend(data);
+      useNotificationStore.getState().addNotification(converted);
+      this.emitEvent('broadcast', converted);
+    });
+
+    NotificationService.socket.on('disconnect', (reason: string) => {
+      NotificationService.debugLog('WebSocket disconnected', {
+        reason,
+        instanceId: this.instanceId,
+      });
+      this.emitEvent('disconnected', { reason });
+    });
+
+    NotificationService.socket.on('connect_error', (error: Error) => {
+      NotificationService.isConnecting = false;
+      NotificationService.errorLog('WebSocket connection error', error, { instanceId: this.instanceId });
+      this.emitEvent('connection-error', error);
+    });
+  }
+
+  disconnectSocket(): void {
+    if (NotificationService.socket) {
+      NotificationService.socket.disconnect();
+      NotificationService.socket = null;
+      NotificationService.debugLog('WebSocket disconnected', { instanceId: this.instanceId });
+    }
+    NotificationService.isConnecting = false;
+  }
+
+  // ==================== EVENT SYSTEM ====================
+  on(event: string, callback: Function) {
+    if (!this.instanceListeners.has(event)) {
+      this.instanceListeners.set(event, []);
+    }
+    this.instanceListeners.get(event)!.push(callback);
+  }
+
+  off(event: string, callback: Function) {
+    const eventListeners = this.instanceListeners.get(event);
+    if (eventListeners) {
+      const index = eventListeners.indexOf(callback);
+      if (index > -1) {
+        eventListeners.splice(index, 1);
+      }
+    }
+  }
+
+  private emitEvent(event: string, data?: any) {
+    const eventListeners = this.instanceListeners.get(event);
+    if (eventListeners) {
+      eventListeners.forEach((callback) => {
+        try {
+          callback(data);
+        } catch (error) {
+          NotificationService.errorLog(`Event listener for ${event}`, error, { instanceId: this.instanceId });
+        }
+      });
+    }
+  }
+
+  // ==================== REST API METHODS ====================
+  private async makeRequest<T>(endpoint: string, options?: RequestInit): Promise<T> {
+    const token = localStorage.getItem('access_token');
+    const url = `${NotificationService.baseUrl}${endpoint}`;
+
+    const headers: Record<string, string> = {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+      ...(options?.headers as Record<string, string>),
+    };
+
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    try {
+      const response = await fetch(url, {
+        ...options,
+        headers,
         credentials: 'include',
       });
 
       if (!response.ok) {
-        await this.handleResponse(response);
+        let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorData.error || errorMessage;
+        } catch {
+          const errorText = await response.text();
+          if (errorText) errorMessage = errorText;
+        }
+        throw new Error(errorMessage);
       }
 
-      this.debugLog('cleanupExpiredNotifications success');
+      if (response.status === 204 || response.headers.get('content-length') === '0') {
+        return {} as T;
+      }
+
+      return await response.json();
     } catch (error) {
-      this.errorLog('cleanupExpiredNotifications', error);
+      NotificationService.errorLog('makeRequest', error, { endpoint, instanceId: this.instanceId });
+      throw error;
     }
   }
 
-  static debugCurrentState(userId?: string) {
-    const store = useNotificationStore.getState();
-
-    console.log('🔔 [NotificationService] Current State Debug:');
-    console.log('Total notifications:', store.notifications.length);
-    console.log('Unread count:', store.unreadCount);
-
-    if (userId) {
-      const userNotifications = store.getNotificationsByUser(userId);
-      const broadcastNotifications = store.getBroadcastNotifications();
-
-      console.log(`Notifications for user ${userId}:`, userNotifications.length);
-      console.log(`Broadcast notifications:`, broadcastNotifications.length);
-    }
-  }
-
-  static async testLogoutNotification(userId: number, username: string) {
-    console.log('🧪 Testing logout notification...');
-
+  async getAll(options?: FindNotificationsOptions): Promise<Notification[]> {
     try {
-      const store = useNotificationStore.getState();
-      store.clearAll();
+      const params = new URLSearchParams();
+      if (options?.unreadOnly) params.append('unreadOnly', 'true');
+      if (options?.limit) params.append('limit', options.limit.toString());
+      if (options?.page) params.append('page', options.page.toString());
 
-      await this.createLogoutNotification(userId, username);
+      const endpoint = params.toString() ? `?${params.toString()}` : '';
+      const data = await this.makeRequest<{ notifications: BackendNotification[] }>(endpoint);
 
-      setTimeout(() => {
-        this.debugCurrentState(userId.toString());
-        console.log('✅ Test completed - check console for results');
-      }, 1000);
+      return NotificationService.ensureNotificationArray(data.notifications);
     } catch (error) {
-      console.error('❌ Test failed:', error);
+      NotificationService.errorLog('getAll', error, { options, instanceId: this.instanceId });
+      throw error;
     }
+  }
+
+  async getUserNotifications(userId: number, options?: FindNotificationsOptions): Promise<Notification[]> {
+    try {
+      const params = new URLSearchParams();
+      if (options?.unreadOnly) params.append('unreadOnly', 'true');
+      if (options?.limit) params.append('limit', options.limit.toString());
+      if (options?.page) params.append('page', options.page.toString());
+
+      const endpoint = `/user/${userId}${params.toString() ? `?${params.toString()}` : ''}`;
+      const data = await this.makeRequest<{ notifications: BackendNotification[] }>(endpoint);
+
+      return NotificationService.ensureNotificationArray(data.notifications);
+    } catch (error) {
+      NotificationService.errorLog('getUserNotifications', error, { userId, options, instanceId: this.instanceId });
+
+      // Fallback ke store lokal
+      if (import.meta.env.DEV) {
+        const store = useNotificationStore.getState();
+        const notifications = store.getUserSpecificNotifications(userId.toString());
+        return options?.unreadOnly ? notifications.filter((n) => !n.read && n.userId !== 'broadcast') : notifications;
+      }
+
+      throw error;
+    }
+  }
+
+  async getBroadcastNotifications(options?: FindNotificationsOptions): Promise<Notification[]> {
+    try {
+      const params = new URLSearchParams();
+      if (options?.unreadOnly) params.append('unreadOnly', 'true');
+      if (options?.limit) params.append('limit', options.limit.toString());
+      if (options?.page) params.append('page', options.page.toString());
+
+      const endpoint = `/broadcast${params.toString() ? `?${params.toString()}` : ''}`;
+      const data = await this.makeRequest<{ notifications: BackendNotification[] }>(endpoint);
+
+      return NotificationService.ensureNotificationArray(data.notifications);
+    } catch (error) {
+      NotificationService.errorLog('getBroadcastNotifications', error, { options, instanceId: this.instanceId });
+      throw error;
+    }
+  }
+
+  async getOne(notificationId: number): Promise<Notification> {
+    try {
+      const data = await this.makeRequest<BackendNotification>(`/${notificationId}`);
+      return NotificationService.convertFromBackend(data);
+    } catch (error) {
+      NotificationService.errorLog('getOne', error, { notificationId, instanceId: this.instanceId });
+      throw error;
+    }
+  }
+
+  async create(createDto: CreateNotificationDto): Promise<Notification> {
+    try {
+      // Format payload sesuai dengan backend
+      const payload: any = {
+        ...createDto,
+        expires_at: createDto.expiresAt,
+      };
+
+      // Remove expiresAt as it's already mapped to expires_at
+      delete payload.expiresAt;
+
+      const data = await this.makeRequest<BackendNotification>('', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const converted = NotificationService.convertFromBackend(data);
+      useNotificationStore.getState().addNotification(converted);
+      return converted;
+    } catch (error) {
+      NotificationService.errorLog('create', error, { createDto, instanceId: this.instanceId });
+      throw error;
+    }
+  }
+
+  async update(notificationId: number, updateDto: Partial<CreateNotificationDto>): Promise<Notification> {
+    try {
+      // Pastikan tidak mengoverwrite ID
+      const safeUpdateDto = { ...updateDto };
+      delete (safeUpdateDto as any).notification_id;
+      delete (safeUpdateDto as any).id;
+
+      const data = await this.makeRequest<BackendNotification>(`/${notificationId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(safeUpdateDto),
+      });
+
+      const converted = NotificationService.convertFromBackend(data);
+      useNotificationStore.getState().updateNotification(notificationId.toString(), converted);
+      return converted;
+    } catch (error) {
+      NotificationService.errorLog('update', error, { notificationId, updateDto, instanceId: this.instanceId });
+      throw error;
+    }
+  }
+
+  async markAsRead(notificationId: number): Promise<Notification> {
+    try {
+      const data = await this.makeRequest<BackendNotification>(`/${notificationId}/read`, {
+        method: 'PATCH',
+      });
+
+      const converted = NotificationService.convertFromBackend(data);
+
+      // Mode A: Broadcast tidak bisa di-mark as read
+      if (converted.userId !== 'broadcast') {
+        useNotificationStore.getState().markAsRead(notificationId.toString());
+      }
+
+      return converted;
+    } catch (error) {
+      NotificationService.errorLog('markAsRead', error, { notificationId, instanceId: this.instanceId });
+      throw error;
+    }
+  }
+
+  async markAllAsRead(userId: number): Promise<void> {
+    try {
+      await this.makeRequest<void>(`/user/${userId}/mark-all-read`, {
+        method: 'PATCH',
+      });
+
+      // Sync dengan backend - cukup panggil syncWithBackendData
+      const notifications = await this.getUserNotifications(userId);
+      const backendNotifications: StoreBackendNotification[] = notifications.map((notif) => ({
+        notification_id: parseInt(notif.id),
+        user_id: notif.userId === 'broadcast' ? null : parseInt(notif.userId),
+        type: notif.type,
+        title: notif.title,
+        message: notif.message,
+        read: true, // Semua sudah dibaca
+        metadata: notif.metadata || null,
+        category: notif.category || null,
+        created_at: notif.timestamp.toISOString(),
+        expires_at: notif.expires_at?.toISOString() || null,
+      }));
+
+      useNotificationStore.getState().syncWithBackendData(backendNotifications, false);
+    } catch (error) {
+      NotificationService.errorLog('markAllAsRead', error, { userId, instanceId: this.instanceId });
+      throw error;
+    }
+  }
+
+  async getUnreadCount(userId: number): Promise<number> {
+    try {
+      const data = await this.makeRequest<{ count: number }>(`/user/${userId}/unread-count`);
+      return data.count;
+    } catch (error) {
+      NotificationService.errorLog('getUnreadCount', error, { userId, instanceId: this.instanceId });
+      const store = useNotificationStore.getState();
+      return store.getUnreadByUser(userId.toString());
+    }
+  }
+
+  async getAllForUser(userId: number, options?: FindNotificationsOptions): Promise<Notification[]> {
+    try {
+      const [userNotifications, broadcastNotifications] = await Promise.allSettled([this.getUserNotifications(userId, options), this.getBroadcastNotifications(options)]);
+
+      const user = userNotifications.status === 'fulfilled' ? userNotifications.value : [];
+      const broadcast = broadcastNotifications.status === 'fulfilled' ? broadcastNotifications.value : [];
+
+      return [...user, ...broadcast].sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+    } catch (error) {
+      NotificationService.errorLog('getAllForUser', error, { userId, options, instanceId: this.instanceId });
+      throw error;
+    }
+  }
+
+  async delete(notificationId: number): Promise<void> {
+    try {
+      await this.makeRequest<void>(`/${notificationId}`, {
+        method: 'DELETE',
+      });
+
+      useNotificationStore.getState().removeNotification(notificationId.toString());
+    } catch (error) {
+      NotificationService.errorLog('delete', error, { notificationId, instanceId: this.instanceId });
+      throw error;
+    }
+  }
+
+  // ==================== POLLING ====================
+  startPolling(userId: number, interval: number = 30000, options?: FindNotificationsOptions): void {
+    if (typeof window === 'undefined') return;
+
+    // Hentikan polling sebelumnya
+    this.stopPolling();
+
+    const poll = async () => {
+      try {
+        const result = await this.getUserNotifications(userId, options);
+        NotificationService.debugLog('Polling completed', {
+          userId,
+          count: result.length,
+          instanceId: this.instanceId,
+        });
+
+        const store = useNotificationStore.getState();
+        result.forEach((notif) => {
+          if (!store.findNotificationById(notif.id)) {
+            store.addNotification(notif);
+          }
+        });
+      } catch (error) {
+        NotificationService.errorLog('Polling error', error, { userId, instanceId: this.instanceId });
+      }
+    };
+
+    // Poll pertama kali
+    poll();
+
+    // Set interval
+    this.pollingIntervalId = window.setInterval(poll, interval);
+    NotificationService.debugLog('Polling started', {
+      userId,
+      interval,
+      instanceId: this.instanceId,
+    });
+  }
+
+  stopPolling(): void {
+    if (this.pollingIntervalId !== null) {
+      clearInterval(this.pollingIntervalId);
+      this.pollingIntervalId = null;
+      NotificationService.debugLog('Polling stopped', { instanceId: this.instanceId });
+    }
+  }
+
+  // ==================== CLEANUP ====================
+  cleanup(): void {
+    this.stopPolling();
+    this.instanceListeners.clear();
+    NotificationService.debugLog('Instance cleaned up', { instanceId: this.instanceId });
+
+    // Don't disconnect socket here - let auth hook handle global socket
+  }
+
+  // ==================== STATIC CLEANUP ====================
+  static cleanupAll(): void {
+    if (NotificationService.socket) {
+      NotificationService.socket.disconnect();
+      NotificationService.socket = null;
+    }
+    NotificationService.isConnecting = false;
+    NotificationService.debugLog('All instances cleaned up');
   }
 }

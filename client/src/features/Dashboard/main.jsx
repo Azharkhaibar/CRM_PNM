@@ -6,26 +6,40 @@ import { useDarkMode } from '../../shared/components/Darkmodecontext';
 
 export default function DashboardLayout() {
   const { darkMode } = useDarkMode();
+  const [sidebarWidth, setSidebarWidth] = React.useState(280);
+
+  const handleSidebarWidthChange = (width) => {
+    setSidebarWidth(width);
+  };
 
   return (
-    <div className={`flex min-h-screen ${darkMode ? 'dark-mode-bg' : 'bg-gray-100'}`}>
-      <div className={`w-64 border-r fixed left-0 top-0 h-full ${darkMode ? 'dark-mode-bg-sidebar dark-mode-border' : 'bg-white border-gray-200'}`}>
-        <Sidebar />
+    <div className={`min-h-screen ${darkMode ? 'bg-gray-900' : 'bg-gray-50'} overflow-hidden`}>
+      {/* Fixed Sidebar */}
+      <div className="fixed left-0 top-0 h-screen z-30" style={{ width: `${sidebarWidth}px` }}>
+        <div className={`h-full border-r ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+          <Sidebar onWidthChange={handleSidebarWidthChange} />
+        </div>
       </div>
-      <div className="flex flex-col flex-1 ml-64 relative min-h-screen">
-        <div className={`border-b ${darkMode ? 'dark-mode-bg-navbar dark-mode-border' : 'bg-white border-gray-200'}`}>
+
+      {/* Main Content */}
+      <div className="flex flex-col h-screen" style={{ marginLeft: `${sidebarWidth}px` }}>
+        {/* Fixed Navbar */}
+        <div className={`flex-shrink-0 border-b ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
           <Navbar />
         </div>
 
-        <main
-          className={`flex-1 overflow-y-auto p-6 ${darkMode ? 'dark-mode-bg text-white' : 'bg-gray-100 text-gray-900'}`}
-          style={{ paddingBottom: '3rem' }}
-        >
-          <Outlet />
-        </main>
+        {/* Scrollable Content Area - HANYA VERTICAL */}
+        <div className="flex-1 overflow-y-auto overflow-x-hidden">
+          <main className={`min-h-full ${darkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
+            <div className="p-6">
+              <Outlet />
+            </div>
+          </main>
+        </div>
 
-        <footer className={`fixed bottom-0 left-64 right-0 text-center text-sm py-3 border-t z-40 ${darkMode ? 'dark-mode-border text-gray-400 bg-gray-800' : 'text-gray-500 bg-white border-gray-200'}`}>
-          © {new Date().getFullYear()} RIMS Dashboard. All rights reserved.
+        {/* Fixed Footer */}
+        <footer className={`flex-shrink-0 py-4 px-6 border-t ${darkMode ? 'bg-gray-800 border-gray-700 text-gray-400' : 'bg-white border-gray-200 text-gray-600'}`}>
+          <div className="text-sm text-center">© {new Date().getFullYear()} RIMS Dashboard. All rights reserved.</div>
         </footer>
       </div>
     </div>

@@ -4,6 +4,7 @@ import {
   IsOptional,
   IsString,
   IsDate,
+  IsObject,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { NotificationType } from '../entities/notification.entity';
@@ -24,8 +25,8 @@ export class CreateNotificationDto {
   message: string;
 
   @IsOptional()
-  metadata?: Record<string, any>;
-  
+  @IsObject()
+  metadata?: Record<string, any> | null; 
 
   @IsOptional()
   @IsString()

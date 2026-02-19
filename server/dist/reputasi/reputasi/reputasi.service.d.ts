@@ -1,52 +1,35 @@
 import { Repository } from 'typeorm';
-import { CreateReputasiDto } from './dto/create-reputasi.dto';
-import { UpdateReputasiDto } from './dto/update-reputasi.dto';
-import { Reputasi, Quarter } from './entities/reputasi.entity';
 import { ReputasiSection } from './entities/reputasi-section.entity';
+import { Reputasi, Quarter } from './entities/reputasi.entity';
 import { CreateReputasiSectionDto } from './dto/create-reputasi-section.dto';
 import { UpdateReputasiSectionDto } from './dto/update-reputasi-section.dto';
+import { CreateReputasiDto } from './dto/create-reputasi.dto';
+import { UpdateReputasiDto } from './dto/update-reputasi.dto';
 export declare class ReputasiService {
-    private reputasiRepo;
-    private sectionRepo;
-    constructor(reputasiRepo: Repository<Reputasi>, sectionRepo: Repository<ReputasiSection>);
-    createSection(data: CreateReputasiSectionDto): Promise<ReputasiSection>;
-    findAllSection(): Promise<ReputasiSection[]>;
+    private readonly reputasiSectionRepository;
+    private readonly reputasiRepository;
+    constructor(reputasiSectionRepository: Repository<ReputasiSection>, reputasiRepository: Repository<Reputasi>);
+    createSection(createDto: CreateReputasiSectionDto, createdBy?: string): Promise<ReputasiSection>;
+    findAllSections(isActive?: boolean): Promise<ReputasiSection[]>;
     findSectionById(id: number): Promise<ReputasiSection>;
-    updateSection(id: number, data: UpdateReputasiSectionDto): Promise<ReputasiSection>;
+    findSectionsByPeriod(year: number, quarter: Quarter): Promise<ReputasiSection[]>;
+    updateSection(id: number, updateDto: UpdateReputasiSectionDto, updatedBy?: string): Promise<ReputasiSection>;
     deleteSection(id: number): Promise<void>;
-    findAll(): Promise<Reputasi[]>;
-    findOne(id: number): Promise<Reputasi>;
-    remove(id: number): Promise<void>;
-    findByPeriod(year: number, quarter: Quarter): Promise<Reputasi[]>;
-    findById(id: number): Promise<Reputasi>;
-    private calculateHasil;
-    private calculateWeight;
-    create(data: CreateReputasiDto): Promise<Reputasi>;
-    update(id: number, data: UpdateReputasiDto): Promise<Reputasi>;
-    delete(id: number): Promise<void>;
-    bulkCreate(data: CreateReputasiDto[]): Promise<Reputasi[]>;
-    findByYear(year: number): Promise<Reputasi[]>;
-    getSummary(year: number, quarter: Quarter): Promise<{
+    createIndikator(createDto: CreateReputasiDto, createdBy?: string): Promise<Reputasi>;
+    findIndikatorsByPeriod(year: number, quarter: Quarter): Promise<Reputasi[]>;
+    findAllIndikators(): Promise<Reputasi[]>;
+    findIndikatorById(id: number): Promise<Reputasi>;
+    updateIndikator(id: number, updateDto: UpdateReputasiDto, updatedBy?: string): Promise<Reputasi>;
+    deleteIndikator(id: number): Promise<void>;
+    searchIndikators(query?: string, year?: number, quarter?: Quarter): Promise<Reputasi[]>;
+    getTotalWeightedByPeriod(year: number, quarter: Quarter): Promise<number>;
+    private validateModeSpecificFields;
+    private calculateWeighted;
+    duplicateIndikatorToNewPeriod(sourceId: number, targetYear: number, targetQuarter: Quarter, createdBy?: string): Promise<Reputasi>;
+    getIndikatorCountByPeriod(year: number, quarter: Quarter): Promise<number>;
+    getSectionsWithIndicatorsByPeriod(year: number, quarter: Quarter): Promise<any>;
+    getPeriods(): Promise<Array<{
         year: number;
         quarter: Quarter;
-        totalItems: number;
-        totalWeighted: number;
-        sections: unknown[];
-        items: Reputasi[];
-    }>;
-    findBySection(sectionId: number, year?: number, quarter?: Quarter): Promise<Reputasi[]>;
-    deleteByPeriod(year: number, quarter: Quarter): Promise<number>;
-    getReputasiScore(year: number, quarter: Quarter): Promise<number>;
-    getRiskLevelDistribution(year: number, quarter: Quarter): Promise<{
-        year: number;
-        quarter: Quarter;
-        distribution: {
-            low: number;
-            lowToModerate: number;
-            moderate: number;
-            moderateToHigh: number;
-            high: number;
-        };
-        totalItems: number;
-    }>;
+    }>>;
 }

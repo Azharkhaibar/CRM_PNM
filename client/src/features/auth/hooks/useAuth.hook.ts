@@ -23,58 +23,116 @@ export const useAuth = () => {
 
   const userRef = useRef<AuthUser | null>(null);
   const loginNotificationSentRef = useRef<boolean>(false);
+  const notificationServiceRef = useRef<NotificationService | null>(null);
 
   useEffect(() => {
     userRef.current = user;
   }, [user]);
 
+  // Inisialisasi NotificationService
+  useEffect(() => {
+    if (!notificationServiceRef.current) {
+      notificationServiceRef.current = new NotificationService('auth-hook');
+    }
+
+    return () => {
+      if (notificationServiceRef.current) {
+        notificationServiceRef.current.cleanup();
+      }
+    };
+  }, []);
+
   const createLoginNotification = useCallback(async () => {
-    if (!user || !user.user_id || !user.username || loginNotificationSentRef.current) return;
+    if (!user || !user.user_id || !user.username) return;
+
+    // Reset ref agar login notification bisa dikirim lagi
+    loginNotificationSentRef.current = false;
+
+    if (loginNotificationSentRef.current) {
+      console.log('⚠️ Login notification already sent');
+      return;
+    }
 
     loginNotificationSentRef.current = true;
 
     try {
-      // ✅ TypeScript aman karena sudah dicek
+      console.log('🔔 Creating login notifications...');
+
+      // 1. Notification untuk user sendiri
       await NotificationService.createLoginNotification(user.user_id, user.username);
 
+      // 2. Broadcast untuk admin/other users
       await NotificationService.createUserStatusBroadcast(user.user_id, user.username, 'login');
+
+      console.log('✅ Login notifications created successfully');
     } catch (err) {
-      console.error('Login notification failed:', err);
+      console.error('❌ Login notification failed:', err);
+      loginNotificationSentRef.current = false; // Reset jika gagal
     }
   }, [user]);
 
-  const createLogoutNotification = useCallback(async (userId: number, userID: string, accessToken?: string): Promise<boolean> => {
-    if (!userId || !userID) return false;
-
-    try {
-      // coba kirim ke backend dulu
-      if (accessToken) {
-        await NotificationService.createLogoutNotification(userId, userID);
-        return true;
-      }
-    } catch (err) {
-      console.warn('Backend logout notification failed:', err);
+  const createLogoutNotification = useCallback(async (userId: number, username: string, accessToken?: string): Promise<boolean> => {
+    if (!userId || !username) {
+      console.log('⚠️ Cannot create logout notification: missing user info');
+      return false;
     }
 
-    // fallback local store
+    // Reset login notification flag
+    loginNotificationSentRef.current = false;
+
     try {
-      const store = useNotificationStore.getState();
-      store.addNotification({
-        userId: String(userId),
-        type: 'info',
-        title: 'Logout Successful',
-        message: `See you soon, ${userID}!`,
-        category: 'security',
-        metadata: {
-          activity_type: 'logout',
-          logout_time: new Date().toISOString(),
-          user_id: userId,
-          is_local: true,
-        },
-      });
+      console.log('🔔 Creating logout notifications...');
+
+      // 1. Coba kirim ke backend dulu jika ada token
+      if (accessToken) {
+        try {
+          await NotificationService.createLogoutNotification(userId, username);
+          console.log('✅ Backend logout notification sent');
+        } catch (backendErr) {
+          console.warn('⚠️ Backend logout notification failed:', backendErr);
+          // Continue to fallback
+        }
+      }
+
+      // 2. Selalu buat broadcast notification untuk admin
+      try {
+        await NotificationService.createUserStatusBroadcast(userId, username, 'logout');
+        console.log('✅ Logout broadcast notification sent');
+      } catch (broadcastErr) {
+        console.warn('⚠️ Logout broadcast notification failed:', broadcastErr);
+      }
+
+      // 3. Fallback: local store notification untuk user sendiri
+      try {
+        const store = useNotificationStore.getState();
+        const notificationId = `logout-${userId}-${Date.now()}`;
+
+        store.addNotification({
+          id: notificationId,
+          userId: String(userId),
+          type: 'info',
+          title: 'Logged Out',
+          message: `You have successfully logged out.`,
+          category: 'security',
+          timestamp: new Date(),
+          metadata: {
+            activity_type: 'logout',
+            action: 'logout',
+            user_id: userId,
+            username: username,
+            logout_time: new Date().toISOString(),
+            is_local: true,
+          },
+        });
+
+        console.log('✅ Local logout notification created');
+      } catch (storeErr) {
+        console.error('❌ Local logout notification failed:', storeErr);
+      }
+
       return true;
-    } catch (fallbackErr) {
-      console.error('Local logout notification failed:', fallbackErr);
+    } catch (err) {
+      console.error('❌ Logout notification process failed:', err);
       return false;
     }
   }, []);
@@ -151,7 +209,7 @@ export const useAuth = () => {
         setLoading(false);
       }
     },
-    [createLoginNotification]
+    [createLoginNotification],
   );
 
   const register = useCallback(async (data: { userID: string; password: string; role: string; gender: string }) => {
@@ -356,7 +414,7 @@ export const useAuth = () => {
         setUpdating(false);
       }
     },
-    [user?.user_id]
+    [user?.user_id],
   );
 
   const changePassword = useCallback(
@@ -408,7 +466,7 @@ export const useAuth = () => {
         setUpdating(false);
       }
     },
-    [user?.user_id]
+    [user?.user_id],
   );
 
   const requestPasswordReset = useCallback(async (userID: string) => {
@@ -464,7 +522,7 @@ export const useAuth = () => {
         console.error(`❌ [${activityId}] Failed to track user activity:`, error);
       }
     },
-    [user?.user_id]
+    [user?.user_id],
   );
 
   const testLogoutNotification = useCallback(async () => {

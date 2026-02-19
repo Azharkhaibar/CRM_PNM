@@ -1,416 +1,465 @@
-// // services/investasi.service.ts
-// import api from './api';
-// import { Investasi, InvestasiSection, CreateSectionDto, UpdateSectionDto, CreateInvestasiDto, UpdateInvestasiDto, Quarter, SummaryResponse, ApiResponse } from '../types/investasi';
-// import { CalculationMode } from '../types/investasi.types';
+// src/features/Dashboard/pages/RiskProfile/pages/Investasi/services/investasi.service.ts
+import axios, { AxiosResponse } from 'axios';
 
-// class InvestasiService {
-//   // ===================== SECTION METHODS =====================
+// ENUMS
+export enum CalculationMode {
+  RASIO = 'RASIO',
+  NILAI_TUNGGAL = 'NILAI_TUNGGAL',
+  TEKS = 'TEKS',
+}
 
-//   /**
-//    * Get all sections
-//    */
-//   async getSections(): Promise<InvestasiSection[]> {
-//     try {
-//       const response = await api.get<InvestasiSection[]>('/investasi/sections');
-//       return response.data;
-//     } catch (error) {
-//       console.error('Error fetching sections:', error);
-//       throw this.handleError(error);
-//     }
-//   }
+export enum Quarter {
+  Q1 = 'Q1',
+  Q2 = 'Q2',
+  Q3 = 'Q3',
+  Q4 = 'Q4',
+}
 
-//   /**
-//    * Get section by ID
-//    */
-//   async getSection(id: number): Promise<InvestasiSection> {
-//     try {
-//       const response = await api.get<InvestasiSection>(`/investasi/sections/${id}`);
-//       return response.data;
-//     } catch (error) {
-//       console.error(`Error fetching section ${id}:`, error);
-//       throw this.handleError(error);
-//     }
-//   }
+// INTERFACES
+export interface InvestasiSection {
+  id: number;
+  no: string;
+  bobotSection: number;
+  parameter: string;
+  description: string | null;
+  sortOrder: number;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+  isDeleted: boolean;
+  createdBy?: string | null;
+  updatedBy?: string | null;
+}
 
-//   /**
-//    * Create new section
-//    */
-//   async createSection(data: CreateSectionDto): Promise<InvestasiSection> {
-//     try {
-//       const response = await api.post<InvestasiSection>('/investasi/sections', data);
-//       return response.data;
-//     } catch (error) {
-//       console.error('Error creating section:', error);
-//       throw this.handleError(error);
-//     }
-//   }
+export interface InvestasiIndikator {
+  id: number;
+  year: number;
+  quarter: Quarter;
+  sectionId: number;
+  no: string;
+  sectionLabel: string;
+  bobotSection: number;
+  subNo: string;
+  indikator: string;
+  bobotIndikator: number;
+  sumberRisiko: string | null;
+  dampak: string | null;
+  low: string | null;
+  lowToModerate: string | null;
+  moderate: string | null;
+  moderateToHigh: string | null;
+  high: string | null;
+  mode: CalculationMode;
+  formula: string | null;
+  isPercent: boolean;
+  pembilangLabel: string | null;
+  pembilangValue: number | null;
+  penyebutLabel: string | null;
+  penyebutValue: number | null;
+  hasil: number | null;
+  hasilText: string | null;
+  peringkat: number;
+  weighted: number;
+  keterangan: string | null;
+  isValidated: boolean;
+  version: number;
+  createdAt: Date;
+  updatedAt: Date;
+  isDeleted: boolean;
+  createdBy?: string | null;
+  updatedBy?: string | null;
+  deletedBy?: string | null;
+  section?: InvestasiSection;
+}
 
-//   /**
-//    * Update section
-//    */
-//   async updateSection(id: number, data: UpdateSectionDto): Promise<InvestasiSection> {
-//     try {
-//       const response = await api.put<InvestasiSection>(`/investasi/sections/${id}`, data);
-//       return response.data;
-//     } catch (error) {
-//       console.error(`Error updating section ${id}:`, error);
-//       throw this.handleError(error);
-//     }
-//   }
+export interface CreateInvestasiSectionData {
+  no: string;
+  parameter: string;
+  bobotSection?: number;
+  description?: string;
+  sortOrder?: number;
+  isActive?: boolean;
+}
 
-//   /**
-//    * Delete section
-//    */
-//   async deleteSection(id: number): Promise<void> {
-//     try {
-//       await api.delete(`/investasi/sections/${id}`);
-//     } catch (error) {
-//       console.error(`Error deleting section ${id}:`, error);
-//       throw this.handleError(error);
-//     }
-//   }
+export interface UpdateInvestasiSectionData {
+  no?: string;
+  parameter?: string;
+  bobotSection?: number;
+  description?: string;
+  sortOrder?: number;
+  isActive?: boolean;
+}
 
-//   // ===================== INVESTASI METHODS =====================
+export interface CreateInvestasiData {
+  year: number;
+  quarter: Quarter;
+  sectionId: number;
+  no: string;
+  sectionLabel: string;
+  bobotSection: number;
+  subNo: string;
+  indikator: string;
+  bobotIndikator: number;
+  sumberRisiko?: string;
+  dampak?: string;
+  low?: string;
+  lowToModerate?: string;
+  moderate?: string;
+  moderateToHigh?: string;
+  high?: string;
+  mode: CalculationMode;
+  formula?: string;
+  isPercent?: boolean;
+  pembilangLabel?: string;
+  pembilangValue?: number;
+  penyebutLabel?: string;
+  penyebutValue?: number;
+  hasil?: number;
+  hasilText?: string;
+  peringkat: number;
+  weighted: number;
+  keterangan?: string;
+  createdBy?: string;
+}
 
-//   /**
-//    * Get investasi by period
-//    */
-//   async getInvestasiByPeriod(year: number, quarter: Quarter): Promise<Investasi[]> {
-//     try {
-//       const response = await api.get<Investasi[]>('/investasi', {
-//         params: { year, quarter },
-//       });
-//       return response.data;
-//     } catch (error) {
-//       console.error(`Error fetching investasi for ${year}-${quarter}:`, error);
-//       throw this.handleError(error);
-//     }
-//   }
+export interface UpdateInvestasiData {
+  year?: number;
+  quarter?: Quarter;
+  sectionId?: number;
+  no?: string;
+  sectionLabel?: string;
+  bobotSection?: number;
+  subNo?: string;
+  indikator?: string;
+  bobotIndikator?: number;
+  sumberRisiko?: string;
+  dampak?: string;
+  low?: string;
+  lowToModerate?: string;
+  moderate?: string;
+  moderateToHigh?: string;
+  high?: string;
+  mode?: CalculationMode;
+  formula?: string;
+  isPercent?: boolean;
+  pembilangLabel?: string;
+  pembilangValue?: number;
+  penyebutLabel?: string;
+  penyebutValue?: number;
+  hasil?: number;
+  hasilText?: string;
+  peringkat?: number;
+  weighted?: number;
+  keterangan?: string;
+}
 
-//   /**
-//    * Get investasi summary
-//    */
-//   async getSummary(year: number, quarter: Quarter): Promise<SummaryResponse> {
-//     try {
-//       const response = await api.get<SummaryResponse>('/investasi/summary', {
-//         params: { year, quarter },
-//       });
-//       return response.data;
-//     } catch (error) {
-//       console.error(`Error fetching summary for ${year}-${quarter}:`, error);
-//       throw this.handleError(error);
-//     }
-//   }
+export interface TotalWeightedResponse {
+  total: number;
+}
 
-//   /**
-//    * Get investasi by ID
-//    */
-//   async getInvestasi(id: number): Promise<Investasi> {
-//     try {
-//       const response = await api.get<Investasi>(`/investasi/${id}`);
-//       return response.data;
-//     } catch (error) {
-//       console.error(`Error fetching investasi ${id}:`, error);
-//       throw this.handleError(error);
-//     }
-//   }
+export interface Period {
+  year: number;
+  quarter: Quarter;
+}
 
-//   /**
-//    * Create new investasi
-//    */
-//   async createInvestasi(data: CreateInvestasiDto): Promise<Investasi> {
-//     try {
-//       const response = await api.post<Investasi>('/investasi', data);
-//       return response.data;
-//     } catch (error) {
-//       console.error('Error creating investasi:', error);
-//       throw this.handleError(error);
-//     }
-//   }
+// UTILITY FUNCTIONS
+export const fmtNumber = (v: any): string => {
+  if (v === '' || v == null) return '';
+  const n = Number(v);
+  if (isNaN(n)) return String(v);
+  return new Intl.NumberFormat('en-US').format(n);
+};
 
-//   /**
-//    * Update investasi
-//    */
-//   async updateInvestasi(id: number, data: UpdateInvestasiDto): Promise<Investasi> {
-//     try {
-//       const response = await api.put<Investasi>(`/investasi/${id}`, data);
-//       return response.data;
-//     } catch (error) {
-//       console.error(`Error updating investasi ${id}:`, error);
-//       throw this.handleError(error);
-//     }
-//   }
+export const formatHasilNumber = (value: any, maxDecimals = 4): string => {
+  if (value === '' || value == null) return '';
+  const n = Number(value);
+  if (!isFinite(n) || isNaN(n)) return '';
 
-//   /**
-//    * Delete investasi
-//    */
-//   async deleteInvestasi(id: number): Promise<void> {
-//     try {
-//       await api.delete(`/investasi/${id}`);
-//     } catch (error) {
-//       console.error(`Error deleting investasi ${id}:`, error);
-//       throw this.handleError(error);
-//     }
-//   }
+  // batasi maxDecimals, lalu buang .0000 di belakang
+  const fixed = n.toFixed(maxDecimals);
+  return fixed.replace(/\.?0+$/, ''); // "1.2300" -> "1.23", "0.0000" -> "0"
+};
 
-//   // ===================== HELPER METHODS =====================
+export const parseNum = (v: any): number => {
+  if (v == null || v === '') return 0;
+  if (typeof v === 'number') return v;
 
-//   /**
-//    * Calculate hasil (client-side)
-//    */
-//   calculateHasil(data: { mode: CalculationMode; numeratorValue?: number; denominatorValue: number; formula?: string; isPercent?: boolean }): number {
-//     const { mode, numeratorValue = 0, denominatorValue, formula, isPercent = false } = data;
+  // buang koma, spasi, dll biar "1,000" -> "1000"
+  const cleaned = String(v).replace(/,/g, '').replace(/\s/g, '');
+  const n = Number(cleaned);
+  return isNaN(n) ? 0 : n;
+};
 
-//     if (mode === CalculationMode.NILAI_TUNGGAL) {
-//       return denominatorValue;
-//     }
+export const computeHasil = (ind: any): number | null => {
+  const mode = ind?.mode || 'RASIO';
+  if (mode === 'TEKS') return null;
 
-//     if (!denominatorValue || denominatorValue === 0) {
-//       return 0;
-//     }
+  const pemb = parseNum(ind.pembilangValue);
+  const peny = parseNum(ind.penyebutValue);
 
-//     // Custom formula
-//     if (formula && formula.trim() !== '') {
-//       try {
-//         const fn = new Function('pemb', 'peny', `return (${formula});`);
-//         const result = fn(numeratorValue, denominatorValue);
+  if (ind.formula && ind.formula.trim() !== '') {
+    try {
+      const expr = ind.formula
+        .replace(/\bpembilang\b/gi, pemb.toString())
+        .replace(/\bpenyebut\b/gi, peny.toString())
+        .replace(/\bpemb\b/g, pemb.toString())
+        .replace(/\bpeny\b/g, peny.toString());
 
-//         if (!isFinite(result) || isNaN(result)) {
-//           throw new Error('Invalid formula result');
-//         }
-
-//         return isPercent ? result * 100 : result;
-//       } catch (error) {
-//         console.warn('Formula error:', error);
-//         return 0;
-//       }
-//     }
-
-//     // Default ratio
-//     const result = numeratorValue / denominatorValue;
-//     return isPercent ? result * 100 : result;
-//   }
-
-//   /**
-//    * Calculate weighted (client-side)
-//    */
-//   calculateWeighted(bobotSection: number, bobotIndikator: number, peringkat: number): number {
-//     const weighted = (bobotSection * bobotIndikator * peringkat) / 10000;
-//     return parseFloat(weighted.toFixed(4));
-//   }
-
-//   /**
-//    * Format data for API submission
-//    */
-//   formatInvestasiData(formData: any, section: InvestasiSection): CreateInvestasiDto {
-//     const hasil = this.calculateHasil({
-//       mode: formData.mode,
-//       numeratorValue: formData.numeratorValue,
-//       denominatorValue: formData.denominatorValue,
-//       formula: formData.formula,
-//       isPercent: formData.isPercent,
-//     });
-
-//     const weighted = this.calculateWeighted(section.bobotSection, formData.bobotIndikator, formData.peringkat);
-
-//     return {
-//       year: formData.year,
-//       quarter: formData.quarter,
-//       sectionId: section.id,
-//       no: section.no,
-//       sectionLabel: section.parameter,
-//       bobotSection: section.bobotSection,
-//       subNo: formData.subNo,
-//       indikator: formData.indikator,
-//       bobotIndikator: formData.bobotIndikator,
-//       sumberRisiko: formData.sumberRisiko,
-//       dampak: formData.dampak,
-//       low: formData.low || 'x ≤ 1%',
-//       lowToModerate: formData.lowToModerate || '1% < x ≤ 2%',
-//       moderate: formData.moderate || '2% < x ≤ 3%',
-//       moderateToHigh: formData.moderateToHigh || '3% < x ≤ 4%',
-//       high: formData.high || 'x > 4%',
-//       mode: formData.mode || CalculationMode.RASIO,
-//       numeratorLabel: formData.numeratorLabel,
-//       numeratorValue: formData.numeratorValue,
-//       denominatorLabel: formData.denominatorLabel,
-//       denominatorValue: formData.denominatorValue,
-//       formula: formData.formula,
-//       isPercent: formData.isPercent || false,
-//       hasil,
-//       peringkat: formData.peringkat,
-//       weighted,
-//       keterangan: formData.keterangan,
-//     };
-//   }
-
-//   /**
-//    * Error handler
-//    */
-//   private handleError(error: any): Error {
-//     if (error.response) {
-//       // Server responded with error
-//       const { data, status } = error.response;
-
-//       if (data?.message) {
-//         if (Array.isArray(data.message)) {
-//           // Validation errors
-//           const messages = data.message
-//             .map((item: any) => {
-//               if (item.constraints) {
-//                 return Object.values(item.constraints).join(', ');
-//               }
-//               return JSON.stringify(item);
-//             })
-//             .join('\n');
-//           return new Error(messages);
-//         }
-//         return new Error(data.message);
-//       }
-
-//       return new Error(`Server error: ${status}`);
-//     } else if (error.request) {
-//       // No response received
-//       return new Error('Network error: No response from server');
-//     } else {
-//       // Request setup error
-//       return new Error(error.message || 'Unknown error');
-//     }
-//   }
-// }
-
-// export const investasiService = new InvestasiService();
-
-// services/investasi.service.ts
-import api from './api.service';
-import { Investasi, InvestasiSection, CreateSectionDto, UpdateSectionDto, CreateInvestasiDto, UpdateInvestasiDto, Quarter } from '../types/investasi';
-
-class InvestasiService {
-  // ===================== SECTION METHODS =====================
-
-  async getSections(): Promise<InvestasiSection[]> {
-    // PERBAIKAN: Jangan kirim parameter apapun untuk endpoint GET sections
-    const response = await api.get<InvestasiSection[]>('/investasi/sections');
-    return response.data;
+      const fn = new Function('pemb', 'peny', `return (${expr});`);
+      const res = fn(pemb, peny);
+      if (!isFinite(res) || isNaN(res)) return null;
+      return Number(res);
+    } catch (e) {
+      console.warn('Invalid formula:', ind.formula, e);
+      return null;
+    }
   }
 
-  async createSection(data: CreateSectionDto): Promise<InvestasiSection> {
-    const response = await api.post<InvestasiSection>('/investasi/sections', data);
-    return response.data;
+  // 🔹 NILAI_TUNGGAL → langsung pakai nilai penyebut
+  if (mode === 'NILAI_TUNGGAL') {
+    if (ind.penyebutValue === '' || ind.penyebutValue == null) return null;
+    return peny; // boleh 0, 10, 100, dll
   }
 
-  async updateSection(id: number, data: UpdateSectionDto): Promise<InvestasiSection> {
-    const response = await api.put<InvestasiSection>(`/investasi/sections/${id}`, data);
-    return response.data;
+  // 🔹 RASIO (default) → pemb / peny
+  if (peny === 0) return null;
+  const result = pemb / peny;
+  if (!isFinite(result) || isNaN(result)) return null;
+  return Number(result);
+};
+
+export const computeWeightedAuto = (ind: any, sectionBobot: number): number => {
+  const sectionB = Number(sectionBobot || 0);
+  const bobotInd = Number(ind.bobotIndikator || 0);
+  const peringkat = Number(ind.peringkat || 0);
+  const res = (sectionB * bobotInd * peringkat) / 10000;
+  if (!isFinite(res) || isNaN(res)) return 0;
+  return res;
+};
+
+export const transformIndicatorToBackend = (indicatorData: any, year: number, quarter: Quarter, sectionId: number, sectionData: any): CreateInvestasiData => {
+  const hasilNum = computeHasil(indicatorData);
+
+  return {
+    year,
+    quarter,
+    sectionId,
+    no: sectionData?.no || '',
+    sectionLabel: sectionData?.parameter || '',
+    bobotSection: Number(sectionData?.bobotSection) || 0,
+    subNo: indicatorData.subNo?.toString().trim() || '',
+    indikator: indicatorData.indikator?.toString().trim() || '',
+    bobotIndikator: Number(indicatorData.bobotIndikator) || 0,
+    sumberRisiko: indicatorData.sumberRisiko?.trim() || undefined,
+    dampak: indicatorData.dampak?.trim() || undefined,
+    low: indicatorData.low?.trim() || undefined,
+    lowToModerate: indicatorData.lowToModerate?.trim() || undefined,
+    moderate: indicatorData.moderate?.trim() || undefined,
+    moderateToHigh: indicatorData.moderateToHigh?.trim() || undefined,
+    high: indicatorData.high?.trim() || undefined,
+    mode: indicatorData.mode || CalculationMode.RASIO,
+    formula: indicatorData.formula?.trim() || undefined,
+    isPercent: Boolean(indicatorData.isPercent || false),
+    pembilangLabel: indicatorData.pembilangLabel?.trim() || undefined,
+    pembilangValue: indicatorData.pembilangValue !== undefined && indicatorData.pembilangValue !== '' ? Number(indicatorData.pembilangValue) : undefined,
+    penyebutLabel: indicatorData.penyebutLabel?.trim() || undefined,
+    penyebutValue: indicatorData.penyebutValue !== undefined && indicatorData.penyebutValue !== '' ? Number(indicatorData.penyebutValue) : undefined,
+    hasil: hasilNum !== null ? hasilNum : undefined,
+    hasilText: indicatorData.mode === CalculationMode.TEKS ? indicatorData.hasilText || indicatorData.keterangan || '' : undefined,
+    peringkat: Number(indicatorData.peringkat) || 1,
+    weighted: computeWeightedAuto(indicatorData, Number(sectionData?.bobotSection) || 0),
+    keterangan: indicatorData.keterangan?.trim() || undefined,
+  };
+};
+
+export const transformIndicatorToFrontend = (indikator: InvestasiIndikator): any => {
+  return {
+    id: indikator.id,
+    subNo: indikator.subNo || '',
+    indikator: indikator.indikator || '',
+    bobotIndikator: indikator.bobotIndikator || 0,
+    sumberRisiko: indikator.sumberRisiko || '',
+    dampak: indikator.dampak || '',
+    pembilangLabel: indikator.pembilangLabel || '',
+    pembilangValue: indikator.pembilangValue !== null ? indikator.pembilangValue.toString() : '',
+    penyebutLabel: indikator.penyebutLabel || '',
+    penyebutValue: indikator.penyebutValue !== null ? indikator.penyebutValue.toString() : '',
+    peringkat: indikator.peringkat || 1,
+    weighted: indikator.weighted || '',
+    hasil: indikator.hasil !== null ? indikator.hasil.toString() : '',
+    hasilText: indikator.hasilText || '',
+    keterangan: indikator.keterangan || '',
+    isPercent: Boolean(indikator.isPercent),
+    mode: indikator.mode || CalculationMode.RASIO,
+    formula: indikator.formula || '',
+    low: indikator.low || '',
+    lowToModerate: indikator.lowToModerate || '',
+    moderate: indikator.moderate || '',
+    moderateToHigh: indikator.moderateToHigh || '',
+    high: indikator.high || '',
+    sectionId: indikator.sectionId,
+    no: indikator.no,
+    sectionLabel: indikator.sectionLabel,
+    bobotSection: indikator.bobotSection,
+    year: indikator.year,
+    quarter: indikator.quarter,
+    section: indikator.section,
+  };
+};
+
+export const transformSectionToBackend = (sectionData: any, year: number, quarter: Quarter): CreateInvestasiSectionData => {
+  return {
+    no: String(sectionData.no),
+    bobotSection: Number(sectionData.bobotSection || 0),
+    parameter: sectionData.parameter,
+    description: sectionData.description || undefined,
+    sortOrder: sectionData.sortOrder || 0,
+    isActive: sectionData.isActive ?? true,
+  };
+};
+
+export const rowsPerIndicator = (ind: any): number => {
+  return 1 + (ind.mode === 'RASIO' ? 2 : 1);
+};
+
+// API SERVICE
+class InvestasiApiService {
+  private baseUrl: string;
+
+  constructor() {
+    this.baseUrl = 'http://localhost:5530/api/v1';
+  }
+
+  async createSection(data: CreateInvestasiSectionData): Promise<InvestasiSection> {
+    return this.request<InvestasiSection>('post', '/investasi/sections', data);
+  }
+
+  async getAllSections(isActive?: boolean): Promise<InvestasiSection[]> {
+    const params = isActive !== undefined ? { isActive } : {};
+    return this.request<InvestasiSection[]>('get', '/investasi/sections', null, params);
+  }
+
+  async getSectionById(id: number): Promise<InvestasiSection> {
+    return this.request<InvestasiSection>('get', `/investasi/sections/${id}`);
+  }
+
+  async updateSection(id: number, data: UpdateInvestasiSectionData): Promise<InvestasiSection> {
+    return this.request<InvestasiSection>('put', `/investasi/sections/${id}`, data);
   }
 
   async deleteSection(id: number): Promise<void> {
-    await api.delete(`/investasi/sections/${id}`);
+    return this.request<void>('delete', `/investasi/sections/${id}`);
   }
 
-  // ===================== INVESTASI METHODS =====================
-
-  async getInvestasiByPeriod(year: number, quarter: Quarter): Promise<Investasi[]> {
-    // PERBAIKAN: Pastikan parameter dikirim dengan benar
-    const response = await api.get<Investasi[]>('/investasi', {
-      params: {
-        year: year.toString(), // Konversi ke string
-        quarter: quarter,
-      },
-    });
-    return response.data;
+  // ========== INDIKATOR API ==========
+  async createIndikator(data: CreateInvestasiData): Promise<InvestasiIndikator> {
+    return this.request<InvestasiIndikator>('post', '/investasi/indikators', data);
   }
 
-  async getInvestasi(id: number): Promise<Investasi> {
-    const response = await api.get<Investasi>(`/investasi/${id}`);
-    return response.data;
+  async getAllIndikators(): Promise<InvestasiIndikator[]> {
+    return this.request<InvestasiIndikator[]>('get', '/investasi/indikators');
   }
 
-  async createInvestasi(data: CreateInvestasiDto): Promise<Investasi> {
-    const response = await api.post<Investasi>('/investasi', data);
-    return response.data;
+  async getIndikatorsByPeriod(year: number, quarter: Quarter): Promise<InvestasiIndikator[]> {
+    return this.request<InvestasiIndikator[]>('get', '/investasi/indikators/period', null, { year, quarter });
   }
 
-  async updateInvestasi(id: number, data: UpdateInvestasiDto): Promise<Investasi> {
-    const response = await api.put<Investasi>(`/investasi/${id}`, data);
-    return response.data;
+  async getSectionsWithIndicatorsByPeriod(year: number, quarter: Quarter): Promise<Array<InvestasiSection & { indicators: InvestasiIndikator[] }>> {
+    return this.request<Array<InvestasiSection & { indicators: InvestasiIndikator[] }>>('get', '/investasi/indikators/sections-by-period', null, { year, quarter });
   }
 
-  async deleteInvestasi(id: number): Promise<void> {
-    await api.delete(`/investasi/${id}`);
+  async searchIndikators(query?: string, year?: number, quarter?: Quarter): Promise<InvestasiIndikator[]> {
+    const params: any = {};
+    if (query) params.query = query;
+    if (year) params.year = year;
+    if (quarter) params.quarter = quarter;
+
+    return this.request<InvestasiIndikator[]>('get', '/investasi/indikators/search', null, params);
   }
 
-  // ===================== HELPER METHODS =====================
-
-  formatInvestasiData(formData: any, section: InvestasiSection): CreateInvestasiDto {
-    // PERBAIKAN: Tambahkan field sectionId yang missing
-    return {
-      year: Number(formData.year),
-      quarter: formData.quarter,
-      sectionId: section.id, // ✅ TAMBAHKAN INI
-      no: section.no,
-      sectionLabel: section.parameter,
-      bobotSection: section.bobotSection,
-      subNo: formData.subNo,
-      indikator: formData.indikator || '',
-      bobotIndikator: Number(formData.bobotIndikator || 0),
-      sumberRisiko: formData.sumberRisiko || '',
-      dampak: formData.dampak || '',
-      low: formData.low || 'x ≤ 1%',
-      lowToModerate: formData.lowToModerate || '1% < x ≤ 2%',
-      moderate: formData.moderate || '2% < x ≤ 3%',
-      moderateToHigh: formData.moderateToHigh || '3% < x ≤ 4%',
-      high: formData.high || 'x > 4%',
-      mode: formData.mode || 'RASIO',
-      numeratorLabel: formData.numeratorLabel || '',
-      numeratorValue: formData.mode === 'NILAI_TUNGGAL' ? 0 : Number(formData.numeratorValue || 0),
-      denominatorLabel: formData.denominatorLabel || '',
-      denominatorValue: Number(formData.denominatorValue || 0),
-      formula: formData.formula || '',
-      isPercent: Boolean(formData.isPercent),
-      peringkat: Number(formData.peringkat || 1),
-      weighted: Number(formData.weighted || 0),
-      keterangan: formData.keterangan || '',
-    };
+  async getIndikatorById(id: number): Promise<InvestasiIndikator> {
+    return this.request<InvestasiIndikator>('get', `/investasi/indikators/${id}`);
   }
 
-  calculateWeighted(bobotSection: number, bobotIndikator: number, peringkat: number): number {
-    const weighted = (bobotSection * bobotIndikator * peringkat) / 10000;
-    return parseFloat(weighted.toFixed(4));
+  async updateIndikator(id: number, data: UpdateInvestasiData): Promise<InvestasiIndikator> {
+    return this.request<InvestasiIndikator>('put', `/investasi/indikators/${id}`, data);
   }
 
-  // Error handler
-  handleError(error: any): string {
-    if (error.response) {
-      const { data, status } = error.response;
+  async deleteIndikator(id: number): Promise<void> {
+    return this.request<void>('delete', `/investasi/indikators/${id}`);
+  }
 
-      if (status === 500) {
-        return 'Server error: Internal server error. Please try again later.';
-      }
+  async getTotalWeightedByPeriod(year: number, quarter: Quarter): Promise<number> {
+    const response = await this.request<TotalWeightedResponse>('get', '/investasi/total-weighted', null, { year, quarter });
+    return response.total;
+  }
 
-      if (data?.message) {
-        if (Array.isArray(data.message)) {
-          return data.message
-            .map((item: any) => {
-              if (item.constraints) {
-                const field = item.property;
-                const errors = Object.values(item.constraints).join(', ');
-                return `${field}: ${errors}`;
-              }
-              return JSON.stringify(item);
-            })
-            .join('\n');
+  async getAvailablePeriods(): Promise<Period[]> {
+    return this.request<Period[]>('get', '/investasi/periods');
+  }
+
+  async duplicateIndikator(sourceId: number, targetYear: number, targetQuarter: Quarter): Promise<InvestasiIndikator> {
+    return this.request<InvestasiIndikator>('post', `/investasi/indikators/${sourceId}/duplicate`, null, { year: targetYear, quarter: targetQuarter });
+  }
+
+  // ========== HELPER METHODS ==========
+  private async request<T>(method: 'get' | 'post' | 'put' | 'delete', endpoint: string, data?: any, params?: any): Promise<T> {
+    try {
+      const config = {
+        method,
+        url: `${this.baseUrl}${endpoint}`,
+        data,
+        params,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      };
+
+      const response: AxiosResponse<T> = await axios(config);
+      return response.data;
+    } catch (error) {
+      this.handleError(error);
+      throw error;
+    }
+  }
+
+  private handleError(error: any): void {
+    if (axios.isAxiosError(error)) {
+      if (error.response) {
+        const message = error.response.data?.message || 'Terjadi kesalahan pada server';
+        const status = error.response.status;
+
+        console.error(`API Error [${status}]:`, message);
+
+        switch (status) {
+          case 400:
+            throw new Error(`Bad Request: ${message}`);
+          case 401:
+            throw new Error('Unauthorized: Silakan login kembali');
+          case 403:
+            throw new Error('Forbidden: Anda tidak memiliki akses');
+          case 404:
+            throw new Error(`Not Found: ${message}`);
+          case 409:
+            throw new Error(`Conflict: ${message}`);
+          case 500:
+            throw new Error('Server Error: Silakan coba lagi nanti');
+          default:
+            throw new Error(`Server Error: ${message}`);
         }
-        return data.message;
+      } else if (error.request) {
+        console.error('Network Error:', error.message);
+        throw new Error('Koneksi jaringan bermasalah. Periksa koneksi internet Anda.');
+      } else {
+        console.error('Request Error:', error.message);
+        throw new Error(`Gagal membuat permintaan: ${error.message}`);
       }
-
-      return `Server error: ${status}`;
-    } else if (error.request) {
-      return 'Network error: No response from server. Please check your connection.';
     } else {
-      return error.message || 'Unknown error';
+      console.error('Unexpected Error:', error);
+      throw new Error('Terjadi kesalahan yang tidak diketahui');
     }
   }
 }
 
-export const investasiService = new InvestasiService();
+// Export singleton instance
+export const investasiApiService = new InvestasiApiService();

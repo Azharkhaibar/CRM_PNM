@@ -9,140 +9,376 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.IndikatorPasar = void 0;
+exports.Pasar = exports.Quarter = exports.CalculationMode = void 0;
 const typeorm_1 = require("typeorm");
 const section_entity_1 = require("./section.entity");
-let IndikatorPasar = class IndikatorPasar {
+var CalculationMode;
+(function (CalculationMode) {
+    CalculationMode["RASIO"] = "RASIO";
+    CalculationMode["NILAI_TUNGGAL"] = "NILAI_TUNGGAL";
+    CalculationMode["TEKS"] = "TEKS";
+})(CalculationMode || (exports.CalculationMode = CalculationMode = {}));
+var Quarter;
+(function (Quarter) {
+    Quarter["Q1"] = "Q1";
+    Quarter["Q2"] = "Q2";
+    Quarter["Q3"] = "Q3";
+    Quarter["Q4"] = "Q4";
+})(Quarter || (exports.Quarter = Quarter = {}));
+let Pasar = class Pasar {
     id;
+    year;
+    quarter;
+    sectionId;
     section;
-    nama_indikator;
-    bobot_indikator;
-    pembilang_label;
-    pembilang_value;
-    penyebut_label;
-    penyebut_value;
-    sumber_risiko;
+    no;
+    sectionLabel;
+    bobotSection;
+    subNo;
+    indikator;
+    bobotIndikator;
+    sumberRisiko;
     dampak;
     low;
-    low_to_moderate;
+    lowToModerate;
     moderate;
-    moderate_to_high;
+    moderateToHigh;
     high;
+    mode;
+    formula;
+    isPercent;
+    pembilangLabel;
+    pembilangValue;
+    penyebutLabel;
+    penyebutValue;
     hasil;
+    hasilText;
     peringkat;
     weighted;
     keterangan;
-    mode;
-    formula;
-    is_percent;
-    created_at;
-    updated_at;
+    isValidated;
+    validatedAt;
+    validatedBy;
+    createdAt;
+    updatedAt;
+    isDeleted;
+    deletedAt;
+    createdBy;
+    updatedBy;
+    deletedBy;
+    version;
+    revisionNotes;
 };
-exports.IndikatorPasar = IndikatorPasar;
+exports.Pasar = Pasar;
 __decorate([
     (0, typeorm_1.PrimaryGeneratedColumn)(),
     __metadata("design:type", Number)
-], IndikatorPasar.prototype, "id", void 0);
+], Pasar.prototype, "id", void 0);
 __decorate([
-    (0, typeorm_1.ManyToOne)(() => section_entity_1.SectionPasar, (section) => section.indikators, {
+    (0, typeorm_1.Column)({ type: 'int' }),
+    __metadata("design:type", Number)
+], Pasar.prototype, "year", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'enum', enum: Quarter }),
+    __metadata("design:type", String)
+], Pasar.prototype, "quarter", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'section_id' }),
+    __metadata("design:type", Number)
+], Pasar.prototype, "sectionId", void 0);
+__decorate([
+    (0, typeorm_1.ManyToOne)(() => section_entity_1.PasarSection, (section) => section.pasarIndicators, {
+        onUpdate: 'CASCADE',
         onDelete: 'CASCADE',
     }),
-    (0, typeorm_1.JoinColumn)({ name: 'sectionId' }),
-    __metadata("design:type", section_entity_1.SectionPasar)
-], IndikatorPasar.prototype, "section", void 0);
+    (0, typeorm_1.JoinColumn)({ name: 'section_id' }),
+    __metadata("design:type", section_entity_1.PasarSection)
+], Pasar.prototype, "section", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'text' }),
+    (0, typeorm_1.Column)({ type: 'varchar', length: 50 }),
     __metadata("design:type", String)
-], IndikatorPasar.prototype, "nama_indikator", void 0);
+], Pasar.prototype, "no", void 0);
 __decorate([
-    (0, typeorm_1.Column)('decimal', { precision: 5, scale: 2 }),
+    (0, typeorm_1.Column)({
+        type: 'varchar',
+        length: 500,
+        name: 'section_label',
+    }),
+    __metadata("design:type", String)
+], Pasar.prototype, "sectionLabel", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        type: 'decimal',
+        precision: 5,
+        scale: 2,
+        name: 'bobot_section',
+    }),
     __metadata("design:type", Number)
-], IndikatorPasar.prototype, "bobot_indikator", void 0);
+], Pasar.prototype, "bobotSection", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        type: 'varchar',
+        length: 50,
+        name: 'sub_no',
+    }),
+    __metadata("design:type", String)
+], Pasar.prototype, "subNo", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'varchar', length: 1000 }),
+    __metadata("design:type", String)
+], Pasar.prototype, "indikator", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        type: 'decimal',
+        precision: 5,
+        scale: 2,
+        name: 'bobot_indikator',
+    }),
+    __metadata("design:type", Number)
+], Pasar.prototype, "bobotIndikator", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        type: 'text',
+        nullable: true,
+        name: 'sumber_risiko',
+    }),
+    __metadata("design:type", Object)
+], Pasar.prototype, "sumberRisiko", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: 'text', nullable: true }),
     __metadata("design:type", Object)
-], IndikatorPasar.prototype, "pembilang_label", void 0);
+], Pasar.prototype, "dampak", void 0);
 __decorate([
-    (0, typeorm_1.Column)('decimal', { precision: 15, scale: 2, nullable: true }),
+    (0, typeorm_1.Column)({
+        type: 'varchar',
+        length: 200,
+        nullable: true,
+    }),
     __metadata("design:type", Object)
-], IndikatorPasar.prototype, "pembilang_value", void 0);
+], Pasar.prototype, "low", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'text', nullable: true }),
+    (0, typeorm_1.Column)({
+        type: 'varchar',
+        length: 200,
+        nullable: true,
+        name: 'low_to_moderate',
+    }),
     __metadata("design:type", Object)
-], IndikatorPasar.prototype, "penyebut_label", void 0);
+], Pasar.prototype, "lowToModerate", void 0);
 __decorate([
-    (0, typeorm_1.Column)('decimal', { precision: 15, scale: 2, nullable: true }),
+    (0, typeorm_1.Column)({
+        type: 'varchar',
+        length: 200,
+        nullable: true,
+    }),
     __metadata("design:type", Object)
-], IndikatorPasar.prototype, "penyebut_value", void 0);
+], Pasar.prototype, "moderate", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'text' }),
-    __metadata("design:type", String)
-], IndikatorPasar.prototype, "sumber_risiko", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ type: 'text' }),
-    __metadata("design:type", String)
-], IndikatorPasar.prototype, "dampak", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ type: 'text' }),
-    __metadata("design:type", String)
-], IndikatorPasar.prototype, "low", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ type: 'text' }),
-    __metadata("design:type", String)
-], IndikatorPasar.prototype, "low_to_moderate", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ type: 'text' }),
-    __metadata("design:type", String)
-], IndikatorPasar.prototype, "moderate", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ type: 'text' }),
-    __metadata("design:type", String)
-], IndikatorPasar.prototype, "moderate_to_high", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ type: 'text' }),
-    __metadata("design:type", String)
-], IndikatorPasar.prototype, "high", void 0);
-__decorate([
-    (0, typeorm_1.Column)('decimal', { precision: 10, scale: 6, nullable: true }),
+    (0, typeorm_1.Column)({
+        type: 'varchar',
+        length: 200,
+        nullable: true,
+        name: 'moderate_to_high',
+    }),
     __metadata("design:type", Object)
-], IndikatorPasar.prototype, "hasil", void 0);
+], Pasar.prototype, "moderateToHigh", void 0);
 __decorate([
-    (0, typeorm_1.Column)('int'),
-    __metadata("design:type", Number)
-], IndikatorPasar.prototype, "peringkat", void 0);
-__decorate([
-    (0, typeorm_1.Column)('decimal', { precision: 10, scale: 2 }),
-    __metadata("design:type", Number)
-], IndikatorPasar.prototype, "weighted", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ type: 'text', nullable: true }),
+    (0, typeorm_1.Column)({
+        type: 'varchar',
+        length: 200,
+        nullable: true,
+    }),
     __metadata("design:type", Object)
-], IndikatorPasar.prototype, "keterangan", void 0);
+], Pasar.prototype, "high", void 0);
 __decorate([
     (0, typeorm_1.Column)({
         type: 'enum',
-        enum: ['RASIO', 'NILAI_TUNGGAL'],
-        default: 'RASIO',
+        enum: CalculationMode,
+        default: CalculationMode.RASIO,
     }),
     __metadata("design:type", String)
-], IndikatorPasar.prototype, "mode", void 0);
+], Pasar.prototype, "mode", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: 'text', nullable: true }),
     __metadata("design:type", Object)
-], IndikatorPasar.prototype, "formula", void 0);
+], Pasar.prototype, "formula", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'boolean', default: false }),
+    (0, typeorm_1.Column)({
+        type: 'boolean',
+        default: false,
+        name: 'is_percent',
+    }),
     __metadata("design:type", Boolean)
-], IndikatorPasar.prototype, "is_percent", void 0);
+], Pasar.prototype, "isPercent", void 0);
 __decorate([
-    (0, typeorm_1.CreateDateColumn)(),
-    __metadata("design:type", Date)
-], IndikatorPasar.prototype, "created_at", void 0);
+    (0, typeorm_1.Column)({
+        type: 'varchar',
+        length: 255,
+        nullable: true,
+        name: 'pembilang_label',
+    }),
+    __metadata("design:type", Object)
+], Pasar.prototype, "pembilangLabel", void 0);
 __decorate([
-    (0, typeorm_1.UpdateDateColumn)(),
+    (0, typeorm_1.Column)({
+        type: 'decimal',
+        precision: 15,
+        scale: 2,
+        nullable: true,
+        name: 'pembilang_value',
+    }),
+    __metadata("design:type", Object)
+], Pasar.prototype, "pembilangValue", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        type: 'varchar',
+        length: 255,
+        nullable: true,
+        name: 'penyebut_label',
+    }),
+    __metadata("design:type", Object)
+], Pasar.prototype, "penyebutLabel", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        type: 'decimal',
+        precision: 15,
+        scale: 2,
+        nullable: true,
+        name: 'penyebut_value',
+    }),
+    __metadata("design:type", Object)
+], Pasar.prototype, "penyebutValue", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        type: 'decimal',
+        precision: 15,
+        scale: 6,
+        nullable: true,
+    }),
+    __metadata("design:type", Object)
+], Pasar.prototype, "hasil", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        type: 'varchar',
+        length: 1000,
+        nullable: true,
+        name: 'hasil_text',
+    }),
+    __metadata("design:type", Object)
+], Pasar.prototype, "hasilText", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'int' }),
+    __metadata("design:type", Number)
+], Pasar.prototype, "peringkat", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        type: 'decimal',
+        precision: 10,
+        scale: 4,
+    }),
+    __metadata("design:type", Number)
+], Pasar.prototype, "weighted", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'text', nullable: true }),
+    __metadata("design:type", Object)
+], Pasar.prototype, "keterangan", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        name: 'is_validated',
+        type: 'boolean',
+        default: false,
+    }),
+    __metadata("design:type", Boolean)
+], Pasar.prototype, "isValidated", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        type: 'timestamp',
+        nullable: true,
+        name: 'validated_at',
+    }),
+    __metadata("design:type", Object)
+], Pasar.prototype, "validatedAt", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        type: 'varchar',
+        length: 100,
+        nullable: true,
+        name: 'validated_by',
+    }),
+    __metadata("design:type", Object)
+], Pasar.prototype, "validatedBy", void 0);
+__decorate([
+    (0, typeorm_1.CreateDateColumn)({ name: 'created_at' }),
     __metadata("design:type", Date)
-], IndikatorPasar.prototype, "updated_at", void 0);
-exports.IndikatorPasar = IndikatorPasar = __decorate([
-    (0, typeorm_1.Entity)('indikators_pasar')
-], IndikatorPasar);
+], Pasar.prototype, "createdAt", void 0);
+__decorate([
+    (0, typeorm_1.UpdateDateColumn)({ name: 'updated_at' }),
+    __metadata("design:type", Date)
+], Pasar.prototype, "updatedAt", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        name: 'is_deleted',
+        type: 'boolean',
+        default: false,
+    }),
+    __metadata("design:type", Boolean)
+], Pasar.prototype, "isDeleted", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        type: 'timestamp',
+        nullable: true,
+        name: 'deleted_at',
+    }),
+    __metadata("design:type", Object)
+], Pasar.prototype, "deletedAt", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        type: 'varchar',
+        length: 100,
+        nullable: true,
+        name: 'created_by',
+    }),
+    __metadata("design:type", Object)
+], Pasar.prototype, "createdBy", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        type: 'varchar',
+        length: 100,
+        nullable: true,
+        name: 'updated_by',
+    }),
+    __metadata("design:type", Object)
+], Pasar.prototype, "updatedBy", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        type: 'varchar',
+        length: 100,
+        nullable: true,
+        name: 'deleted_by',
+    }),
+    __metadata("design:type", Object)
+], Pasar.prototype, "deletedBy", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        type: 'int',
+        default: 1,
+    }),
+    __metadata("design:type", Number)
+], Pasar.prototype, "version", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        type: 'varchar',
+        length: 50,
+        nullable: true,
+        name: 'revision_notes',
+    }),
+    __metadata("design:type", Object)
+], Pasar.prototype, "revisionNotes", void 0);
+exports.Pasar = Pasar = __decorate([
+    (0, typeorm_1.Entity)('indikators_pasar'),
+    (0, typeorm_1.Unique)('UQ_PASAR_PERIOD_SUBNO', ['year', 'quarter', 'subNo', 'sectionId']),
+    (0, typeorm_1.Index)('IDX_PASAR_PERIOD', ['year', 'quarter']),
+    (0, typeorm_1.Index)('IDX_PASAR_SECTION', ['sectionId']),
+    (0, typeorm_1.Index)('IDX_PASAR_YEAR_QUARTER', ['year', 'quarter'])
+], Pasar);
 //# sourceMappingURL=indikator.entity.js.map

@@ -1,207 +1,115 @@
 import {
   WebSocketGateway,
   WebSocketServer,
-  SubscribeMessage,
   OnGatewayConnection,
   OnGatewayDisconnect,
 } from '@nestjs/websockets';
-import { forwardRef, Inject, Logger } from '@nestjs/common';
+import { Logger } from '@nestjs/common';
 import { Server, Socket } from 'socket.io';
-import { NotificationService } from './notification.service';
-import { CreateNotificationDto } from './dto/create-notification.dto';
-import { UpdateNotificationDto } from './dto/update-notification.dto';
-import { INotificationGateway } from './interface/notification-gateway.interface';
-import { Notification } from './entities/notification.entity';
+import * as jwt from 'jsonwebtoken';
 
 @WebSocketGateway({
-  cors: { origin: '*' },
+  cors: { origin: 'http://localhost:5173', credentials: true },
   namespace: '/notifications',
 })
 export class NotificationGateway
-  implements OnGatewayConnection, OnGatewayDisconnect, INotificationGateway
+  implements OnGatewayConnection, OnGatewayDisconnect
 {
   @WebSocketServer()
   server: Server;
-  private readonly userSockets = new Map<number, Socket[]>();
 
   private readonly logger = new Logger(NotificationGateway.name);
 
-  constructor(
-    @Inject(forwardRef(() => NotificationService))
-    private readonly notificationService: NotificationService,
-  ) {}
+  // socket.id => userId
+  private readonly clients = new Map<string, number>();
 
   handleConnection(client: Socket) {
-    const userId = Number(client.handshake.query.userId);
-    if (userId) {
-      this.registerUserSocket(userId, client);
+    const token = client.handshake.auth?.token;
+    if (!token) {
+      client.disconnect(true);
+      return;
     }
-    this.logger.log(`Client connected: ${client.id}`);
+
+    const user = this.verifyToken(token);
+    if (!user) {
+      client.disconnect(true);
+      return;
+    }
+
+    this.clients.set(client.id, user.userId);
+    client.join(`user:${user.userId}`);
+
+    this.logger.log(`WS connected: user=${user.userId}, socket=${client.id}`);
   }
 
   handleDisconnect(client: Socket) {
-    for (const [userId, sockets] of this.userSockets.entries()) {
-      const index = sockets.indexOf(client);
-      if (index !== -1) {
-        sockets.splice(index, 1);
-        if (sockets.length === 0) {
-          this.userSockets.delete(userId);
-          void this.triggerUserOfflineNotification(userId);
-        }
-        break;
-      }
-    }
-    this.logger.log(`Client Disconnected: ${client.id}`);
-  }
-
-  private async getUsername(userId: number): Promise<string> {
-    const user = await this.notificationService.findByUserId(userId);
-    return user?.userID ?? `User-${userId}`;
-  }
-  private async triggerUserOfflineNotification(userId: number) {
-    try {
-      await this.notificationService.notifyUserStatusChange(
-        userId,
-        await this.getUsername(userId),
-        'offline',
-      );
-      this.logger.log(`Offline notification triggered for user ${userId}`);
-    } catch (error) {
-      this.logger.error(
-        `Failed to trigger offline notification for user ${userId}`,
-        error,
-      );
+    const userId = this.clients.get(client.id);
+    if (userId) {
+      this.clients.delete(client.id);
+      this.logger.log(`WS disconnected: user=${userId}, socket=${client.id}`);
     }
   }
 
-  registerUserSocket(userId: number, client: Socket): void {
-    const sockets = this.userSockets.get(userId) ?? [];
-    sockets.push(client);
-    this.userSockets.set(userId, sockets);
-    // if (!this.userSockets.has(userId)) {
-    //   this.userSockets.set(userId, []);
-    // }
-    // const userSockets = this.userSockets.get(userId);
-    // if (userSockets) {
-    //   userSockets.push(client);
-    // }
-    // this.logger.log(`User ${userId} registered with socket ${client.id}`);
-  }
-
-  @SubscribeMessage('getUserNotifications')
-  async handleGetUserNotifications(
-    client: Socket,
-    data: { user_id: number; options?: any },
-  ) {
+  sendNotificationToUser(userId: number, payload: any): boolean {
     try {
-      const { notifications, total } =
-        await this.notificationService.findAllForUser(
-          data.user_id,
-          data.options,
-        );
-      client.emit('userNotifications', { notifications, total });
-    } catch (error) {
-      this.logger.error('Failed to get user notifications', error);
-      client.emit('error', { message: 'Failed to get notifications' });
+      this.server.to(`user:${userId}`).emit('notification', payload);
+      return true;
+    } catch (e) {
+      return false;
     }
   }
 
-  sendNotificationToUser(userId: number, notification: Notification): void {
-    const sockets = this.userSockets.get(userId);
-    if (!sockets) return;
-    sockets.forEach((s) => s.emit('notification', notification));
+  sendNotificationToAll(payload: any): void {
+    this.server.emit('notification:broadcast', payload);
   }
 
-  sendNotificationToAll(notification: Notification) {
-    this.server.emit('notification:broadcast', notification);
+  broadcastUserStatus(userId: number, status: 'online' | 'offline'): void {
+    this.server.emit('user:status', {
+      userId,
+      status,
+      timestamp: new Date().toISOString(),
+    });
   }
 
-  // Tambahkan event untuk user authentication
-  @SubscribeMessage('authenticate')
-  async handleAuthenticate(client: Socket, userId: number) {
-    this.registerUserSocket(userId, client);
+  // ==================== EMITTER METHODS ====================
 
-    // ✅ TRIGGER ONLINE NOTIFICATION
+  sendToUser(userId: number, payload: any) {
+    this.server.to(`user:${userId}`).emit('notification', payload);
+  }
+
+  sendToAll(payload: any) {
+    this.server.emit('notification:broadcast', payload);
+  }
+
+  emitLoginEvent(userId: number, meta: any) {
+    this.sendToUser(userId, {
+      type: 'LOGIN',
+      ...meta,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  emitLogoutEvent(userId: number, meta: any) {
+    this.sendToUser(userId, {
+      type: 'LOGOUT',
+      ...meta,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  // ==================== TOKEN VERIFY ====================
+
+  private verifyToken(token: string): { userId: number } | null {
     try {
-      await this.notificationService.notifyUserStatusChange(
-        userId,
-        await this.getUsername(userId),
-        'online',
-      );
-    } catch (error) {
-      this.logger.error('Failed to send online notification', error);
-    }
+      const secret = process.env.JWT_SECRET as string;
+      const decoded = jwt.verify(token, secret) as any;
 
-    client.emit('authenticated', { success: true });
-    this.logger.log(`User ${userId} authenticated with socket ${client.id}`);
-  }
+      const userId = Number(decoded.sub);
+      if (Number.isNaN(userId)) return null;
 
-  @SubscribeMessage('createNotification')
-  async handleCreateNotification(client: Socket, data: CreateNotificationDto) {
-    try {
-      const notification = await this.notificationService.create(data);
-      client.emit('notificationCreated', notification);
-    } catch (error) {
-      this.logger.error('Failed to create notification', error);
-      client.emit('error', { message: 'Failed to create notification' });
-    }
-  }
-
-  // event logout
-
-  @SubscribeMessage('userLogout')
-  async handleUserLogout(client: Socket, userId: number) {
-    try {
-      await this.notificationService.notifyUserStatusChange(
-        userId,
-        await this.getUsername(userId),
-        'offline',
-      );
-      client.emit('logoutSuccess', { success: true });
-      this.logger.log(`Manual logout notification for user ${userId}`);
-    } catch (error) {
-      this.logger.error('Failed to send logout notification', error);
-      client.emit('error', { message: 'Failed to process logout' });
-    }
-  }
-
-  @SubscribeMessage('updateNotification')
-  async handleUpdateNotification(
-    client: Socket,
-    data: { notification_id: number; updates: UpdateNotificationDto },
-  ) {
-    try {
-      const updated = await this.notificationService.update(
-        data.notification_id,
-        data.updates,
-      );
-      client.emit('notificationUpdated', updated);
-    } catch (error) {
-      this.logger.error('Failed to update notification', error);
-      client.emit('error', { message: 'Failed to update notification' });
-    }
-  }
-
-  @SubscribeMessage('markAsRead')
-  async handleMarkAsRead(client: Socket, notification_id: number) {
-    try {
-      const updated =
-        await this.notificationService.markAsRead(notification_id);
-      client.emit('notificationMarkedRead', updated);
-    } catch (error) {
-      this.logger.error('Failed to mark notification as read', error);
-      client.emit('error', { message: 'Failed to mark as read' });
-    }
-  }
-
-  @SubscribeMessage('markAllAsRead')
-  async handleMarkAllAsRead(client: Socket, user_id: number) {
-    try {
-      await this.notificationService.markAllAsRead(user_id);
-      client.emit('allNotificationsMarkedRead', { success: true });
-    } catch (error) {
-      this.logger.error('Failed to mark all as read', error);
-      client.emit('error', { message: 'Failed to mark all as read' });
+      return { userId };
+    } catch {
+      return null;
     }
   }
 }

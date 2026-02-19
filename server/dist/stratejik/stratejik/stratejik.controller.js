@@ -12,167 +12,281 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.StratejikController = void 0;
+exports.StrategikController = void 0;
 const common_1 = require("@nestjs/common");
+const swagger_1 = require("@nestjs/swagger");
 const stratejik_service_1 = require("./stratejik.service");
-const create_stratejik_dto_1 = require("./dto/create-stratejik.dto");
-const update_stratejik_dto_1 = require("./dto/update-stratejik.dto");
 const create_stratejik_section_dto_1 = require("./dto/create-stratejik-section.dto");
 const update_stratejik_section_dto_1 = require("./dto/update-stratejik-section.dto");
+const create_stratejik_dto_1 = require("./dto/create-stratejik.dto");
+const update_stratejik_dto_1 = require("./dto/update-stratejik.dto");
 const stratejik_entity_1 = require("./entities/stratejik.entity");
-let StratejikController = class StratejikController {
-    stratejikService;
-    constructor(stratejikService) {
-        this.stratejikService = stratejikService;
+let StrategikController = class StrategikController {
+    strategikService;
+    constructor(strategikService) {
+        this.strategikService = strategikService;
     }
-    create(createStratejikDto) {
-        return this.stratejikService.create(createStratejikDto);
+    async createSection(createDto) {
+        return await this.strategikService.createSection(createDto);
     }
-    findAll(year, quarter) {
-        if (year && quarter) {
-            return this.stratejikService.findByPeriod(year, quarter);
+    async getSections(isActive) {
+        return await this.strategikService.findAllSections(isActive);
+    }
+    async getSection(id) {
+        return await this.strategikService.findSectionById(id);
+    }
+    async updateSection(id, updateDto) {
+        return await this.strategikService.updateSection(id, updateDto);
+    }
+    async deleteSection(id) {
+        await this.strategikService.deleteSection(id);
+    }
+    async getSectionsWithIndicatorsByPeriod(year, quarter) {
+        return await this.strategikService.getSectionsWithIndicatorsByPeriod(year, quarter);
+    }
+    async createIndikator(createDto) {
+        return await this.strategikService.createIndikator(createDto);
+    }
+    async getAllIndikators() {
+        return await this.strategikService.findAllIndikators();
+    }
+    async getIndikatorsByPeriod(year, quarter) {
+        return await this.strategikService.findIndikatorsByPeriod(year, quarter);
+    }
+    async searchIndikators(query, year, quarter) {
+        return await this.strategikService.searchIndikators(query, year, quarter);
+    }
+    async getIndikator(id) {
+        return await this.strategikService.findIndikatorById(id);
+    }
+    async updateIndikator(id, updateDto) {
+        return await this.strategikService.updateIndikator(id, updateDto);
+    }
+    async deleteIndikator(id) {
+        await this.strategikService.deleteIndikator(id);
+    }
+    async getTotalWeighted(year, quarter) {
+        const total = await this.strategikService.getTotalWeightedByPeriod(year, quarter);
+        return { total };
+    }
+    async getSectionsByPeriod(year, quarter) {
+        return await this.strategikService.findSectionsByPeriod(year, quarter);
+    }
+    async getAvailablePeriods() {
+        try {
+            const periods = await this.strategikService.getPeriods();
+            return {
+                success: true,
+                data: periods,
+                count: periods.length,
+            };
         }
-        if (year) {
-            return this.stratejikService.findByYear(year);
+        catch (error) {
+            console.error('Error in getAvailablePeriods:', error);
+            throw error;
         }
-        return this.stratejikService.findAll();
     }
-    getSummary(year, quarter) {
-        if (!Object.values(stratejik_entity_1.Quarter).includes(quarter)) {
-            throw new common_1.BadRequestException('Quarter tidak valid. Gunakan Q1, Q2, Q3, atau Q4');
+    async getAllPeriods() {
+        try {
+            const periods = await this.strategikService.getPeriods();
+            const periodsWithCounts = await Promise.all(periods.map(async (period) => {
+                const count = await this.strategikService.getIndikatorCountByPeriod(period.year, period.quarter);
+                return {
+                    ...period,
+                    indicatorCount: count,
+                };
+            }));
+            return {
+                success: true,
+                data: periodsWithCounts,
+                count: periodsWithCounts.length,
+            };
         }
-        return this.stratejikService.getSummary(year, quarter);
+        catch (error) {
+            console.error('Error in getAllPeriods:', error);
+            throw error;
+        }
     }
-    findBySection(sectionId, year, quarter) {
-        return this.stratejikService.findBySection(sectionId, year, quarter);
-    }
-    findOne(id) {
-        return this.stratejikService.findOne(id);
-    }
-    update(id, updateStratejikDto) {
-        return this.stratejikService.update(id, updateStratejikDto);
-    }
-    remove(id) {
-        return this.stratejikService.remove(id);
-    }
-    bulkCreate(createStratejikDtos) {
-        return this.stratejikService.bulkCreate(createStratejikDtos);
-    }
-    createSection(createSectionDto) {
-        return this.stratejikService.createSection(createSectionDto);
-    }
-    findAllSections() {
-        return this.stratejikService.findAllSection();
-    }
-    findSectionById(id) {
-        return this.stratejikService.findSectionById(id);
-    }
-    updateSection(id, updateSectionDto) {
-        return this.stratejikService.updateSection(id, updateSectionDto);
-    }
-    deleteSection(id) {
-        return this.stratejikService.deleteSection(id);
+    async duplicateIndikator(id, year, quarter) {
+        return await this.strategikService.duplicateIndikatorToNewPeriod(id, year, quarter);
     }
 };
-exports.StratejikController = StratejikController;
+exports.StrategikController = StrategikController;
 __decorate([
-    (0, common_1.Post)(),
+    (0, common_1.Post)('sections'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
+    (0, swagger_1.ApiOperation)({ summary: 'Create new strategik section' }),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [create_stratejik_dto_1.CreateStratejikDto]),
-    __metadata("design:returntype", void 0)
-], StratejikController.prototype, "create", null);
+    __metadata("design:paramtypes", [create_stratejik_section_dto_1.CreateStrategikSectionDto]),
+    __metadata("design:returntype", Promise)
+], StrategikController.prototype, "createSection", null);
 __decorate([
-    (0, common_1.Get)(),
-    __param(0, (0, common_1.Query)('year')),
+    (0, common_1.Get)('sections'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get all strategik sections' }),
+    (0, swagger_1.ApiQuery)({ name: 'isActive', required: false, type: Boolean }),
+    __param(0, (0, common_1.Query)('isActive')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Boolean]),
+    __metadata("design:returntype", Promise)
+], StrategikController.prototype, "getSections", null);
+__decorate([
+    (0, common_1.Get)('sections/:id'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get strategik section by ID' }),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number]),
+    __metadata("design:returntype", Promise)
+], StrategikController.prototype, "getSection", null);
+__decorate([
+    (0, common_1.Put)('sections/:id'),
+    (0, swagger_1.ApiOperation)({ summary: 'Update strategik section' }),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, update_stratejik_section_dto_1.UpdateStrategikSectionDto]),
+    __metadata("design:returntype", Promise)
+], StrategikController.prototype, "updateSection", null);
+__decorate([
+    (0, common_1.Delete)('sections/:id'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.NO_CONTENT),
+    (0, swagger_1.ApiOperation)({ summary: 'Delete strategik section' }),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number]),
+    __metadata("design:returntype", Promise)
+], StrategikController.prototype, "deleteSection", null);
+__decorate([
+    (0, common_1.Get)('indikators/sections-by-period'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get sections with indicators by period' }),
+    __param(0, (0, common_1.Query)('year', new common_1.ParseIntPipe())),
     __param(1, (0, common_1.Query)('quarter')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number, String]),
-    __metadata("design:returntype", void 0)
-], StratejikController.prototype, "findAll", null);
+    __metadata("design:returntype", Promise)
+], StrategikController.prototype, "getSectionsWithIndicatorsByPeriod", null);
 __decorate([
-    (0, common_1.Get)('summary'),
-    __param(0, (0, common_1.Query)('year', new common_1.ParseIntPipe({ errorHttpStatusCode: 400 }))),
-    __param(1, (0, common_1.Query)('quarter', new common_1.ValidationPipe({ transform: true }))),
+    (0, common_1.Post)('indikators'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
+    (0, swagger_1.ApiOperation)({ summary: 'Create new strategik indikator' }),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [create_stratejik_dto_1.CreateStrategikDto]),
+    __metadata("design:returntype", Promise)
+], StrategikController.prototype, "createIndikator", null);
+__decorate([
+    (0, common_1.Get)('indikators'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get all strategik indikators' }),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], StrategikController.prototype, "getAllIndikators", null);
+__decorate([
+    (0, common_1.Get)('indikators/period'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get strategik indikators by period' }),
+    (0, swagger_1.ApiQuery)({ name: 'year', required: true, type: Number }),
+    (0, swagger_1.ApiQuery)({ name: 'quarter', required: true, enum: stratejik_entity_1.Quarter }),
+    __param(0, (0, common_1.Query)('year', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Query)('quarter')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number, String]),
-    __metadata("design:returntype", void 0)
-], StratejikController.prototype, "getSummary", null);
+    __metadata("design:returntype", Promise)
+], StrategikController.prototype, "getIndikatorsByPeriod", null);
 __decorate([
-    (0, common_1.Get)('section/:sectionId'),
-    __param(0, (0, common_1.Param)('sectionId', common_1.ParseIntPipe)),
+    (0, common_1.Get)('indikators/search'),
+    (0, swagger_1.ApiOperation)({ summary: 'Search strategik indikators' }),
+    (0, swagger_1.ApiQuery)({ name: 'query', required: false }),
+    (0, swagger_1.ApiQuery)({ name: 'year', required: false }),
+    (0, swagger_1.ApiQuery)({ name: 'quarter', required: false, enum: stratejik_entity_1.Quarter }),
+    __param(0, (0, common_1.Query)('query')),
     __param(1, (0, common_1.Query)('year')),
     __param(2, (0, common_1.Query)('quarter')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number, Number, String]),
-    __metadata("design:returntype", void 0)
-], StratejikController.prototype, "findBySection", null);
+    __metadata("design:paramtypes", [String, Number, String]),
+    __metadata("design:returntype", Promise)
+], StrategikController.prototype, "searchIndikators", null);
 __decorate([
-    (0, common_1.Get)(':id'),
+    (0, common_1.Get)('indikators/:id'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get strategik indikator by ID' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
-    __metadata("design:returntype", void 0)
-], StratejikController.prototype, "findOne", null);
+    __metadata("design:returntype", Promise)
+], StrategikController.prototype, "getIndikator", null);
 __decorate([
-    (0, common_1.Patch)(':id'),
+    (0, common_1.Put)('indikators/:id'),
+    (0, swagger_1.ApiOperation)({ summary: 'Update strategik indikator' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number, update_stratejik_dto_1.UpdateStratejikDto]),
-    __metadata("design:returntype", void 0)
-], StratejikController.prototype, "update", null);
+    __metadata("design:paramtypes", [Number, update_stratejik_dto_1.UpdateStrategikDto]),
+    __metadata("design:returntype", Promise)
+], StrategikController.prototype, "updateIndikator", null);
 __decorate([
-    (0, common_1.Delete)(':id'),
+    (0, common_1.Delete)('indikators/:id'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.NO_CONTENT),
+    (0, swagger_1.ApiOperation)({ summary: 'Delete strategik indikator' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
-    __metadata("design:returntype", void 0)
-], StratejikController.prototype, "remove", null);
+    __metadata("design:returntype", Promise)
+], StrategikController.prototype, "deleteIndikator", null);
 __decorate([
-    (0, common_1.Post)('bulk'),
-    __param(0, (0, common_1.Body)()),
+    (0, common_1.Get)('total-weighted'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get total weighted by period' }),
+    (0, swagger_1.ApiQuery)({ name: 'year', required: true }),
+    (0, swagger_1.ApiQuery)({ name: 'quarter', required: true, enum: stratejik_entity_1.Quarter }),
+    __param(0, (0, common_1.Query)('year', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Query)('quarter')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Array]),
-    __metadata("design:returntype", void 0)
-], StratejikController.prototype, "bulkCreate", null);
+    __metadata("design:paramtypes", [Number, String]),
+    __metadata("design:returntype", Promise)
+], StrategikController.prototype, "getTotalWeighted", null);
 __decorate([
-    (0, common_1.Post)('sections'),
-    __param(0, (0, common_1.Body)()),
+    (0, common_1.Get)('sections/period'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get strategik sections by period' }),
+    (0, swagger_1.ApiQuery)({ name: 'year', required: true, type: Number }),
+    (0, swagger_1.ApiQuery)({ name: 'quarter', required: true, enum: stratejik_entity_1.Quarter }),
+    __param(0, (0, common_1.Query)('year', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Query)('quarter')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [create_stratejik_section_dto_1.CreateStratejikSectionDto]),
-    __metadata("design:returntype", void 0)
-], StratejikController.prototype, "createSection", null);
+    __metadata("design:paramtypes", [Number, String]),
+    __metadata("design:returntype", Promise)
+], StrategikController.prototype, "getSectionsByPeriod", null);
 __decorate([
-    (0, common_1.Get)('sections/all'),
+    (0, common_1.Get)('periods'),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Get available periods',
+        description: 'Get list of distinct years and quarters that have data',
+    }),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
-    __metadata("design:returntype", void 0)
-], StratejikController.prototype, "findAllSections", null);
+    __metadata("design:returntype", Promise)
+], StrategikController.prototype, "getAvailablePeriods", null);
 __decorate([
-    (0, common_1.Get)('sections/:id'),
-    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    (0, common_1.Get)('all-periods'),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Get all periods with count',
+        description: 'Get periods with indicator counts',
+    }),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number]),
-    __metadata("design:returntype", void 0)
-], StratejikController.prototype, "findSectionById", null);
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], StrategikController.prototype, "getAllPeriods", null);
 __decorate([
-    (0, common_1.Patch)('sections/:id'),
+    (0, common_1.Post)('indikators/:id/duplicate'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
+    (0, swagger_1.ApiOperation)({ summary: 'Duplicate indikator to new period' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
-    __param(1, (0, common_1.Body)()),
+    __param(1, (0, common_1.Query)('year', common_1.ParseIntPipe)),
+    __param(2, (0, common_1.Query)('quarter')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number, update_stratejik_section_dto_1.UpdateStratejikSectionDto]),
-    __metadata("design:returntype", void 0)
-], StratejikController.prototype, "updateSection", null);
-__decorate([
-    (0, common_1.Delete)('sections/:id'),
-    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number]),
-    __metadata("design:returntype", void 0)
-], StratejikController.prototype, "deleteSection", null);
-exports.StratejikController = StratejikController = __decorate([
-    (0, common_1.Controller)('stratejik'),
-    __metadata("design:paramtypes", [stratejik_service_1.StratejikService])
-], StratejikController);
+    __metadata("design:paramtypes", [Number, Number, String]),
+    __metadata("design:returntype", Promise)
+], StrategikController.prototype, "duplicateIndikator", null);
+exports.StrategikController = StrategikController = __decorate([
+    (0, swagger_1.ApiTags)('Strategik'),
+    (0, common_1.Controller)('strategik'),
+    __metadata("design:paramtypes", [stratejik_service_1.StrategikService])
+], StrategikController);
 //# sourceMappingURL=stratejik.controller.js.map

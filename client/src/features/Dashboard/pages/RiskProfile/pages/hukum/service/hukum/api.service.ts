@@ -1,31 +1,50 @@
-// src/services/api-hukum.service.ts
-import axios from 'axios';
+// services/api.service.ts
+import axios, { AxiosError } from 'axios';
 
 const API_BASE_URL = 'http://localhost:5530/api/v1';
 
-export const apiHukum = axios.create({
-  baseURL: `${API_BASE_URL}/hukum`,
-  timeout: 30000,
+// Buat instance axios untuk hukum
+export const api_hukum = axios.create({
+  baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
+  timeout: 10000,
 });
 
-// Interceptor untuk debugging
-apiHukum.interceptors.request.use((config) => {
-  console.log(`📤 [HUKUM] ${config.method?.toUpperCase()} ${config.url}`);
-  return config;
-});
+// Interceptor untuk logging error
+api_hukum.interceptors.response.use(
+  (response) => response,
+  (error: AxiosError) => {
+    console.error('❌ [HUKUM API] Error:', {
+      url: error.config?.url,
+      method: error.config?.method,
+      status: error.response?.status,
+      data: error.response?.data,
+    });
 
-apiHukum.interceptors.response.use(
-  (response) => {
-    console.log(`📥 [HUKUM] ${response.status} ${response.config.url}`);
-    return response;
-  },
-  (error) => {
-    console.error(`❌ [HUKUM] ${error.response?.status || 'Network'} ${error.config?.url}`);
+    // Throw error dengan pesan yang lebih jelas
+    if (error.response?.data) {
+      const data = error.response.data as any;
+      if (data.message) {
+        if (Array.isArray(data.message)) {
+          const messages = data.message.map((item: any) => {
+            if (item.constraints) {
+              const field = item.property || 'field';
+              const errors = Object.values(item.constraints).join(', ');
+              return `${field}: ${errors}`;
+            }
+            return typeof item === 'string' ? item : JSON.stringify(item);
+          });
+          error.message = messages.join('\n');
+        } else {
+          error.message = typeof data.message === 'string' ? data.message : JSON.stringify(data.message);
+        }
+      }
+    }
+
     return Promise.reject(error);
   }
 );
 
-export default apiHukum;
+export default api_hukum;

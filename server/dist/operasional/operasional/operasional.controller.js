@@ -16,137 +16,277 @@ exports.OperasionalController = void 0;
 const common_1 = require("@nestjs/common");
 const swagger_1 = require("@nestjs/swagger");
 const operasional_service_1 = require("./operasional.service");
+const update_operasional_section_dto_1 = require("./dto/update-operasional-section.dto");
+const create_operasional_section_dto_1 = require("./dto/create-operasional-section.dto");
 const create_operasional_dto_1 = require("./dto/create-operasional.dto");
 const update_operasional_dto_1 = require("./dto/update-operasional.dto");
-const operasional_entity_1 = require("./entities/operasional.entity");
+const operasional_section_entity_1 = require("./entities/operasional-section.entity");
 let OperasionalController = class OperasionalController {
-    operationalService;
-    constructor(operationalService) {
-        this.operationalService = operationalService;
+    operasionalService;
+    constructor(operasionalService) {
+        this.operasionalService = operasionalService;
     }
-    createSection(createSectionDto) {
-        return this.operationalService.createSection(createSectionDto);
+    async createSection(createDto) {
+        return await this.operasionalService.createSection(createDto);
     }
-    updateSection(id, updateSectionDto) {
-        return this.operationalService.updateSection(+id, updateSectionDto);
+    async getSections(isActive) {
+        return await this.operasionalService.findAllSections(isActive);
     }
-    deleteSection(id) {
-        return this.operationalService.deleteSection(+id);
+    async getSection(id) {
+        return await this.operasionalService.findSectionById(id);
     }
-    getSectionsByPeriod(year, quarter) {
-        return this.operationalService.getSectionsByPeriod(year, quarter);
+    async updateSection(id, updateDto) {
+        return await this.operasionalService.updateSection(id, updateDto);
     }
-    getSectionById(id) {
-        return this.operationalService.getSectionById(+id);
+    async deleteSection(id) {
+        await this.operasionalService.deleteSection(id);
     }
-    createIndikator(createIndikatorDto) {
-        return this.operationalService.createIndikator(createIndikatorDto);
+    async getSectionsWithIndicatorsByPeriod(year, quarter) {
+        return await this.operasionalService.getSectionsWithIndicatorsByPeriod(year, quarter);
     }
-    updateIndikator(id, updateIndikatorDto) {
-        return this.operationalService.updateIndikator(+id, updateIndikatorDto);
+    async createIndikator(createDto) {
+        return await this.operasionalService.createIndikator(createDto);
     }
-    deleteIndikator(id) {
-        return this.operationalService.deleteIndikator(+id);
+    async getAllIndikators() {
+        return await this.operasionalService.findAllIndikators();
     }
-    getIndikatorById(id) {
-        return this.operationalService.getIndikatorById(+id);
+    async getIndikatorsByPeriod(year, quarter) {
+        return await this.operasionalService.findIndikatorsByPeriod(year, quarter);
     }
-    getSummaryByPeriod(year, quarter) {
-        return this.operationalService.getSummaryByPeriod(year, quarter);
+    async searchIndikators(query, year, quarter) {
+        return await this.operasionalService.searchIndikators(query, year, quarter);
+    }
+    async getIndikator(id) {
+        return await this.operasionalService.findIndikatorById(id);
+    }
+    async updateIndikator(id, updateDto) {
+        return await this.operasionalService.updateIndikator(id, updateDto);
+    }
+    async deleteIndikator(id) {
+        await this.operasionalService.deleteIndikator(id);
+    }
+    async getTotalWeighted(year, quarter) {
+        const total = await this.operasionalService.getTotalWeightedByPeriod(year, quarter);
+        return { total };
+    }
+    async getSectionsByPeriod(year, quarter) {
+        return await this.operasionalService.findSectionsByPeriod(year, quarter);
+    }
+    async getAvailablePeriods() {
+        try {
+            const periods = await this.operasionalService.getPeriods();
+            return {
+                success: true,
+                data: periods,
+                count: periods.length,
+            };
+        }
+        catch (error) {
+            console.error('Error in getAvailablePeriods:', error);
+            throw error;
+        }
+    }
+    async getAllPeriods() {
+        try {
+            const periods = await this.operasionalService.getPeriods();
+            const periodsWithCounts = await Promise.all(periods.map(async (period) => {
+                const count = await this.operasionalService.getIndikatorCountByPeriod(period.year, period.quarter);
+                return {
+                    ...period,
+                    indicatorCount: count,
+                };
+            }));
+            return {
+                success: true,
+                data: periodsWithCounts,
+                count: periodsWithCounts.length,
+            };
+        }
+        catch (error) {
+            console.error('Error in getAllPeriods:', error);
+            throw error;
+        }
+    }
+    async duplicateIndikator(id, year, quarter) {
+        return await this.operasionalService.duplicateIndikatorToNewPeriod(id, year, quarter);
     }
 };
 exports.OperasionalController = OperasionalController;
 __decorate([
     (0, common_1.Post)('sections'),
-    (0, swagger_1.ApiOperation)({ summary: 'Create new operational section' }),
+    (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
+    (0, swagger_1.ApiOperation)({ summary: 'Create new operasional section' }),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [create_operasional_dto_1.CreateSectionOperationalDto]),
-    __metadata("design:returntype", void 0)
+    __metadata("design:paramtypes", [create_operasional_section_dto_1.CreateOperasionalSectionDto]),
+    __metadata("design:returntype", Promise)
 ], OperasionalController.prototype, "createSection", null);
 __decorate([
-    (0, common_1.Patch)('sections/:id'),
-    (0, swagger_1.ApiOperation)({ summary: 'Update operational section' }),
-    __param(0, (0, common_1.Param)('id')),
+    (0, common_1.Get)('sections'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get all operasional sections' }),
+    (0, swagger_1.ApiQuery)({ name: 'isActive', required: false, type: Boolean }),
+    __param(0, (0, common_1.Query)('isActive')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Boolean]),
+    __metadata("design:returntype", Promise)
+], OperasionalController.prototype, "getSections", null);
+__decorate([
+    (0, common_1.Get)('sections/:id'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get operasional section by ID' }),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number]),
+    __metadata("design:returntype", Promise)
+], OperasionalController.prototype, "getSection", null);
+__decorate([
+    (0, common_1.Put)('sections/:id'),
+    (0, swagger_1.ApiOperation)({ summary: 'Update operasional section' }),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, update_operasional_dto_1.UpdateSectionOperationalDto]),
-    __metadata("design:returntype", void 0)
+    __metadata("design:paramtypes", [Number, update_operasional_section_dto_1.UpdateOperasionalSectionDto]),
+    __metadata("design:returntype", Promise)
 ], OperasionalController.prototype, "updateSection", null);
 __decorate([
     (0, common_1.Delete)('sections/:id'),
-    (0, swagger_1.ApiOperation)({ summary: 'Delete operational section' }),
-    __param(0, (0, common_1.Param)('id')),
+    (0, common_1.HttpCode)(common_1.HttpStatus.NO_CONTENT),
+    (0, swagger_1.ApiOperation)({ summary: 'Delete operasional section' }),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
-    __metadata("design:returntype", void 0)
+    __metadata("design:paramtypes", [Number]),
+    __metadata("design:returntype", Promise)
 ], OperasionalController.prototype, "deleteSection", null);
 __decorate([
-    (0, common_1.Get)('sections'),
-    (0, swagger_1.ApiOperation)({ summary: 'Get operational sections by period' }),
-    (0, swagger_1.ApiQuery)({ name: 'year', required: true, type: Number }),
-    (0, swagger_1.ApiQuery)({ name: 'quarter', required: true, enum: operasional_entity_1.Quarter }),
-    __param(0, (0, common_1.Query)('year')),
+    (0, common_1.Get)('indikators/sections-by-period'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get sections with indicators by period' }),
+    __param(0, (0, common_1.Query)('year', common_1.ParseIntPipe)),
     __param(1, (0, common_1.Query)('quarter')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number, String]),
-    __metadata("design:returntype", void 0)
-], OperasionalController.prototype, "getSectionsByPeriod", null);
+    __metadata("design:returntype", Promise)
+], OperasionalController.prototype, "getSectionsWithIndicatorsByPeriod", null);
 __decorate([
-    (0, common_1.Get)('sections/:id'),
-    (0, swagger_1.ApiOperation)({ summary: 'Get operational section by ID' }),
-    __param(0, (0, common_1.Param)('id')),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
-    __metadata("design:returntype", void 0)
-], OperasionalController.prototype, "getSectionById", null);
-__decorate([
-    (0, common_1.Post)('indicators'),
-    (0, swagger_1.ApiOperation)({ summary: 'Create new operational indicator' }),
+    (0, common_1.Post)('indikators'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
+    (0, swagger_1.ApiOperation)({ summary: 'Create new operasional indikator' }),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [create_operasional_dto_1.CreateIndikatorOperationalDto]),
-    __metadata("design:returntype", void 0)
+    __metadata("design:paramtypes", [create_operasional_dto_1.CreateOperasionalDto]),
+    __metadata("design:returntype", Promise)
 ], OperasionalController.prototype, "createIndikator", null);
 __decorate([
-    (0, common_1.Patch)('indicators/:id'),
-    (0, swagger_1.ApiOperation)({ summary: 'Update operational indicator' }),
-    __param(0, (0, common_1.Param)('id')),
-    __param(1, (0, common_1.Body)()),
+    (0, common_1.Get)('indikators'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get all operasional indikators' }),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, update_operasional_dto_1.UpdateIndikatorOperationalDto]),
-    __metadata("design:returntype", void 0)
-], OperasionalController.prototype, "updateIndikator", null);
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], OperasionalController.prototype, "getAllIndikators", null);
 __decorate([
-    (0, common_1.Delete)('indicators/:id'),
-    (0, swagger_1.ApiOperation)({ summary: 'Delete operational indicator' }),
-    __param(0, (0, common_1.Param)('id')),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
-    __metadata("design:returntype", void 0)
-], OperasionalController.prototype, "deleteIndikator", null);
-__decorate([
-    (0, common_1.Get)('indicators/:id'),
-    (0, swagger_1.ApiOperation)({ summary: 'Get operational indicator by ID' }),
-    __param(0, (0, common_1.Param)('id')),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
-    __metadata("design:returntype", void 0)
-], OperasionalController.prototype, "getIndikatorById", null);
-__decorate([
-    (0, common_1.Get)('summary'),
-    (0, swagger_1.ApiOperation)({ summary: 'Get operational summary by period' }),
+    (0, common_1.Get)('indikators/period'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get operasional indikators by period' }),
     (0, swagger_1.ApiQuery)({ name: 'year', required: true, type: Number }),
-    (0, swagger_1.ApiQuery)({ name: 'quarter', required: true, enum: operasional_entity_1.Quarter }),
-    __param(0, (0, common_1.Query)('year')),
+    (0, swagger_1.ApiQuery)({ name: 'quarter', required: true, enum: operasional_section_entity_1.Quarter }),
+    __param(0, (0, common_1.Query)('year', common_1.ParseIntPipe)),
     __param(1, (0, common_1.Query)('quarter')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number, String]),
-    __metadata("design:returntype", void 0)
-], OperasionalController.prototype, "getSummaryByPeriod", null);
+    __metadata("design:returntype", Promise)
+], OperasionalController.prototype, "getIndikatorsByPeriod", null);
+__decorate([
+    (0, common_1.Get)('indikators/search'),
+    (0, swagger_1.ApiOperation)({ summary: 'Search operasional indikators' }),
+    (0, swagger_1.ApiQuery)({ name: 'query', required: false }),
+    (0, swagger_1.ApiQuery)({ name: 'year', required: false }),
+    (0, swagger_1.ApiQuery)({ name: 'quarter', required: false, enum: operasional_section_entity_1.Quarter }),
+    __param(0, (0, common_1.Query)('query')),
+    __param(1, (0, common_1.Query)('year')),
+    __param(2, (0, common_1.Query)('quarter')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Number, String]),
+    __metadata("design:returntype", Promise)
+], OperasionalController.prototype, "searchIndikators", null);
+__decorate([
+    (0, common_1.Get)('indikators/:id'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get operasional indikator by ID' }),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number]),
+    __metadata("design:returntype", Promise)
+], OperasionalController.prototype, "getIndikator", null);
+__decorate([
+    (0, common_1.Put)('indikators/:id'),
+    (0, swagger_1.ApiOperation)({ summary: 'Update operasional indikator' }),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, update_operasional_dto_1.UpdateOperasionalDto]),
+    __metadata("design:returntype", Promise)
+], OperasionalController.prototype, "updateIndikator", null);
+__decorate([
+    (0, common_1.Delete)('indikators/:id'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.NO_CONTENT),
+    (0, swagger_1.ApiOperation)({ summary: 'Delete operasional indikator' }),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number]),
+    __metadata("design:returntype", Promise)
+], OperasionalController.prototype, "deleteIndikator", null);
+__decorate([
+    (0, common_1.Get)('total-weighted'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get total weighted by period' }),
+    (0, swagger_1.ApiQuery)({ name: 'year', required: true }),
+    (0, swagger_1.ApiQuery)({ name: 'quarter', required: true, enum: operasional_section_entity_1.Quarter }),
+    __param(0, (0, common_1.Query)('year', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Query)('quarter')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, String]),
+    __metadata("design:returntype", Promise)
+], OperasionalController.prototype, "getTotalWeighted", null);
+__decorate([
+    (0, common_1.Get)('sections/period'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get operasional sections by period' }),
+    (0, swagger_1.ApiQuery)({ name: 'year', required: true, type: Number }),
+    (0, swagger_1.ApiQuery)({ name: 'quarter', required: true, enum: operasional_section_entity_1.Quarter }),
+    __param(0, (0, common_1.Query)('year', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Query)('quarter')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, String]),
+    __metadata("design:returntype", Promise)
+], OperasionalController.prototype, "getSectionsByPeriod", null);
+__decorate([
+    (0, common_1.Get)('periods'),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Get available periods',
+        description: 'Get list of distinct years and quarters that have data',
+    }),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], OperasionalController.prototype, "getAvailablePeriods", null);
+__decorate([
+    (0, common_1.Get)('all-periods'),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Get all periods with count',
+        description: 'Get periods with indicator counts',
+    }),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], OperasionalController.prototype, "getAllPeriods", null);
+__decorate([
+    (0, common_1.Post)('indikators/:id/duplicate'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
+    (0, swagger_1.ApiOperation)({ summary: 'Duplicate indikator to new period' }),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Query)('year', common_1.ParseIntPipe)),
+    __param(2, (0, common_1.Query)('quarter')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, Number, String]),
+    __metadata("design:returntype", Promise)
+], OperasionalController.prototype, "duplicateIndikator", null);
 exports.OperasionalController = OperasionalController = __decorate([
-    (0, swagger_1.ApiTags)('operasional'),
+    (0, swagger_1.ApiTags)('Operasional'),
     (0, common_1.Controller)('operasional'),
-    __metadata("design:paramtypes", [operasional_service_1.OperationalService])
+    __metadata("design:paramtypes", [operasional_service_1.OperasionalService])
 ], OperasionalController);
 //# sourceMappingURL=operasional.controller.js.map

@@ -1,5 +1,6 @@
-import { Likuiditas, Quarter } from './likuiditas.entity';
-export declare class SectionLikuiditas {
+import { Quarter } from 'src/likuiditas/likuiditas/entities/likuiditas.entity';
+import { Likuiditas } from 'src/likuiditas/likuiditas/entities/likuiditas.entity';
+export declare class LikuiditasSection {
     id: number;
     year: number;
     quarter: Quarter;
@@ -7,9 +8,10 @@ export declare class SectionLikuiditas {
     bobotSection: number;
     parameter: string;
     description: string | null;
+    sortOrder: number;
+    isActive: boolean;
     createdAt: Date;
     updatedAt: Date;
     isDeleted: boolean;
-    deletedAt: Date | null;
-    indikators: Likuiditas[];
+    likuiditasIndicators: Likuiditas[];
 }

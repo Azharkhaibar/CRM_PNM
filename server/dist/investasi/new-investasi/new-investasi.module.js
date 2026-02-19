@@ -19,7 +19,7 @@ exports.NewInvestasiModule = NewInvestasiModule;
 exports.NewInvestasiModule = NewInvestasiModule = __decorate([
     (0, common_1.Module)({
         imports: [typeorm_1.TypeOrmModule.forFeature([new_investasi_entity_1.Investasi, new_investasi_section_entity_1.InvestasiSection])],
-        controllers: [new_investasi_controller_1.NewInvestasiController],
+        controllers: [new_investasi_controller_1.InvestasiController],
         providers: [new_investasi_service_1.InvestasiService],
         exports: [new_investasi_service_1.InvestasiService],
     })

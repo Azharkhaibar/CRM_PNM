@@ -9,7 +9,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Stratejik = exports.Quarter = exports.CalculationMode = void 0;
+exports.Strategik = exports.Quarter = exports.CalculationMode = void 0;
 const typeorm_1 = require("typeorm");
 const stratejik_section_entity_1 = require("./stratejik-section.entity");
 var CalculationMode;
@@ -25,7 +25,7 @@ var Quarter;
     Quarter["Q3"] = "Q3";
     Quarter["Q4"] = "Q4";
 })(Quarter || (exports.Quarter = Quarter = {}));
-let Stratejik = class Stratejik {
+let Strategik = class Strategik {
     id;
     year;
     quarter;
@@ -45,111 +45,151 @@ let Stratejik = class Stratejik {
     moderateToHigh;
     high;
     mode;
+    formula;
+    isPercent;
     pembilangLabel;
     pembilangValue;
     penyebutLabel;
     penyebutValue;
-    formula;
-    isPercent;
     hasil;
     hasilText;
     peringkat;
     weighted;
     keterangan;
+    isValidated;
+    validatedAt;
+    validatedBy;
     createdAt;
     updatedAt;
     isDeleted;
     deletedAt;
     createdBy;
     updatedBy;
+    deletedBy;
+    version;
+    revisionNotes;
 };
-exports.Stratejik = Stratejik;
+exports.Strategik = Strategik;
 __decorate([
     (0, typeorm_1.PrimaryGeneratedColumn)(),
     __metadata("design:type", Number)
-], Stratejik.prototype, "id", void 0);
+], Strategik.prototype, "id", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: 'int' }),
     __metadata("design:type", Number)
-], Stratejik.prototype, "year", void 0);
+], Strategik.prototype, "year", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: 'enum', enum: Quarter }),
     __metadata("design:type", String)
-], Stratejik.prototype, "quarter", void 0);
+], Strategik.prototype, "quarter", void 0);
 __decorate([
-    (0, typeorm_1.Column)(),
+    (0, typeorm_1.Column)({ name: 'section_id' }),
     __metadata("design:type", Number)
-], Stratejik.prototype, "sectionId", void 0);
+], Strategik.prototype, "sectionId", void 0);
 __decorate([
-    (0, typeorm_1.ManyToOne)(() => stratejik_section_entity_1.StratejikSection, (section) => section.stratejik, {
+    (0, typeorm_1.ManyToOne)(() => stratejik_section_entity_1.StrategikSection, (section) => section.strategikIndicators, {
         onUpdate: 'CASCADE',
-        onDelete: 'RESTRICT',
+        onDelete: 'CASCADE',
     }),
-    (0, typeorm_1.JoinColumn)({ name: 'sectionId' }),
-    __metadata("design:type", stratejik_section_entity_1.StratejikSection)
-], Stratejik.prototype, "section", void 0);
+    (0, typeorm_1.JoinColumn)({ name: 'section_id' }),
+    __metadata("design:type", stratejik_section_entity_1.StrategikSection)
+], Strategik.prototype, "section", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: 'varchar', length: 50 }),
     __metadata("design:type", String)
-], Stratejik.prototype, "no", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ type: 'varchar', length: 255 }),
-    __metadata("design:type", String)
-], Stratejik.prototype, "sectionLabel", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ type: 'decimal', precision: 5, scale: 2 }),
-    __metadata("design:type", Number)
-], Stratejik.prototype, "bobotSection", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ type: 'varchar', length: 50, name: 'no_indikator' }),
-    __metadata("design:type", String)
-], Stratejik.prototype, "subNo", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ type: 'varchar', length: 500 }),
-    __metadata("design:type", String)
-], Stratejik.prototype, "indikator", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ type: 'decimal', precision: 5, scale: 2, name: 'bobot_indikator' }),
-    __metadata("design:type", Number)
-], Stratejik.prototype, "bobotIndikator", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ type: 'text', nullable: true, name: 'sumber_resiko' }),
-    __metadata("design:type", Object)
-], Stratejik.prototype, "sumberRisiko", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ type: 'text', nullable: true }),
-    __metadata("design:type", Object)
-], Stratejik.prototype, "dampak", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ type: 'varchar', length: 100, nullable: true }),
-    __metadata("design:type", Object)
-], Stratejik.prototype, "low", void 0);
+], Strategik.prototype, "no", void 0);
 __decorate([
     (0, typeorm_1.Column)({
         type: 'varchar',
-        length: 100,
+        length: 500,
+        name: 'section_label',
+    }),
+    __metadata("design:type", String)
+], Strategik.prototype, "sectionLabel", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        type: 'decimal',
+        precision: 5,
+        scale: 2,
+        name: 'bobot_section',
+    }),
+    __metadata("design:type", Number)
+], Strategik.prototype, "bobotSection", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        type: 'varchar',
+        length: 50,
+        name: 'sub_no',
+    }),
+    __metadata("design:type", String)
+], Strategik.prototype, "subNo", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'varchar', length: 1000 }),
+    __metadata("design:type", String)
+], Strategik.prototype, "indikator", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        type: 'decimal',
+        precision: 5,
+        scale: 2,
+        name: 'bobot_indikator',
+    }),
+    __metadata("design:type", Number)
+], Strategik.prototype, "bobotIndikator", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        type: 'text',
+        nullable: true,
+        name: 'sumber_risiko',
+    }),
+    __metadata("design:type", Object)
+], Strategik.prototype, "sumberRisiko", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'text', nullable: true }),
+    __metadata("design:type", Object)
+], Strategik.prototype, "dampak", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        type: 'varchar',
+        length: 200,
+        nullable: true,
+    }),
+    __metadata("design:type", Object)
+], Strategik.prototype, "low", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        type: 'varchar',
+        length: 200,
         nullable: true,
         name: 'low_to_moderate',
     }),
     __metadata("design:type", Object)
-], Stratejik.prototype, "lowToModerate", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ type: 'varchar', length: 100, nullable: true }),
-    __metadata("design:type", Object)
-], Stratejik.prototype, "moderate", void 0);
+], Strategik.prototype, "lowToModerate", void 0);
 __decorate([
     (0, typeorm_1.Column)({
         type: 'varchar',
-        length: 100,
+        length: 200,
+        nullable: true,
+    }),
+    __metadata("design:type", Object)
+], Strategik.prototype, "moderate", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        type: 'varchar',
+        length: 200,
         nullable: true,
         name: 'moderate_to_high',
     }),
     __metadata("design:type", Object)
-], Stratejik.prototype, "moderateToHigh", void 0);
+], Strategik.prototype, "moderateToHigh", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'varchar', length: 100, nullable: true }),
+    (0, typeorm_1.Column)({
+        type: 'varchar',
+        length: 200,
+        nullable: true,
+    }),
     __metadata("design:type", Object)
-], Stratejik.prototype, "high", void 0);
+], Strategik.prototype, "high", void 0);
 __decorate([
     (0, typeorm_1.Column)({
         type: 'enum',
@@ -157,100 +197,188 @@ __decorate([
         default: CalculationMode.RASIO,
     }),
     __metadata("design:type", String)
-], Stratejik.prototype, "mode", void 0);
-__decorate([
-    (0, typeorm_1.Column)({
-        type: 'varchar',
-        length: 255,
-        nullable: true,
-        name: 'nama_pembilang',
-    }),
-    __metadata("design:type", Object)
-], Stratejik.prototype, "pembilangLabel", void 0);
-__decorate([
-    (0, typeorm_1.Column)({
-        type: 'decimal',
-        precision: 15,
-        scale: 2,
-        nullable: true,
-        name: 'total_pembilang',
-    }),
-    __metadata("design:type", Object)
-], Stratejik.prototype, "pembilangValue", void 0);
-__decorate([
-    (0, typeorm_1.Column)({
-        type: 'varchar',
-        length: 255,
-        nullable: true,
-        name: 'nama_penyebut',
-    }),
-    __metadata("design:type", Object)
-], Stratejik.prototype, "penyebutLabel", void 0);
-__decorate([
-    (0, typeorm_1.Column)({
-        type: 'decimal',
-        precision: 15,
-        scale: 2,
-        nullable: true,
-        name: 'total_penyebut',
-    }),
-    __metadata("design:type", Object)
-], Stratejik.prototype, "penyebutValue", void 0);
+], Strategik.prototype, "mode", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: 'text', nullable: true }),
     __metadata("design:type", Object)
-], Stratejik.prototype, "formula", void 0);
+], Strategik.prototype, "formula", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'boolean', default: false }),
+    (0, typeorm_1.Column)({
+        type: 'boolean',
+        default: false,
+        name: 'is_percent',
+    }),
     __metadata("design:type", Boolean)
-], Stratejik.prototype, "isPercent", void 0);
+], Strategik.prototype, "isPercent", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'text', nullable: true }),
+    (0, typeorm_1.Column)({
+        type: 'varchar',
+        length: 255,
+        nullable: true,
+        name: 'pembilang_label',
+    }),
     __metadata("design:type", Object)
-], Stratejik.prototype, "hasil", void 0);
+], Strategik.prototype, "pembilangLabel", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'varchar', length: 500, nullable: true, name: 'hasil_text' }),
+    (0, typeorm_1.Column)({
+        type: 'decimal',
+        precision: 15,
+        scale: 2,
+        nullable: true,
+        name: 'pembilang_value',
+    }),
     __metadata("design:type", Object)
-], Stratejik.prototype, "hasilText", void 0);
+], Strategik.prototype, "pembilangValue", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        type: 'varchar',
+        length: 255,
+        nullable: true,
+        name: 'penyebut_label',
+    }),
+    __metadata("design:type", Object)
+], Strategik.prototype, "penyebutLabel", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        type: 'decimal',
+        precision: 15,
+        scale: 2,
+        nullable: true,
+        name: 'penyebut_value',
+    }),
+    __metadata("design:type", Object)
+], Strategik.prototype, "penyebutValue", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        type: 'decimal',
+        precision: 15,
+        scale: 4,
+        nullable: true,
+    }),
+    __metadata("design:type", Object)
+], Strategik.prototype, "hasil", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        type: 'varchar',
+        length: 1000,
+        nullable: true,
+        name: 'hasil_text',
+    }),
+    __metadata("design:type", Object)
+], Strategik.prototype, "hasilText", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: 'int' }),
     __metadata("design:type", Number)
-], Stratejik.prototype, "peringkat", void 0);
+], Strategik.prototype, "peringkat", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'decimal', precision: 10, scale: 4 }),
+    (0, typeorm_1.Column)({
+        type: 'decimal',
+        precision: 10,
+        scale: 2,
+    }),
     __metadata("design:type", Number)
-], Stratejik.prototype, "weighted", void 0);
+], Strategik.prototype, "weighted", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: 'text', nullable: true }),
     __metadata("design:type", Object)
-], Stratejik.prototype, "keterangan", void 0);
+], Strategik.prototype, "keterangan", void 0);
 __decorate([
-    (0, typeorm_1.CreateDateColumn)(),
-    __metadata("design:type", Date)
-], Stratejik.prototype, "createdAt", void 0);
-__decorate([
-    (0, typeorm_1.UpdateDateColumn)(),
-    __metadata("design:type", Date)
-], Stratejik.prototype, "updatedAt", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ type: 'boolean', default: false }),
+    (0, typeorm_1.Column)({
+        name: 'is_validated',
+        type: 'boolean',
+        default: false,
+    }),
     __metadata("design:type", Boolean)
-], Stratejik.prototype, "isDeleted", void 0);
+], Strategik.prototype, "isValidated", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'timestamp', nullable: true }),
+    (0, typeorm_1.Column)({
+        type: 'timestamp',
+        nullable: true,
+        name: 'validated_at',
+    }),
     __metadata("design:type", Object)
-], Stratejik.prototype, "deletedAt", void 0);
+], Strategik.prototype, "validatedAt", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'varchar', length: 100, nullable: true }),
+    (0, typeorm_1.Column)({
+        type: 'varchar',
+        length: 100,
+        nullable: true,
+        name: 'validated_by',
+    }),
     __metadata("design:type", Object)
-], Stratejik.prototype, "createdBy", void 0);
+], Strategik.prototype, "validatedBy", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'varchar', length: 100, nullable: true }),
+    (0, typeorm_1.CreateDateColumn)({ name: 'created_at' }),
+    __metadata("design:type", Date)
+], Strategik.prototype, "createdAt", void 0);
+__decorate([
+    (0, typeorm_1.UpdateDateColumn)({ name: 'updated_at' }),
+    __metadata("design:type", Date)
+], Strategik.prototype, "updatedAt", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        name: 'is_deleted',
+        type: 'boolean',
+        default: false,
+    }),
+    __metadata("design:type", Boolean)
+], Strategik.prototype, "isDeleted", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        type: 'timestamp',
+        nullable: true,
+        name: 'deleted_at',
+    }),
     __metadata("design:type", Object)
-], Stratejik.prototype, "updatedBy", void 0);
-exports.Stratejik = Stratejik = __decorate([
-    (0, typeorm_1.Entity)('stratejik'),
-    (0, typeorm_1.Index)('IDX_STRATEJIK_PERIOD', ['year', 'quarter']),
-    (0, typeorm_1.Index)('IDX_STRATEJIK_SECTION', ['sectionId'])
-], Stratejik);
+], Strategik.prototype, "deletedAt", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        type: 'varchar',
+        length: 100,
+        nullable: true,
+        name: 'created_by',
+    }),
+    __metadata("design:type", Object)
+], Strategik.prototype, "createdBy", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        type: 'varchar',
+        length: 100,
+        nullable: true,
+        name: 'updated_by',
+    }),
+    __metadata("design:type", Object)
+], Strategik.prototype, "updatedBy", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        type: 'varchar',
+        length: 100,
+        nullable: true,
+        name: 'deleted_by',
+    }),
+    __metadata("design:type", Object)
+], Strategik.prototype, "deletedBy", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        type: 'int',
+        default: 1,
+    }),
+    __metadata("design:type", Number)
+], Strategik.prototype, "version", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        type: 'varchar',
+        length: 50,
+        nullable: true,
+        name: 'revision_notes',
+    }),
+    __metadata("design:type", Object)
+], Strategik.prototype, "revisionNotes", void 0);
+exports.Strategik = Strategik = __decorate([
+    (0, typeorm_1.Entity)('indikators_strategik'),
+    (0, typeorm_1.Unique)('UQ_STRATEGIK_PERIOD_SUBNO', ['year', 'quarter', 'subNo', 'sectionId']),
+    (0, typeorm_1.Index)('IDX_STRATEGIK_PERIOD', ['year', 'quarter']),
+    (0, typeorm_1.Index)('IDX_STRATEGIK_SECTION', ['sectionId']),
+    (0, typeorm_1.Index)('IDX_STRATEGIK_YEAR_QUARTER', ['year', 'quarter'])
+], Strategik);
 //# sourceMappingURL=stratejik.entity.js.map

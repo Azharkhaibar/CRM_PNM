@@ -1,132 +1,164 @@
-// src/types/stratejik.types.ts
+// src/types/kepatuhan.types.ts
 
 // Pastikan ini adalah string literal types yang benar
 export type Quarter = 'Q1' | 'Q2' | 'Q3' | 'Q4';
 
 export type CalculationMode = 'RASIO' | 'NILAI_TUNGGAL' | 'TEKS';
 
-export interface StratejikSection {
+export interface KepatuhanSection {
   id: number;
   no: string;
   bobotSection: number;
   parameter: string;
-  description?: string | null;
-  createdAt: string;
-  updatedAt: string;
+  description: string | null;
+  sortOrder: number;
+  isActive: boolean;
+  // TAMBAHKAN YEAR DAN QUARTER
+  year: number;
+  quarter: Quarter;
+  createdAt: Date;
+  updatedAt: Date;
   isDeleted: boolean;
+  createdBy?: string | null;
+  updatedBy?: string | null;
 }
 
-export interface Stratejik {
+export interface CreateKepatuhanSectionData {
+  no: string;
+  parameter: string;
+  bobotSection?: number;
+  description?: string;
+  sortOrder?: number;
+  isActive?: boolean;
+  // TAMBAHKAN YEAR DAN QUARTER
+  year: number;
+  quarter: Quarter;
+}
+
+export interface UpdateKepatuhanSectionData {
+  no?: string;
+  parameter?: string;
+  bobotSection?: number;
+  description?: string;
+  sortOrder?: number;
+  isActive?: boolean;
+  // OPSIONAL: untuk update bisa tambah year dan quarter
+  year?: number;
+  quarter?: Quarter;
+}
+
+export interface KepatuhanIndikator {
   id: number;
   year: number;
   quarter: Quarter;
   sectionId: number;
-
-  // Section info
   no: string;
   sectionLabel: string;
   bobotSection: number;
-
-  // Indicator info
-  subNo: string; // Backend akan map ke no_indikator
-  indikator: string;
-  bobotIndikator: number; // Backend akan map ke bobot_indikator
-
-  // Risk
-  sumberRisiko: string | null; // Backend akan map ke sumber_resiko
-  dampak: string | null;
-
-  // Risk categories
-  low: string | null;
-  lowToModerate: string | null; // Backend akan map ke low_to_moderate
-  moderate: string | null;
-  moderateToHigh: string | null; // Backend akan map ke moderate_to_high
-  high: string | null;
-
-  // Calculation
-  mode: CalculationMode;
-  pembilangLabel: string | null; // Backend akan map ke nama_pembilang
-  pembilangValue: number | null; // Backend akan map ke total_pembilang
-  penyebutLabel: string | null; // Backend akan map ke nama_penyebut
-  penyebutValue: number | null; // Backend akan map ke total_penyebut
-  formula: string | null;
-  isPercent: boolean;
-  hasil: string | null;
-  hasilText: string | null; // Backend akan map ke hasil_text
-
-  // Results
-  peringkat: number;
-  weighted: number;
-  keterangan: string | null;
-
-  // Timestamps
-  createdAt: string;
-  updatedAt: string;
-  isDeleted: boolean;
-  deletedAt: string | null;
-
-  // Auditing
-  createdBy: string | null;
-  updatedBy: string | null;
-
-  // Relation
-  section?: StratejikSection;
-}
-
-// DTO untuk membuat Stratejik
-export interface CreateStratejikDto {
-  year: number;
-  quarter: Quarter;
-  sectionId: number;
-
-  // Section info
-  no: string;
-  sectionLabel: string;
-  bobotSection: number;
-
-  // Indicator info
   subNo: string;
   indikator: string;
   bobotIndikator: number;
-
-  // Risk
-  sumberRisiko?: string | null;
-  dampak?: string | null;
-
-  // Risk categories
-  low?: string | null;
-  lowToModerate?: string | null;
-  moderate?: string | null;
-  moderateToHigh?: string | null;
-  high?: string | null;
-
-  // Calculation
-  mode?: CalculationMode;
-  pembilangLabel?: string | null;
-  pembilangValue?: number | null;
-  penyebutLabel?: string | null;
-  penyebutValue?: number | null;
-  formula?: string | null;
-  isPercent?: boolean;
-  hasil?: string | null;
-  hasilText?: string | null;
-
-  // Results
+  sumberRisiko: string | null;
+  dampak: string | null;
+  low: string | null;
+  lowToModerate: string | null;
+  moderate: string | null;
+  moderateToHigh: string | null;
+  high: string | null;
+  mode: CalculationMode;
+  formula: string | null;
+  isPercent: boolean;
+  pembilangLabel: string | null;
+  pembilangValue: number | null;
+  penyebutLabel: string | null;
+  penyebutValue: number | null;
+  hasil: number | null;
+  hasilText: string | null;
   peringkat: number;
-  weighted?: number;
-  keterangan?: string | null;
+  weighted: number;
+  keterangan: string | null;
+  isValidated: boolean;
+  version: number;
+  createdAt: Date;
+  updatedAt: Date;
+  isDeleted: boolean;
+  createdBy?: string | null;
+  updatedBy?: string | null;
+  deletedBy?: string | null;
+  section?: KepatuhanSection;
 }
 
-export interface UpdateStratejikDto extends Partial<CreateStratejikDto> {}
-
-export interface CreateStratejikSectionDto {
+export interface CreateKepatuhanData {
+  year: number;
+  quarter: Quarter;
+  sectionId: number;
   no: string;
+  sectionLabel: string;
   bobotSection: number;
-  parameter: string;
-  description?: string | null;
+  subNo: string;
+  indikator: string;
+  bobotIndikator: number;
+  sumberRisiko?: string;
+  dampak?: string;
+  low?: string;
+  lowToModerate?: string;
+  moderate?: string;
+  moderateToHigh?: string;
+  high?: string;
+  mode: CalculationMode;
+  formula?: string;
+  isPercent?: boolean;
+  pembilangLabel?: string;
+  pembilangValue?: number;
+  penyebutLabel?: string;
+  penyebutValue?: number;
+  hasil?: number;
+  hasilText?: string;
+  peringkat: number;
+  weighted: number;
+  keterangan?: string;
+  createdBy?: string;
 }
 
-export interface UpdateStratejikSectionDto extends Partial<CreateStratejikSectionDto> {}
+export interface UpdateKepatuhanData {
+  year?: number;
+  quarter?: Quarter;
+  sectionId?: number;
+  no?: string;
+  sectionLabel?: string;
+  bobotSection?: number;
+  subNo?: string;
+  indikator?: string;
+  bobotIndikator?: number;
+  sumberRisiko?: string;
+  dampak?: string;
+  low?: string;
+  lowToModerate?: string;
+  moderate?: string;
+  moderateToHigh?: string;
+  high?: string;
+  mode?: CalculationMode;
+  formula?: string;
+  isPercent?: boolean;
+  pembilangLabel?: string;
+  pembilangValue?: number;
+  penyebutLabel?: string;
+  penyebutValue?: number;
+  hasil?: number;
+  hasilText?: string;
+  peringkat?: number;
+  weighted?: number;
+  keterangan?: string;
+}
+
+export interface TotalWeightedResponse {
+  total: number;
+}
+
+export interface Period {
+  year: number;
+  quarter: Quarter;
+}
 
 // Tambahkan interface yang dibutuhkan oleh hook
 export interface SectionWithIndicators {
@@ -136,7 +168,7 @@ export interface SectionWithIndicators {
   bobotSection: number;
   year: number;
   quarter: Quarter;
-  indicators: Stratejik[];
+  indicators: KepatuhanIndikator[];
 }
 
 export interface SummaryResponse {
@@ -145,9 +177,23 @@ export interface SummaryResponse {
   totalItems: number;
   totalWeighted: number;
   sections: Array<{
-    section: StratejikSection;
-    items: Stratejik[];
+    section: KepatuhanSection;
+    items: KepatuhanIndikator[];
     totalWeighted: number;
   }>;
-  items: Stratejik[];
+  items: KepatuhanIndikator[];
 }
+
+export const transformSectionToBackend = (sectionData: any, year: number, quarter: Quarter): CreateKepatuhanSectionData => {
+  return {
+    no: String(sectionData.no),
+    bobotSection: Number(sectionData.bobotSection || 0),
+    parameter: sectionData.parameter,
+    description: sectionData.description || undefined,
+    sortOrder: sectionData.sortOrder || 0,
+    isActive: sectionData.isActive ?? true,
+    // TAMBAHKAN YEAR DAN QUARTER
+    year: year,
+    quarter: quarter,
+  };
+};

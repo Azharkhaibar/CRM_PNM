@@ -1,13 +1,16 @@
-import { IndikatorPasar } from './indikator.entity';
-export declare class SectionPasar {
+import { Quarter, Pasar } from './indikator.entity';
+export declare class PasarSection {
     id: number;
-    no_sec: string;
-    nama_section: string;
-    bobot_par: number;
-    tahun: number;
-    triwulan: string;
-    indikators: IndikatorPasar[];
-    total_weighted: number;
-    created_at: Date;
-    updated_at: Date;
+    year: number;
+    quarter: Quarter;
+    no: string;
+    bobotSection: number;
+    parameter: string;
+    description: string | null;
+    sortOrder: number;
+    isActive: boolean;
+    createdAt: Date;
+    updatedAt: Date;
+    isDeleted: boolean;
+    pasarIndicators: Pasar[];
 }

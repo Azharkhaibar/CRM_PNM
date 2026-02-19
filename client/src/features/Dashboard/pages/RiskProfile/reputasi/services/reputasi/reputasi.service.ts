@@ -1,480 +1,464 @@
-import apiReputasi from '../api.service';
-import {
-  Reputasi,
-  ReputasiSection,
-  CreateReputasiDto,
-  CreateReputasiSectionDto,
-  UpdateReputasiDto,
-  UpdateReputasiSectionDto,
-  Quarter,
-  CalculationMode,
-  ReputasiSummary,
-  StructuredReputasi,
-  ReputasiFormData,
-} from '../../types/reputasi.types';
+// src/features/Dashboard/pages/RiskProfile/pages/Reputasi/services/reputasi.service.ts
+import axios, { AxiosResponse } from 'axios';
 
-class ReputasiService {
-  // ========== SECTION METHODS ==========
-  async getSections(): Promise<ReputasiSection[]> {
+// ENUMS
+export enum CalculationMode {
+  RASIO = 'RASIO',
+  NILAI_TUNGGAL = 'NILAI_TUNGGAL',
+  TEKS = 'TEKS',
+}
+
+export enum Quarter {
+  Q1 = 'Q1',
+  Q2 = 'Q2',
+  Q3 = 'Q3',
+  Q4 = 'Q4',
+}
+
+// INTERFACES
+export interface ReputasiSection {
+  id: number;
+  no: string;
+  bobotSection: number;
+  parameter: string;
+  description: string | null;
+  sortOrder: number;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+  isDeleted: boolean;
+  createdBy?: string | null;
+  updatedBy?: string | null;
+}
+
+export interface ReputasiIndikator {
+  id: number;
+  year: number;
+  quarter: Quarter;
+  sectionId: number;
+  no: string;
+  sectionLabel: string;
+  bobotSection: number;
+  subNo: string;
+  indikator: string;
+  bobotIndikator: number;
+  sumberRisiko: string | null;
+  dampak: string | null;
+  low: string | null;
+  lowToModerate: string | null;
+  moderate: string | null;
+  moderateToHigh: string | null;
+  high: string | null;
+  mode: CalculationMode;
+  formula: string | null;
+  isPercent: boolean;
+  pembilangLabel: string | null;
+  pembilangValue: number | null;
+  penyebutLabel: string | null;
+  penyebutValue: number | null;
+  hasil: number | null;
+  hasilText: string | null;
+  peringkat: number;
+  weighted: number;
+  keterangan: string | null;
+  isValidated: boolean;
+  version: number;
+  createdAt: Date;
+  updatedAt: Date;
+  isDeleted: boolean;
+  createdBy?: string | null;
+  updatedBy?: string | null;
+  deletedBy?: string | null;
+  section?: ReputasiSection;
+}
+
+export interface CreateReputasiSectionData {
+  no: string;
+  parameter: string;
+  bobotSection?: number;
+  description?: string;
+  sortOrder?: number;
+  isActive?: boolean;
+}
+
+export interface UpdateReputasiSectionData {
+  no?: string;
+  parameter?: string;
+  bobotSection?: number;
+  description?: string;
+  sortOrder?: number;
+  isActive?: boolean;
+}
+
+export interface CreateReputasiData {
+  year: number;
+  quarter: Quarter;
+  sectionId: number;
+  no: string;
+  sectionLabel: string;
+  bobotSection: number;
+  subNo: string;
+  indikator: string;
+  bobotIndikator: number;
+  sumberRisiko?: string;
+  dampak?: string;
+  low?: string;
+  lowToModerate?: string;
+  moderate?: string;
+  moderateToHigh?: string;
+  high?: string;
+  mode: CalculationMode;
+  formula?: string;
+  isPercent?: boolean;
+  pembilangLabel?: string;
+  pembilangValue?: number;
+  penyebutLabel?: string;
+  penyebutValue?: number;
+  hasil?: number;
+  hasilText?: string;
+  peringkat: number;
+  weighted: number;
+  keterangan?: string;
+  createdBy?: string;
+}
+
+export interface UpdateReputasiData {
+  year?: number;
+  quarter?: Quarter;
+  sectionId?: number;
+  no?: string;
+  sectionLabel?: string;
+  bobotSection?: number;
+  subNo?: string;
+  indikator?: string;
+  bobotIndikator?: number;
+  sumberRisiko?: string;
+  dampak?: string;
+  low?: string;
+  lowToModerate?: string;
+  moderate?: string;
+  moderateToHigh?: string;
+  high?: string;
+  mode?: CalculationMode;
+  formula?: string;
+  isPercent?: boolean;
+  pembilangLabel?: string;
+  pembilangValue?: number;
+  penyebutLabel?: string;
+  penyebutValue?: number;
+  hasil?: number;
+  hasilText?: string;
+  peringkat?: number;
+  weighted?: number;
+  keterangan?: string;
+}
+
+export interface TotalWeightedResponse {
+  total: number;
+}
+
+export interface Period {
+  year: number;
+  quarter: Quarter;
+}
+
+// UTILITY FUNCTIONS
+export const fmtNumber = (v: any): string => {
+  if (v === '' || v == null) return '';
+  const n = Number(v);
+  if (isNaN(n)) return String(v);
+  return new Intl.NumberFormat('en-US').format(n);
+};
+
+export const formatHasilNumber = (value: any, maxDecimals = 4): string => {
+  if (value === '' || value == null) return '';
+  const n = Number(value);
+  if (!isFinite(n) || isNaN(n)) return '';
+
+  // batasi maxDecimals, lalu buang .0000 di belakang
+  const fixed = n.toFixed(maxDecimals);
+  return fixed.replace(/\.?0+$/, '');
+};
+
+export const parseNum = (v: any): number => {
+  if (v == null || v === '') return 0;
+  if (typeof v === 'number') return v;
+
+  const cleaned = String(v).replace(/,/g, '').replace(/\s/g, '');
+  const n = Number(cleaned);
+  return isNaN(n) ? 0 : n;
+};
+
+export const computeHasil = (ind: any): number | null => {
+  const mode = ind?.mode || 'RASIO';
+  if (mode === 'TEKS') return null;
+
+  const pemb = parseNum(ind.pembilangValue);
+  const peny = parseNum(ind.penyebutValue);
+
+  if (ind.formula && ind.formula.trim() !== '') {
     try {
-      const response = await apiReputasi.get<ReputasiSection[]>('/sections/all');
-      return response.data.filter((section) => !section.isDeleted);
-    } catch (error) {
-      console.warn('Gagal mengambil sections reputasi, menggunakan array kosong:', error);
-      return [];
+      const expr = ind.formula
+        .replace(/\bpembilang\b/gi, pemb.toString())
+        .replace(/\bpenyebut\b/gi, peny.toString())
+        .replace(/\bpemb\b/g, pemb.toString())
+        .replace(/\bpeny\b/g, peny.toString());
+
+      const fn = new Function('pemb', 'peny', `return (${expr});`);
+      const res = fn(pemb, peny);
+      if (!isFinite(res) || isNaN(res)) return null;
+      return Number(res);
+    } catch (e) {
+      console.warn('Invalid formula:', ind.formula, e);
+      return null;
     }
   }
 
-  async createSection(data: CreateReputasiSectionDto): Promise<ReputasiSection> {
-    const response = await apiReputasi.post<ReputasiSection>('/sections', data);
-    return response.data;
+  // 🔹 NILAI_TUNGGAL → langsung pakai nilai penyebut
+  if (mode === 'NILAI_TUNGGAL') {
+    if (ind.penyebutValue === '' || ind.penyebutValue == null) return null;
+    return peny;
   }
 
-  async updateSection(id: number, data: UpdateReputasiSectionDto): Promise<ReputasiSection> {
-    const response = await apiReputasi.patch<ReputasiSection>(`/sections/${id}`, data);
-    return response.data;
+  // 🔹 RASIO (default) → pemb / peny
+  if (peny === 0) return null;
+  const result = pemb / peny;
+  if (!isFinite(result) || isNaN(result)) return null;
+  return Number(result);
+};
+
+export const computeWeightedAuto = (ind: any, sectionBobot: number): number => {
+  const sectionB = Number(sectionBobot || 0);
+  const bobotInd = Number(ind.bobotIndikator || 0);
+  const peringkat = Number(ind.peringkat || 0);
+  const res = (sectionB * bobotInd * peringkat) / 10000;
+  if (!isFinite(res) || isNaN(res)) return 0;
+  return res;
+};
+
+export const transformIndicatorToBackend = (indicatorData: any, year: number, quarter: Quarter, sectionId: number, sectionData: any): CreateReputasiData => {
+  const hasilNum = computeHasil(indicatorData);
+
+  return {
+    year,
+    quarter,
+    sectionId,
+    no: sectionData?.no || '',
+    sectionLabel: sectionData?.parameter || '',
+    bobotSection: Number(sectionData?.bobotSection) || 0,
+    subNo: indicatorData.subNo?.toString().trim() || '',
+    indikator: indicatorData.indikator?.toString().trim() || '',
+    bobotIndikator: Number(indicatorData.bobotIndikator) || 0,
+    sumberRisiko: indicatorData.sumberRisiko?.trim() || undefined,
+    dampak: indicatorData.dampak?.trim() || undefined,
+    low: indicatorData.low?.trim() || undefined,
+    lowToModerate: indicatorData.lowToModerate?.trim() || undefined,
+    moderate: indicatorData.moderate?.trim() || undefined,
+    moderateToHigh: indicatorData.moderateToHigh?.trim() || undefined,
+    high: indicatorData.high?.trim() || undefined,
+    mode: indicatorData.mode || CalculationMode.RASIO,
+    formula: indicatorData.formula?.trim() || undefined,
+    isPercent: Boolean(indicatorData.isPercent || false),
+    pembilangLabel: indicatorData.pembilangLabel?.trim() || undefined,
+    pembilangValue: indicatorData.pembilangValue !== undefined && indicatorData.pembilangValue !== '' ? Number(indicatorData.pembilangValue) : undefined,
+    penyebutLabel: indicatorData.penyebutLabel?.trim() || undefined,
+    penyebutValue: indicatorData.penyebutValue !== undefined && indicatorData.penyebutValue !== '' ? Number(indicatorData.penyebutValue) : undefined,
+    hasil: hasilNum !== null ? hasilNum : undefined,
+    hasilText: indicatorData.mode === CalculationMode.TEKS ? indicatorData.hasilText || indicatorData.keterangan || '' : undefined,
+    peringkat: Number(indicatorData.peringkat) || 1,
+    weighted: computeWeightedAuto(indicatorData, Number(sectionData?.bobotSection) || 0),
+    keterangan: indicatorData.keterangan?.trim() || undefined,
+  };
+};
+
+export const transformIndicatorToFrontend = (indikator: ReputasiIndikator): any => {
+  return {
+    id: indikator.id,
+    subNo: indikator.subNo || '',
+    indikator: indikator.indikator || '',
+    bobotIndikator: indikator.bobotIndikator || 0,
+    sumberRisiko: indikator.sumberRisiko || '',
+    dampak: indikator.dampak || '',
+    pembilangLabel: indikator.pembilangLabel || '',
+    pembilangValue: indikator.pembilangValue !== null ? indikator.pembilangValue.toString() : '',
+    penyebutLabel: indikator.penyebutLabel || '',
+    penyebutValue: indikator.penyebutValue !== null ? indikator.penyebutValue.toString() : '',
+    peringkat: indikator.peringkat || 1,
+    weighted: indikator.weighted || '',
+    hasil: indikator.hasil !== null ? indikator.hasil.toString() : '',
+    hasilText: indikator.hasilText || '',
+    keterangan: indikator.keterangan || '',
+    isPercent: Boolean(indikator.isPercent),
+    mode: indikator.mode || CalculationMode.RASIO,
+    formula: indikator.formula || '',
+    low: indikator.low || '',
+    lowToModerate: indikator.lowToModerate || '',
+    moderate: indikator.moderate || '',
+    moderateToHigh: indikator.moderateToHigh || '',
+    high: indikator.high || '',
+    sectionId: indikator.sectionId,
+    no: indikator.no,
+    sectionLabel: indikator.sectionLabel,
+    bobotSection: indikator.bobotSection,
+    year: indikator.year,
+    quarter: indikator.quarter,
+    section: indikator.section,
+  };
+};
+
+export const transformSectionToBackend = (sectionData: any, year: number, quarter: Quarter): CreateReputasiSectionData => {
+  return {
+    no: String(sectionData.no),
+    bobotSection: Number(sectionData.bobotSection || 0),
+    parameter: sectionData.parameter,
+    description: sectionData.description || undefined,
+    sortOrder: sectionData.sortOrder || 0,
+    isActive: sectionData.isActive ?? true,
+  };
+};
+
+export const rowsPerIndicator = (ind: any): number => {
+  return 1 + (ind.mode === 'RASIO' ? 2 : 1);
+};
+
+// API SERVICE
+class ReputasiApiService {
+  private baseUrl: string;
+
+  constructor() {
+    this.baseUrl = 'http://localhost:5530/api/v1';
+  }
+
+  async createSection(data: CreateReputasiSectionData): Promise<ReputasiSection> {
+    return this.request<ReputasiSection>('post', '/reputasi/sections', data);
+  }
+
+  async getAllSections(isActive?: boolean): Promise<ReputasiSection[]> {
+    const params = isActive !== undefined ? { isActive } : {};
+    return this.request<ReputasiSection[]>('get', '/reputasi/sections', null, params);
+  }
+
+  async getSectionById(id: number): Promise<ReputasiSection> {
+    return this.request<ReputasiSection>('get', `/reputasi/sections/${id}`);
+  }
+
+  async updateSection(id: number, data: UpdateReputasiSectionData): Promise<ReputasiSection> {
+    return this.request<ReputasiSection>('put', `/reputasi/sections/${id}`, data);
   }
 
   async deleteSection(id: number): Promise<void> {
-    try {
-      try {
-        await apiReputasi.delete(`/sections/${id}`);
-        console.log(`✅ Section reputasi ${id} berhasil dihapus dari database`);
-        return;
-      } catch (hardDeleteError: any) {
-        console.log(`⚠️ Hard delete gagal untuk section reputasi ${id}, mencoba soft delete...`);
-        await apiReputasi.patch(`/sections/${id}/soft-delete`);
-        console.log(`✅ Section reputasi ${id} soft deleted (isDeleted: true)`);
-      }
-    } catch (error: any) {
-      console.error(`❌ Gagal menghapus section reputasi ${id}:`, error);
+    return this.request<void>('delete', `/reputasi/sections/${id}`);
+  }
 
-      if (error.response?.status === 400) {
-        throw new Error('Tidak dapat menghapus section reputasi karena masih memiliki data indikator.');
-      } else if (error.response?.status === 404) {
-        throw new Error('Section reputasi tidak ditemukan di database.');
+  // ========== INDIKATOR API ==========
+  async createIndikator(data: CreateReputasiData): Promise<ReputasiIndikator> {
+    return this.request<ReputasiIndikator>('post', '/reputasi/indikators', data);
+  }
+
+  async getAllIndikators(): Promise<ReputasiIndikator[]> {
+    return this.request<ReputasiIndikator[]>('get', '/reputasi/indikators');
+  }
+
+  async getIndikatorsByPeriod(year: number, quarter: Quarter): Promise<ReputasiIndikator[]> {
+    return this.request<ReputasiIndikator[]>('get', '/reputasi/indikators/period', null, { year, quarter });
+  }
+
+  async getSectionsWithIndicatorsByPeriod(year: number, quarter: Quarter): Promise<Array<ReputasiSection & { indicators: ReputasiIndikator[] }>> {
+    return this.request<Array<ReputasiSection & { indicators: ReputasiIndikator[] }>>('get', '/reputasi/indikators/sections-by-period', null, { year, quarter });
+  }
+
+  async searchIndikators(query?: string, year?: number, quarter?: Quarter): Promise<ReputasiIndikator[]> {
+    const params: any = {};
+    if (query) params.query = query;
+    if (year) params.year = year;
+    if (quarter) params.quarter = quarter;
+
+    return this.request<ReputasiIndikator[]>('get', '/reputasi/indikators/search', null, params);
+  }
+
+  async getIndikatorById(id: number): Promise<ReputasiIndikator> {
+    return this.request<ReputasiIndikator>('get', `/reputasi/indikators/${id}`);
+  }
+
+  async updateIndikator(id: number, data: UpdateReputasiData): Promise<ReputasiIndikator> {
+    return this.request<ReputasiIndikator>('put', `/reputasi/indikators/${id}`, data);
+  }
+
+  async deleteIndikator(id: number): Promise<void> {
+    return this.request<void>('delete', `/reputasi/indikators/${id}`);
+  }
+
+  async getTotalWeightedByPeriod(year: number, quarter: Quarter): Promise<number> {
+    const response = await this.request<TotalWeightedResponse>('get', '/reputasi/total-weighted', null, { year, quarter });
+    return response.total;
+  }
+
+  async getAvailablePeriods(): Promise<Period[]> {
+    return this.request<Period[]>('get', '/reputasi/periods');
+  }
+
+  async duplicateIndikator(sourceId: number, targetYear: number, targetQuarter: Quarter): Promise<ReputasiIndikator> {
+    return this.request<ReputasiIndikator>('post', `/reputasi/indikators/${sourceId}/duplicate`, null, { year: targetYear, quarter: targetQuarter });
+  }
+
+  // ========== HELPER METHODS ==========
+  private async request<T>(method: 'get' | 'post' | 'put' | 'delete', endpoint: string, data?: any, params?: any): Promise<T> {
+    try {
+      const config = {
+        method,
+        url: `${this.baseUrl}${endpoint}`,
+        data,
+        params,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      };
+
+      const response: AxiosResponse<T> = await axios(config);
+      return response.data;
+    } catch (error) {
+      this.handleError(error);
+      throw error;
+    }
+  }
+
+  private handleError(error: any): void {
+    if (axios.isAxiosError(error)) {
+      if (error.response) {
+        const message = error.response.data?.message || 'Terjadi kesalahan pada server';
+        const status = error.response.status;
+
+        console.error(`API Error [${status}]:`, message);
+
+        switch (status) {
+          case 400:
+            throw new Error(`Bad Request: ${message}`);
+          case 401:
+            throw new Error('Unauthorized: Silakan login kembali');
+          case 403:
+            throw new Error('Forbidden: Anda tidak memiliki akses');
+          case 404:
+            throw new Error(`Not Found: ${message}`);
+          case 409:
+            throw new Error(`Conflict: ${message}`);
+          case 500:
+            throw new Error('Server Error: Silakan coba lagi nanti');
+          default:
+            throw new Error(`Server Error: ${message}`);
+        }
+      } else if (error.request) {
+        console.error('Network Error:', error.message);
+        throw new Error('Koneksi jaringan bermasalah. Periksa koneksi internet Anda.');
       } else {
-        throw new Error('Gagal menghapus section reputasi: ' + (error.message || 'Unknown error'));
+        console.error('Request Error:', error.message);
+        throw new Error(`Gagal membuat permintaan: ${error.message}`);
       }
-    }
-  }
-
-  async getSectionById(id: number): Promise<ReputasiSection | null> {
-    try {
-      const response = await apiReputasi.get<ReputasiSection>(`/sections/${id}`);
-      return response.data;
-    } catch (error) {
-      console.warn(`Gagal mengambil section reputasi ${id}:`, error);
-      return null;
-    }
-  }
-
-  // ========== REPUTASI METHODS ==========
-  async getReputasi(year?: number, quarter?: Quarter): Promise<Reputasi[]> {
-    try {
-      const params: any = {};
-      if (year) params.year = year;
-      if (quarter) params.quarter = quarter;
-
-      const response = await apiReputasi.get<Reputasi[]>('/', { params });
-      return response.data;
-    } catch (error) {
-      console.warn('Gagal mengambil data reputasi, menggunakan array kosong:', error);
-      return [];
-    }
-  }
-
-  async getReputasiByPeriod(year: number, quarter: Quarter): Promise<Reputasi[]> {
-    try {
-      const response = await apiReputasi.get<Reputasi[]>('/', {
-        params: { year, quarter },
-      });
-      return response.data;
-    } catch (error) {
-      console.warn(`Gagal mengambil data reputasi untuk ${year} ${quarter}, menggunakan array kosong:`, error);
-      return [];
-    }
-  }
-
-  async getReputasiBySection(sectionId: number, year?: number, quarter?: Quarter): Promise<Reputasi[]> {
-    try {
-      const params: any = {};
-      if (year) params.year = year;
-      if (quarter) params.quarter = quarter;
-
-      const response = await apiReputasi.get<Reputasi[]>(`/section/${sectionId}`, { params });
-      return response.data;
-    } catch (error) {
-      console.warn(`Gagal mengambil data reputasi untuk section ${sectionId}, menggunakan array kosong:`, error);
-      return [];
-    }
-  }
-
-  async getReputasiStructured(year?: number, quarter?: Quarter): Promise<StructuredReputasi[]> {
-    try {
-      const reputasiList = await this.getReputasi(year, quarter);
-      return this.groupBySection(reputasiList);
-    } catch (error) {
-      console.warn('Gagal mendapatkan data reputasi terstruktur, menggunakan array kosong:', error);
-      return [];
-    }
-  }
-
-  async getReputasiSummary(year: number, quarter: Quarter): Promise<ReputasiSummary | null> {
-    try {
-      const response = await apiReputasi.get<ReputasiSummary>('/summary', {
-        params: { year, quarter },
-      });
-      return response.data;
-    } catch (error) {
-      console.warn(`Gagal mengambil summary untuk ${year} ${quarter}:`, error);
-      return null;
-    }
-  }
-
-  async getReputasiScore(year: number, quarter: Quarter): Promise<number> {
-    try {
-      const response = await apiReputasi.get<number>('/score', {
-        params: { year, quarter },
-      });
-      return response.data;
-    } catch (error) {
-      console.warn(`Gagal mengambil skor reputasi untuk ${year} ${quarter}:`, error);
-      return 0;
-    }
-  }
-
-  async getRiskLevelDistribution(year: number, quarter: Quarter): Promise<any> {
-    try {
-      const response = await apiReputasi.get('/risk-distribution', {
-        params: { year, quarter },
-      });
-      return response.data;
-    } catch (error) {
-      console.warn(`Gagal mengambil distribusi level risiko untuk ${year} ${quarter}:`, error);
-      return null;
-    }
-  }
-
-  async getReputasiById(id: number): Promise<Reputasi | null> {
-    try {
-      const response = await apiReputasi.get<Reputasi>(`/${id}`);
-      return response.data;
-    } catch (error) {
-      console.warn(`Gagal mengambil data reputasi ${id}:`, error);
-      return null;
-    }
-  }
-
-  async createReputasi(data: CreateReputasiDto): Promise<Reputasi> {
-    try {
-      const response = await apiReputasi.post<Reputasi>('/', data);
-      return response.data;
-    } catch (error: any) {
-      console.error('Gagal membuat data reputasi:', error);
-
-      if (error.response?.status === 400) {
-        throw new Error(`Indikator reputasi "${data.subNo}" sudah ada untuk periode ${data.year} ${data.quarter}`);
-      }
-
-      throw error;
-    }
-  }
-
-  async updateReputasi(id: number, data: UpdateReputasiDto): Promise<Reputasi> {
-    const response = await apiReputasi.patch<Reputasi>(`/${id}`, data);
-    return response.data;
-  }
-
-  async deleteReputasi(id: number): Promise<void> {
-    try {
-      await apiReputasi.delete(`/${id}`);
-      console.log(`✅ Indikator reputasi ${id} berhasil dihapus`);
-    } catch (error: any) {
-      console.error(`❌ Gagal menghapus indikator reputasi ${id}:`, error);
-
-      if (error.response?.status === 404) {
-        throw new Error('Indikator reputasi tidak ditemukan di database.');
-      }
-      throw error;
-    }
-  }
-
-  async deleteByPeriod(year: number, quarter: Quarter): Promise<void> {
-    try {
-      await apiReputasi.delete('/period', {
-        params: { year, quarter },
-      });
-    } catch (error) {
-      console.warn(`Gagal menghapus periode ${year} ${quarter}:`, error);
-      throw error;
-    }
-  }
-
-  // ========== UTILITY METHODS ==========
-  formatReputasiData(formData: ReputasiFormData, section: ReputasiSection): CreateReputasiDto {
-    const bobotSection = section.bobotSection;
-    const bobotIndikator = Number(formData.bobotIndikator || 0);
-    const peringkat = Number(formData.peringkat || 1);
-    const weighted = this.calculateWeighted(bobotSection, bobotIndikator, peringkat);
-
-    const mode = formData.mode || 'RASIO';
-    const pembilangValue = formData.pembilangValue !== undefined ? Number(formData.pembilangValue) : null;
-    const penyebutValue = formData.penyebutValue !== undefined ? Number(formData.penyebutValue) : null;
-    const hasil = this.calculateHasil(mode, pembilangValue, penyebutValue, formData.formula, formData.isPercent);
-
-    return {
-      year: Number(formData.year),
-      quarter: formData.quarter,
-      sectionId: section.id,
-      no: section.no,
-      sectionLabel: section.parameter,
-      bobotSection: bobotSection,
-      subNo: formData.subNo,
-      indikator: formData.indikator || '',
-      bobotIndikator: bobotIndikator,
-      sumberRisiko: formData.sumberRisiko || null,
-      dampak: formData.dampak || null,
-      low: formData.low || null,
-      lowToModerate: formData.lowToModerate || null,
-      moderate: formData.moderate || null,
-      moderateToHigh: formData.moderateToHigh || null,
-      high: formData.high || null,
-      mode: mode as CalculationMode,
-      pembilangLabel: formData.pembilangLabel || null,
-      pembilangValue: pembilangValue,
-      penyebutLabel: formData.penyebutLabel || null,
-      penyebutValue: penyebutValue,
-      formula: formData.formula || null,
-      isPercent: Boolean(formData.isPercent || false),
-      hasil: hasil,
-      hasilText: formData.hasilText || null,
-      peringkat: peringkat,
-      weighted: weighted,
-      keterangan: formData.keterangan || null,
-    };
-  }
-
-  calculateHasil(mode: CalculationMode, pembilangValue: number | null, penyebutValue: number | null, formula?: string | null, isPercent?: boolean): string | null {
-    if (mode === 'TEKS') {
-      return null;
-    }
-
-    const pemb = pembilangValue || 0;
-    const peny = penyebutValue || 0;
-
-    if (mode === 'NILAI_TUNGGAL') {
-      if (peny === 0) return null;
-      return peny.toString();
-    }
-
-    if (formula && formula.trim() !== '') {
-      try {
-        const expr = formula
-          .replace(/\bpembilang\b/gi, pemb.toString())
-          .replace(/\bpenyebut\b/gi, peny.toString())
-          .replace(/\bpemb\b/g, pemb.toString())
-          .replace(/\bpeny\b/g, peny.toString());
-
-        const result = new Function(`return (${expr})`)();
-
-        if (isFinite(result) && !isNaN(result)) {
-          if (isPercent) {
-            return (result * 100).toFixed(2);
-          }
-          return Number.isInteger(result) ? result.toString() : result.toFixed(4);
-        }
-      } catch (error) {
-        console.warn('Formula tidak valid:', formula, error);
-        return null;
-      }
-    }
-
-    // Default formula: pemb / peny (sesuai dengan reputasi)
-    if (peny === 0) {
-      return null;
-    }
-
-    const result = pemb / peny;
-    if (isPercent) {
-      return (result * 100).toFixed(2);
-    }
-    return result.toFixed(4);
-  }
-
-  calculateWeighted(bobotSection: number, bobotIndikator: number, peringkat: number): number {
-    const weighted = (bobotSection * bobotIndikator * peringkat) / 10000;
-    return parseFloat(weighted.toFixed(4));
-  }
-
-  groupBySection(reputasiList: Reputasi[]): StructuredReputasi[] {
-    const sectionsMap = new Map<number, StructuredReputasi>();
-
-    reputasiList.forEach((item) => {
-      const sectionId = item.sectionId;
-
-      if (!sectionsMap.has(sectionId)) {
-        sectionsMap.set(sectionId, {
-          section: item.section || {
-            id: sectionId,
-            no: item.no || '',
-            bobotSection: item.bobotSection || 0,
-            parameter: item.sectionLabel || '',
-            description: '',
-            category: null,
-            sortOrder: 0,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            isDeleted: false,
-          },
-          indicators: [],
-          totalWeighted: 0,
-        });
-      }
-
-      const sectionData = sectionsMap.get(sectionId)!;
-      sectionData.indicators.push(item);
-      sectionData.totalWeighted += item.weighted || 0;
-    });
-
-    return Array.from(sectionsMap.values());
-  }
-
-  handleError(error: any): string {
-    if (error.response) {
-      const { data, status } = error.response;
-
-      if (status === 500) {
-        console.error('Server 500 error:', data);
-        return 'Server sedang mengalami masalah. Silakan coba lagi nanti atau hubungi administrator.';
-      }
-
-      if (status === 404) {
-        return 'Endpoint tidak ditemukan. Mohon periksa koneksi API.';
-      }
-
-      if (data?.message) {
-        if (Array.isArray(data.message)) {
-          return data.message
-            .map((item: any) => {
-              if (item.constraints) {
-                const field = item.property || 'field';
-                const errors = Object.values(item.constraints).join(', ');
-                return `${field}: ${errors}`;
-              }
-              return typeof item === 'string' ? item : JSON.stringify(item);
-            })
-            .join('\n');
-        }
-        return typeof data.message === 'string' ? data.message : JSON.stringify(data.message);
-      }
-
-      return `Server error (${status}): ${data || 'Unknown error'}`;
-    } else if (error.request) {
-      console.error('Network error:', error.request);
-      return 'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.';
     } else {
-      console.error('Unknown error:', error.message);
-      return error.message || 'Terjadi kesalahan yang tidak diketahui';
+      console.error('Unexpected Error:', error);
+      throw new Error('Terjadi kesalahan yang tidak diketahui');
     }
-  }
-
-  transformFrontendData(sections: any[], year: number, quarter: Quarter): CreateReputasiDto[] {
-    const reputasiData: CreateReputasiDto[] = [];
-
-    console.log('🔄 Mentransform data frontend reputasi:', sections);
-
-    sections.forEach((section) => {
-      let sectionId: number;
-
-      if (typeof section.id === 'string' && section.id.startsWith('s-')) {
-        sectionId = parseInt(section.id.replace('s-', ''));
-      } else if (typeof section.id === 'number') {
-        sectionId = section.id;
-      } else {
-        console.warn(`⚠️ Format ID section tidak valid: ${section.id}`);
-        return;
-      }
-
-      if (isNaN(sectionId) || sectionId <= 0) {
-        console.warn(`⚠️ ID section tidak valid (NaN atau <=0): ${sectionId} dari ${section.id}`);
-        return;
-      }
-
-      console.log(`📋 Memproses section ${sectionId}:`, section);
-
-      if (!section.no || !section.parameter) {
-        console.warn(`⚠️ Section ${sectionId} tidak memiliki field yang diperlukan:`, section);
-        return;
-      }
-
-      section.indicators.forEach((indicator: any) => {
-        console.log(`📝 Memproses indikator:`, indicator);
-
-        if (!indicator.subNo || !indicator.indikator) {
-          console.warn(`⚠️ Indikator tidak memiliki field yang diperlukan:`, indicator);
-          return;
-        }
-
-        const weighted = this.calculateWeighted(section.bobotSection || 0, indicator.bobotIndikator || 0, indicator.peringkat || 1);
-        const hasil = this.calculateHasil(indicator.mode || 'RASIO', indicator.pembilangValue || null, indicator.penyebutValue || null, indicator.formula || null, indicator.isPercent || false);
-
-        const reputasiItem: CreateReputasiDto = {
-          year,
-          quarter,
-          sectionId: sectionId,
-          no: section.no || '',
-          sectionLabel: section.parameter || '',
-          bobotSection: section.bobotSection || 0,
-          subNo: indicator.subNo || '',
-          indikator: indicator.indikator || '',
-          bobotIndikator: indicator.bobotIndikator || 0,
-          sumberRisiko: indicator.sumberRisiko || null,
-          dampak: indicator.dampak || null,
-          low: indicator.low || null,
-          lowToModerate: indicator.lowToModerate || null,
-          moderate: indicator.moderate || null,
-          moderateToHigh: indicator.moderateToHigh || null,
-          high: indicator.high || null,
-          mode: indicator.mode || 'RASIO',
-          pembilangLabel: indicator.pembilangLabel || null,
-          pembilangValue: indicator.pembilangValue || null,
-          penyebutLabel: indicator.penyebutLabel || null,
-          penyebutValue: indicator.penyebutValue || null,
-          formula: indicator.formula || null,
-          isPercent: indicator.isPercent || false,
-          hasil: hasil,
-          hasilText: indicator.hasilText || null,
-          peringkat: indicator.peringkat || 1,
-          weighted: weighted,
-          keterangan: indicator.keterangan || null,
-        };
-
-        console.log(`✅ Item reputasi siap:`, reputasiItem);
-        reputasiData.push(reputasiItem);
-      });
-    });
-
-    console.log(`📦 Total item untuk disimpan: ${reputasiData.length}`);
-    return reputasiData;
-  }
-
-  generateDefaultSections(): ReputasiSection[] {
-    return [
-      {
-        id: 1,
-        no: '5.1',
-        bobotSection: 50,
-        parameter: 'Perjanjian pengelolaan produk',
-        description: '',
-        category: 'Reputasi Risk',
-        sortOrder: 1,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        isDeleted: false,
-      },
-    ];
   }
 }
 
-export const reputasiService = new ReputasiService();
+// Export singleton instance and all utilities
+export const reputasiApiService = new ReputasiApiService();

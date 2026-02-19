@@ -1,2 +1,2 @@
-export declare class StratejikModule {
+export declare class StrategikModule {
 }

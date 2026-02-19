@@ -1,31 +1,50 @@
-// api.service.ts
-import axios from 'axios';
+// src/services/api.service.ts (tambahkan endpoint operasional)
+import axios, { AxiosError } from 'axios';
 
-const API_BASE_URL = 'http://localhost:5530';
+const API_BASE_URL = 'http://localhost:5530/api/v1';
 
-const api = axios.create({
-  baseURL: `${API_BASE_URL}/api/v1`,
-  timeout: 30000,
+// Buat instance axios untuk strateji
+// Buat instance axios untuk operasional
+export const api_operasional = axios.create({
+  baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
+  timeout: 10000,
 });
 
-// Interceptor untuk debugging
-api.interceptors.request.use((config) => {
-  console.log(`📤 ${config.method?.toUpperCase()} ${config.url}`);
-  return config;
-});
+// Interceptor untuk operasional
+api_operasional.interceptors.response.use(
+  (response) => response,
+  (error: AxiosError) => {
+    console.error('❌ [OPERASIONAL API] Error:', {
+      url: error.config?.url,
+      method: error.config?.method,
+      status: error.response?.status,
+      data: error.response?.data,
+    });
 
-api.interceptors.response.use(
-  (response) => {
-    console.log(`📥 ${response.status} ${response.config.url}`);
-    return response;
-  },
-  (error) => {
-    console.error(`❌ ${error.response?.status || 'Network'} ${error.config?.url}`);
+    if (error.response?.data) {
+      const data = error.response.data as any;
+      if (data.message) {
+        if (Array.isArray(data.message)) {
+          const messages = data.message.map((item: any) => {
+            if (item.constraints) {
+              const field = item.property || 'field';
+              const errors = Object.values(item.constraints).join(', ');
+              return `${field}: ${errors}`;
+            }
+            return typeof item === 'string' ? item : JSON.stringify(item);
+          });
+          error.message = messages.join('\n');
+        } else {
+          error.message = typeof data.message === 'string' ? data.message : JSON.stringify(data.message);
+        }
+      }
+    }
+
     return Promise.reject(error);
   }
 );
 
-export default api;
+export default { api_operasional };

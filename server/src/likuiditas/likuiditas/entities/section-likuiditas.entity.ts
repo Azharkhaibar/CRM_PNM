@@ -1,55 +1,63 @@
+// src/entities/strategik/likuiditas-section.entity.ts
 import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
-  OneToMany,
   CreateDateColumn,
   UpdateDateColumn,
-  DeleteDateColumn,
+  OneToMany,
   Index,
 } from 'typeorm';
-import { Likuiditas, Quarter } from './likuiditas.entity';
+import { Quarter } from 'src/likuiditas/likuiditas/entities/likuiditas.entity';
+import { Likuiditas } from 'src/likuiditas/likuiditas/entities/likuiditas.entity';
 
 @Entity('sections_likuiditas')
-@Index('IDX_SECTION_PERIOD', ['year', 'quarter'])
-export class SectionLikuiditas {
+@Index(
+  'IDX_LIKUIDITAS_SECTION_PERIOD_UNIQUE',
+  ['year', 'quarter', 'no', 'parameter'],
+  { unique: true },
+)
+export class LikuiditasSection {
   @PrimaryGeneratedColumn()
   id: number;
 
   @Column({ type: 'int' })
   year: number;
 
-  @Column({
-    type: 'varchar',
-    length: 2,
-  })
+  @Column({ type: 'enum', enum: Quarter })
   quarter: Quarter;
 
   @Column({ type: 'varchar', length: 50 })
-  no: string;
+  no: string; 
 
   @Column({
+    name: 'bobot_section',
     type: 'decimal',
     precision: 5,
     scale: 2,
-    name: 'bobot_section',
+    default: 100,
   })
   bobotSection: number;
 
-  @Column({
-    type: 'varchar',
-    length: 500,
-    name: 'parameter',
-  })
-  parameter: string;
+  @Column({ type: 'varchar', length: 500 })
+  parameter: string; 
+
+  @Column({ type: 'text', nullable: true })
+  description: string | null;
 
   @Column({
-    type: 'varchar',
-    length: 500,
-    nullable: true,
-    name: 'description',
+    name: 'sort_order',
+    type: 'int',
+    default: 0,
   })
-  description: string | null;
+  sortOrder: number;
+
+  @Column({
+    name: 'is_active',
+    type: 'boolean',
+    default: true,
+  })
+  isActive: boolean;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
@@ -58,21 +66,12 @@ export class SectionLikuiditas {
   updatedAt: Date;
 
   @Column({
+    name: 'is_deleted',
     type: 'boolean',
     default: false,
-    name: 'is_deleted',
   })
   isDeleted: boolean;
 
-  @DeleteDateColumn({
-    nullable: true,
-    name: 'deleted_at',
-  })
-  deletedAt: Date | null;
-
-  @OneToMany(() => Likuiditas, (likuiditas) => likuiditas.section, {
-    cascade: true,
-    eager: false,
-  })
-  indikators: Likuiditas[];
+  @OneToMany(() => Likuiditas, (likuiditas) => likuiditas.section)
+  likuiditasIndicators: Likuiditas[];
 }

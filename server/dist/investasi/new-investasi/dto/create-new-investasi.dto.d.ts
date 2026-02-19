@@ -16,15 +16,17 @@ export declare class CreateInvestasiDto {
     moderate?: string;
     moderateToHigh?: string;
     high?: string;
-    mode?: CalculationMode;
-    numeratorLabel?: string;
-    numeratorValue?: number;
-    denominatorLabel: string;
-    denominatorValue: number;
+    mode: CalculationMode;
     formula?: string;
     isPercent?: boolean;
+    pembilangLabel?: string;
+    pembilangValue?: number;
+    penyebutLabel?: string;
+    penyebutValue?: number;
     hasil?: number;
+    hasilText?: string;
     peringkat: number;
     weighted: number;
     keterangan?: string;
+    createdBy?: string;
 }

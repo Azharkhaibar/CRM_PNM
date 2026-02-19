@@ -56,6 +56,9 @@ let Hukum = class Hukum {
     peringkat;
     weighted;
     keterangan;
+    isValidated;
+    validatedAt;
+    validatedBy;
     createdAt;
     updatedAt;
     isDeleted;
@@ -63,6 +66,8 @@ let Hukum = class Hukum {
     createdBy;
     updatedBy;
     deletedBy;
+    version;
+    revisionNotes;
 };
 exports.Hukum = Hukum;
 __decorate([
@@ -74,7 +79,7 @@ __decorate([
     __metadata("design:type", Number)
 ], Hukum.prototype, "year", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'enum', enum: Quarter, enumName: 'quarter_enum' }),
+    (0, typeorm_1.Column)({ type: 'enum', enum: Quarter }),
     __metadata("design:type", String)
 ], Hukum.prototype, "quarter", void 0);
 __decorate([
@@ -82,9 +87,9 @@ __decorate([
     __metadata("design:type", Number)
 ], Hukum.prototype, "sectionId", void 0);
 __decorate([
-    (0, typeorm_1.ManyToOne)(() => hukum_section_entity_1.HukumSection, (section) => section.hukum, {
+    (0, typeorm_1.ManyToOne)(() => hukum_section_entity_1.HukumSection, (section) => section.hukumIndicators, {
         onUpdate: 'CASCADE',
-        onDelete: 'RESTRICT',
+        onDelete: 'CASCADE',
     }),
     (0, typeorm_1.JoinColumn)({ name: 'section_id' }),
     __metadata("design:type", hukum_section_entity_1.HukumSection)
@@ -94,15 +99,28 @@ __decorate([
     __metadata("design:type", String)
 ], Hukum.prototype, "no", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'varchar', length: 500, name: 'section_label' }),
+    (0, typeorm_1.Column)({
+        type: 'varchar',
+        length: 500,
+        name: 'section_label',
+    }),
     __metadata("design:type", String)
 ], Hukum.prototype, "sectionLabel", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'decimal', precision: 5, scale: 2, name: 'bobot_section' }),
+    (0, typeorm_1.Column)({
+        type: 'decimal',
+        precision: 5,
+        scale: 2,
+        name: 'bobot_section',
+    }),
     __metadata("design:type", Number)
 ], Hukum.prototype, "bobotSection", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'varchar', length: 50, name: 'sub_no' }),
+    (0, typeorm_1.Column)({
+        type: 'varchar',
+        length: 50,
+        name: 'sub_no',
+    }),
     __metadata("design:type", String)
 ], Hukum.prototype, "subNo", void 0);
 __decorate([
@@ -110,11 +128,20 @@ __decorate([
     __metadata("design:type", String)
 ], Hukum.prototype, "indikator", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'decimal', precision: 5, scale: 2, name: 'bobot_indikator' }),
+    (0, typeorm_1.Column)({
+        type: 'decimal',
+        precision: 5,
+        scale: 2,
+        name: 'bobot_indikator',
+    }),
     __metadata("design:type", Number)
 ], Hukum.prototype, "bobotIndikator", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'text', nullable: true, name: 'sumber_risiko' }),
+    (0, typeorm_1.Column)({
+        type: 'text',
+        nullable: true,
+        name: 'sumber_risiko',
+    }),
     __metadata("design:type", Object)
 ], Hukum.prototype, "sumberRisiko", void 0);
 __decorate([
@@ -122,33 +149,45 @@ __decorate([
     __metadata("design:type", Object)
 ], Hukum.prototype, "dampak", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'varchar', length: 500, nullable: true }),
+    (0, typeorm_1.Column)({
+        type: 'varchar',
+        length: 200,
+        nullable: true,
+    }),
     __metadata("design:type", Object)
 ], Hukum.prototype, "low", void 0);
 __decorate([
     (0, typeorm_1.Column)({
         type: 'varchar',
-        length: 500,
+        length: 200,
         nullable: true,
         name: 'low_to_moderate',
     }),
     __metadata("design:type", Object)
 ], Hukum.prototype, "lowToModerate", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'varchar', length: 500, nullable: true }),
+    (0, typeorm_1.Column)({
+        type: 'varchar',
+        length: 200,
+        nullable: true,
+    }),
     __metadata("design:type", Object)
 ], Hukum.prototype, "moderate", void 0);
 __decorate([
     (0, typeorm_1.Column)({
         type: 'varchar',
-        length: 500,
+        length: 200,
         nullable: true,
         name: 'moderate_to_high',
     }),
     __metadata("design:type", Object)
 ], Hukum.prototype, "moderateToHigh", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'varchar', length: 500, nullable: true }),
+    (0, typeorm_1.Column)({
+        type: 'varchar',
+        length: 200,
+        nullable: true,
+    }),
     __metadata("design:type", Object)
 ], Hukum.prototype, "high", void 0);
 __decorate([
@@ -164,7 +203,11 @@ __decorate([
     __metadata("design:type", Object)
 ], Hukum.prototype, "formula", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'boolean', default: false, name: 'is_percent' }),
+    (0, typeorm_1.Column)({
+        type: 'boolean',
+        default: false,
+        name: 'is_percent',
+    }),
     __metadata("design:type", Boolean)
 ], Hukum.prototype, "isPercent", void 0);
 __decorate([
@@ -206,11 +249,21 @@ __decorate([
     __metadata("design:type", Object)
 ], Hukum.prototype, "penyebutValue", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'decimal', precision: 10, scale: 6, nullable: true }),
+    (0, typeorm_1.Column)({
+        type: 'decimal',
+        precision: 15,
+        scale: 6,
+        nullable: true,
+    }),
     __metadata("design:type", Object)
 ], Hukum.prototype, "hasil", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'varchar', length: 1000, nullable: true, name: 'hasil_text' }),
+    (0, typeorm_1.Column)({
+        type: 'varchar',
+        length: 1000,
+        nullable: true,
+        name: 'hasil_text',
+    }),
     __metadata("design:type", Object)
 ], Hukum.prototype, "hasilText", void 0);
 __decorate([
@@ -218,13 +271,42 @@ __decorate([
     __metadata("design:type", Number)
 ], Hukum.prototype, "peringkat", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'decimal', precision: 10, scale: 4 }),
+    (0, typeorm_1.Column)({
+        type: 'decimal',
+        precision: 10,
+        scale: 2,
+    }),
     __metadata("design:type", Number)
 ], Hukum.prototype, "weighted", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: 'text', nullable: true }),
     __metadata("design:type", Object)
 ], Hukum.prototype, "keterangan", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        name: 'is_validated',
+        type: 'boolean',
+        default: false,
+    }),
+    __metadata("design:type", Boolean)
+], Hukum.prototype, "isValidated", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        type: 'timestamp',
+        nullable: true,
+        name: 'validated_at',
+    }),
+    __metadata("design:type", Object)
+], Hukum.prototype, "validatedAt", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        type: 'varchar',
+        length: 100,
+        nullable: true,
+        name: 'validated_by',
+    }),
+    __metadata("design:type", Object)
+], Hukum.prototype, "validatedBy", void 0);
 __decorate([
     (0, typeorm_1.CreateDateColumn)({ name: 'created_at' }),
     __metadata("design:type", Date)
@@ -234,29 +316,69 @@ __decorate([
     __metadata("design:type", Date)
 ], Hukum.prototype, "updatedAt", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ name: 'is_deleted', type: 'boolean', default: false }),
+    (0, typeorm_1.Column)({
+        name: 'is_deleted',
+        type: 'boolean',
+        default: false,
+    }),
     __metadata("design:type", Boolean)
 ], Hukum.prototype, "isDeleted", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'timestamp', nullable: true, name: 'deleted_at' }),
+    (0, typeorm_1.Column)({
+        type: 'timestamp',
+        nullable: true,
+        name: 'deleted_at',
+    }),
     __metadata("design:type", Object)
 ], Hukum.prototype, "deletedAt", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'varchar', length: 100, nullable: true, name: 'created_by' }),
+    (0, typeorm_1.Column)({
+        type: 'varchar',
+        length: 100,
+        nullable: true,
+        name: 'created_by',
+    }),
     __metadata("design:type", Object)
 ], Hukum.prototype, "createdBy", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'varchar', length: 100, nullable: true, name: 'updated_by' }),
+    (0, typeorm_1.Column)({
+        type: 'varchar',
+        length: 100,
+        nullable: true,
+        name: 'updated_by',
+    }),
     __metadata("design:type", Object)
 ], Hukum.prototype, "updatedBy", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'varchar', length: 100, nullable: true, name: 'deleted_by' }),
+    (0, typeorm_1.Column)({
+        type: 'varchar',
+        length: 100,
+        nullable: true,
+        name: 'deleted_by',
+    }),
     __metadata("design:type", Object)
 ], Hukum.prototype, "deletedBy", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        type: 'int',
+        default: 1,
+    }),
+    __metadata("design:type", Number)
+], Hukum.prototype, "version", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        type: 'varchar',
+        length: 50,
+        nullable: true,
+        name: 'revision_notes',
+    }),
+    __metadata("design:type", Object)
+], Hukum.prototype, "revisionNotes", void 0);
 exports.Hukum = Hukum = __decorate([
     (0, typeorm_1.Entity)('indikators_hukum'),
+    (0, typeorm_1.Unique)('UQ_HUKUM_PERIOD_SUBNO', ['year', 'quarter', 'subNo', 'sectionId']),
     (0, typeorm_1.Index)('IDX_HUKUM_PERIOD', ['year', 'quarter']),
     (0, typeorm_1.Index)('IDX_HUKUM_SECTION', ['sectionId']),
-    (0, typeorm_1.Index)('IDX_HUKUM_SUBNO', ['subNo'])
+    (0, typeorm_1.Index)('IDX_HUKUM_YEAR_QUARTER', ['year', 'quarter'])
 ], Hukum);
 //# sourceMappingURL=hukum.entity.js.map

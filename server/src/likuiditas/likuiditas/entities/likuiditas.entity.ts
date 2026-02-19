@@ -1,3 +1,4 @@
+// src/entities/strategik/likuiditas.entity.ts
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -7,10 +8,15 @@ import {
   ManyToOne,
   JoinColumn,
   Index,
+  Unique,
 } from 'typeorm';
-import { SectionLikuiditas } from './section-likuiditas.entity';
+import { LikuiditasSection } from './section-likuiditas.entity';
+export enum CalculationMode {
+  RASIO = 'RASIO',
+  NILAI_TUNGGAL = 'NILAI_TUNGGAL',
+  TEKS = 'TEKS',
+}
 
-// Export Quarter sebagai ENUM (bukan type alias)
 export enum Quarter {
   Q1 = 'Q1',
   Q2 = 'Q2',
@@ -18,15 +24,11 @@ export enum Quarter {
   Q4 = 'Q4',
 }
 
-export enum CalculationMode {
-  RASIO = 'RASIO',
-  NILAI_TUNGGAL = 'NILAI_TUNGGAL',
-  TEKS = 'TEKS',
-}
-
 @Entity('indikators_likuiditas')
+@Unique('UQ_LIKUIDITAS_PERIOD_SUBNO', ['year', 'quarter', 'subNo', 'sectionId'])
 @Index('IDX_LIKUIDITAS_PERIOD', ['year', 'quarter'])
 @Index('IDX_LIKUIDITAS_SECTION', ['sectionId'])
+@Index('IDX_LIKUIDITAS_YEAR_QUARTER', ['year', 'quarter'])
 export class Likuiditas {
   @PrimaryGeneratedColumn()
   id: number;
@@ -34,21 +36,40 @@ export class Likuiditas {
   @Column({ type: 'int' })
   year: number;
 
-  // PERBAIKAN: Gunakan enum dengan type string
-  @Column({
-    type: 'varchar',
-    length: 2,
-  })
+  @Column({ type: 'enum', enum: Quarter })
   quarter: Quarter;
 
   @Column({ name: 'section_id' })
   sectionId: number;
 
-  @ManyToOne(() => SectionLikuiditas, (section) => section.indikators, {
-    onDelete: 'CASCADE',
-  })
+  @ManyToOne(
+    () => LikuiditasSection,
+    (section) => section.likuiditasIndicators,
+    {
+      onUpdate: 'CASCADE',
+      onDelete: 'CASCADE',
+    },
+  )
   @JoinColumn({ name: 'section_id' })
-  section: SectionLikuiditas;
+  section: LikuiditasSection;
+
+  @Column({ type: 'varchar', length: 50 })
+  no: string;
+
+  @Column({
+    type: 'varchar',
+    length: 500,
+    name: 'section_label',
+  })
+  sectionLabel: string;
+
+  @Column({
+    type: 'decimal',
+    precision: 5,
+    scale: 2,
+    name: 'bobot_section',
+  })
+  bobotSection: number;
 
   @Column({
     type: 'varchar',
@@ -57,12 +78,8 @@ export class Likuiditas {
   })
   subNo: string;
 
-  @Column({
-    type: 'varchar',
-    length: 500,
-    name: 'nama_indikator',
-  })
-  namaIndikator: string;
+  @Column({ type: 'varchar', length: 1000 })
+  indikator: string;
 
   @Column({
     type: 'decimal',
@@ -79,24 +96,19 @@ export class Likuiditas {
   })
   sumberRisiko: string | null;
 
-  @Column({
-    type: 'text',
-    nullable: true,
-    name: 'dampak',
-  })
+  @Column({ type: 'text', nullable: true })
   dampak: string | null;
 
   @Column({
     type: 'varchar',
-    length: 100,
+    length: 200,
     nullable: true,
-    name: 'low',
   })
   low: string | null;
 
   @Column({
     type: 'varchar',
-    length: 100,
+    length: 200,
     nullable: true,
     name: 'low_to_moderate',
   })
@@ -104,15 +116,14 @@ export class Likuiditas {
 
   @Column({
     type: 'varchar',
-    length: 100,
+    length: 200,
     nullable: true,
-    name: 'moderate',
   })
   moderate: string | null;
 
   @Column({
     type: 'varchar',
-    length: 100,
+    length: 200,
     nullable: true,
     name: 'moderate_to_high',
   })
@@ -120,19 +131,27 @@ export class Likuiditas {
 
   @Column({
     type: 'varchar',
-    length: 100,
+    length: 200,
     nullable: true,
-    name: 'high',
   })
   high: string | null;
 
   @Column({
-    type: 'varchar',
-    length: 20,
-    default: 'RASIO',
-    name: 'mode',
+    type: 'enum',
+    enum: CalculationMode,
+    default: CalculationMode.RASIO,
   })
   mode: CalculationMode;
+
+  @Column({ type: 'text', nullable: true })
+  formula: string | null;
+
+  @Column({
+    type: 'boolean',
+    default: false,
+    name: 'is_percent',
+  })
+  isPercent: boolean;
 
   @Column({
     type: 'varchar',
@@ -169,56 +188,58 @@ export class Likuiditas {
   penyebutValue: number | null;
 
   @Column({
-    type: 'text',
+    type: 'decimal',
+    precision: 15,
+    scale: 4,
     nullable: true,
-    name: 'formula',
   })
-  formula: string | null;
-
-  @Column({
-    type: 'boolean',
-    default: false,
-    name: 'is_percent',
-  })
-  isPercent: boolean;
-
-  @Column({
-    type: 'text',
-    nullable: true,
-    name: 'hasil',
-  })
-  hasil: string | null;
+  hasil: number | null;
 
   @Column({
     type: 'varchar',
-    length: 500,
+    length: 1000,
     nullable: true,
     name: 'hasil_text',
   })
   hasilText: string | null;
 
-  @Column({
-    type: 'int',
-    default: 1,
-    name: 'peringkat',
-  })
+  @Column({ type: 'int' })
   peringkat: number;
 
   @Column({
     type: 'decimal',
     precision: 10,
-    scale: 4,
-    name: 'weighted',
+    scale: 2,
   })
   weighted: number;
 
-  @Column({
-    type: 'text',
-    nullable: true,
-    name: 'keterangan',
-  })
+  @Column({ type: 'text', nullable: true })
   keterangan: string | null;
 
+  // ========== VALIDASI DATA ==========
+  @Column({
+    name: 'is_validated',
+    type: 'boolean',
+    default: false,
+  })
+  isValidated: boolean;
+
+  @Column({
+    type: 'timestamp',
+    nullable: true,
+    name: 'validated_at',
+  })
+  validatedAt: Date | null;
+
+  @Column({
+    type: 'varchar',
+    length: 100,
+    nullable: true,
+    name: 'validated_by',
+  })
+  validatedBy: string | null;
+
+  // ========== AUDIT TRAIL ==========
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
@@ -226,9 +247,9 @@ export class Likuiditas {
   updatedAt: Date;
 
   @Column({
+    name: 'is_deleted',
     type: 'boolean',
     default: false,
-    name: 'is_deleted',
   })
   isDeleted: boolean;
 
@@ -238,4 +259,43 @@ export class Likuiditas {
     name: 'deleted_at',
   })
   deletedAt: Date | null;
+
+  @Column({
+    type: 'varchar',
+    length: 100,
+    nullable: true,
+    name: 'created_by',
+  })
+  createdBy: string | null;
+
+  @Column({
+    type: 'varchar',
+    length: 100,
+    nullable: true,
+    name: 'updated_by',
+  })
+  updatedBy: string | null;
+
+  @Column({
+    type: 'varchar',
+    length: 100,
+    nullable: true,
+    name: 'deleted_by',
+  })
+  deletedBy: string | null;
+
+  // ========== VERSIONING ==========
+  @Column({
+    type: 'int',
+    default: 1,
+  })
+  version: number;
+
+  @Column({
+    type: 'varchar',
+    length: 50,
+    nullable: true,
+    name: 'revision_notes',
+  })
+  revisionNotes: string | null;
 }

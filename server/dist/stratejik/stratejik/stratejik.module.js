@@ -6,22 +6,22 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.StratejikModule = void 0;
+exports.StrategikModule = void 0;
 const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
+const stratejik_section_entity_1 = require("./entities/stratejik-section.entity");
+const stratejik_entity_1 = require("./entities/stratejik.entity");
 const stratejik_service_1 = require("./stratejik.service");
 const stratejik_controller_1 = require("./stratejik.controller");
-const stratejik_entity_1 = require("./entities/stratejik.entity");
-const stratejik_section_entity_1 = require("./entities/stratejik-section.entity");
-let StratejikModule = class StratejikModule {
+let StrategikModule = class StrategikModule {
 };
-exports.StratejikModule = StratejikModule;
-exports.StratejikModule = StratejikModule = __decorate([
+exports.StrategikModule = StrategikModule;
+exports.StrategikModule = StrategikModule = __decorate([
     (0, common_1.Module)({
-        imports: [typeorm_1.TypeOrmModule.forFeature([stratejik_entity_1.Stratejik, stratejik_section_entity_1.StratejikSection])],
-        controllers: [stratejik_controller_1.StratejikController],
-        providers: [stratejik_service_1.StratejikService],
-        exports: [stratejik_service_1.StratejikService],
+        imports: [typeorm_1.TypeOrmModule.forFeature([stratejik_section_entity_1.StrategikSection, stratejik_entity_1.Strategik])],
+        controllers: [stratejik_controller_1.StrategikController],
+        providers: [stratejik_service_1.StrategikService],
+        exports: [stratejik_service_1.StrategikService],
     })
-], StratejikModule);
+], StrategikModule);
 //# sourceMappingURL=stratejik.module.js.map

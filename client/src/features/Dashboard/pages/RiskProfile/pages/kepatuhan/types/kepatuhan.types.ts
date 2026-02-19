@@ -1,184 +1,156 @@
-// src/types/kepatuhan.ts
+// src/types/kepatuhan.types.ts
 export type Quarter = 'Q1' | 'Q2' | 'Q3' | 'Q4';
 
 export type CalculationMode = 'RASIO' | 'NILAI_TUNGGAL' | 'TEKS';
 
 export interface KepatuhanSection {
   id: number;
-  no: string; // Contoh: "7.1"
+  no: string;
   bobotSection: number;
   parameter: string;
-  description?: string | null;
-  category?: string | null;
+  description: string | null;
   sortOrder: number;
-  createdAt: string;
-  updatedAt: string;
+  isActive: boolean;
+  year: number;
+  quarter: Quarter;
+  createdAt: Date;
+  updatedAt: Date;
   isDeleted: boolean;
+  createdBy?: string | null;
+  updatedBy?: string | null;
 }
 
-export interface Kepatuhan {
+export interface CreateKepatuhanSectionData {
+  no: string;
+  parameter: string;
+  bobotSection?: number;
+  description?: string;
+  sortOrder?: number;
+  isActive?: boolean;
+  year: number;
+  quarter: Quarter;
+}
+
+export interface UpdateKepatuhanSectionData {
+  no?: string;
+  parameter?: string;
+  bobotSection?: number;
+  description?: string;
+  sortOrder?: number;
+  isActive?: boolean;
+  year?: number;
+  quarter?: Quarter;
+}
+
+export interface KepatuhanIndikator {
   id: number;
   year: number;
   quarter: Quarter;
   sectionId: number;
-
-  // Section info
   no: string;
   sectionLabel: string;
   bobotSection: number;
-
-  // Indicator info
   subNo: string;
   indikator: string;
   bobotIndikator: number;
-
-  // Risk analysis
   sumberRisiko: string | null;
   dampak: string | null;
-
-  // Risk levels
   low: string | null;
   lowToModerate: string | null;
   moderate: string | null;
   moderateToHigh: string | null;
   high: string | null;
-
-  // Calculation mode
   mode: CalculationMode;
   formula: string | null;
   isPercent: boolean;
-
-  // Calculation factors
   pembilangLabel: string | null;
   pembilangValue: number | null;
   penyebutLabel: string | null;
   penyebutValue: number | null;
-
-  // Results
-  hasil: string | null;
+  hasil: number | null;
   hasilText: string | null;
-
-  // Scores
   peringkat: number;
   weighted: number;
   keterangan: string | null;
-
-  // Timestamps
-  createdAt: string;
-  updatedAt: string;
+  isValidated: boolean;
+  version: number;
+  createdAt: Date;
+  updatedAt: Date;
   isDeleted: boolean;
-  deletedAt: string | null;
-
-  // Auditing
-  createdBy: string | null;
-  updatedBy: string | null;
-  deletedBy: string | null;
-
-  // Relation
+  createdBy?: string | null;
+  updatedBy?: string | null;
+  deletedBy?: string | null;
   section?: KepatuhanSection;
 }
 
-// DTOs
-export interface CreateKepatuhanDto {
+export interface CreateKepatuhanData {
   year: number;
   quarter: Quarter;
   sectionId: number;
-
-  // Section info
   no: string;
   sectionLabel: string;
   bobotSection: number;
-
-  // Indicator info
   subNo: string;
   indikator: string;
   bobotIndikator: number;
-
-  // Risk
-  sumberRisiko?: string | null;
-  dampak?: string | null;
-
-  // Risk categories
-  low?: string | null;
-  lowToModerate?: string | null;
-  moderate?: string | null;
-  moderateToHigh?: string | null;
-  high?: string | null;
-
-  // Calculation
-  mode?: CalculationMode;
-  pembilangLabel?: string | null;
-  pembilangValue?: number | null;
-  penyebutLabel?: string | null;
-  penyebutValue?: number | null;
-  formula?: string | null;
-  isPercent?: boolean;
-  hasil?: string | null;
-  hasilText?: string | null;
-
-  // Results
-  peringkat: number;
-  weighted?: number;
-  keterangan?: string | null;
-}
-
-export interface UpdateKepatuhanDto extends Partial<CreateKepatuhanDto> {}
-
-export interface CreateKepatuhanSectionDto {
-  no: string;
-  bobotSection: number;
-  parameter: string;
-  description?: string | null;
-  category?: string | null;
-  sortOrder?: number;
-}
-
-export interface UpdateKepatuhanSectionDto extends Partial<CreateKepatuhanSectionDto> {}
-
-// Response types
-export interface KepatuhanSummary {
-  year: number;
-  quarter: Quarter;
-  totalItems: number;
-  totalWeighted: number;
-  sections: Array<{
-    section: KepatuhanSection;
-    items: Kepatuhan[];
-    totalWeighted: number;
-  }>;
-  items: Kepatuhan[];
-}
-
-export interface StructuredKepatuhan {
-  section: KepatuhanSection;
-  indicators: Kepatuhan[];
-  totalWeighted: number;
-}
-
-// Form data type for frontend
-export interface KepatuhanFormData {
-  year: number;
-  quarter: Quarter;
-  sectionId: number;
-  subNo: string;
-  indikator: string;
-  bobotIndikator: number;
-  sumberRisiko?: string | null;
-  dampak?: string | null;
-  low?: string | null;
-  lowToModerate?: string | null;
-  moderate?: string | null;
-  moderateToHigh?: string | null;
-  high?: string | null;
+  sumberRisiko?: string;
+  dampak?: string;
+  low?: string;
+  lowToModerate?: string;
+  moderate?: string;
+  moderateToHigh?: string;
+  high?: string;
   mode: CalculationMode;
-  pembilangLabel?: string | null;
-  pembilangValue?: number | null;
-  penyebutLabel?: string | null;
-  penyebutValue?: number | null;
-  formula?: string | null;
+  formula?: string;
   isPercent?: boolean;
-  hasil?: string | null;
-  hasilText?: string | null;
+  pembilangLabel?: string;
+  pembilangValue?: number;
+  penyebutLabel?: string;
+  penyebutValue?: number;
+  hasil?: number;
+  hasilText?: string;
   peringkat: number;
-  keterangan?: string | null;
+  weighted: number;
+  keterangan?: string;
+  createdBy?: string;
+}
+
+export interface UpdateKepatuhanData {
+  year?: number;
+  quarter?: Quarter;
+  sectionId?: number;
+  no?: string;
+  sectionLabel?: string;
+  bobotSection?: number;
+  subNo?: string;
+  indikator?: string;
+  bobotIndikator?: number;
+  sumberRisiko?: string;
+  dampak?: string;
+  low?: string;
+  lowToModerate?: string;
+  moderate?: string;
+  moderateToHigh?: string;
+  high?: string;
+  mode?: CalculationMode;
+  formula?: string;
+  isPercent?: boolean;
+  pembilangLabel?: string;
+  pembilangValue?: number;
+  penyebutLabel?: string;
+  penyebutValue?: number;
+  hasil?: number;
+  hasilText?: string;
+  peringkat?: number;
+  weighted?: number;
+  keterangan?: string;
+}
+
+export interface TotalWeightedResponse {
+  total: number;
+}
+
+export interface Period {
+  year: number;
+  quarter: Quarter;
 }

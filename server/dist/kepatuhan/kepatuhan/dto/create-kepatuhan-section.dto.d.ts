@@ -1,8 +1,11 @@
+import { Quarter } from '../entities/kepatuhan.entity';
 export declare class CreateKepatuhanSectionDto {
     no: string;
-    bobotSection: number;
     parameter: string;
+    bobotSection?: number;
     description?: string;
-    category?: string;
     sortOrder?: number;
+    year: number;
+    quarter: Quarter;
+    isActive?: boolean;
 }

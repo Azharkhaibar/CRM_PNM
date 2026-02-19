@@ -1,36 +1,32 @@
-import { Quarter } from '../entities/likuiditas.entity';
-export declare class CreateSectionLikuiditasDto {
-    no: string;
-    bobotSection: number;
-    parameter: string;
-    description?: string | null;
+import { CalculationMode, Quarter } from '../entities/likuiditas.entity';
+export declare class CreateLikuiditasDto {
     year: number;
     quarter: Quarter;
-}
-export declare class CreateIndikatorLikuiditasDto {
     sectionId: number;
+    no: string;
+    sectionLabel: string;
+    bobotSection: number;
     subNo: string;
-    namaIndikator: string;
+    indikator: string;
     bobotIndikator: number;
-    sumberRisiko?: string | null;
-    dampak?: string | null;
-    low?: string | null;
-    lowToModerate?: string | null;
-    moderate?: string | null;
-    moderateToHigh?: string | null;
-    high?: string | null;
-    mode: 'RASIO' | 'NILAI_TUNGGAL' | 'TEKS';
-    pembilangLabel?: string | null;
-    pembilangValue?: number | null;
-    penyebutLabel?: string | null;
-    penyebutValue?: number | null;
-    formula?: string | null;
+    sumberRisiko?: string;
+    dampak?: string;
+    low?: string;
+    lowToModerate?: string;
+    moderate?: string;
+    moderateToHigh?: string;
+    high?: string;
+    mode: CalculationMode;
+    formula?: string;
     isPercent?: boolean;
-    hasil?: string | null;
-    hasilText?: string | null;
-    peringkat?: number;
-    weighted?: number;
-    keterangan?: string | null;
-    year: number;
-    quarter: Quarter;
+    pembilangLabel?: string;
+    pembilangValue?: number;
+    penyebutLabel?: string;
+    penyebutValue?: number;
+    hasil?: number;
+    hasilText?: string;
+    peringkat: number;
+    weighted: number;
+    keterangan?: string;
+    createdBy?: string;
 }

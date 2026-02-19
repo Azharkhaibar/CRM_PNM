@@ -1,10 +1,24 @@
+// notification.stores.ts - PRODUCTION FIXED VERSION
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+
+export interface BackendNotification {
+  notification_id: number;
+  user_id: number | null;
+  type: 'info' | 'success' | 'warning' | 'error' | 'system';
+  title: string;
+  message: string;
+  read: boolean;
+  metadata: Record<string, any> | null;
+  category: string | null;
+  created_at: string;
+  expires_at: string | null;
+}
 
 export interface Notification {
   id: string;
   userId: string;
-  type: 'info' | 'success' | 'warning' | 'error';
+  type: 'info' | 'success' | 'warning' | 'error' | 'system';
   title: string;
   message: string;
   read: boolean;
@@ -22,50 +36,75 @@ interface NotificationState {
   notifications: Notification[];
   unreadCount: number;
   lastUpdated: Date;
-  _syncCounter: number; // ✅ Debug counter
+  _syncCounter: number;
+  isLoading: boolean;
 
-  addNotification: (notification: Omit<Notification, 'id' | 'timestamp' | 'read'> & { id?: string }) => void;
+  addNotification: (notification: Omit<Notification, 'id' | 'timestamp' | 'read'> & { id?: string; read?: boolean }) => Notification;
   markAsRead: (id: string) => void;
   markAllAsRead: () => void;
   removeNotification: (id: string) => void;
   clearAll: () => void;
+  updateNotification: (id: string, updates: Partial<Notification>) => void;
+
   getNotificationsByUser: (userId: string) => Notification[];
   getUnreadByUser: (userId: string) => number;
-  recalcUnread: () => void;
   markAllAsReadForUser: (userId: string) => void;
   removeAllForUser: (userId: string) => void;
-  updateNotification: (id: string, updates: Partial<Notification>) => void;
+
   getNotificationsByCategory: (userId: string, category: string) => Notification[];
   getNotificationsByType: (userId: string, type: Notification['type']) => Notification[];
   getBroadcastNotifications: () => Notification[];
   getUserSpecificNotifications: (userId: string) => Notification[];
   getAllNotificationsForUser: (userId: string) => Notification[];
+  getRecentNotifications: (userId: string, limit?: number) => Notification[];
+
+  recalcUnread: () => void;
   cleanupExpiredNotifications: () => void;
-  syncWithBackendData: (backendNotifications: any[]) => void;
+  syncWithBackendData: (backendNotifications: BackendNotification[], fullSync?: boolean) => void;
+
+  setLoading: (loading: boolean) => void;
+  mergeWithBackend: (backendNotifications: BackendNotification[]) => Notification[];
+  findNotificationById: (id: string) => Notification | undefined;
+  hasUnreadNotifications: (userId: string) => boolean;
 }
 
 const validateNotificationId = (id: string | number | undefined): string => {
-  if (!id) {
-    return `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  if (!id || id.toString().trim() === '') {
+    return `temp-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
   }
-
-  const idStr = id.toString();
-  const numericId = idStr.replace('temp-', '');
-
-  if (idStr === 'NaN' || idStr === 'null' || idStr === 'undefined' || isNaN(Number(numericId))) {
-    return `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-  }
-
-  return idStr;
+  return id.toString();
 };
 
 const validateUserId = (userId: string | number | null | undefined): string => {
-  if (!userId || userId === 'null' || userId === 'undefined' || userId === 'NaN') {
+  const userIdStr = userId?.toString()?.trim();
+  if (!userIdStr || userIdStr === 'null' || userIdStr === 'undefined' || userIdStr === 'NaN') {
     return 'broadcast';
   }
+  return userIdStr;
+};
 
-  const userIdStr = userId.toString();
-  return userIdStr === 'null' || userIdStr === 'undefined' || userIdStr === 'NaN' ? 'broadcast' : userIdStr;
+const ensureDate = (value: any): Date => {
+  if (value instanceof Date) return value;
+  if (typeof value === 'string' || typeof value === 'number') return new Date(value);
+  return new Date();
+};
+
+const convertFromBackend = (backendNotif: BackendNotification): Notification => {
+  const userId = validateUserId(backendNotif.user_id);
+  const isBroadcast = userId === 'broadcast';
+
+  return {
+    id: validateNotificationId(backendNotif.notification_id),
+    userId,
+    type: backendNotif.type,
+    title: backendNotif.title,
+    message: backendNotif.message,
+    read: isBroadcast ? true : backendNotif.read,
+    category: backendNotif.category || undefined,
+    metadata: backendNotif.metadata || {},
+    timestamp: ensureDate(backendNotif.created_at),
+    expires_at: backendNotif.expires_at ? ensureDate(backendNotif.expires_at) : undefined,
+  };
 };
 
 export const useNotificationStore = create<NotificationState>()(
@@ -74,106 +113,82 @@ export const useNotificationStore = create<NotificationState>()(
       notifications: [],
       unreadCount: 0,
       lastUpdated: new Date(),
-      _syncCounter: 0, // ✅ Debug counter
+      _syncCounter: 0,
+      isLoading: false,
 
-      addNotification: (notification) => {
-        const validId = validateNotificationId(notification.id);
-        const validUserId = validateUserId(notification.userId);
+      addNotification: (notificationData) => {
+        const validId = validateNotificationId(notificationData.id);
+        const validUserId = validateUserId(notificationData.userId);
+        const isBroadcast = validUserId === 'broadcast';
 
         const newNotification: Notification = {
-          ...notification,
+          ...notificationData,
           id: validId,
           userId: validUserId,
-          timestamp: new Date().toISOString(),
-          read: false,
+          timestamp: notificationData.timestamp instanceof Date ? notificationData.timestamp : new Date(notificationData.timestamp || Date.now()),
+          read: isBroadcast ? true : notificationData.read !== undefined ? notificationData.read : false,
         };
 
         set((state) => {
           const exists = state.notifications.find((n) => n.id === newNotification.id);
           if (exists) {
-            console.log('⏭️ Notification already exists, skipping:', newNotification.id);
-            return state;
+            const updatedNotifications = state.notifications.map((n) => (n.id === newNotification.id ? { ...n, ...newNotification } : n));
+
+            const unreadCount = updatedNotifications.filter((n) => n.userId !== 'broadcast' && !n.read).length;
+
+            return {
+              notifications: updatedNotifications,
+              unreadCount,
+              lastUpdated: new Date(),
+            };
           }
 
-          console.log('➕ Adding notification:', {
-            id: newNotification.id,
-            title: newNotification.title,
-            userId: newNotification.userId,
-          });
-
-          const newNotifications = [newNotification, ...state.notifications];
-          const limitedNotifications = newNotifications.slice(0, 200);
-
-          const unreadCount = limitedNotifications.filter((n: { read: boolean; }) => n.read === false).length;
+          const newNotifications = [newNotification, ...state.notifications].slice(0, 500);
+          const unreadCount = newNotifications.filter((n) => n.userId !== 'broadcast' && !n.read).length;
 
           return {
-            notifications: limitedNotifications,
+            notifications: newNotifications,
             unreadCount,
             lastUpdated: new Date(),
           };
         });
 
-        // ✅ REMOVE EVENT untuk sementara - ini bisa cause loop
-        // setTimeout(() => {
-        //   const event = new CustomEvent('notificationAdded', {
-        //     detail: { notification: newNotification },
-        //   });
-        //   window.dispatchEvent(event);
-        // }, 50);
+        return newNotification;
       },
 
       markAsRead: (id: string) => {
         const validId = validateNotificationId(id);
 
         set((state) => {
-          const updated = state.notifications.map((n) => (n.id === validId ? { ...n, read: true } : n));
-
-          const newUnreadCount = updated.filter((n) => !n.read).length;
-
-          // ✅ Skip update jika tidak ada perubahan
-          if (state.unreadCount === newUnreadCount) {
+          const notification = state.notifications.find((n) => n.id === validId);
+          if (!notification || notification.userId === 'broadcast' || notification.read) {
             return state;
           }
 
-          console.log('📖 Marking as read:', validId);
+          const updatedNotifications = state.notifications.map((n) => (n.id === validId ? { ...n, read: true } : n));
+
+          const newUnreadCount = updatedNotifications.filter((n) => n.userId !== 'broadcast' && !n.read).length;
 
           return {
-            notifications: updated,
+            notifications: updatedNotifications,
             unreadCount: newUnreadCount,
             lastUpdated: new Date(),
           };
         });
-
-        // ✅ REMOVE EVENT untuk sementara
-        // setTimeout(() => {
-        //   const event = new CustomEvent('notificationRead', {
-        //     detail: { id: validId },
-        //   });
-        //   window.dispatchEvent(event);
-        // }, 50);
       },
 
       markAllAsRead: () => {
         set((state) => {
-          const hasUnread = state.notifications.some((n) => !n.read);
-          if (!hasUnread) {
-            return state;
-          }
+          const updatedNotifications = state.notifications.map((n) => (n.userId === 'broadcast' ? n : { ...n, read: true }));
 
-          console.log('📖 Marking all as read');
+          const newUnreadCount = updatedNotifications.filter((n) => n.userId !== 'broadcast' && !n.read).length;
 
           return {
-            notifications: state.notifications.map((n) => ({ ...n, read: true })),
-            unreadCount: 0,
+            notifications: updatedNotifications,
+            unreadCount: newUnreadCount,
             lastUpdated: new Date(),
           };
         });
-
-        // ✅ REMOVE EVENT untuk sementara
-        // setTimeout(() => {
-        //   const event = new CustomEvent('allNotificationsRead');
-        //   window.dispatchEvent(event);
-        // }, 50);
       },
 
       removeNotification: (id: string) => {
@@ -185,76 +200,24 @@ export const useNotificationStore = create<NotificationState>()(
             return state;
           }
 
-          console.log('🗑️ Removing notification:', validId);
+          const remainingNotifications = state.notifications.filter((n) => n.id !== validId);
+          const newUnreadCount = remainingNotifications.filter((n) => n.userId !== 'broadcast' && !n.read).length;
 
-          const remaining = state.notifications.filter((n) => n.id !== validId);
           return {
-            notifications: remaining,
-            unreadCount: remaining.filter((n) => !n.read).length,
+            notifications: remainingNotifications,
+            unreadCount: newUnreadCount,
             lastUpdated: new Date(),
           };
         });
-
-        // ✅ REMOVE EVENT untuk sementara
-        // setTimeout(() => {
-        //   const event = new CustomEvent('notificationRemoved', { detail: { id: validId } });
-        //   window.dispatchEvent(event);
-        // }, 50);
       },
 
       clearAll: () => {
-        console.log('🧹 Clearing all notifications');
         set({
           notifications: [],
           unreadCount: 0,
           lastUpdated: new Date(),
           _syncCounter: 0,
-        });
-      },
-
-      getNotificationsByUser: (userId) => {
-        return get().notifications.filter((n) => n.userId === userId || n.userId === 'broadcast');
-      },
-
-      getUnreadByUser: (userId: string) => {
-        return get().notifications.filter((n) => (n.userId === userId || n.userId === 'broadcast') && !n.read).length;
-      },
-
-      recalcUnread: () => {
-        const unread = get().notifications.filter((n) => !n.read).length;
-        set((state) => {
-          if (state.unreadCount === unread) return state;
-          return { unreadCount: unread };
-        });
-      },
-
-      markAllAsReadForUser: (userId: string) => {
-        set((state) => {
-          const hasUnreadForUser = state.notifications.some((n) => n.userId === userId && !n.read);
-          if (!hasUnreadForUser) return state;
-
-          const updated = state.notifications.map((n) => (n.userId === userId || n.userId === 'broadcast' ? {
-            ...n, read: true
-          }: n ));
-          return {
-            notifications: updated,
-            unreadCount: updated.filter((n) => !n.read).length,
-            lastUpdated: new Date(),
-          };
-        });
-      },
-
-      removeAllForUser: (userId: string) => {
-        set((state) => {
-          const hasNotificationsForUser = state.notifications.some((n) => n.userId === userId);
-          if (!hasNotificationsForUser) return state;
-
-          const remaining = state.notifications.filter((n) => !(n.userId === userId || n.userId === "broadcast"));
-          return {
-            notifications: remaining,
-            unreadCount: remaining.filter((n) => !n.read).length,
-            lastUpdated: new Date(),
-          };
+          isLoading: false,
         });
       },
 
@@ -265,33 +228,128 @@ export const useNotificationStore = create<NotificationState>()(
           const existing = state.notifications.find((n) => n.id === validId);
           if (!existing) return state;
 
+          const safeUpdates = { ...updates };
+          if (existing.userId === 'broadcast' && 'read' in safeUpdates) {
+            delete safeUpdates.read;
+          }
+
+          if ('timestamp' in safeUpdates && safeUpdates.timestamp) {
+            safeUpdates.timestamp = ensureDate(safeUpdates.timestamp);
+          }
+
+          const updatedNotifications = state.notifications.map((n) => (n.id === validId ? { ...n, ...safeUpdates } : n));
+
+          const newUnreadCount = updatedNotifications.filter((n) => n.userId !== 'broadcast' && !n.read).length;
+
           return {
-            notifications: state.notifications.map((n) => (n.id === validId ? { ...n, ...updates } : n)),
+            notifications: updatedNotifications,
+            unreadCount: newUnreadCount,
+            lastUpdated: new Date(),
+          };
+        });
+      },
+
+      getNotificationsByUser: (userId) => {
+        const validUserId = validateUserId(userId);
+        const notifications = get().notifications.filter((n) => n.userId === validUserId || n.userId === 'broadcast');
+        return notifications.map((n) => ({
+          ...n,
+          timestamp: ensureDate(n.timestamp),
+        }));
+      },
+
+      getUnreadByUser: (userId: string) => {
+        const validUserId = validateUserId(userId);
+        return get().notifications.filter((n) => n.userId === validUserId && !n.read).length;
+      },
+
+      markAllAsReadForUser: (userId: string) => {
+        const validUserId = validateUserId(userId);
+
+        set((state) => {
+          const updatedNotifications = state.notifications.map((n) => (n.userId === validUserId && !n.read ? { ...n, read: true } : n));
+
+          const newUnreadCount = updatedNotifications.filter((n) => n.userId !== 'broadcast' && !n.read).length;
+
+          return {
+            notifications: updatedNotifications,
+            unreadCount: newUnreadCount,
+            lastUpdated: new Date(),
+          };
+        });
+      },
+
+      removeAllForUser: (userId: string) => {
+        const validUserId = validateUserId(userId);
+
+        set((state) => {
+          const remainingNotifications = state.notifications.filter((n) => n.userId !== validUserId);
+
+          const newUnreadCount = remainingNotifications.filter((n) => n.userId !== 'broadcast' && !n.read).length;
+
+          return {
+            notifications: remainingNotifications,
+            unreadCount: newUnreadCount,
             lastUpdated: new Date(),
           };
         });
       },
 
       getNotificationsByCategory: (userId, category) => {
-        return get().notifications.filter((n) => (n.userId === userId || n.userId === 'broadcast') && n.category === category);
+        const validUserId = validateUserId(userId);
+        const notifications = get().notifications.filter((n) => (n.userId === validUserId || n.userId === 'broadcast') && n.category === category);
+        return notifications.map((n) => ({
+          ...n,
+          timestamp: ensureDate(n.timestamp),
+        }));
       },
 
       getNotificationsByType: (userId, type) => {
-        return get().notifications.filter((n) => (n.userId === userId || n.userId === 'broadcast') && n.type === type);
+        const validUserId = validateUserId(userId);
+        const notifications = get().notifications.filter((n) => (n.userId === validUserId || n.userId === 'broadcast') && n.type === type);
+        return notifications.map((n) => ({
+          ...n,
+          timestamp: ensureDate(n.timestamp),
+        }));
       },
 
       getBroadcastNotifications: () => {
-        return get().notifications.filter((n) => n.userId === 'broadcast');
+        const notifications = get().notifications.filter((n) => n.userId === 'broadcast');
+        return notifications.map((n) => ({
+          ...n,
+          timestamp: ensureDate(n.timestamp),
+        }));
       },
 
       getUserSpecificNotifications: (userId: string) => {
-        return get().notifications.filter((n) => n.userId === userId);
+        const validUserId = validateUserId(userId);
+        const notifications = get().notifications.filter((n) => n.userId === validUserId);
+        return notifications.map((n) => ({
+          ...n,
+          timestamp: ensureDate(n.timestamp),
+        }));
       },
 
       getAllNotificationsForUser: (userId: string) => {
-        return get()
-          .notifications.filter((n) => n.userId === userId || n.userId === 'broadcast')
-          .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+        const validUserId = validateUserId(userId);
+        const notifications = get().notifications.filter((n) => n.userId === validUserId || n.userId === 'broadcast');
+
+        const notificationsWithDates = notifications.map((n) => ({
+          ...n,
+          timestamp: ensureDate(n.timestamp),
+          expires_at: n.expires_at ? ensureDate(n.expires_at) : undefined,
+        }));
+
+        return notificationsWithDates.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+      },
+
+      getRecentNotifications: (userId: string, limit: number = 10) => {
+        return get().getAllNotificationsForUser(userId).slice(0, limit);
+      },
+
+      recalcUnread: () => {
+        const unread = get().notifications.filter((n) => n.userId !== 'broadcast' && !n.read).length;
+        set({ unreadCount: unread });
       },
 
       cleanupExpiredNotifications: () => {
@@ -299,118 +357,196 @@ export const useNotificationStore = create<NotificationState>()(
         set((state) => {
           const validNotifications = state.notifications.filter((n) => {
             if (!n.expires_at) return true;
-            return new Date(n.expires_at) > now;
+            const expiresDate = ensureDate(n.expires_at);
+            return expiresDate > now;
           });
 
-          const removedCount = state.notifications.length - validNotifications.length;
-          if (removedCount > 0) {
-            console.log(`🧹 Cleaned up ${removedCount} expired notifications`);
-            return {
-              notifications: validNotifications,
-              unreadCount: validNotifications.filter((n) => !n.read).length,
-              lastUpdated: new Date(),
-            };
-          }
-          return state;
-        });
-      },
-
-      // ✅ PERBAIKAN KRITIS: Sync dengan protection
-      syncWithBackendData: (backendNotifications: any[]) => {
-        const state = get();
-        const syncId = state._syncCounter + 1;
-
-        console.log(`🔄 [SYNC-${syncId}] Starting sync:`, {
-          backendCount: backendNotifications.length,
-          currentCount: state.notifications.length,
-          timestamp: new Date().toISOString(),
-        });
-
-        // ✅ CEK: Skip jika data backend kosong dan kita sudah punya data
-        if (!backendNotifications || backendNotifications.length === 0) {
-          console.log(`⏭️ [SYNC-${syncId}] Skip - no backend data but we have local data`);
-          return;
-        }
-
-        // ✅ CEK: Skip jika data sama persis
-        if (backendNotifications.length === 0 && state.notifications.length === 0) {
-          console.log(`⏭️ [SYNC-${syncId}] Skip - no data at all`);
-          return;
-        }
-
-        const convertedNotifications: Notification[] = backendNotifications.map((backendNotif) => {
-          const validId = validateNotificationId(backendNotif.notification_id || backendNotif.id);
-          const validUserId = validateUserId(backendNotif.user_id);
-
-          return {
-            id: validId,
-            userId: validUserId,
-            type: backendNotif.type || 'info',
-            title: backendNotif.title || 'No Title',
-            message: backendNotif.message || 'No Message',
-            read: Boolean(backendNotif.read),
-            timestamp: new Date(backendNotif.created_at || backendNotif.timestamp || Date.now()),
-            category: backendNotif.category || undefined,
-            metadata: backendNotif.metadata || {},
-            expires_at: backendNotif.expires_at ? new Date(backendNotif.expires_at) : undefined,
-          };
-        });
-
-        set((state) => {
-          // Filter invalid notifications
-          const validNewNotifications = convertedNotifications.filter((n) => !n.id.includes('NaN') && n.id !== 'null' && n.id !== 'undefined');
-
-          // Cari notifications baru yang belum ada
-          const existingIds = new Map(state.notifications.map((n) => [n.id, n]));
-          const newNotifications = validNewNotifications.filter((n) => !existingIds.has(n.id));
-
-          // ✅ CEK: Skip jika tidak ada notifications baru
-          if (newNotifications.length === 0) {
-            console.log(`⏭️ [SYNC-${syncId}] Skip - no new notifications to add`);
+          if (validNotifications.length === state.notifications.length) {
             return state;
           }
 
-          console.log(`✅ [SYNC-${syncId}] Adding ${newNotifications.length} new notifications`);
-
-          const mergedNotifications = [...state.notifications, ...validNewNotifications.filter(n => !existingIds.has(n.id))]
-          .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).slice(0, 200);
+          const newUnreadCount = validNotifications.filter((n) => n.userId !== 'broadcast' && !n.read).length;
 
           return {
-            notifications: mergedNotifications,
-            unreadCount: mergedNotifications.filter((n) => !n.read).length,
+            notifications: validNotifications,
+            unreadCount: newUnreadCount,
+            lastUpdated: new Date(),
+          };
+        });
+      },
+
+      syncWithBackendData: (backendNotifications: BackendNotification[], fullSync: boolean = false) => {
+        const syncId = get()._syncCounter + 1;
+
+        if (!backendNotifications || !Array.isArray(backendNotifications)) {
+          return;
+        }
+
+        const convertedNotifications = backendNotifications.filter((notif) => notif && notif.notification_id).map(convertFromBackend);
+
+        set((state) => {
+          let finalNotifications;
+
+          if (fullSync) {
+            finalNotifications = convertedNotifications;
+          } else {
+            const existingMap = new Map(state.notifications.map((n) => [n.id, n]));
+
+            convertedNotifications.forEach((newNotif) => {
+              const existing = existingMap.get(newNotif.id);
+              if (existing) {
+                const isBroadcast = newNotif.userId === 'broadcast';
+
+                let finalRead = existing.read;
+                if (!isBroadcast) {
+                  if (existing.read) {
+                    finalRead = true;
+                  } else if (newNotif.read) {
+                    finalRead = true;
+                  } else {
+                    finalRead = false;
+                  }
+                }
+
+                const mergedNotification = {
+                  ...existing,
+                  ...newNotif,
+                  read: finalRead,
+                  timestamp: new Date(Math.max(ensureDate(existing.timestamp).getTime(), ensureDate(newNotif.timestamp).getTime())),
+                };
+
+                existingMap.set(newNotif.id, mergedNotification);
+              } else {
+                existingMap.set(newNotif.id, newNotif);
+              }
+            });
+
+            finalNotifications = Array.from(existingMap.values());
+          }
+
+          const sortedNotifications = finalNotifications.sort((a, b) => ensureDate(b.timestamp).getTime() - ensureDate(a.timestamp).getTime()).slice(0, 500);
+
+          const unreadCount = sortedNotifications.filter((n) => n.userId !== 'broadcast' && !n.read).length;
+
+          return {
+            notifications: sortedNotifications,
+            unreadCount,
             lastUpdated: new Date(),
             _syncCounter: syncId,
           };
         });
+      },
 
-        // ✅ REMOVE EVENT untuk sementara
-        // setTimeout(() => {
-        //   const event = new CustomEvent('notificationsSynced', {
-        //     detail: { count: convertedNotifications.length, syncId },
-        //   });
-        //   window.dispatchEvent(event);
-        // }, 50);
+      mergeWithBackend: (backendNotifications: BackendNotification[]) => {
+        const converted = backendNotifications.map(convertFromBackend);
+        let finalResult: Notification[] = [];
+
+        set((state) => {
+          const existingMap = new Map(state.notifications.map((n) => [n.id, n]));
+
+          converted.forEach((newNotif) => {
+            const existing = existingMap.get(newNotif.id);
+            if (existing) {
+              const isBroadcast = newNotif.userId === 'broadcast';
+
+              let finalRead = existing.read;
+              if (!isBroadcast) {
+                if (existing.read) {
+                  finalRead = true;
+                } else if (newNotif.read) {
+                  finalRead = true;
+                } else {
+                  finalRead = false;
+                }
+              }
+
+              const mergedNotification = {
+                ...existing,
+                ...newNotif,
+                read: finalRead,
+                timestamp: new Date(Math.max(ensureDate(existing.timestamp).getTime(), ensureDate(newNotif.timestamp).getTime())),
+              };
+
+              existingMap.set(newNotif.id, mergedNotification);
+            } else {
+              existingMap.set(newNotif.id, newNotif);
+            }
+          });
+
+          const allNotifications = Array.from(existingMap.values());
+          const sortedNotifications = allNotifications.sort((a, b) => ensureDate(b.timestamp).getTime() - ensureDate(a.timestamp).getTime()).slice(0, 500);
+
+          finalResult = sortedNotifications;
+
+          const unreadCount = sortedNotifications.filter((n) => n.userId !== 'broadcast' && !n.read).length;
+
+          return {
+            notifications: sortedNotifications,
+            unreadCount,
+            lastUpdated: new Date(),
+            _syncCounter: get()._syncCounter + 1,
+          };
+        });
+
+        return finalResult;
+      },
+
+      setLoading: (loading: boolean) => {
+        set({ isLoading: loading });
+      },
+
+      findNotificationById: (id: string) => {
+        const validId = validateNotificationId(id);
+        const notification = get().notifications.find((n) => n.id === validId);
+        if (!notification) return undefined;
+
+        return {
+          ...notification,
+          timestamp: ensureDate(notification.timestamp),
+          expires_at: notification.expires_at ? ensureDate(notification.expires_at) : undefined,
+        };
+      },
+
+      hasUnreadNotifications: (userId: string) => {
+        const validUserId = validateUserId(userId);
+        return get().notifications.some((n) => n.userId === validUserId && !n.read);
       },
     }),
     {
       name: 'notification-storage',
       partialize: (state) => ({
-      notifications: state.notifications,
-      unreadCount: state.unreadCount,
-      lastUpdated: state.lastUpdated,
+        notifications: state.notifications.map((n) => ({
+          ...n,
+          timestamp: n.timestamp instanceof Date ? n.timestamp.toISOString() : n.timestamp,
+          expires_at: n.expires_at instanceof Date ? n.expires_at.toISOString() : n.expires_at,
+        })),
+        unreadCount: state.unreadCount,
+        lastUpdated: state.lastUpdated instanceof Date ? state.lastUpdated.toISOString() : state.lastUpdated,
       }),
-
-      version: 5, 
+      version: 10,
       migrate: (persistedState: any, version: number) => {
-        console.log(`🔄 Migrating notification store from version ${version} to 5`);
-        if (version < 5) {
+        if (version < 10) {
           const notifications = persistedState.notifications || [];
-          const validNotifications = notifications.filter((n: any) => n.id && !n.id.includes('NaN') && n.id !== 'null' && n.id !== 'undefined');
+
+          const processedNotifications = notifications
+            .filter((n: any) => n && n.id && n.id !== 'null' && n.id !== 'undefined')
+            .map((n: any) => ({
+              ...n,
+              timestamp: n.timestamp instanceof Date ? n.timestamp : new Date(n.timestamp || Date.now()),
+              expires_at: n.expires_at ? (n.expires_at instanceof Date ? n.expires_at : new Date(n.expires_at)) : undefined,
+              userId: n.userId || 'broadcast',
+              read: n.read !== undefined ? n.read : n.userId === 'broadcast' ? true : false,
+            }));
+
+          const unreadCount = processedNotifications.filter((n: any) => n.userId !== 'broadcast' && !n.read).length;
+
           return {
             ...persistedState,
-            notifications: validNotifications,
-            unreadCount: validNotifications.filter((n: any) => !n.read).length,
+            notifications: processedNotifications,
+            unreadCount,
             _syncCounter: 0,
+            isLoading: false,
+            lastUpdated: new Date(persistedState.lastUpdated || Date.now()),
           };
         }
         return persistedState;
@@ -419,71 +555,70 @@ export const useNotificationStore = create<NotificationState>()(
   )
 );
 
-// ... notificationUtils tetap sama
 export const notificationUtils = {
+  convertFromBackend,
+
   filterForUser: (notifications: Notification[], userId: string): Notification[] => {
-    return notifications.filter((n) => n.userId === userId || n.userId === 'broadcast');
+    const validUserId = validateUserId(userId);
+    return notifications
+      .map((n) => ({
+        ...n,
+        timestamp: ensureDate(n.timestamp),
+        expires_at: n.expires_at ? ensureDate(n.expires_at) : undefined,
+      }))
+      .filter((n) => n.userId === validUserId || n.userId === 'broadcast');
   },
 
-  groupByDate: (notifications: Notification[]) => {
-    const groups: { [key: string]: Notification[] } = {};
+  filterUnread: (notifications: Notification[]): Notification[] => {
+    return notifications
+      .map((n) => ({
+        ...n,
+        timestamp: ensureDate(n.timestamp),
+        expires_at: n.expires_at ? ensureDate(n.expires_at) : undefined,
+      }))
+      .filter((n) => n.userId !== 'broadcast' && !n.read);
+  },
 
-    notifications.forEach((notification) => {
-      const date = new Date(notification.timestamp).toDateString();
-      if (!groups[date]) {
-        groups[date] = [];
-      }
-      groups[date].push(notification);
-    });
+  filterByCategory: (notifications: Notification[], category: string): Notification[] => {
+    return notifications
+      .map((n) => ({
+        ...n,
+        timestamp: ensureDate(n.timestamp),
+        expires_at: n.expires_at ? ensureDate(n.expires_at) : undefined,
+      }))
+      .filter((n) => n.category === category);
+  },
 
-    return groups;
+  filterByType: (notifications: Notification[], type: Notification['type']): Notification[] => {
+    return notifications
+      .map((n) => ({
+        ...n,
+        timestamp: ensureDate(n.timestamp),
+        expires_at: n.expires_at ? ensureDate(n.expires_at) : undefined,
+      }))
+      .filter((n) => n.type === type);
   },
 
   isExpired: (notification: Notification): boolean => {
     if (!notification.expires_at) return false;
-    return new Date(notification.expires_at) < new Date();
+    return ensureDate(notification.expires_at) < new Date();
   },
 
-  createLoginNotification: (userId: string, username: string) => ({
-    userId,
-    type: 'success' as const,
-    title: 'Login Successful',
-    message: `Welcome back, ${username}! You have successfully logged in.`,
-    category: 'security',
-    metadata: {
-      login_time: new Date().toISOString(),
-      activity_type: 'login',
-      user_id: userId,
-      username: username,
-    },
-  }),
+  formatTimestamp: (timestamp: Date | string | number): string => {
+    const date = ensureDate(timestamp);
+    const now = new Date();
+    const diff = now.getTime() - date.getTime();
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
 
-  createLogoutNotification: (userId: string, username: string) => ({
-    userId,
-    type: 'info' as const,
-    title: 'Logout Successful',
-    message: `You have successfully logged out. See you soon, ${username}!`,
-    category: 'security',
-    metadata: {
-      logout_time: new Date().toISOString(),
-      activity_type: 'logout',
-      user_id: userId,
-      username: username,
-    },
-  }),
+    if (minutes < 1) return 'Just now';
+    if (minutes < 60) return `${minutes}m ago`;
+    if (hours < 24) return `${hours}h ago`;
+    if (days < 7) return `${days}d ago`;
 
-  createUserStatusBroadcast: (userId: string, username: string, action: 'login' | 'logout') => ({
-    userId: 'broadcast',
-    type: 'info' as const,
-    title: action === 'login' ? 'User Logged In' : 'User Logged Out',
-    message: action === 'login' ? `User ${username} has logged into the system.` : `User ${username} has logged out from the system.`,
-    category: 'system',
-    metadata: {
-      timestamp: new Date().toISOString(),
-      activity_type: 'user_status',
-      user_id: userId,
-      username: username,
-      action: action,
-    },
-  }),
+    return date.toLocaleDateString();
+  },
+
+  ensureDate,
 };

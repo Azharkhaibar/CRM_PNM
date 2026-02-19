@@ -36,11 +36,14 @@ export declare class Kepatuhan {
     pembilangValue: number | null;
     penyebutLabel: string | null;
     penyebutValue: number | null;
-    hasil: string | null;
+    hasil: number | null;
     hasilText: string | null;
     peringkat: number;
     weighted: number;
     keterangan: string | null;
+    isValidated: boolean;
+    validatedAt: Date | null;
+    validatedBy: string | null;
     createdAt: Date;
     updatedAt: Date;
     isDeleted: boolean;
@@ -48,4 +51,6 @@ export declare class Kepatuhan {
     createdBy: string | null;
     updatedBy: string | null;
     deletedBy: string | null;
+    version: number;
+    revisionNotes: string | null;
 }

@@ -35,7 +35,12 @@ let AuditLogService = AuditLogService_1 = class AuditLogService {
                 ip_address: ip_address || 'unknown',
             });
             const savedLog = await this.auditLogRepository.save(auditLog);
-            console.log('✅ [BACKEND] Berhasil menyimpan audit log. UserId:', savedLog.userId);
+            console.log(' [BACKEND] Audit log berhasil dibuat:', {
+                id: savedLog.id,
+                userId: savedLog.userId,
+                module: savedLog.module,
+                action: savedLog.action,
+            });
             return savedLog;
         }
         catch (error) {

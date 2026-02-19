@@ -29,5 +29,5 @@ export class Auth {
   })
   @JoinColumn({ name: 'user_id' })
   user: User;
-    sessions: any;
+  sessions: any;
 }

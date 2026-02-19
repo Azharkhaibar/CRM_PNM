@@ -1,8 +1,11 @@
+import { Quarter } from '../entities/hukum.entity';
 export declare class CreateHukumSectionDto {
     no: string;
-    bobotSection: number;
     parameter: string;
+    bobotSection?: number;
     description?: string;
-    category?: string;
     sortOrder?: number;
+    year: number;
+    quarter: Quarter;
+    isActive?: boolean;
 }

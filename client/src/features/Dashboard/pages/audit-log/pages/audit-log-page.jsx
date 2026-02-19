@@ -1,29 +1,29 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, Download, User, Calendar, Activity, BarChart3, Trash2, Moon, Sun } from 'lucide-react';
+import { Search, Filter, Download, User, Calendar, Activity, BarChart3, Trash2 } from 'lucide-react';
 import { useAuditLogList } from '../hooks/audit-log-list.hooks';
 import { useAuditLogStats } from '../hooks/audit-log-stats.hooks';
 import { useAuditLog } from '../hooks/audit-log.hooks';
 import { useAuth } from '../../../../auth/hooks/useAuth.hook';
-import { useDarkMode } from '../../../../../shared/components/Darkmodecontext';
 
 const ACTION_COLORS = {
-  CREATE: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
-  UPDATE: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
-  DELETE: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
-  VIEW: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300',
-  EXPORT: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
-  LOGIN: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300',
-  LOGOUT: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300',
+  CREATE: 'bg-green-100 text-green-800',
+  UPDATE: 'bg-blue-100 text-blue-800',
+  DELETE: 'bg-red-100 text-red-800',
+  VIEW: 'bg-gray-100 text-gray-800',
+  EXPORT: 'bg-purple-100 text-purple-800',
+  LOGIN: 'bg-indigo-100 text-indigo-800',
+  LOGOUT: 'bg-orange-100 text-orange-800',
 };
+
+// Daftar module hardcode untuk memastikan RAS selalu muncul
+const ALL_MODULES = ['RAS', 'INVESTASI', 'PASAR', 'LIKUIDITAS', 'OPERASIONAL', 'HUKUM', 'STRATEJIK', 'KEPATUHAN', 'REPUTASI', 'USER_MANAGEMENT', 'SYSTEM'];
 
 export const AuditLog = () => {
   const [showFilters, setShowFilters] = useState(false);
-  const [selectedLogs, setSelectedLogs] = useState([]);
   const { user: currentUser } = useAuth();
-  const { darkMode, toggleDarkMode } = useDarkMode();
 
   // Use hooks
-  const { auditLogs, total, pagination, loading, error, handleSearch, handleFilter, handlePageChange, clearError, refresh, deleteAuditLog, deleteMultipleAuditLogs } = useAuditLogList();
+  const { auditLogs, total, pagination, loading, error, handleSearch, handleFilter, handlePageChange, clearError, refresh } = useAuditLogList();
   const { stats, loading: statsLoading, error: statsError, refreshStats } = useAuditLogStats();
   const { exportToExcel, getUserDisplayName, getUserRoleDisplay, formatTimestamp } = useAuditLog();
 
@@ -35,66 +35,94 @@ export const AuditLog = () => {
     search: '',
   });
 
-  const handleSelectLog = (logId) => {
-    setSelectedLogs((prev) => (prev.includes(logId) ? prev.filter((id) => id !== logId) : [...prev, logId]));
-  };
-
-  const handleSelectAll = () => {
-    if (selectedLogs.length === auditLogs.length) {
-      setSelectedLogs([]);
-    } else {
-      setSelectedLogs(auditLogs.map((log) => log.id));
-    }
-  };
-
-  const handleDeleteSingle = async (logId) => {
-    if (confirm('Apakah Anda yakin ingin menghapus log ini?')) {
-      try {
-        await deleteAuditLog(logId);
-        await refresh();
-        await refreshStats();
-        setSelectedLogs((prev) => prev.filter((id) => id !== logId));
-      } catch (err) {
-        console.error('Delete failed:', err);
-        alert('Gagal menghapus log. Silakan coba lagi.');
-      }
-    }
-  };
-
-  const handleDeleteMultiple = async () => {
-    if (selectedLogs.length === 0) {
-      alert('Pilih setidaknya satu log untuk dihapus');
-      return;
-    }
-
-    if (confirm(`Apakah Anda yakin ingin menghapus ${selectedLogs.length} log yang dipilih?`)) {
-      try {
-        await deleteMultipleAuditLogs(selectedLogs);
-        await refresh();
-        await refreshStats();
-        setSelectedLogs([]);
-      } catch (err) {
-        console.error('Delete failed:', err);
-        alert('Gagal menghapus log. Silakan coba lagi.');
-      }
-    }
-  };
-
+  // Debug log structure
   useEffect(() => {
-    setSelectedLogs([]);
-  }, [auditLogs, pagination.page]);
+    if (auditLogs.length > 0 && !loading) {
+      console.log(
+        '🔍 DEBUG - First 5 audit logs:',
+        auditLogs.slice(0, 5).map((log) => ({
+          id: log.id,
+          module: log.module,
+          action: log.action,
+          description: log.description,
+          hasModule: !!log.module,
+          moduleType: typeof log.module,
+        })),
+      );
+
+      // Check for RAS logs specifically
+      const rasLogs = auditLogs.filter((log) => log.module === 'RAS');
+      console.log('🔍 RAS Logs found:', rasLogs.length);
+      if (rasLogs.length > 0) {
+        console.log('🔍 Sample RAS Log:', rasLogs[0]);
+      }
+    }
+  }, [auditLogs, loading]);
+
+  // Gabungkan module dari stats dengan hardcoded
+  const availableModules = React.useMemo(() => {
+    if (!stats || !stats.modules) return ALL_MODULES;
+
+    const modulesFromStats = stats.modules || [];
+    const allModules = [...new Set([...modulesFromStats, ...ALL_MODULES])];
+
+    console.log('📋 Available modules:', {
+      fromStats: modulesFromStats,
+      hardcoded: ALL_MODULES,
+      combined: allModules,
+      hasRAS: allModules.includes('RAS'),
+    });
+
+    return allModules.sort();
+  }, [stats]);
+
+  const handleFilterChange = (key, value) => {
+    const newFilters = { ...filters, [key]: value };
+    setFilters(newFilters);
+
+    if (key === 'search') {
+      handleSearch(value);
+    } else {
+      handleFilter(newFilters);
+    }
+  };
+
+  const resetFilters = () => {
+    const resetFilters = {
+      start_date: '',
+      end_date: '',
+      action: '',
+      module: '',
+      search: '',
+    };
+    setFilters(resetFilters);
+    handleFilter(resetFilters);
+    handleSearch('');
+  };
+
+  const handleExport = async () => {
+    try {
+      await exportToExcel(filters);
+    } catch (err) {
+      console.error('Export failed:', err);
+      alert('Gagal mengekspor data. Silakan coba lagi.');
+    }
+  };
+
+  const getTotalCount = (statsArray) => {
+    if (!statsArray || !Array.isArray(statsArray)) return 0;
+    return statsArray.reduce((acc, curr) => acc + parseInt(curr.count || '0', 10), 0);
+  };
 
   const getUserInfo = (log) => {
-    if (log.id === auditLogs[0]?.id) {
-      console.log('🔍 FULL LOG STRUCTURE:', {
+    // Debug specific log
+    if (log.module === 'RAS') {
+      console.log('🔍 RAS Log User Info:', {
         id: log.id,
         userId: log.userId,
         user: log.user,
-        hasUser: !!log.user,
-        userKeys: log.user ? Object.keys(log.user) : 'no user',
         module: log.module,
         action: log.action,
-        ip: log.ip_address,
       });
     }
 
@@ -182,26 +210,26 @@ export const AuditLog = () => {
       switch (role?.toUpperCase()) {
         case 'ADMIN':
           return {
-            bg: 'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-300',
-            text: 'text-purple-600 dark:text-purple-300',
+            bg: 'bg-purple-100 text-purple-600',
+            text: 'text-purple-600',
             badge: '👑',
           };
         case 'SYSTEM':
           return {
-            bg: 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300',
-            text: 'text-gray-600 dark:text-gray-300',
+            bg: 'bg-gray-100 text-gray-600',
+            text: 'text-gray-600',
             badge: '⚙️',
           };
         case 'USER':
           return {
-            bg: 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300',
-            text: 'text-blue-600 dark:text-blue-300',
+            bg: 'bg-blue-100 text-blue-600',
+            text: 'text-blue-600',
             badge: '👤',
           };
         default:
           return {
-            bg: 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300',
-            text: 'text-gray-600 dark:text-gray-300',
+            bg: 'bg-gray-100 text-gray-600',
+            text: 'text-gray-600',
             badge: '❓',
           };
       }
@@ -215,101 +243,27 @@ export const AuditLog = () => {
           <User className={`w-4 h-4 ${roleColors.text}`} />
         </div>
         <div className="ml-4">
-          <div className="text-sm font-medium text-gray-900 dark:text-white flex items-center gap-1">
+          <div className="text-sm font-medium text-gray-900 flex items-center gap-1">
             {userInfo.displayName}
             <span className="text-xs">{roleColors.badge}</span>
           </div>
-          <div className="text-xs text-gray-600 dark:text-gray-400 capitalize">{userInfo.roleDisplay}</div>
-          {userInfo.userId && <div className="text-xs text-gray-500 dark:text-gray-500 mt-1">ID: {userInfo.userId}</div>}
+          <div className="text-xs text-gray-600 capitalize">{userInfo.roleDisplay}</div>
+          {userInfo.userId && <div className="text-xs text-gray-500 mt-1">ID: {userInfo.userId}</div>}
         </div>
       </div>
     );
   };
 
-  const handleFilterChange = (key, value) => {
-    const newFilters = { ...filters, [key]: value };
-    setFilters(newFilters);
-
-    if (key === 'search') {
-      handleSearch(value);
-    } else {
-      handleFilter(newFilters);
-    }
-  };
-
-  const resetFilters = () => {
-    const resetFilters = {
-      start_date: '',
-      end_date: '',
-      action: '',
-      module: '',
-      search: '',
-    };
-    setFilters(resetFilters);
-    handleFilter(resetFilters);
-    handleSearch('');
-  };
-
-  const handleExport = async () => {
-    try {
-      await exportToExcel(filters);
-    } catch (err) {
-      console.error('Export failed:', err);
-      alert('Gagal mengekspor data. Silakan coba lagi.');
-    }
-  };
-
-  const getTotalCount = (statsArray) => {
-    if (!statsArray || !Array.isArray(statsArray)) return 0;
-    return statsArray.reduce((acc, curr) => acc + parseInt(curr.count || '0', 10), 0);
-  };
-
-  useEffect(() => {
-    if (auditLogs.length > 0 && !loading) {
-      const logsWithUser = auditLogs.filter((log) => log.user && log.user.userID);
-      const logsWithUserId = auditLogs.filter((log) => log.userId);
-
-      console.log('📊 AUDIT LOGS SUMMARY:', {
-        totalLogs: auditLogs.length,
-        logsWithUser: logsWithUser.length,
-        logsWithUserId: logsWithUserId.length,
-        usersFound: [...new Set(logsWithUser.map((log) => log.user?.userID).filter(Boolean))],
-        sampleUserLog: logsWithUser[0] || 'No user logs found',
-        sampleNonUserLog: auditLogs.find((log) => !log.user) || 'All logs have users',
-      });
-    }
-  }, [auditLogs, loading]);
-
   return (
-    <div className={`min-h-screen transition-colors duration-300 ${darkMode ? 'bg-gray-900' : 'bg-gray-50'} p-6`}>
+    <div className="min-h-screen bg-gray-50 p-6">
       <div className="w-full mx-auto">
         <div className="mb-8">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className={`text-3xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Audit Log</h1>
-              <p className={`${darkMode ? 'text-gray-300' : 'text-gray-600'} mt-2`}>Monitor semua aktivitas sistem secara real-time</p>
+              <h1 className="text-3xl font-bold text-gray-900">Audit Log</h1>
+              <p className="text-gray-600 mt-2">Monitor semua aktivitas sistem secara real-time</p>
             </div>
             <div className="flex gap-3">
-              {/* Dark Mode Toggle */}
-              <button
-                onClick={toggleDarkMode}
-                className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors ${darkMode ? 'bg-gray-700 hover:bg-gray-600 border-gray-600 text-white' : 'bg-white hover:bg-gray-50 border-gray-300 text-gray-700'}`}
-                title={darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-              >
-                {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-                {darkMode ? 'Light Mode' : 'Dark Mode'}
-              </button>
-
-              {selectedLogs.length > 0 && (
-                <button
-                  onClick={handleDeleteMultiple}
-                  disabled={loading}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <Trash2 className="w-4 h-4" />
-                  Hapus ({selectedLogs.length})
-                </button>
-              )}
               <button onClick={refresh} disabled={loading} className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                 <Activity className="w-4 h-4" />
                 Refresh
@@ -323,18 +277,18 @@ export const AuditLog = () => {
         </div>
 
         {error && (
-          <div className={`mb-6 p-4 rounded-lg border ${darkMode ? 'bg-red-900/20 border-red-800' : 'bg-red-50 border-red-200'}`}>
+          <div className="mb-6 p-4 rounded-lg border bg-red-50 border-red-200">
             <div className="flex items-center justify-between">
               <div className="flex items-center">
-                <div className={`${darkMode ? 'text-red-400' : 'text-red-600'}`}>
+                <div className="text-red-600">
                   <Activity className="w-5 h-5" />
                 </div>
                 <div className="ml-3">
-                  <h3 className={`text-sm font-medium ${darkMode ? 'text-red-300' : 'text-red-800'}`}>Error</h3>
-                  <p className={`text-sm mt-1 ${darkMode ? 'text-red-400' : 'text-red-700'}`}>{error}</p>
+                  <h3 className="text-sm font-medium text-red-800">Error</h3>
+                  <p className="text-sm mt-1 text-red-700">{error}</p>
                 </div>
               </div>
-              <button onClick={clearError} className={`${darkMode ? 'text-red-400 hover:text-red-300' : 'text-red-600 hover:text-red-800'}`}>
+              <button onClick={clearError} className="text-red-600 hover:text-red-800">
                 ×
               </button>
             </div>
@@ -343,50 +297,50 @@ export const AuditLog = () => {
 
         {!statsLoading && stats && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <div className={`rounded-xl p-6 shadow-sm border transition-colors duration-300 ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+            <div className="rounded-xl p-6 shadow-sm border bg-white border-gray-200">
               <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-lg ${darkMode ? 'bg-blue-900/30 text-blue-400' : 'bg-blue-100 text-blue-600'}`}>
+                <div className="p-2 rounded-lg bg-blue-100 text-blue-600">
                   <Activity className="w-6 h-6" />
                 </div>
                 <div>
-                  <p className={`text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>Hari Ini</p>
-                  <p className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{getTotalCount(stats.today)}</p>
+                  <p className="text-sm font-medium text-gray-600">Hari Ini</p>
+                  <p className="text-2xl font-bold text-gray-900">{getTotalCount(stats.today)}</p>
                 </div>
               </div>
             </div>
 
-            <div className={`rounded-xl p-6 shadow-sm border transition-colors duration-300 ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+            <div className="rounded-xl p-6 shadow-sm border bg-white border-gray-200">
               <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-lg ${darkMode ? 'bg-green-900/30 text-green-400' : 'bg-green-100 text-green-600'}`}>
+                <div className="p-2 rounded-lg bg-green-100 text-green-600">
                   <BarChart3 className="w-6 h-6" />
                 </div>
                 <div>
-                  <p className={`text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>Minggu Ini</p>
-                  <p className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{getTotalCount(stats.week)}</p>
+                  <p className="text-sm font-medium text-gray-600">Minggu Ini</p>
+                  <p className="text-2xl font-bold text-gray-900">{getTotalCount(stats.week)}</p>
                 </div>
               </div>
             </div>
 
-            <div className={`rounded-xl p-6 shadow-sm border transition-colors duration-300 ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+            <div className="rounded-xl p-6 shadow-sm border bg-white border-gray-200">
               <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-lg ${darkMode ? 'bg-purple-900/30 text-purple-400' : 'bg-purple-100 text-purple-600'}`}>
+                <div className="p-2 rounded-lg bg-purple-100 text-purple-600">
                   <Calendar className="w-6 h-6" />
                 </div>
                 <div>
-                  <p className={`text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>Bulan Ini</p>
-                  <p className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{getTotalCount(stats.month)}</p>
+                  <p className="text-sm font-medium text-gray-600">Bulan Ini</p>
+                  <p className="text-2xl font-bold text-gray-900">{getTotalCount(stats.month)}</p>
                 </div>
               </div>
             </div>
 
-            <div className={`rounded-xl p-6 shadow-sm border transition-colors duration-300 ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+            <div className="rounded-xl p-6 shadow-sm border bg-white border-gray-200">
               <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-lg ${darkMode ? 'bg-orange-900/30 text-orange-400' : 'bg-orange-100 text-orange-600'}`}>
+                <div className="p-2 rounded-lg bg-orange-100 text-orange-600">
                   <User className="w-6 h-6" />
                 </div>
                 <div>
-                  <p className={`text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>Total Module</p>
-                  <p className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{stats.modules?.length || 0}</p>
+                  <p className="text-sm font-medium text-gray-600">Total Module</p>
+                  <p className="text-2xl font-bold text-gray-900">{availableModules.length}</p>
                 </div>
               </div>
             </div>
@@ -396,75 +350,68 @@ export const AuditLog = () => {
         {statsLoading && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             {[...Array(4)].map((_, i) => (
-              <div key={i} className={`rounded-xl p-6 shadow-sm border transition-colors duration-300 ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+              <div key={i} className="rounded-xl p-6 shadow-sm border bg-white border-gray-200">
                 <div className="animate-pulse">
-                  <div className={`h-4 rounded w-1/2 mb-2 ${darkMode ? 'bg-gray-600' : 'bg-gray-200'}`}></div>
-                  <div className={`h-6 rounded w-1/3 ${darkMode ? 'bg-gray-600' : 'bg-gray-200'}`}></div>
+                  <div className="h-4 rounded w-1/2 mb-2 bg-gray-200"></div>
+                  <div className="h-6 rounded w-1/3 bg-gray-200"></div>
                 </div>
               </div>
             ))}
           </div>
         )}
 
-        <div className={`rounded-xl shadow-sm border transition-colors duration-300 ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} mb-6`}>
+        <div className="rounded-xl shadow-sm border bg-white border-gray-200 mb-6">
           <div className="p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className={`text-lg font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Filters</h2>
+              <h2 className="text-lg font-semibold text-gray-900">Filters</h2>
               <div className="flex gap-2">
-                <button
-                  onClick={() => setShowFilters(!showFilters)}
-                  className={`inline-flex items-center gap-2 px-3 py-2 border rounded-lg transition-colors ${
-                    darkMode ? 'bg-gray-700 hover:bg-gray-600 border-gray-600 text-white' : 'bg-white hover:bg-gray-50 border-gray-300 text-gray-700'
-                  }`}
-                >
+                <button onClick={() => setShowFilters(!showFilters)} className="inline-flex items-center gap-2 px-3 py-2 border rounded-lg transition-colors bg-white hover:bg-gray-50 border-gray-300 text-gray-700">
                   <Filter className="w-4 h-4" />
                   {showFilters ? 'Sembunyikan Filter' : 'Tampilkan Filter'}
                 </button>
-                <button onClick={resetFilters} className={`px-3 py-2 rounded-lg transition-colors ${darkMode ? 'text-gray-300 hover:text-white hover:bg-gray-700' : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'}`}>
+                <button onClick={resetFilters} className="px-3 py-2 rounded-lg transition-colors text-gray-600 hover:text-gray-800 hover:bg-gray-50">
                   Reset
                 </button>
               </div>
             </div>
 
             <div className="relative mb-4">
-              <Search className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 ${darkMode ? 'text-gray-400' : 'text-gray-400'}`} />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 type="text"
                 placeholder="Cari deskripsi..."
                 value={filters.search}
                 onChange={(e) => handleFilterChange('search', e.target.value)}
-                className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
-                  darkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
-                }`}
+                className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white border-gray-300 text-gray-900 placeholder-gray-500"
               />
             </div>
 
             {showFilters && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
                 <div>
-                  <label className={`block text-sm font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Tanggal Mulai</label>
+                  <label className="block text-sm font-medium mb-1 text-gray-700">Tanggal Mulai</label>
                   <input
                     type="date"
                     value={filters.start_date}
                     onChange={(e) => handleFilterChange('start_date', e.target.value)}
-                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 transition-colors ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 transition-colors bg-white border-gray-300 text-gray-900"
                   />
                 </div>
                 <div>
-                  <label className={`block text-sm font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Tanggal Akhir</label>
+                  <label className="block text-sm font-medium mb-1 text-gray-700">Tanggal Akhir</label>
                   <input
                     type="date"
                     value={filters.end_date}
                     onChange={(e) => handleFilterChange('end_date', e.target.value)}
-                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 transition-colors ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 transition-colors bg-white border-gray-300 text-gray-900"
                   />
                 </div>
                 <div>
-                  <label className={`block text-sm font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Aksi</label>
+                  <label className="block text-sm font-medium mb-1 text-gray-700">Aksi</label>
                   <select
                     value={filters.action}
                     onChange={(e) => handleFilterChange('action', e.target.value)}
-                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 transition-colors ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 transition-colors bg-white border-gray-300 text-gray-900"
                   >
                     <option value="">Semua Aksi</option>
                     <option value="CREATE">Create</option>
@@ -477,14 +424,14 @@ export const AuditLog = () => {
                   </select>
                 </div>
                 <div>
-                  <label className={`block text-sm font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Module</label>
+                  <label className="block text-sm font-medium mb-1 text-gray-700">Module</label>
                   <select
                     value={filters.module}
                     onChange={(e) => handleFilterChange('module', e.target.value)}
-                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 transition-colors ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 transition-colors bg-white border-gray-300 text-gray-900"
                   >
                     <option value="">Semua Module</option>
-                    {stats?.modules?.map((module) => (
+                    {availableModules.map((module) => (
                       <option key={module} value={module}>
                         {module}
                       </option>
@@ -496,99 +443,66 @@ export const AuditLog = () => {
           </div>
         </div>
 
-        {selectedLogs.length > 0 && (
-          <div className={`mb-4 p-4 rounded-lg border ${darkMode ? 'bg-blue-900/20 border-blue-800' : 'bg-blue-50 border-blue-200'}`}>
-            <div className="flex items-center justify-between">
-              <span className={`text-sm font-medium ${darkMode ? 'text-blue-300' : 'text-blue-800'}`}>{selectedLogs.length} log dipilih</span>
-              <button onClick={() => setSelectedLogs([])} className={`text-sm ${darkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-800'}`}>
-                Batalkan pilihan
-              </button>
-            </div>
-          </div>
-        )}
-
-        <div className={`rounded-xl shadow-sm border transition-colors duration-300 ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} overflow-hidden`}>
+        <div className="rounded-xl shadow-sm border bg-white border-gray-200 overflow-hidden">
           {loading ? (
             <div className="p-8 text-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-              <p className={`${darkMode ? 'text-gray-300' : 'text-gray-600'} mt-2`}>Memuat data audit...</p>
+              <p className="text-gray-600 mt-2">Memuat data audit...</p>
             </div>
           ) : (
             <>
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <thead className={`border-b transition-colors duration-300 ${darkMode ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'}`}>
+                  <thead className="border-b bg-gray-50 border-gray-200">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider w-12">
-                        <input
-                          type="checkbox"
-                          checked={selectedLogs.length === auditLogs.length && auditLogs.length > 0}
-                          onChange={handleSelectAll}
-                          className={`h-4 w-4 text-blue-600 focus:ring-blue-500 border rounded ${darkMode ? 'border-gray-600 bg-gray-700' : 'border-gray-300 bg-white'}`}
-                        />
-                      </th>
-                      <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>User</th>
-                      <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Aksi</th>
-                      <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Module</th>
-                      <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Deskripsi</th>
-                      <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>IP Address</th>
-                      <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Waktu</th>
-                      <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Status</th>
-                      <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Aksi</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-700">User</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-700">Aksi</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-700">Module</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-700">Deskripsi</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-700">IP Address</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-700">Waktu</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-700">Status</th>
                     </tr>
                   </thead>
-                  <tbody className={`divide-y transition-colors duration-300 ${darkMode ? 'divide-gray-700' : 'divide-gray-200'}`}>
+                  <tbody className="divide-y divide-gray-200">
                     {auditLogs.map((log) => {
                       const ipAddress = log.ip_address || '-';
                       const timestamp = log.timestamp || '';
-                      const isSelected = selectedLogs.includes(log.id);
+
+
+                      if (!log.module && log.description.includes('RAS')) {
+                        console.warn('⚠️ Log tanpa module:', {
+                          id: log.id,
+                          description: log.description,
+                          action: log.action,
+                        });
+                      }
 
                       return (
-                        <tr key={log.id} className={`transition-colors duration-200 ${isSelected ? (darkMode ? 'bg-blue-900/20' : 'bg-blue-50') : darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'}`}>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <input
-                              type="checkbox"
-                              checked={isSelected}
-                              onChange={() => handleSelectLog(log.id)}
-                              className={`h-4 w-4 text-blue-600 focus:ring-blue-500 border rounded ${darkMode ? 'border-gray-600 bg-gray-700' : 'border-gray-300 bg-white'}`}
-                            />
-                          </td>
+                        <tr key={log.id} className="hover:bg-gray-50">
                           <td className="px-6 py-4 whitespace-nowrap">
                             <UserDisplay log={log} />
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${ACTION_COLORS[log.action] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'}`}>{log.action}</span>
+                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${ACTION_COLORS[log.action] || 'bg-gray-100 text-gray-800'}`}>{log.action}</span>
                           </td>
-                          <td className={`px-6 py-4 whitespace-nowrap text-sm ${darkMode ? 'text-white' : 'text-gray-900'}`}>{log.module}</td>
-                          <td className={`px-6 py-4 text-sm ${darkMode ? 'text-white' : 'text-gray-900'} max-w-md`}>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm">
+                            <span className={`font-medium ${log.module ? 'text-gray-900' : 'text-red-600 italic'}`}>{log.module || '(No Module)'}</span>
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-900 max-w-md">
                             <div className="line-clamp-2">{log.description}</div>
                             {log.endpoint && (
-                              <div className={`text-xs mt-1 truncate ${darkMode ? 'text-gray-400' : 'text-gray-500'}`} title={log.endpoint}>
+                              <div className="text-xs mt-1 truncate text-gray-500" title={log.endpoint}>
                                 {log.endpoint}
                               </div>
                             )}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm">
-                            <code className={`px-1 py-0.5 rounded ${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'}`}>{ipAddress}</code>
+                            <code className="px-1 py-0.5 rounded bg-gray-100 text-gray-600">{ipAddress}</code>
                           </td>
-                          <td className={`px-6 py-4 whitespace-nowrap text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{formatTimestamp(timestamp)}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatTimestamp(timestamp)}</td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <span
-                              className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${
-                                log.isSuccess ? (darkMode ? 'bg-green-900/30 text-green-300' : 'bg-green-100 text-green-700') : darkMode ? 'bg-red-900/30 text-red-300' : 'bg-red-100 text-red-700'
-                              }`}
-                            >
-                              {log.isSuccess ? '✅ Berhasil' : '❌ Gagal'}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <button
-                              onClick={() => handleDeleteSingle(log.id)}
-                              className={`p-1 rounded transition-colors ${darkMode ? 'text-red-400 hover:text-red-300 hover:bg-red-900/30' : 'text-red-600 hover:text-red-800 hover:bg-red-100'}`}
-                              title="Hapus log"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${log.isSuccess ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{log.isSuccess ? '✅ Berhasil' : '❌ Gagal'}</span>
                           </td>
                         </tr>
                       );
@@ -598,17 +512,18 @@ export const AuditLog = () => {
               </div>
 
               {auditLogs.length === 0 && !loading && (
+ 
                 <div className="text-center py-12">
-                  <Activity className={`w-12 h-12 mx-auto mb-4 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`} />
-                  <h3 className={`text-lg font-medium mb-2 ${darkMode ? 'text-white' : 'text-gray-900'}`}>Tidak ada data audit</h3>
-                  <p className={darkMode ? 'text-gray-400' : 'text-gray-500'}>Tidak ada aktivitas yang tercatat untuk filter yang dipilih.</p>
+                  <Activity className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+                  <h3 className="text-lg font-medium mb-2 text-gray-900">Tidak ada data audit</h3>
+                  <p className="text-gray-500">Tidak ada aktivitas yang tercatat untuk filter yang dipilih.</p>
                 </div>
               )}
 
               {auditLogs.length > 0 && (
-                <div className={`px-6 py-4 border-t transition-colors duration-300 ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+                <div className="px-6 py-4 border-t border-gray-200">
                   <div className="flex items-center justify-between">
-                    <div className={`text-sm ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                    <div className="text-sm text-gray-700">
                       Menampilkan <span className="font-semibold">{(pagination.page - 1) * pagination.limit + 1}</span> - <span className="font-semibold">{Math.min(pagination.page * pagination.limit, total)}</span> dari{' '}
                       <span className="font-semibold">{total}</span> aktivitas
                     </div>
@@ -616,18 +531,14 @@ export const AuditLog = () => {
                       <button
                         onClick={() => handlePageChange(pagination.page - 1)}
                         disabled={pagination.page === 1}
-                        className={`px-4 py-2 border rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                          darkMode ? 'border-gray-600 hover:bg-gray-700 text-white' : 'border-gray-300 hover:bg-gray-50 text-gray-700'
-                        }`}
+                        className="px-4 py-2 border rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed border-gray-300 hover:bg-gray-50 text-gray-700"
                       >
                         Previous
                       </button>
                       <button
                         onClick={() => handlePageChange(pagination.page + 1)}
                         disabled={pagination.page >= pagination.totalPages}
-                        className={`px-4 py-2 border rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                          darkMode ? 'border-gray-600 hover:bg-gray-700 text-white' : 'border-gray-300 hover:bg-gray-50 text-gray-700'
-                        }`}
+                        className="px-4 py-2 border rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed border-gray-300 hover:bg-gray-50 text-gray-700"
                       >
                         Next
                       </button>
@@ -642,3 +553,4 @@ export const AuditLog = () => {
     </div>
   );
 };
+

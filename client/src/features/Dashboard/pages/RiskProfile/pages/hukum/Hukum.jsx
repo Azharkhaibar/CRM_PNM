@@ -22,7 +22,6 @@ export default function Hukum() {
         </div>
       </div>
 
-      {/* Tabs */}
       <div className="mb-6 border-b border-gray-200">
         <nav className="flex space-x-8">
           <button

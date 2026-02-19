@@ -12,144 +12,281 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.NewInvestasiController = void 0;
+exports.InvestasiController = void 0;
 const common_1 = require("@nestjs/common");
+const swagger_1 = require("@nestjs/swagger");
 const new_investasi_service_1 = require("./new-investasi.service");
-const create_new_investasi_dto_1 = require("./dto/create-new-investasi.dto");
-const update_new_investasi_dto_1 = require("./dto/update-new-investasi.dto");
-const create_investasi_section_dto_1 = require("./dto/create-investasi-section.dto");
-const update_new_investasi_dto_2 = require("./dto/update-new-investasi.dto");
+const create_stratejik_section_dto_1 = require("../../stratejik/stratejik/dto/create-stratejik-section.dto");
+const update_stratejik_section_dto_1 = require("../../stratejik/stratejik/dto/update-stratejik-section.dto");
 const new_investasi_entity_1 = require("./entities/new-investasi.entity");
-let NewInvestasiController = class NewInvestasiController {
+const create_stratejik_dto_1 = require("../../stratejik/stratejik/dto/create-stratejik.dto");
+const update_stratejik_dto_1 = require("../../stratejik/stratejik/dto/update-stratejik.dto");
+let InvestasiController = class InvestasiController {
     investasiService;
     constructor(investasiService) {
         this.investasiService = investasiService;
     }
-    async getSections() {
-        return await this.investasiService.findAllSections();
+    async createSection(createDto) {
+        return await this.investasiService.createSection(createDto);
+    }
+    async getSections(isActive) {
+        return await this.investasiService.findAllSections(isActive);
     }
     async getSection(id) {
-        return await this.investasiService.findSectionById(parseInt(id));
+        return await this.investasiService.findSectionById(id);
     }
-    async createSection(data) {
-        return await this.investasiService.createSection(data);
-    }
-    async updateSection(id, data) {
-        return await this.investasiService.updateSection(parseInt(id), data);
+    async updateSection(id, updateDto) {
+        return await this.investasiService.updateSection(id, updateDto);
     }
     async deleteSection(id) {
-        await this.investasiService.deleteSection(parseInt(id));
+        await this.investasiService.deleteSection(id);
     }
-    async getInvestasiByPeriod(year, quarter) {
-        return await this.investasiService.findByPeriod(parseInt(year), quarter);
+    async getSectionsWithIndicatorsByPeriod(year, quarter) {
+        return await this.investasiService.getSectionsWithIndicatorsByPeriod(year, quarter);
     }
-    async getSummary(year, quarter) {
-        return await this.investasiService.getSummary(parseInt(year), quarter);
+    async createIndikator(createDto) {
+        return await this.investasiService.createIndikator(createDto);
     }
-    async getInvestasi(id) {
-        return await this.investasiService.findById(parseInt(id));
+    async getAllIndikators() {
+        return await this.investasiService.findAllIndikators();
     }
-    async createInvestasi(data) {
-        return await this.investasiService.create(data);
+    async getIndikatorsByPeriod(year, quarter) {
+        return await this.investasiService.findIndikatorsByPeriod(year, quarter);
     }
-    async updateInvestasi(id, data) {
-        return await this.investasiService.update(parseInt(id), data);
+    async searchIndikators(query, year, quarter) {
+        return await this.investasiService.searchIndikators(query, year, quarter);
     }
-    async deleteInvestasi(id) {
-        await this.investasiService.delete(parseInt(id));
+    async getIndikator(id) {
+        return await this.investasiService.findIndikatorById(id);
+    }
+    async updateIndikator(id, updateDto) {
+        return await this.investasiService.updateIndikator(id, updateDto);
+    }
+    async deleteIndikator(id) {
+        await this.investasiService.deleteIndikator(id);
+    }
+    async getTotalWeighted(year, quarter) {
+        const total = await this.investasiService.getTotalWeightedByPeriod(year, quarter);
+        return { total };
+    }
+    async getSectionsByPeriod(year, quarter) {
+        return await this.investasiService.findSectionsByPeriod(year, quarter);
+    }
+    async getAvailablePeriods() {
+        try {
+            const periods = await this.investasiService.getPeriods();
+            return {
+                success: true,
+                data: periods,
+                count: periods.length,
+            };
+        }
+        catch (error) {
+            console.error('Error in getAvailablePeriods:', error);
+            throw error;
+        }
+    }
+    async getAllPeriods() {
+        try {
+            const periods = await this.investasiService.getPeriods();
+            const periodsWithCounts = await Promise.all(periods.map(async (period) => {
+                const count = await this.investasiService.getIndikatorCountByPeriod(period.year, period.quarter);
+                return {
+                    ...period,
+                    indicatorCount: count,
+                };
+            }));
+            return {
+                success: true,
+                data: periodsWithCounts,
+                count: periodsWithCounts.length,
+            };
+        }
+        catch (error) {
+            console.error('Error in getAllPeriods:', error);
+            throw error;
+        }
+    }
+    async duplicateIndikator(id, year, quarter) {
+        return await this.investasiService.duplicateIndikatorToNewPeriod(id, year, quarter);
     }
 };
-exports.NewInvestasiController = NewInvestasiController;
-__decorate([
-    (0, common_1.Get)('sections'),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
-    __metadata("design:returntype", Promise)
-], NewInvestasiController.prototype, "getSections", null);
-__decorate([
-    (0, common_1.Get)('sections/:id'),
-    __param(0, (0, common_1.Param)('id')),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
-    __metadata("design:returntype", Promise)
-], NewInvestasiController.prototype, "getSection", null);
+exports.InvestasiController = InvestasiController;
 __decorate([
     (0, common_1.Post)('sections'),
     (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
-    (0, common_1.UsePipes)(new common_1.ValidationPipe({ transform: true })),
+    (0, swagger_1.ApiOperation)({ summary: 'Create new strategik section' }),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [create_investasi_section_dto_1.CreateSectionDto]),
+    __metadata("design:paramtypes", [create_stratejik_section_dto_1.CreateStrategikSectionDto]),
     __metadata("design:returntype", Promise)
-], NewInvestasiController.prototype, "createSection", null);
+], InvestasiController.prototype, "createSection", null);
+__decorate([
+    (0, common_1.Get)('sections'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get all strategik sections' }),
+    (0, swagger_1.ApiQuery)({ name: 'isActive', required: false, type: Boolean }),
+    __param(0, (0, common_1.Query)('isActive')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Boolean]),
+    __metadata("design:returntype", Promise)
+], InvestasiController.prototype, "getSections", null);
+__decorate([
+    (0, common_1.Get)('sections/:id'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get strategik section by ID' }),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number]),
+    __metadata("design:returntype", Promise)
+], InvestasiController.prototype, "getSection", null);
 __decorate([
     (0, common_1.Put)('sections/:id'),
-    (0, common_1.UsePipes)(new common_1.ValidationPipe({ transform: true })),
-    __param(0, (0, common_1.Param)('id')),
+    (0, swagger_1.ApiOperation)({ summary: 'Update strategik section' }),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, update_new_investasi_dto_2.UpdateInvestasiSectionDto]),
+    __metadata("design:paramtypes", [Number, update_stratejik_section_dto_1.UpdateStrategikSectionDto]),
     __metadata("design:returntype", Promise)
-], NewInvestasiController.prototype, "updateSection", null);
+], InvestasiController.prototype, "updateSection", null);
 __decorate([
     (0, common_1.Delete)('sections/:id'),
     (0, common_1.HttpCode)(common_1.HttpStatus.NO_CONTENT),
-    __param(0, (0, common_1.Param)('id')),
+    (0, swagger_1.ApiOperation)({ summary: 'Delete strategik section' }),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [Number]),
     __metadata("design:returntype", Promise)
-], NewInvestasiController.prototype, "deleteSection", null);
+], InvestasiController.prototype, "deleteSection", null);
 __decorate([
-    (0, common_1.Get)(),
-    __param(0, (0, common_1.Query)('year')),
+    (0, common_1.Get)('indikators/sections-by-period'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get sections with indicators by period' }),
+    __param(0, (0, common_1.Query)('year', new common_1.ParseIntPipe())),
     __param(1, (0, common_1.Query)('quarter')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:paramtypes", [Number, String]),
     __metadata("design:returntype", Promise)
-], NewInvestasiController.prototype, "getInvestasiByPeriod", null);
+], InvestasiController.prototype, "getSectionsWithIndicatorsByPeriod", null);
 __decorate([
-    (0, common_1.Get)('summary'),
-    __param(0, (0, common_1.Query)('year')),
-    __param(1, (0, common_1.Query)('quarter')),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String]),
-    __metadata("design:returntype", Promise)
-], NewInvestasiController.prototype, "getSummary", null);
-__decorate([
-    (0, common_1.Get)(':id'),
-    __param(0, (0, common_1.Param)('id')),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
-    __metadata("design:returntype", Promise)
-], NewInvestasiController.prototype, "getInvestasi", null);
-__decorate([
-    (0, common_1.Post)(),
+    (0, common_1.Post)('indikators'),
     (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
-    (0, common_1.UsePipes)(new common_1.ValidationPipe({ transform: true })),
+    (0, swagger_1.ApiOperation)({ summary: 'Create new strategik indikator' }),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [create_new_investasi_dto_1.CreateInvestasiDto]),
+    __metadata("design:paramtypes", [create_stratejik_dto_1.CreateStrategikDto]),
     __metadata("design:returntype", Promise)
-], NewInvestasiController.prototype, "createInvestasi", null);
+], InvestasiController.prototype, "createIndikator", null);
 __decorate([
-    (0, common_1.Put)(':id'),
-    (0, common_1.UsePipes)(new common_1.ValidationPipe({ transform: true })),
-    __param(0, (0, common_1.Param)('id')),
+    (0, common_1.Get)('indikators'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get all strategik indikators' }),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], InvestasiController.prototype, "getAllIndikators", null);
+__decorate([
+    (0, common_1.Get)('indikators/period'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get strategik indikators by period' }),
+    (0, swagger_1.ApiQuery)({ name: 'year', required: true, type: Number }),
+    (0, swagger_1.ApiQuery)({ name: 'quarter', required: true, enum: new_investasi_entity_1.Quarter }),
+    __param(0, (0, common_1.Query)('year', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Query)('quarter')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, String]),
+    __metadata("design:returntype", Promise)
+], InvestasiController.prototype, "getIndikatorsByPeriod", null);
+__decorate([
+    (0, common_1.Get)('indikators/search'),
+    (0, swagger_1.ApiOperation)({ summary: 'Search strategik indikators' }),
+    (0, swagger_1.ApiQuery)({ name: 'query', required: false }),
+    (0, swagger_1.ApiQuery)({ name: 'year', required: false }),
+    (0, swagger_1.ApiQuery)({ name: 'quarter', required: false, enum: new_investasi_entity_1.Quarter }),
+    __param(0, (0, common_1.Query)('query')),
+    __param(1, (0, common_1.Query)('year')),
+    __param(2, (0, common_1.Query)('quarter')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Number, String]),
+    __metadata("design:returntype", Promise)
+], InvestasiController.prototype, "searchIndikators", null);
+__decorate([
+    (0, common_1.Get)('indikators/:id'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get strategik indikator by ID' }),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number]),
+    __metadata("design:returntype", Promise)
+], InvestasiController.prototype, "getIndikator", null);
+__decorate([
+    (0, common_1.Put)('indikators/:id'),
+    (0, swagger_1.ApiOperation)({ summary: 'Update strategik indikator' }),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, update_new_investasi_dto_1.UpdateInvestasiDto]),
+    __metadata("design:paramtypes", [Number, update_stratejik_dto_1.UpdateStrategikDto]),
     __metadata("design:returntype", Promise)
-], NewInvestasiController.prototype, "updateInvestasi", null);
+], InvestasiController.prototype, "updateIndikator", null);
 __decorate([
-    (0, common_1.Delete)(':id'),
+    (0, common_1.Delete)('indikators/:id'),
     (0, common_1.HttpCode)(common_1.HttpStatus.NO_CONTENT),
-    __param(0, (0, common_1.Param)('id')),
+    (0, swagger_1.ApiOperation)({ summary: 'Delete strategik indikator' }),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [Number]),
     __metadata("design:returntype", Promise)
-], NewInvestasiController.prototype, "deleteInvestasi", null);
-exports.NewInvestasiController = NewInvestasiController = __decorate([
+], InvestasiController.prototype, "deleteIndikator", null);
+__decorate([
+    (0, common_1.Get)('total-weighted'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get total weighted by period' }),
+    (0, swagger_1.ApiQuery)({ name: 'year', required: true }),
+    (0, swagger_1.ApiQuery)({ name: 'quarter', required: true, enum: new_investasi_entity_1.Quarter }),
+    __param(0, (0, common_1.Query)('year', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Query)('quarter')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, String]),
+    __metadata("design:returntype", Promise)
+], InvestasiController.prototype, "getTotalWeighted", null);
+__decorate([
+    (0, common_1.Get)('sections/period'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get strategik sections by period' }),
+    (0, swagger_1.ApiQuery)({ name: 'year', required: true, type: Number }),
+    (0, swagger_1.ApiQuery)({ name: 'quarter', required: true, enum: new_investasi_entity_1.Quarter }),
+    __param(0, (0, common_1.Query)('year', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Query)('quarter')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, String]),
+    __metadata("design:returntype", Promise)
+], InvestasiController.prototype, "getSectionsByPeriod", null);
+__decorate([
+    (0, common_1.Get)('periods'),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Get available periods',
+        description: 'Get list of distinct years and quarters that have data',
+    }),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], InvestasiController.prototype, "getAvailablePeriods", null);
+__decorate([
+    (0, common_1.Get)('all-periods'),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Get all periods with count',
+        description: 'Get periods with indicator counts',
+    }),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], InvestasiController.prototype, "getAllPeriods", null);
+__decorate([
+    (0, common_1.Post)('indikators/:id/duplicate'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
+    (0, swagger_1.ApiOperation)({ summary: 'Duplicate indikator to new period' }),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Query)('year', common_1.ParseIntPipe)),
+    __param(2, (0, common_1.Query)('quarter')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, Number, String]),
+    __metadata("design:returntype", Promise)
+], InvestasiController.prototype, "duplicateIndikator", null);
+exports.InvestasiController = InvestasiController = __decorate([
+    (0, swagger_1.ApiTags)('Investasi'),
     (0, common_1.Controller)('investasi'),
     __metadata("design:paramtypes", [new_investasi_service_1.InvestasiService])
-], NewInvestasiController);
+], InvestasiController);
 //# sourceMappingURL=new-investasi.controller.js.map

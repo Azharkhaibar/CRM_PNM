@@ -204,7 +204,7 @@ import { useAuth } from '../hooks/useAuth.hook';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useDarkMode } from '../../../shared/components/Darkmodecontext';
 import PinDialog from '../components/pinDialog';
-import { useUserNotifications } from '../../Dashboard/pages/notification/hooks/notification.hook';
+// import { useUserNotifications } from '../../Dashboard/pages/notification/hooks/notification.hook'; // HAPUS INI
 
 export default function LoginPage() {
   const [userID, setUserID] = useState('');
@@ -213,11 +213,11 @@ export default function LoginPage() {
   const [dialogMessage, setDialogMessage] = useState('');
   const [showPinDialog, setShowPinDialog] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
-  const [notification, setNotification] = useState(null); // State untuk notifikasi minimalis
+  const [notification, setNotification] = useState(null);
   const [inputError, setInputError] = useState('');
   const navigate = useNavigate();
   const { user, loading, error, login } = useAuth();
-  const { refreshNotifications } = useUserNotifications();
+  // const { refreshNotifications } = useUserNotifications(); // HAPUS INI
   const { darkMode } = useDarkMode();
 
   // Auto-hide notification setelah 4 detik
@@ -247,7 +247,7 @@ export default function LoginPage() {
 
     // Validasi input
     if (!userID || !password) {
-      setInputError('UserID dan Password harus diisi'); // Ganti setDialogMessage
+      setInputError('UserID dan Password harus diisi');
       setIsLoggingIn(false);
       return;
     }
@@ -255,11 +255,12 @@ export default function LoginPage() {
     try {
       await login(userID, password);
 
-      try {
-        await refreshNotifications();
-      } catch (err) {
-        console.log('Notification refresh optional:', err.message);
-      }
+      // ✅ HAPUS atau COMMENT refreshNotifications jika tidak diperlukan
+      // try {
+      //   await refreshNotifications();
+      // } catch (err) {
+      //   console.log('Notification refresh optional:', err.message);
+      // }
 
       // Notifikasi sukses
       setNotification({
@@ -352,25 +353,7 @@ export default function LoginPage() {
               </AnimatePresence>
               <InputField label="UserID" type="text" value={userID} onChange={(e) => setUserID(e.target.value)} darkMode={darkMode} disabled={isLoggingIn} />
               <InputField label="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} darkMode={darkMode} disabled={isLoggingIn} />
-
-              <div className="text-right">
-                <button
-                  type="button"
-                  onClick={() => navigate('/forgot-password')}
-                  disabled={isLoggingIn}
-                  className={`text-sm font-medium hover:underline transition-colors duration-300 ${isLoggingIn ? 'text-gray-500 cursor-not-allowed' : darkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'}`}
-                >
-                  Forgot Password?
-                </button>
-              </div>
             </div>
-
-            {/* Hapus error display lama */}
-            {/* {error && (
-              <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className={`text-sm text-center mt-2 transition-colors duration-300 ${darkMode ? 'text-red-400' : 'text-red-500'}`}>
-                {error}
-              </motion.p>
-            )} */}
 
             <button type="submit" disabled={isLoggingIn} className={buttonClass}>
               {isLoggingIn ? (
@@ -405,7 +388,7 @@ export default function LoginPage() {
         <div className={`absolute inset-0 transition-all duration-300 ${darkMode ? 'bg-gradient-to-t from-black/60 to-transparent' : 'bg-gradient-to-t from-black/40 to-transparent'}`} />
       </div>
 
-      {/* Dialog sukses untuk login berhasil (opsional, bisa dihapus jika sudah pakai notifikasi) */}
+      {/* Dialog sukses untuk login berhasil */}
       <AnimatePresence>
         {showDialog && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 flex items-center justify-center z-50">

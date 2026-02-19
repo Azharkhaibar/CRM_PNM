@@ -91,7 +91,7 @@ class AuditLogService {
       },
       (error: any) => {
         return Promise.reject(error);
-      }
+      },
     );
 
     this.api.interceptors.response.use(
@@ -100,45 +100,64 @@ class AuditLogService {
       },
       (error: any) => {
         return Promise.reject(error);
-      }
+      },
     );
   }
 
   async createAuditLog(auditLogData: AuditLogData): Promise<any> {
     try {
+      // ⚡ PERBAIKAN 1: Ambil user data dengan benar
       const userJson = localStorage.getItem('user');
       let userId: number | null = null;
+
+      console.log('🔍 [FRONTEND] User data account from localStorage:', userJson);
 
       if (userJson) {
         try {
           const userData = JSON.parse(userJson);
-          userId = userData.user_id || userData.id || userData.userId;
+
+          // Coba semua kemungkinan field user ID
+          userId = userData.user_id || userData.id || userData.userId || userData.userID;
+
+          console.log('🔍 [FRONTEND] Parsed user data:', {
+            userData,
+            extractedUserId: userId,
+            hasUser_id: !!userData.user_id,
+            hasId: !!userData.id,
+            hasUserId: !!userData.userId,
+            hasUserID: !!userData.userID,
+          });
         } catch (parseError) {
-          console.error('Error parsing user data:', parseError);
+          console.error('Error parsing user data for audit log:', parseError);
         }
       }
 
-      const clientIP = await this.getClientIP();
+      // Gunakan userId dari parameter jika ada, kalau tidak dari localStorage
+      const finalUserId = auditLogData.userId ?? userId;
 
-      const description = auditLogData.description && auditLogData.description !== 'No description provided' ? auditLogData.description : `${auditLogData.action} ${auditLogData.module}`;
+      console.log('🔍 [FRONTEND] Final userId for audit log:', finalUserId);
 
+      // ⚡ PERBAIKAN 2: Buat payload yang sesuai dengan backend
       const payload = {
         action: auditLogData.action,
-        module: auditLogData.module,
-        description: description,
+        module: auditLogData.module, // Pastikan module adalah "RAS"
+        description: auditLogData.description,
         endpoint: auditLogData.endpoint || window.location.pathname,
-        ip_address: auditLogData.ipAddress || clientIP,
+        ip_address: auditLogData.ipAddress || (await this.getClientIP()),
         isSuccess: auditLogData.isSuccess ?? true,
-        userId: auditLogData.userId ?? userId,
-        metadata: auditLogData.metadata && Object.keys(auditLogData.metadata).length > 0 ? auditLogData.metadata : null,
+        userId: finalUserId, // Kirim null jika tidak ada user
+        metadata: auditLogData.metadata || null,
       };
 
-      console.log('📝 Creating audit log:', payload); 
+      console.log('📝 [FRONTEND] Creating audit log payload:', payload);
 
       const response = await this.api.post('/audit-logs', payload);
+
+      console.log('✅ [FRONTEND] Audit log created successfully:', response.data);
       return response.data;
     } catch (error: any) {
-      console.error('Failed to create audit log:', error);
+      console.error('❌ [FRONTEND] Failed to create audit log:', error);
+      // Jangan throw error agar tidak mengganggu aplikasi utama
       return null;
     }
   }

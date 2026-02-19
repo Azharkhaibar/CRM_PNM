@@ -1,525 +1,467 @@
-// services/likuiditas.service.ts
-import api from '../api.services';
+import axios, { AxiosResponse } from 'axios';
 
-// Types - definisikan langsung di sini untuk menghindari import circular
-export type Quarter = 'Q1' | 'Q2' | 'Q3' | 'Q4';
-export type CalculationMode = 'RASIO' | 'NILAI_TUNGGAL' | 'TEKS';
+// ENUMS
+export enum CalculationMode {
+  RASIO = 'RASIO',
+  NILAI_TUNGGAL = 'NILAI_TUNGGAL',
+  TEKS = 'TEKS',
+}
 
-// Interfaces - SESUAI dengan entity backend
-export interface SectionLikuiditas {
+export enum Quarter {
+  Q1 = 'Q1',
+  Q2 = 'Q2',
+  Q3 = 'Q3',
+  Q4 = 'Q4',
+}
+
+// INTERFACES
+export interface LikuiditasSection {
   id: number;
-  year: number;
-  quarter: Quarter;
   no: string;
   bobotSection: number;
   parameter: string;
-  description?: string | null;
-  createdAt?: Date;
-  updatedAt?: Date;
-  isDeleted?: boolean;
-  deletedAt?: Date | null;
-  indikators?: Likuiditas[]; // Perhatikan nama field: indikators (dengan 's')
+  description: string | null;
+  sortOrder: number;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+  isDeleted: boolean;
+  createdBy?: string | null;
+  updatedBy?: string | null;
 }
 
-export interface Likuiditas {
+export interface LikuiditasIndikator {
   id: number;
   year: number;
   quarter: Quarter;
   sectionId: number;
-  section?: SectionLikuiditas;
+  no: string;
+  sectionLabel: string;
+  bobotSection: number;
   subNo: string;
-  namaIndikator: string;
+  indikator: string;
   bobotIndikator: number;
-  sumberRisiko?: string | null;
-  dampak?: string | null;
-  low?: string | null;
-  lowToModerate?: string | null;
-  moderate?: string | null;
-  moderateToHigh?: string | null;
-  high?: string | null;
+  sumberRisiko: string | null;
+  dampak: string | null;
+  low: string | null;
+  lowToModerate: string | null;
+  moderate: string | null;
+  moderateToHigh: string | null;
+  high: string | null;
   mode: CalculationMode;
-  pembilangLabel?: string | null;
-  pembilangValue?: number | null;
-  penyebutLabel?: string | null;
-  penyebutValue?: number | null;
-  formula?: string | null;
+  formula: string | null;
   isPercent: boolean;
-  hasil?: string | null;
-  hasilText?: string | null;
+  pembilangLabel: string | null;
+  pembilangValue: number | null;
+  penyebutLabel: string | null;
+  penyebutValue: number | null;
+  hasil: number | null;
+  hasilText: string | null;
   peringkat: number;
-  weighted: number; // Diisi otomatis oleh backend
-  keterangan?: string | null;
-  createdAt?: Date;
-  updatedAt?: Date;
-  isDeleted?: boolean;
-  deletedAt?: Date | null;
+  weighted: number;
+  keterangan: string | null;
+  isValidated: boolean;
+  version: number;
+  createdAt: Date;
+  updatedAt: Date;
+  isDeleted: boolean;
+  createdBy?: string | null;
+  updatedBy?: string | null;
+  deletedBy?: string | null;
+  section?: LikuiditasSection;
 }
 
-// DTOs - SESUAI dengan backend
-export interface CreateSectionLikuiditasDto {
+export interface CreateLikuiditasSectionData {
   no: string;
-  bobotSection: number;
   parameter: string;
-  description?: string | null;
-  year: number;
-  quarter: string; // Kirim sebagai string, backend akan konversi ke enum
+  bobotSection?: number;
+  description?: string;
+  sortOrder?: number;
+  isActive?: boolean;
 }
 
-export interface UpdateSectionLikuiditasDto extends Partial<CreateSectionLikuiditasDto> {}
-
-export interface CreateIndikatorLikuiditasDto {
-  sectionId: number;
-  year: number;
-  quarter: string; // Kirim sebagai string
-  subNo: string;
-  namaIndikator: string;
-  bobotIndikator: number;
-  sumberRisiko?: string | null;
-  dampak?: string | null;
-  low?: string | null;
-  lowToModerate?: string | null;
-  moderate?: string | null;
-  moderateToHigh?: string | null;
-  high?: string | null;
-  mode: CalculationMode;
-  pembilangLabel?: string | null;
-  pembilangValue?: number | null;
-  penyebutLabel?: string | null;
-  penyebutValue?: number | null;
-  formula?: string | null;
-  isPercent?: boolean;
-  hasil?: string | null;
-  hasilText?: string | null;
-  peringkat?: number; // Opsional, akan dihitung otomatis jika tidak disediakan
-  keterangan?: string | null;
+export interface UpdateLikuiditasSectionData {
+  no?: string;
+  parameter?: string;
+  bobotSection?: number;
+  description?: string;
+  sortOrder?: number;
+  isActive?: boolean;
 }
 
-export interface UpdateIndikatorLikuiditasDto extends Partial<CreateIndikatorLikuiditasDto> {}
-
-// Response types
-export interface SummaryResponse {
+export interface CreateLikuiditasData {
   year: number;
   quarter: Quarter;
-  totalSections: number;
-  totalWeighted: number;
-  sections: Array<{
-    id: number;
-    no: string;
-    parameter: string;
-    bobotSection: number;
-    totalIndicators: number;
-    totalWeighted: number;
-  }>;
+  sectionId: number;
+  no: string;
+  sectionLabel: string;
+  bobotSection: number;
+  subNo: string;
+  indikator: string;
+  bobotIndikator: number;
+  sumberRisiko?: string;
+  dampak?: string;
+  low?: string;
+  lowToModerate?: string;
+  moderate?: string;
+  moderateToHigh?: string;
+  high?: string;
+  mode: CalculationMode;
+  formula?: string;
+  isPercent?: boolean;
+  pembilangLabel?: string;
+  pembilangValue?: number;
+  penyebutLabel?: string;
+  penyebutValue?: number;
+  hasil?: number;
+  hasilText?: string;
+  peringkat: number;
+  weighted: number;
+  keterangan?: string;
+  createdBy?: string;
 }
 
-export interface StructuredLikuiditas {
-  section: SectionLikuiditas;
-  indicators: Likuiditas[];
-  totalWeighted: number;
+export interface UpdateLikuiditasData {
+  year?: number;
+  quarter?: Quarter;
+  sectionId?: number;
+  no?: string;
+  sectionLabel?: string;
+  bobotSection?: number;
+  subNo?: string;
+  indikator?: string;
+  bobotIndikator?: number;
+  sumberRisiko?: string;
+  dampak?: string;
+  low?: string;
+  lowToModerate?: string;
+  moderate?: string;
+  moderateToHigh?: string;
+  high?: string;
+  mode?: CalculationMode;
+  formula?: string;
+  isPercent?: boolean;
+  pembilangLabel?: string;
+  pembilangValue?: number;
+  penyebutLabel?: string;
+  penyebutValue?: number;
+  hasil?: number;
+  hasilText?: string;
+  peringkat?: number;
+  weighted?: number;
+  keterangan?: string;
 }
 
-class LikuiditasService {
-  // ==================== SECTION METHODS ====================
+export interface TotalWeightedResponse {
+  total: number;
+}
 
-  async getSections(): Promise<SectionLikuiditas[]> {
-    const response = await api.get<SectionLikuiditas[]>('/likuiditas/sections');
-    return response.data;
+export interface Period {
+  year: number;
+  quarter: Quarter;
+}
+
+// UTILITY FUNCTIONS
+export const fmtNumber = (v: any): string => {
+  if (v === '' || v == null) return '';
+  const n = Number(v);
+  if (isNaN(n)) return String(v);
+  return new Intl.NumberFormat('en-US').format(n);
+};
+
+export const formatHasilNumber = (value: any, maxDecimals = 4): string => {
+  if (value === '' || value == null) return '';
+  const n = Number(value);
+  if (!isFinite(n) || isNaN(n)) return '';
+
+  // batasi maxDecimals, lalu buang .0000 di belakang
+  const fixed = n.toFixed(maxDecimals);
+  return fixed.replace(/\.?0+$/, ''); // "1.2300" -> "1.23", "0.0000" -> "0"
+};
+
+export const parseNum = (v: any): number => {
+  if (v == null || v === '') return 0;
+  if (typeof v === 'number') return v;
+
+  // buang koma, spasi, dll biar "1,000" -> "1000"
+  const cleaned = String(v).replace(/,/g, '').replace(/\s/g, '');
+  const n = Number(cleaned);
+  return isNaN(n) ? 0 : n;
+};
+
+export const computeHasil = (ind: any): number | null => {
+  const mode = ind?.mode || 'RASIO';
+  if (mode === 'TEKS') return null;
+
+  const pemb = parseNum(ind.pembilangValue);
+  const peny = parseNum(ind.penyebutValue);
+
+  if (ind.formula && ind.formula.trim() !== '') {
+    try {
+      const expr = ind.formula
+        .replace(/\bpembilang\b/gi, pemb.toString())
+        .replace(/\bpenyebut\b/gi, peny.toString())
+        .replace(/\bpemb\b/g, pemb.toString())
+        .replace(/\bpeny\b/g, peny.toString());
+
+      const fn = new Function('pemb', 'peny', `return (${expr});`);
+      const res = fn(pemb, peny);
+      if (!isFinite(res) || isNaN(res)) return null;
+      return Number(res);
+    } catch (e) {
+      console.warn('Invalid formula:', ind.formula, e);
+      return null;
+    }
   }
 
-  async getSectionsByPeriod(year: number, quarter: string): Promise<SectionLikuiditas[]> {
-    // PERBAIKAN: Sesuaikan dengan endpoint backend
-    const response = await api.get<SectionLikuiditas[]>('/likuiditas/sections', {
-      params: { year, quarter },
-    });
-    return response.data;
+  // 🔹 NILAI_TUNGGAL → langsung pakai nilai penyebut
+  if (mode === 'NILAI_TUNGGAL') {
+    if (ind.penyebutValue === '' || ind.penyebutValue == null) return null;
+    return peny; // boleh 0, 10, 100, dll
   }
 
-  async getSectionById(id: number): Promise<SectionLikuiditas> {
-    const response = await api.get<SectionLikuiditas>(`/likuiditas/sections/${id}`);
-    return response.data;
+  // 🔹 RASIO (default) → pemb / peny
+  if (peny === 0) return null;
+  const result = pemb / peny;
+  if (!isFinite(result) || isNaN(result)) return null;
+  return Number(result);
+};
+
+export const computeWeightedAuto = (ind: any, sectionBobot: number): number => {
+  const sectionB = Number(sectionBobot || 0);
+  const bobotInd = Number(ind.bobotIndikator || 0);
+  const peringkat = Number(ind.peringkat || 0);
+  const res = (sectionB * bobotInd * peringkat) / 10000;
+  if (!isFinite(res) || isNaN(res)) return 0;
+  return res;
+};
+
+export const transformIndicatorToBackend = (indicatorData: any, year: number, quarter: Quarter, sectionId: number, sectionData: any): CreateLikuiditasData => {
+  const hasilNum = computeHasil(indicatorData);
+
+  return {
+    year,
+    quarter,
+    sectionId,
+    no: sectionData?.no || '',
+    sectionLabel: sectionData?.parameter || '',
+    bobotSection: Number(sectionData?.bobotSection) || 0,
+    subNo: indicatorData.subNo?.toString().trim() || '',
+    indikator: indicatorData.indikator?.toString().trim() || '',
+    bobotIndikator: Number(indicatorData.bobotIndikator) || 0,
+    sumberRisiko: indicatorData.sumberRisiko?.trim() || undefined,
+    dampak: indicatorData.dampak?.trim() || undefined,
+    low: indicatorData.low?.trim() || undefined,
+    lowToModerate: indicatorData.lowToModerate?.trim() || undefined,
+    moderate: indicatorData.moderate?.trim() || undefined,
+    moderateToHigh: indicatorData.moderateToHigh?.trim() || undefined,
+    high: indicatorData.high?.trim() || undefined,
+    mode: indicatorData.mode || CalculationMode.RASIO,
+    formula: indicatorData.formula?.trim() || undefined,
+    isPercent: Boolean(indicatorData.isPercent || false),
+    pembilangLabel: indicatorData.pembilangLabel?.trim() || undefined,
+    pembilangValue: indicatorData.pembilangValue !== undefined && indicatorData.pembilangValue !== '' ? Number(indicatorData.pembilangValue) : undefined,
+    penyebutLabel: indicatorData.penyebutLabel?.trim() || undefined,
+    penyebutValue: indicatorData.penyebutValue !== undefined && indicatorData.penyebutValue !== '' ? Number(indicatorData.penyebutValue) : undefined,
+    hasil: hasilNum !== null ? hasilNum : undefined,
+    hasilText: indicatorData.mode === CalculationMode.TEKS ? indicatorData.hasilText || indicatorData.keterangan || '' : undefined,
+    peringkat: Number(indicatorData.peringkat) || 1,
+    weighted: computeWeightedAuto(indicatorData, Number(sectionData?.bobotSection) || 0),
+    keterangan: indicatorData.keterangan?.trim() || undefined,
+  };
+};
+
+export const transformIndicatorToFrontend = (indikator: LikuiditasIndikator): any => {
+  return {
+    id: indikator.id,
+    subNo: indikator.subNo || '',
+    indikator: indikator.indikator || '',
+    bobotIndikator: indikator.bobotIndikator || 0,
+    sumberRisiko: indikator.sumberRisiko || '',
+    dampak: indikator.dampak || '',
+    pembilangLabel: indikator.pembilangLabel || '',
+    pembilangValue: indikator.pembilangValue !== null ? indikator.pembilangValue.toString() : '',
+    penyebutLabel: indikator.penyebutLabel || '',
+    penyebutValue: indikator.penyebutValue !== null ? indikator.penyebutValue.toString() : '',
+    peringkat: indikator.peringkat || 1,
+    weighted: indikator.weighted || '',
+    hasil: indikator.hasil !== null ? indikator.hasil.toString() : '',
+    hasilText: indikator.hasilText || '',
+    keterangan: indikator.keterangan || '',
+    isPercent: Boolean(indikator.isPercent),
+    mode: indikator.mode || CalculationMode.RASIO,
+    formula: indikator.formula || '',
+    low: indikator.low || '',
+    lowToModerate: indikator.lowToModerate || '',
+    moderate: indikator.moderate || '',
+    moderateToHigh: indikator.moderateToHigh || '',
+    high: indikator.high || '',
+    sectionId: indikator.sectionId,
+    no: indikator.no,
+    sectionLabel: indikator.sectionLabel,
+    bobotSection: indikator.bobotSection,
+    year: indikator.year,
+    quarter: indikator.quarter,
+    section: indikator.section,
+  };
+};
+
+export const transformSectionToBackend = (sectionData: any, year: number, quarter: Quarter): CreateLikuiditasSectionData => {
+  return {
+    no: String(sectionData.no),
+    bobotSection: Number(sectionData.bobotSection || 0),
+    parameter: sectionData.parameter,
+    description: sectionData.description || undefined,
+    sortOrder: sectionData.sortOrder || 0,
+    isActive: sectionData.isActive ?? true,
+  };
+};
+
+export const rowsPerIndicator = (ind: any): number => {
+  return 1 + (ind.mode === 'RASIO' ? 2 : 1);
+};
+
+// API SERVICE
+class LikuiditasApiService {
+  private baseUrl: string;
+
+  constructor() {
+    this.baseUrl = 'http://localhost:5530/api/v1';
   }
 
-  async createSection(data: CreateSectionLikuiditasDto): Promise<SectionLikuiditas> {
-    // PERBAIKAN: Pastikan quarter dikirim sebagai string
-    const payload = {
-      ...data,
-      quarter: data.quarter as string, // Cast ke string
-    };
-    const response = await api.post<SectionLikuiditas>('/likuiditas/sections', payload);
-    return response.data;
+  // ========== SECTION API ==========
+  async createSection(data: CreateLikuiditasSectionData): Promise<LikuiditasSection> {
+    return this.request<LikuiditasSection>('post', '/likuiditas/sections', data);
   }
 
-  async updateSection(id: number, data: UpdateSectionLikuiditasDto): Promise<SectionLikuiditas> {
-    const payload = {
-      ...data,
-      quarter: data.quarter as string, // Cast ke string jika ada
-    };
-    const response = await api.put<SectionLikuiditas>(`/likuiditas/sections/${id}`, payload);
-    return response.data;
+  async getAllSections(isActive?: boolean): Promise<LikuiditasSection[]> {
+    const params = isActive !== undefined ? { isActive } : {};
+    return this.request<LikuiditasSection[]>('get', '/likuiditas/sections', null, params);
+  }
+
+  async getSectionById(id: number): Promise<LikuiditasSection> {
+    return this.request<LikuiditasSection>('get', `/likuiditas/sections/${id}`);
+  }
+
+  async updateSection(id: number, data: UpdateLikuiditasSectionData): Promise<LikuiditasSection> {
+    return this.request<LikuiditasSection>('put', `/likuiditas/sections/${id}`, data);
   }
 
   async deleteSection(id: number): Promise<void> {
-    await api.delete(`/likuiditas/sections/${id}`);
+    return this.request<void>('delete', `/likuiditas/sections/${id}`);
   }
 
-  // ==================== INDIKATOR METHODS ====================
-
-  async getIndikators(): Promise<Likuiditas[]> {
-    const response = await api.get<Likuiditas[]>('/likuiditas/indikators');
-    return response.data;
+  // ========== INDIKATOR API ==========
+  async createIndikator(data: CreateLikuiditasData): Promise<LikuiditasIndikator> {
+    return this.request<LikuiditasIndikator>('post', '/likuiditas/indikators', data);
   }
 
-  async getIndikatorsBySection(sectionId: number): Promise<Likuiditas[]> {
-    const response = await api.get<Likuiditas[]>(`/likuiditas/indikators/by-section/${sectionId}`);
-    return response.data;
+  async getAllIndikators(): Promise<LikuiditasIndikator[]> {
+    return this.request<LikuiditasIndikator[]>('get', '/likuiditas/indikators');
   }
 
-  async getIndikatorsByPeriod(year: number, quarter: string): Promise<Likuiditas[]> {
-    const response = await api.get<Likuiditas[]>('/likuiditas/indikators/by-period', {
-      params: { year, quarter },
-    });
-    return response.data;
+  async getIndikatorsByPeriod(year: number, quarter: Quarter): Promise<LikuiditasIndikator[]> {
+    return this.request<LikuiditasIndikator[]>('get', '/likuiditas/indikators/period', null, { year, quarter });
   }
 
-  async getIndikatorById(id: number): Promise<Likuiditas> {
-    // PERBAIKAN: Gunakan endpoint yang benar
-    const response = await api.get<Likuiditas>(`/likuiditas/indikators/${id}`);
-    return response.data;
+  // ✅ PERBAIKAN: Sama persis dengan Strategik
+  async getSectionsWithIndicatorsByPeriod(year: number, quarter: Quarter): Promise<Array<LikuiditasSection & { indicators: LikuiditasIndikator[] }>> {
+    return this.request<Array<LikuiditasSection & { indicators: LikuiditasIndikator[] }>>('get', '/likuiditas/indikators/sections-by-period', null, { year, quarter });
   }
 
-  async createIndikator(data: CreateIndikatorLikuiditasDto): Promise<Likuiditas> {
-    // PERBAIKAN: Hapus field yang dihitung otomatis
-    const payload = { ...data };
-
-    // Jangan kirim field yang
-
-    // Pastikan quarter string
-    payload.quarter = payload.quarter as string;
-
-    console.log('📤 [SERVICE] Payload untuk create indikator:', payload);
-
-    const response = await api.post<Likuiditas>('/likuiditas/indikators', payload);
-    return response.data;
-  }
-
-  async updateIndikator(id: number, data: UpdateIndikatorLikuiditasDto): Promise<Likuiditas> {
-    // PERBAIKAN: Gunakan endpoint yang benar
-    const payload = { ...data };
-
-    // Jangan kirim field yang dihitung otomatis
-    delete (payload as any).weighted;
-
-    // Pastikan quarter string jika ada
-    if (payload.quarter) {
-      payload.quarter = payload.quarter as string;
-    }
-
-    console.log('📤 [SERVICE updateIndikator] START - ID:', id, 'Data:', payload);
-
-    try {
-      // PERBAIKAN: Gunakan endpoint yang benar sesuai controller
-      const response = await api.put<Likuiditas>(`/likuiditas/indikators/${id}`, payload);
-
-      console.log('✅ [SERVICE updateIndikator] SUCCESS - Response:', {
-        status: response.status,
-        data: response.data,
-        namaIndikator: response.data.namaIndikator,
-        updatedAt: response.data.updatedAt,
-      });
-
-      return response.data;
-    } catch (error: any) {
-      console.error('❌ [SERVICE updateIndikator] ERROR:', {
-        message: error.message,
-        response: error.response?.data,
-        status: error.response?.status,
-        config: {
-          url: error.config?.url,
-          method: error.config?.method,
-          data: error.config?.data,
-        },
-      });
-      throw error;
-    }
-  }
-  // **PERBAIKAN: Tambah fungsi untuk cek indikator**
-  async checkIndikatorExists(id: number): Promise<boolean> {
-    try {
-      await this.getIndikatorById(id);
-      return true;
-    } catch {
-      return false;
-    }
-  }
-
-  async deleteIndikator(id: number): Promise<void> {
-    // PERBAIKAN: Gunakan endpoint yang benar
-    await api.delete(`/likuiditas/indikators/${id}`);
-  }
-
-  // ==================== SUMMARY METHODS ====================
-
-  async getSummaryByPeriod(year: number, quarter: string): Promise<any> {
-    // PERBAIKAN: Sesuaikan dengan endpoint backend
-    const response = await api.get<any>('/likuiditas/summary', {
-      params: { year, quarter },
-    });
-    return response.data;
-  }
-  // async getSectionsByYear(year: number): Promise<SectionLikuiditas[]> {
-  //   const response = await api.get<SectionLikuiditas[]>(`/likuiditas/summary/by-year/${year}`);
-  //   return response.data;
-  // }
-
-  async getSectionSummary(sectionId: number): Promise<any> {
-    const response = await api.get(`/likuiditas/sections/${sectionId}/summary`);
-    return response.data;
-  }
-
-  // ==================== UTILITY METHODS ====================
-
-  formatIndikatorData(formData: any, section: SectionLikuiditas): CreateIndikatorLikuiditasDto {
-    // HITUNG PERINGKAT jika tidak disediakan
-    const peringkat =
-      formData.peringkat ||
-      this.calculatePeringkatFromHasil(formData.hasil, {
-        low: formData.low,
-        lowToModerate: formData.lowToModerate,
-        moderate: formData.moderate,
-        moderateToHigh: formData.moderateToHigh,
-        high: formData.high,
-      });
-
-    return {
-      sectionId: section.id,
-      year: Number(formData.year) || section.year,
-      quarter: formData.quarter || section.quarter,
-      subNo: formData.subNo || '',
-      namaIndikator: formData.namaIndikator || '',
-      bobotIndikator: Number(formData.bobotIndikator || 0),
-      sumberRisiko: formData.sumberRisiko || null,
-      dampak: formData.dampak || null,
-      low: formData.low || null,
-      lowToModerate: formData.lowToModerate || null,
-      moderate: formData.moderate || null,
-      moderateToHigh: formData.moderateToHigh || null,
-      high: formData.high || null,
-      mode: (formData.mode || 'RASIO') as CalculationMode,
-      pembilangLabel: formData.pembilangLabel || null,
-      pembilangValue: formData.pembilangValue !== undefined ? Number(formData.pembilangValue) : null,
-      penyebutLabel: formData.penyebutLabel || null,
-      penyebutValue: formData.penyebutValue !== undefined ? Number(formData.penyebutValue) : null,
-      formula: formData.formula || null,
-      isPercent: Boolean(formData.isPercent || false),
-      hasil: formData.hasil || null,
-      hasilText: formData.hasilText || null,
-      peringkat: peringkat,
-      keterangan: formData.keterangan || null,
-    };
-  }
-
-  calculateHasil(mode: string, pembilangValue: number | null, penyebutValue: number | null, formula?: string | null, isPercent?: boolean): string | null {
-    if (mode === 'TEKS') {
-      return null;
-    }
-
-    const pemb = pembilangValue || 0;
-    const peny = penyebutValue || 0;
-
-    if (mode === 'NILAI_TUNGGAL') {
-      return peny.toString();
-    }
-
-    if (formula && formula.trim() !== '') {
-      try {
-        const expr = formula
-          .replace(/\bpembilang\b/gi, 'pemb')
-          .replace(/\bpenyebut\b/gi, 'peny')
-          .replace(/\bpemb\b/g, 'pemb')
-          .replace(/\bpeny\b/g, 'peny');
-
-        const fn = new Function('pemb', 'peny', `return (${expr});`);
-        const result = fn(pemb, peny);
-
-        if (isFinite(result) && !isNaN(result)) {
-          if (isPercent) {
-            return (result * 100).toFixed(2);
-          }
-          return result.toString();
-        }
-      } catch (error) {
-        console.warn('Invalid formula:', formula, error);
-      }
-    }
-
-    if (peny === 0) {
-      return null;
-    }
-
-    const result = pemb / peny;
-    if (isPercent) {
-      return (result * 100).toFixed(2);
-    }
-    return result.toFixed(4);
-  }
-
-  calculateWeighted(bobotSection: number, bobotIndikator: number, peringkat: number): number {
-    // Ini hanya untuk preview di frontend, bukan untuk dikirim ke backend
-    const weighted = (bobotSection * bobotIndikator * peringkat) / 10000;
-    return parseFloat(weighted.toFixed(4));
-  }
-
-  calculatePeringkatFromHasil(
-    hasil: string | null,
-    thresholds: {
-      low?: string | null;
-      lowToModerate?: string | null;
-      moderate?: string | null;
-      moderateToHigh?: string | null;
-      high?: string | null;
-    }
-  ): number {
-    if (!hasil) return 1;
-
-    try {
-      const hasilNum = parseFloat(hasil);
-
-      // Konversi thresholds ke angka
-      const low = thresholds.low ? parseFloat(thresholds.low) : null;
-      const lowToModerate = thresholds.lowToModerate ? parseFloat(thresholds.lowToModerate) : null;
-      const moderate = thresholds.moderate ? parseFloat(thresholds.moderate) : null;
-      const moderateToHigh = thresholds.moderateToHigh ? parseFloat(thresholds.moderateToHigh) : null;
-      const high = thresholds.high ? parseFloat(thresholds.high) : null;
-
-      // Logika peringkat: semakin tinggi hasil, semakin rendah peringkat (1-5)
-      if (high !== null && hasilNum >= high) return 5;
-      if (moderateToHigh !== null && hasilNum >= moderateToHigh) return 4;
-      if (moderate !== null && hasilNum >= moderate) return 3;
-      if (lowToModerate !== null && hasilNum >= lowToModerate) return 2;
-      if (low !== null && hasilNum >= low) return 1;
-
-      return 1; // default
-    } catch (error) {
-      console.warn('Error calculating peringkat:', error);
-      return 1;
-    }
-  }
-
-  determineRiskLevel(
-    hasil: string | null,
-    thresholds: {
-      low?: string | null;
-      lowToModerate?: string | null;
-      moderate?: string | null;
-      moderateToHigh?: string | null;
-      high?: string | null;
-    }
-  ): string {
-    if (!hasil) return 'unknown';
-
-    try {
-      const hasilNum = parseFloat(hasil);
-
-      // Konversi thresholds ke angka
-      const low = thresholds.low ? parseFloat(thresholds.low) : null;
-      const lowToModerate = thresholds.lowToModerate ? parseFloat(thresholds.lowToModerate) : null;
-      const moderate = thresholds.moderate ? parseFloat(thresholds.moderate) : null;
-      const moderateToHigh = thresholds.moderateToHigh ? parseFloat(thresholds.moderateToHigh) : null;
-      const high = thresholds.high ? parseFloat(thresholds.high) : null;
-
-      if (high !== null && hasilNum >= high) return 'high';
-      if (moderateToHigh !== null && hasilNum >= moderateToHigh) return 'moderate_to_high';
-      if (moderate !== null && hasilNum >= moderate) return 'moderate';
-      if (lowToModerate !== null && hasilNum >= lowToModerate) return 'low_to_moderate';
-      if (low !== null && hasilNum >= low) return 'low';
-
-      return 'unknown';
-    } catch (error) {
-      console.warn('Error determining risk level:', error);
-      return 'unknown';
-    }
-  }
-
-  groupBySection(likuiditasList: Likuiditas[]): StructuredLikuiditas[] {
-    const sectionsMap = new Map<number, StructuredLikuiditas>();
-
-    likuiditasList.forEach((item) => {
-      const sectionId = item.sectionId;
-
-      if (!sectionsMap.has(sectionId)) {
-        sectionsMap.set(sectionId, {
-          section: item.section || {
-            id: sectionId,
-            year: item.year,
-            quarter: item.quarter,
-            no: '',
-            bobotSection: 0,
-            parameter: '',
-            description: '',
-            createdAt: new Date(),
-            updatedAt: new Date(),
-            isDeleted: false,
-            indikators: [],
-          },
-          indicators: [],
-          totalWeighted: 0,
-        });
-      }
-
-      const sectionData = sectionsMap.get(sectionId)!;
-      sectionData.indicators.push(item);
-      sectionData.totalWeighted += item.weighted || 0;
-    });
-
-    return Array.from(sectionsMap.values());
-  }
-
-  async getLikuiditasStructured(year?: number, quarter?: string): Promise<StructuredLikuiditas[]> {
-    let url = '/likuiditas/indikators';
+  async searchIndikators(query?: string, year?: number, quarter?: Quarter): Promise<LikuiditasIndikator[]> {
     const params: any = {};
-
+    if (query) params.query = query;
     if (year) params.year = year;
     if (quarter) params.quarter = quarter;
 
-    const response = await api.get<Likuiditas[]>(url, { params });
-    return this.groupBySection(response.data);
+    return this.request<LikuiditasIndikator[]>('get', '/likuiditas/indikators/search', null, params);
   }
 
-  handleError(error: any): string {
-    if (error.response) {
-      const { data, status } = error.response;
+  async getIndikatorById(id: number): Promise<LikuiditasIndikator> {
+    return this.request<LikuiditasIndikator>('get', `/likuiditas/indikators/${id}`);
+  }
 
-      if (status === 500) {
-        return 'Server error: Internal server error. Please try again later.';
-      }
+  async updateIndikator(id: number, data: UpdateLikuiditasData): Promise<LikuiditasIndikator> {
+    return this.request<LikuiditasIndikator>('put', `/likuiditas/indikators/${id}`, data);
+  }
 
-      if (data?.message) {
-        if (Array.isArray(data.message)) {
-          return data.message
-            .map((item: any) => {
-              if (item.constraints) {
-                const field = item.property || 'field';
-                const errors = Object.values(item.constraints).join(', ');
-                return `${field}: ${errors}`;
-              }
-              return typeof item === 'string' ? item : JSON.stringify(item);
-            })
-            .join('\n');
+  async deleteIndikator(id: number): Promise<void> {
+    return this.request<void>('delete', `/likuiditas/indikators/${id}`);
+  }
+
+  // ========== HELPER API ==========
+  async getTotalWeightedByPeriod(year: number, quarter: Quarter): Promise<number> {
+    const response = await this.request<TotalWeightedResponse>('get', '/likuiditas/total-weighted', null, { year, quarter });
+    return response.total;
+  }
+
+  async getAvailablePeriods(): Promise<Period[]> {
+    return this.request<Period[]>('get', '/likuiditas/periods');
+  }
+
+  async duplicateIndikator(sourceId: number, targetYear: number, targetQuarter: Quarter): Promise<LikuiditasIndikator> {
+    return this.request<LikuiditasIndikator>('post', `/likuiditas/indikators/${sourceId}/duplicate`, null, { year: targetYear, quarter: targetQuarter });
+  }
+
+  // ========== HELPER METHODS ==========
+  private async request<T>(method: 'get' | 'post' | 'put' | 'delete', endpoint: string, data?: any, params?: any): Promise<T> {
+    try {
+      const config = {
+        method,
+        url: `${this.baseUrl}${endpoint}`,
+        data,
+        params,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      };
+
+      const response: AxiosResponse<T> = await axios(config);
+      return response.data;
+    } catch (error) {
+      this.handleError(error);
+      throw error;
+    }
+  }
+
+  private handleError(error: any): void {
+    if (axios.isAxiosError(error)) {
+      if (error.response) {
+        const message = error.response.data?.message || 'Terjadi kesalahan pada server';
+        const status = error.response.status;
+
+        console.error(`API Error [${status}]:`, message);
+
+        switch (status) {
+          case 400:
+            throw new Error(`Bad Request: ${message}`);
+          case 401:
+            throw new Error('Unauthorized: Silakan login kembali');
+          case 403:
+            throw new Error('Forbidden: Anda tidak memiliki akses');
+          case 404:
+            throw new Error(`Not Found: ${message}`);
+          case 409:
+            throw new Error(`Conflict: ${message}`);
+          case 500:
+            throw new Error('Server Error: Silakan coba lagi nanti');
+          default:
+            throw new Error(`Server Error: ${message}`);
         }
-        return typeof data.message === 'string' ? data.message : JSON.stringify(data.message);
+      } else if (error.request) {
+        console.error('Network Error:', error.message);
+        throw new Error('Koneksi jaringan bermasalah. Periksa koneksi internet Anda.');
+      } else {
+        console.error('Request Error:', error.message);
+        throw new Error(`Gagal membuat permintaan: ${error.message}`);
       }
-
-      return `Server error: ${status}`;
-    } else if (error.request) {
-      return 'Network error: No response from server. Please check your connection.';
     } else {
-      return error.message || 'Unknown error occurred';
+      console.error('Unexpected Error:', error);
+      throw new Error('Terjadi kesalahan yang tidak diketahui');
     }
   }
 }
 
-// Export singleton instance
-export const likuiditasService = new LikuiditasService();
-
-// Optional: Export class juga jika diperlukan
-export default LikuiditasService;
+// Export singleton instance and all utilities
+export const likuiditasApiService = new LikuiditasApiService();

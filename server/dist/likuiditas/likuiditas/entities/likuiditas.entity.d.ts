@@ -1,23 +1,26 @@
-import { SectionLikuiditas } from './section-likuiditas.entity';
+import { LikuiditasSection } from './section-likuiditas.entity';
+export declare enum CalculationMode {
+    RASIO = "RASIO",
+    NILAI_TUNGGAL = "NILAI_TUNGGAL",
+    TEKS = "TEKS"
+}
 export declare enum Quarter {
     Q1 = "Q1",
     Q2 = "Q2",
     Q3 = "Q3",
     Q4 = "Q4"
 }
-export declare enum CalculationMode {
-    RASIO = "RASIO",
-    NILAI_TUNGGAL = "NILAI_TUNGGAL",
-    TEKS = "TEKS"
-}
 export declare class Likuiditas {
     id: number;
     year: number;
     quarter: Quarter;
     sectionId: number;
-    section: SectionLikuiditas;
+    section: LikuiditasSection;
+    no: string;
+    sectionLabel: string;
+    bobotSection: number;
     subNo: string;
-    namaIndikator: string;
+    indikator: string;
     bobotIndikator: number;
     sumberRisiko: string | null;
     dampak: string | null;
@@ -27,19 +30,27 @@ export declare class Likuiditas {
     moderateToHigh: string | null;
     high: string | null;
     mode: CalculationMode;
+    formula: string | null;
+    isPercent: boolean;
     pembilangLabel: string | null;
     pembilangValue: number | null;
     penyebutLabel: string | null;
     penyebutValue: number | null;
-    formula: string | null;
-    isPercent: boolean;
-    hasil: string | null;
+    hasil: number | null;
     hasilText: string | null;
     peringkat: number;
     weighted: number;
     keterangan: string | null;
+    isValidated: boolean;
+    validatedAt: Date | null;
+    validatedBy: string | null;
     createdAt: Date;
     updatedAt: Date;
     isDeleted: boolean;
     deletedAt: Date | null;
+    createdBy: string | null;
+    updatedBy: string | null;
+    deletedBy: string | null;
+    version: number;
+    revisionNotes: string | null;
 }

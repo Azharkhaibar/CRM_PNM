@@ -1,47 +1,67 @@
+// src/entities/operasional/operasional-section.entity.ts
 import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
-  OneToMany,
   CreateDateColumn,
   UpdateDateColumn,
-  DeleteDateColumn,
+  OneToMany,
   Index,
+  Unique,
 } from 'typeorm';
-// import { Operational, Quarter } from './operational.entity';
-import { Operational, Quarter } from './operasional.entity';
-@Entity('sections_operational')
-@Index('IDX_SECTION_OPERATIONAL_PERIOD', ['year', 'quarter'])
-export class SectionOperational {
+import { Operasional } from './operasional.entity';
+
+export enum Quarter {
+  Q1 = 'Q1',
+  Q2 = 'Q2',
+  Q3 = 'Q3',
+  Q4 = 'Q4',
+}
+
+@Entity('sections_operasional')
+@Unique('UQ_OPERASIONAL_SECTION_PERIOD', ['year', 'quarter', 'no', 'parameter'])
+export class OperasionalSection {
   @PrimaryGeneratedColumn()
   id: number;
 
+  // Section HARUS punya periode
   @Column({ type: 'int' })
   year: number;
 
-  @Column({
-    type: 'varchar',
-    length: 2,
-  })
+  @Column({ type: 'enum', enum: ['Q1', 'Q2', 'Q3', 'Q4'] })
   quarter: Quarter;
 
   @Column({ type: 'varchar', length: 50 })
-  no: string;
+  no: string; // Contoh: "7.1"
 
   @Column({
+    name: 'bobot_section',
     type: 'decimal',
     precision: 5,
     scale: 2,
-    name: 'bobot_section',
+    default: 100,
   })
   bobotSection: number;
 
+  @Column({ type: 'varchar', length: 500 })
+  parameter: string; // Nama section
+
+  @Column({ type: 'text', nullable: true })
+  description: string | null;
+
   @Column({
-    type: 'varchar',
-    length: 500,
-    name: 'parameter',
+    name: 'sort_order',
+    type: 'int',
+    default: 0,
   })
-  parameter: string;
+  sortOrder: number;
+
+  @Column({
+    name: 'is_active',
+    type: 'boolean',
+    default: true,
+  })
+  isActive: boolean;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
@@ -50,21 +70,28 @@ export class SectionOperational {
   updatedAt: Date;
 
   @Column({
+    name: 'is_deleted',
     type: 'boolean',
     default: false,
-    name: 'is_deleted',
   })
   isDeleted: boolean;
 
-  @DeleteDateColumn({
+  @Column({
+    name: 'created_by',
+    type: 'varchar',
+    length: 100,
     nullable: true,
-    name: 'deleted_at',
   })
-  deletedAt: Date | null;
+  createdBy: string | null;
 
-  @OneToMany(() => Operational, (operational) => operational.section, {
-    cascade: true,
-    eager: false,
+  @Column({
+    name: 'updated_by',
+    type: 'varchar',
+    length: 100,
+    nullable: true,
   })
-  indikators: Operational[];
+  updatedBy: string | null;
+
+  @OneToMany(() => Operasional, (operasional) => operasional.section)
+  operasionalIndicators: Operasional[];
 }

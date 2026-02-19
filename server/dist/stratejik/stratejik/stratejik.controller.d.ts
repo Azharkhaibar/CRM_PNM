@@ -1,30 +1,45 @@
-import { StratejikService } from './stratejik.service';
-import { CreateStratejikDto } from './dto/create-stratejik.dto';
-import { UpdateStratejikDto } from './dto/update-stratejik.dto';
-import { CreateStratejikSectionDto } from './dto/create-stratejik-section.dto';
-import { UpdateStratejikSectionDto } from './dto/update-stratejik-section.dto';
+import { StrategikService } from './stratejik.service';
+import { CreateStrategikSectionDto } from './dto/create-stratejik-section.dto';
+import { UpdateStrategikSectionDto } from './dto/update-stratejik-section.dto';
+import { CreateStrategikDto } from './dto/create-stratejik.dto';
+import { UpdateStrategikDto } from './dto/update-stratejik.dto';
 import { Quarter } from './entities/stratejik.entity';
-export declare class StratejikController {
-    private readonly stratejikService;
-    constructor(stratejikService: StratejikService);
-    create(createStratejikDto: CreateStratejikDto): Promise<import("./entities/stratejik.entity").Stratejik>;
-    findAll(year?: number, quarter?: Quarter): Promise<import("./entities/stratejik.entity").Stratejik[]>;
-    getSummary(year: number, quarter: Quarter): Promise<{
-        year: number;
-        quarter: Quarter;
-        totalItems: number;
-        totalWeighted: number;
-        sections: unknown[];
-        items: import("./entities/stratejik.entity").Stratejik[];
-    }>;
-    findBySection(sectionId: number, year?: number, quarter?: Quarter): Promise<import("./entities/stratejik.entity").Stratejik[]>;
-    findOne(id: number): Promise<import("./entities/stratejik.entity").Stratejik>;
-    update(id: number, updateStratejikDto: UpdateStratejikDto): Promise<import("./entities/stratejik.entity").Stratejik>;
-    remove(id: number): Promise<void>;
-    bulkCreate(createStratejikDtos: CreateStratejikDto[]): Promise<import("./entities/stratejik.entity").Stratejik[]>;
-    createSection(createSectionDto: CreateStratejikSectionDto): Promise<import("./entities/stratejik-section.entity").StratejikSection>;
-    findAllSections(): Promise<import("./entities/stratejik-section.entity").StratejikSection[]>;
-    findSectionById(id: number): Promise<import("./entities/stratejik-section.entity").StratejikSection>;
-    updateSection(id: number, updateSectionDto: UpdateStratejikSectionDto): Promise<import("./entities/stratejik-section.entity").StratejikSection>;
+export declare class StrategikController {
+    private readonly strategikService;
+    constructor(strategikService: StrategikService);
+    createSection(createDto: CreateStrategikSectionDto): Promise<import("./entities/stratejik-section.entity").StrategikSection>;
+    getSections(isActive?: boolean): Promise<import("./entities/stratejik-section.entity").StrategikSection[]>;
+    getSection(id: number): Promise<import("./entities/stratejik-section.entity").StrategikSection>;
+    updateSection(id: number, updateDto: UpdateStrategikSectionDto): Promise<import("./entities/stratejik-section.entity").StrategikSection>;
     deleteSection(id: number): Promise<void>;
+    getSectionsWithIndicatorsByPeriod(year: number, quarter: Quarter): Promise<any>;
+    createIndikator(createDto: CreateStrategikDto): Promise<import("./entities/stratejik.entity").Strategik>;
+    getAllIndikators(): Promise<import("./entities/stratejik.entity").Strategik[]>;
+    getIndikatorsByPeriod(year: number, quarter: Quarter): Promise<import("./entities/stratejik.entity").Strategik[]>;
+    searchIndikators(query?: string, year?: number, quarter?: Quarter): Promise<import("./entities/stratejik.entity").Strategik[]>;
+    getIndikator(id: number): Promise<import("./entities/stratejik.entity").Strategik>;
+    updateIndikator(id: number, updateDto: UpdateStrategikDto): Promise<import("./entities/stratejik.entity").Strategik>;
+    deleteIndikator(id: number): Promise<void>;
+    getTotalWeighted(year: number, quarter: Quarter): Promise<{
+        total: number;
+    }>;
+    getSectionsByPeriod(year: number, quarter: Quarter): Promise<import("./entities/stratejik-section.entity").StrategikSection[]>;
+    getAvailablePeriods(): Promise<{
+        success: boolean;
+        data: {
+            year: number;
+            quarter: Quarter;
+        }[];
+        count: number;
+    }>;
+    getAllPeriods(): Promise<{
+        success: boolean;
+        data: {
+            indicatorCount: number;
+            year: number;
+            quarter: Quarter;
+        }[];
+        count: number;
+    }>;
+    duplicateIndikator(id: number, year: number, quarter: Quarter): Promise<import("./entities/stratejik.entity").Strategik>;
 }

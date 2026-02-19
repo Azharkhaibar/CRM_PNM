@@ -9,65 +9,97 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.SectionPasar = void 0;
+exports.PasarSection = void 0;
 const typeorm_1 = require("typeorm");
 const indikator_entity_1 = require("./indikator.entity");
-let SectionPasar = class SectionPasar {
+let PasarSection = class PasarSection {
     id;
-    no_sec;
-    nama_section;
-    bobot_par;
-    tahun;
-    triwulan;
-    indikators;
-    total_weighted;
-    created_at;
-    updated_at;
+    year;
+    quarter;
+    no;
+    bobotSection;
+    parameter;
+    description;
+    sortOrder;
+    isActive;
+    createdAt;
+    updatedAt;
+    isDeleted;
+    pasarIndicators;
 };
-exports.SectionPasar = SectionPasar;
+exports.PasarSection = PasarSection;
 __decorate([
     (0, typeorm_1.PrimaryGeneratedColumn)(),
     __metadata("design:type", Number)
-], SectionPasar.prototype, "id", void 0);
+], PasarSection.prototype, "id", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'varchar', length: 10 }),
-    __metadata("design:type", String)
-], SectionPasar.prototype, "no_sec", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ type: 'text' }),
-    __metadata("design:type", String)
-], SectionPasar.prototype, "nama_section", void 0);
-__decorate([
-    (0, typeorm_1.Column)('decimal', { precision: 5, scale: 2 }),
+    (0, typeorm_1.Column)({ type: 'int' }),
     __metadata("design:type", Number)
-], SectionPasar.prototype, "bobot_par", void 0);
+], PasarSection.prototype, "year", void 0);
 __decorate([
-    (0, typeorm_1.Column)(),
-    __metadata("design:type", Number)
-], SectionPasar.prototype, "tahun", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ type: 'enum', enum: ['Q1', 'Q2', 'Q3', 'Q4'] }),
+    (0, typeorm_1.Column)({ type: 'enum', enum: indikator_entity_1.Quarter }),
     __metadata("design:type", String)
-], SectionPasar.prototype, "triwulan", void 0);
+], PasarSection.prototype, "quarter", void 0);
 __decorate([
-    (0, typeorm_1.OneToMany)(() => indikator_entity_1.IndikatorPasar, (indikator) => indikator.section, {
-        cascade: true,
+    (0, typeorm_1.Column)({ type: 'varchar', length: 50 }),
+    __metadata("design:type", String)
+], PasarSection.prototype, "no", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        name: 'bobot_section',
+        type: 'decimal',
+        precision: 5,
+        scale: 2,
+        default: 100,
     }),
-    __metadata("design:type", Array)
-], SectionPasar.prototype, "indikators", void 0);
-__decorate([
-    (0, typeorm_1.Column)('decimal', { precision: 10, scale: 2, default: 0 }),
     __metadata("design:type", Number)
-], SectionPasar.prototype, "total_weighted", void 0);
+], PasarSection.prototype, "bobotSection", void 0);
 __decorate([
-    (0, typeorm_1.CreateDateColumn)(),
-    __metadata("design:type", Date)
-], SectionPasar.prototype, "created_at", void 0);
+    (0, typeorm_1.Column)({ type: 'varchar', length: 500 }),
+    __metadata("design:type", String)
+], PasarSection.prototype, "parameter", void 0);
 __decorate([
-    (0, typeorm_1.UpdateDateColumn)(),
+    (0, typeorm_1.Column)({ type: 'text', nullable: true }),
+    __metadata("design:type", Object)
+], PasarSection.prototype, "description", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        name: 'sort_order',
+        type: 'int',
+        default: 0,
+    }),
+    __metadata("design:type", Number)
+], PasarSection.prototype, "sortOrder", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        name: 'is_active',
+        type: 'boolean',
+        default: true,
+    }),
+    __metadata("design:type", Boolean)
+], PasarSection.prototype, "isActive", void 0);
+__decorate([
+    (0, typeorm_1.CreateDateColumn)({ name: 'created_at' }),
     __metadata("design:type", Date)
-], SectionPasar.prototype, "updated_at", void 0);
-exports.SectionPasar = SectionPasar = __decorate([
-    (0, typeorm_1.Entity)('sections_pasar')
-], SectionPasar);
+], PasarSection.prototype, "createdAt", void 0);
+__decorate([
+    (0, typeorm_1.UpdateDateColumn)({ name: 'updated_at' }),
+    __metadata("design:type", Date)
+], PasarSection.prototype, "updatedAt", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        name: 'is_deleted',
+        type: 'boolean',
+        default: false,
+    }),
+    __metadata("design:type", Boolean)
+], PasarSection.prototype, "isDeleted", void 0);
+__decorate([
+    (0, typeorm_1.OneToMany)(() => indikator_entity_1.Pasar, (pasar) => pasar.section),
+    __metadata("design:type", Array)
+], PasarSection.prototype, "pasarIndicators", void 0);
+exports.PasarSection = PasarSection = __decorate([
+    (0, typeorm_1.Entity)('sections_pasar'),
+    (0, typeorm_1.Index)('IDX_PASAR_SECTION_PERIOD_UNIQUE', ['year', 'quarter', 'no', 'parameter'], { unique: true })
+], PasarSection);
 //# sourceMappingURL=section.entity.js.map

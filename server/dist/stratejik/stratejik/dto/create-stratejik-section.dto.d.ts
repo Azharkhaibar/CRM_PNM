@@ -1,6 +1,11 @@
-export declare class CreateStratejikSectionDto {
+import { Quarter } from '../entities/stratejik.entity';
+export declare class CreateStrategikSectionDto {
     no: string;
-    bobotSection: number;
     parameter: string;
+    bobotSection?: number;
     description?: string;
+    sortOrder?: number;
+    year: number;
+    quarter: Quarter;
+    isActive?: boolean;
 }
