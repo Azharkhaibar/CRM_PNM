@@ -1,9 +1,9 @@
 import React from "react";
 
-function FieldWrap({ label, className = "", children, hint }) {
+function FieldWrap({ label, className = "", labelClassName = "text-gray-600", children, hint }) {
     return (
         <label className={`block ${className}`}>
-            <div className="mb-1 text-sm text-gray-600 font-medium">{label}</div>
+            <div className={`mb-1 text-sm ${labelClassName} font-medium`}>{label}</div>
             {children}
             {hint ? <div className="mt-1 text-xs text-gray-400">{hint}</div> : null}
         </label>
@@ -65,9 +65,9 @@ export function ReadOnlyField({ label, value, hint, className = "" }) {
     );
 }
 
-export function QuarterSelect({ label = "Triwulan", value, onChange }) {
+export function QuarterSelect({ label = "Triwulan", value, onChange, labelClassName }) {
     return (
-        <FieldWrap label={label}>
+        <FieldWrap label={label} labelClassName={labelClassName}>
             <select
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 bg-white focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition"
                 value={value}
@@ -82,9 +82,9 @@ export function QuarterSelect({ label = "Triwulan", value, onChange }) {
     );
 }
 
-export function YearInput({ label = "Tahun", value, onChange }) {
+export function YearInput({ label = "Tahun", value, onChange, labelClassName }) {
     return (
-        <FieldWrap label={label}>
+        <FieldWrap label={label} labelClassName={labelClassName}>
             <input
                 type="number"
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 bg-white focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition"
@@ -108,6 +108,12 @@ export function RiskField({
     placeholder,
     className = "",
 }) {
+    const handleInput = (e) => {
+        // auto height textarea
+        e.target.style.height = "auto";
+        e.target.style.height = `${e.target.scrollHeight}px`;
+    };
+
     return (
         <div className={className}>
             <div
@@ -119,8 +125,8 @@ export function RiskField({
                     boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.06)",
                     display: "flex",
                     flexDirection: "column",
-                    // Tinggi total minimum agar semua seragam (header + divider + input)
-                    minHeight: 44 + 4 + 44,    // header 44px + garis 4px + input 44px
+                    // Tinggi total minimum agar semua seragam (header + divider + textarea)
+                    minHeight: 44 + 4 + 44,    // header 44px + garis 4px + area isi minimal 44px
                 }}
             >
                 {/* Header berwarna — tinggi FIX 44px */}
@@ -148,23 +154,28 @@ export function RiskField({
                 {/* Garis pemisah tebal */}
                 <div style={{ height: 4, background: "#0f1a0f", flex: "0 0 auto" }} />
 
-                {/* Input — tinggi FIX 44px */}
+                {/* Area isi — textarea auto tinggi */}
                 <div style={{ padding: 8, flex: "1 0 auto" }}>
-                    <input
+                    <textarea
                         value={value}
                         onChange={(e) => onChange(e.target.value)}
+                        onInput={handleInput}
                         placeholder={placeholder}
+                        rows={2}
                         style={{
                             width: "100%",
-                            height: 44,
+                            minHeight: 44,          // minimal setinggi input lama
                             textAlign: "center",
                             fontWeight: 700,
                             fontSize: 16,
                             color: "#0f1a0f",
-                            background: "#E9F7E6",    // samakan dengan body
+                            background: "#E9F7E6",
                             border: "none",
                             outline: "none",
                             borderRadius: 10,
+                            resize: "none",
+                            overflow: "hidden",
+                            whiteSpace: "pre-wrap",
                         }}
                     />
                 </div>
