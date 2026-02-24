@@ -1148,6 +1148,10 @@ export default function RekapData() {
   const [pendingAction, setPendingAction] = useState(null);
   const [showImportModal, setShowImportModal] = useState(false);
 
+  useEffect(() => {
+  setSelectedPages(CATEGORIES.map(category => category.id));
+}, []); 
+
   const pageSize = 7;
   const paginationRef = useRef(null);
   const [currentPage, setCurrentPage] = useState(1);

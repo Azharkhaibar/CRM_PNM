@@ -1205,7 +1205,7 @@ export default function ReputasiRegulatory() {
 
   return (
     <div className="w-full space-y-4">
-      <Header title="Risk Profile – Reputasi" onExportClick={handleExportToExcel} />
+      <Header title="Risk Profile – Reputasi" onExportClick={handleExportToExcel} showQuarterActions={true}/>
 
       <RiskTabs value={activeTab} onChange={handleTabChange} />
 

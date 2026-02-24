@@ -1204,7 +1204,7 @@ export default function RentabilitasRegulatory() {
 
   return (
     <div className="w-full space-y-4">
-      <Header title="Risk Profile – Rentabilitas" onExportClick={handleExportToExcel} />
+      <Header title="Risk Profile – Rentabilitas" onExportClick={handleExportToExcel} showQuarterActions={true}/>
 
       <RiskTabs
         value={activeTab}

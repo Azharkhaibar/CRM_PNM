@@ -1205,7 +1205,7 @@ export default function PermodalanRegulatory() {
   return (
     <div className="w-full space-y-4">
       {/* Tambahkan onExportClick ke Header */}
-      <Header title="Risk Profile – Permodalan" onExportClick={handleExportToExcel} />
+      <Header title="Risk Profile – Permodalan" onExportClick={handleExportToExcel} showQuarterActions={true} />
 
       <RiskTabs
         value={activeTab}

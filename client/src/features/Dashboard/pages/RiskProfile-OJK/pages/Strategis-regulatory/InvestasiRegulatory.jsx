@@ -1205,7 +1205,7 @@ export default function StrategisRegulatory() {
 
   return (
     <div className="w-full space-y-4">
-      <Header title="Risk Profile – Strategis" onExportClick={handleExportToExcel} />
+      <Header title="Risk Profile – Strategis" onExportClick={handleExportToExcel} showQuarterActions={true}/>
 
       <RiskTabs value={activeTab} onChange={handleTabChange} />
 

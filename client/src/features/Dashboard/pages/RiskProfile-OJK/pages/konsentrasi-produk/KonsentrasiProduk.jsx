@@ -1113,6 +1113,7 @@ export default function KonsentrasiProduk() {
         onExportClick={handleExportToExcel}
         categoryId={CATEGORY_ID}
         activeTab={activeTab}
+        showQuarterActions={true}
       />
 
       <RiskTabs value={activeTab} onChange={handleTabChange} />

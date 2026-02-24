@@ -337,7 +337,7 @@ async function exportInherentToExcel({ rows = [], year, quarter, categoryLabel =
 
         for (let subIndex = 0; subIndex < rowsForThisNilai; subIndex++) {
           const isFirstRowOfNilai = subIndex === 0;
-          const isMainRow = subIndex === 0; // Baris utama (judul nilai)
+          const isMainRow = subIndex === 0; // Baris utama (Judul Indikator)
           
           let nilaiText = "-";
           let hasilText = "-";
@@ -371,7 +371,7 @@ async function exportInherentToExcel({ rows = [], year, quarter, categoryLabel =
             rowData.push("", "", "");
           }
 
-          // Kolom nomor nilai (HANYA di baris judul nilai)
+          // Kolom nomor nilai (HANYA di baris Judul Indikator)
           if (isMainRow) {
             rowData.push(nilai.nomor ?? "-");
           } else {
@@ -420,7 +420,7 @@ async function exportInherentToExcel({ rows = [], year, quarter, categoryLabel =
 
           // SET TINGGI BARIS SESUAI PERMINTAAN
           if (isMainRow) {
-            // Baris utama (judul nilai): tinggi 45
+            // Baris utama (Judul Indikator): tinggi 45
             row.height = 45;
           } else {
             // Baris pembilang/penyebut: tinggi 25
@@ -624,7 +624,7 @@ async function exportInherentToExcel({ rows = [], year, quarter, categoryLabel =
             col: 16 // Kolom P (Keterangan)
           });
           
-          // No Nilai TIDAK di-merge, hanya ada di baris judul nilai
+          // No Nilai TIDAK di-merge, hanya ada di baris Judul Indikator
         }
 
         nilaiStartRow = currentRow;
@@ -2137,7 +2137,8 @@ const handleImportSuccess = async (importedData) => {
         title="Risk Profile – Pasar Produk" 
         onExportClick={handleExportToExcel}
         categoryId={CATEGORY_ID}   
-        activeTab={activeTab}       
+        activeTab={activeTab}
+        showQuarterActions={true}       
       />
 
       {/* Modal import */}

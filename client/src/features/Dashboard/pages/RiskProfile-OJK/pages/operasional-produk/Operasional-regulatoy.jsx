@@ -938,6 +938,7 @@ export default function OperasionalRegulatory() {
         onExportClick={handleExportToExcel}
         categoryId={CATEGORY_ID}
         activeTab={activeTab}
+        showQuarterActions={true}
       />
       <RiskTabs value={activeTab} onChange={handleTabChange} />
       <div className="w-full">

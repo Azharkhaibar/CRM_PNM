@@ -1205,7 +1205,7 @@ export default function KepatuhanRegulatory() {
 
   return (
     <div className="w-full space-y-4">
-      <Header title="Risk Profile – Kepatuhan" onExportClick={handleExportToExcel} />
+      <Header title="Risk Profile – Kepatuhan" onExportClick={handleExportToExcel} showQuarterActions={true}/>
 
       <RiskTabs value={activeTab} onChange={handleTabChange} />
 

@@ -8,7 +8,6 @@ import { Plus, Trash2, Copy, FileWarning, ArrowBigLeft, ArrowBigRight, ChevronDo
 import { createAspek } from "../../../utils/factory/createAspek";
 import { createPertanyaan } from "../../../utils/factory/createPertanyaan";
 import { normalizeKpmrRows, normalizeKpmrAspek, normalizeKpmrPertanyaan } from "../../../utils/normalize/normalizeKpmrRows";
-import { useDropdownPortal } from "@/features/Dashboard/pages/RiskProfile-OJK/hooks/useDropdownPortal";
 import PopUpDelete from "../../../components/PopUp/PopUpDelete";
 
 const IndicatorItem = React.memo(({ label, value, onChange, color, loading = false, editMode = false }) => (
@@ -25,6 +24,50 @@ const IndicatorItem = React.memo(({ label, value, onChange, color, loading = fal
 ));
 
 IndicatorItem.displayName = "IndicatorItem";
+
+export function useDropdownPortal({
+  open,
+  setOpen,
+  triggerRef,
+  containerRef,
+  closeOnEsc = true,
+}) {
+  useEffect(() => {
+    if (!open) return;
+
+    const handleClick = (e) => {
+      const inTrigger =
+        triggerRef?.current?.contains(e.target);
+      const inContainer =
+        containerRef?.current?.contains(e.target);
+
+      if (!inTrigger && !inContainer) {
+        setOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClick);
+    return () =>
+      document.removeEventListener("mousedown", handleClick);
+  }, [open, setOpen, triggerRef, containerRef]);
+
+  useEffect(() => {
+    if (!open || !closeOnEsc) return;
+
+    const handleKey = (e) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+
+    document.addEventListener("keydown", handleKey);
+    return () =>
+      document.removeEventListener("keydown", handleKey);
+  }, [open, closeOnEsc, setOpen]);
+
+  // auto close saat component unmount / tab switch
+  useEffect(() => {
+    return () => setOpen(false);
+  }, [setOpen]);
+}
 
 function PertanyaanPanel({
   aspekIndex,

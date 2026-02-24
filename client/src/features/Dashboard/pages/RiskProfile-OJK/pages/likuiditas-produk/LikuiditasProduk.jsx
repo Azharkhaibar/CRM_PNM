@@ -397,7 +397,7 @@ async function exportInherentToExcel({
             rowData.push("", "", "");
           }
 
-          // Kolom nomor nilai (HANYA di baris judul nilai)
+          // Kolom nomor nilai (HANYA di baris Judul Indikator)
           if (isMainRow) {
             rowData.push(nilai.nomor ?? "-");
           } else {
@@ -1561,7 +1561,7 @@ export default function LikuiditasProduk() {
     <div className="w-full space-y-4">
       <Header title="Risk Profile – Likuiditas Produk" onExportClick={handleExportToExcel} />
 
-      <RiskTabs value={activeTab} onChange={handleTabChange} />
+      <RiskTabs value={activeTab} onChange={handleTabChange} showQuarterActions={true}/>
 
       <div className="w-full">
         {activeTab === "inherent" && (

@@ -5,7 +5,6 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Plus, Trash2, Copy, TriangleAlert, X, FileWarning, ArrowBigLeftDash, ArrowBigRightDash, ChevronDown, ChevronUp, Edit, Save } from "lucide-react";
-import { useDropdownPortal } from "@/features/Dashboard/pages/RiskProfile-OJK/hooks/useDropdownPortal";
 import { computeDerived } from "@/features/Dashboard/pages/RiskProfile-OJK/utils/compute/computeDerived";
 import { createParameter } from "../../../utils/factory/createParameter";
 import { createNilai } from "../../../utils/factory/createNilai";
@@ -38,6 +37,50 @@ export default function InherentPage({
       <TableInherent rows={filteredRows} activeQuarter={activeQuarter} />
     </div>
   );
+}
+
+export function useDropdownPortal({
+  open,
+  setOpen,
+  triggerRef,
+  containerRef,
+  closeOnEsc = true,
+}) {
+  useEffect(() => {
+    if (!open) return;
+
+    const handleClick = (e) => {
+      const inTrigger =
+        triggerRef?.current?.contains(e.target);
+      const inContainer =
+        containerRef?.current?.contains(e.target);
+
+      if (!inTrigger && !inContainer) {
+        setOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClick);
+    return () =>
+      document.removeEventListener("mousedown", handleClick);
+  }, [open, setOpen, triggerRef, containerRef]);
+
+  useEffect(() => {
+    if (!open || !closeOnEsc) return;
+
+    const handleKey = (e) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+
+    document.addEventListener("keydown", handleKey);
+    return () =>
+      document.removeEventListener("keydown", handleKey);
+  }, [open, closeOnEsc, setOpen]);
+
+  // auto close saat component unmount / tab switch
+  useEffect(() => {
+    return () => setOpen(false);
+  }, [setOpen]);
 }
 
 //komponent parameter panel
@@ -1304,7 +1347,7 @@ function NilaiPanel({
     );
   }, [paramIndex, safeActiveIndex, setRows]);
 
-  // Update judul nilai secara langsung (non-edit mode)
+  // Update Judul Indikator secara langsung (non-edit mode)
   const handleChangeJudul = useCallback((judulPatch) => {
     if (paramIndex === null || safeActiveIndex === -1) return;
 
@@ -1370,7 +1413,7 @@ const handleAddNilai = useCallback(() => {
   const nilaiToAdd = draftNilai || createEmptyDraftNilai();
   
   if (!nilaiToAdd.judul?.text?.trim()) {
-    alert("Judul nilai tidak boleh kosong!");
+    alert("Judul Indikator tidak boleh kosong!");
     return;
   }
   
@@ -1432,7 +1475,7 @@ const handleAddNilai = useCallback(() => {
   if (!draftNilai || paramIndex === null || !editModeNilai) return;
   
   if (!draftNilai.judul?.text?.trim()) {
-    alert("Judul nilai tidak boleh kosong!");
+    alert("Judul Indikator tidak boleh kosong!");
     return;
   }
   
@@ -1717,7 +1760,7 @@ const handleSelectNilai = (index) => {
       )}
 
       <div className="w-full bg-blue-700 text-white px-4 pt-4 pb-3 border border-x-black border-t-black border-b-blue-700 flex items-center justify-between gap-4 rounded-t-lg">
-        <div className="text-2xl tracking-wider font-bold">Nilai Form</div>
+        <div className="text-2xl tracking-wider font-bold">Indikator Form</div>
 
         <div className="flex items-center gap-3">
           <Button
@@ -1808,7 +1851,7 @@ const handleSelectNilai = (index) => {
           <div className="space-y-2">
             <div className="flex flex-col">
               <label className="font-semibold text-normal tracking-wide ml-1 mb-1 text-slate-200">
-                Pilih Nilai
+                Pilih Indikator
               </label>
               <button
                 ref={dropdownNilaiBtnRef}
@@ -1915,21 +1958,26 @@ const handleSelectNilai = (index) => {
                     ["Moderate", "moderate", "#FFFF00"],
                     ["Moderate To High", "moderateToHigh", "#FFC000"],
                     ["High", "high", "#FF0000"],
-                  ].map(([label, key, color]) => (
-                    <RiskItem
-                      key={key}
-                      label={label}
-                      color={color}
-                      value={currentNilai.riskindikator?.[key] ?? ""}
-                      onChange={(v) => 
-                        isEditModeForComponents
-                          ? handleChangeDraftNilai(`riskindikator.${key}`, v)
-                          : handleChangeNilaiField(`riskindikator.${key}`, v)
-                      }
-                      loading={loading}
-                      editMode={isEditModeForComponents}
-                    />
-                  ))}
+                  ].map(([label, key, color]) => {
+                    const textColor = label === "Low" || label === "High" ? "text-white" : "text-black";
+                    
+                    return (
+                      <RiskItem
+                        key={key}
+                        label={label}
+                        color={color}
+                        value={currentNilai.riskindikator?.[key] ?? ""}
+                        onChange={(v) => 
+                          isEditModeForComponents
+                            ? handleChangeDraftNilai(`riskindikator.${key}`, v)
+                            : handleChangeNilaiField(`riskindikator.${key}`, v)
+                        }
+                        loading={loading}
+                        editMode={isEditModeForComponents}
+                        className={textColor} 
+                      />
+                    );
+                  })}
                 </div>
               </div>
               
@@ -1963,12 +2011,14 @@ const handleSelectNilai = (index) => {
 
 // Risk Item
 function RiskItem({ label, value, onChange, color, loading = false, editMode = false }) {
+  const textColor = label === "Low" || label === "High" ? "text-white" : "text-black";
+  
   return (
     <div
       className="rounded-lg px-3 py-3 flex flex-col gap-2 border border-black shadow-sm"
       style={{ backgroundColor: color }}
     >
-      <div className="text-md font-bold tracking-wide uppercase text-black text-center">
+      <div className={`text-md font-bold tracking-wide uppercase ${textColor} text-center`}>
         {label}
       </div>
       <div className="bg-white/90 rounded border border-black">
@@ -2147,7 +2197,7 @@ function NilaiJudulInput({
         </div>
 
         <div className="col-span-14 space-y-1">
-          <label className="font-semibold text-md ml-1 tracking-wide text-slate-200">Judul Nilai</label>
+          <label className="font-semibold text-md ml-1 tracking-wide text-slate-200">Judul Indikator</label>
           <Input
             className="text-slate-800 border border-black bg-white w-full"
             value={judul.text || ""}
@@ -2470,7 +2520,7 @@ function TableInherent({ rows = [], activeQuarter }) {
                 <th className="border border-black px-2 py-2 bg-blue-900 text-white text-center">Parameter</th>
 
                 <th className="border border-black px-2 py-2 bg-blue-900 text-white text-center">No</th>
-                <th className="border border-black px-2 py-2 bg-blue-900 text-white text-center">Nilai</th>
+                <th className="border border-black px-2 py-2 bg-blue-900 text-white text-center">Indikator</th>
                 <th className="border border-black px-2 py-2 bg-blue-900 text-white text-center">Bobot</th>
 
                 <th className="border border-black px-2 py-2 bg-[#4F6228] text-white text-center">Low</th>
