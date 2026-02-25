@@ -1273,9 +1273,8 @@ export default function Rekap1() {
 
     /* ---------- Total Peringkat Tingkat Risiko (Composite) ---------- */
     const totalPeringkatTingkatRisiko = useMemo(() => {
-        const sum = tableCRows.reduce((acc, r) => acc + r.val, 0);
-        return sum / tableCRows.length;
-    }, [tableCRows]);
+        return (peringkatKompositA + peringkatKompositB) / 2;
+    }, [peringkatKompositA, peringkatKompositB]);
 
 
     useEffect(() => {
@@ -1910,8 +1909,9 @@ Peringkat Reputasi: ${fmt(peringkatReputasi)}
 Label: ${getPeringkatLabel(peringkatReputasi)}
 Formula: (skorReputasi + skorKPMRReputasi) / 2
 
-Peringkat Komposit Table C (Average of 8): ${fmt(totalPeringkatTingkatRisiko)}
-Label: ${getPeringkatLabel(totalPeringkatTingkatRisiko)}`}
+Peringkat Komposit Final (Average of Komposit A & B): ${fmt(totalPeringkatTingkatRisiko)}
+Label: ${getPeringkatLabel(totalPeringkatTingkatRisiko)}
+Formula: (Peringkat Komposit A + Peringkat Komposit B) / 2`}
                 </pre>
             </details> */}
         </div>
