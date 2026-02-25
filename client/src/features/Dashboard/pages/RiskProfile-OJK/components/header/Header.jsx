@@ -40,6 +40,7 @@ export default function Header({
   onImportClick,
   categoryId,
   activeTab,
+  showQuarterActions = false,
 }) {
   const [isCopying, setIsCopying] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
@@ -154,7 +155,6 @@ export default function Header({
       showInfo(
         'Success',
         `Data ${formatQuarterLabel(selectedQuarter)} ${selectedYear} berhasil direset.`,
-        'Click OK untuk melanjutkan.',
         () => setTimeout(() => window.location.reload(), 300)
       );
     } catch (error) {
@@ -295,39 +295,41 @@ export default function Header({
                     {q.label}
                   </button>
 
-                  <div className="flex gap-1 ml-2">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openCopyConfirm(q.value);
-                      }}
-                      className="p-1.5 rounded hover:bg-gray-200 text-gray-600 hover:text-gray-800 transition-colors disabled:opacity-50"
-                      title={`Copy data dari quarter sebelumnya ke ${q.label} ${year}`}
-                      disabled={isCopying}
-                    >
-                      {isCopying && selectedQuarter === q.value ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <Copy className="h-3.5 w-3.5" />
-                      )}
-                    </button>
+                  {showQuarterActions && (
+                    <div className="flex gap-1 ml-2">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openCopyConfirm(q.value);
+                        }}
+                        className="p-1.5 rounded hover:bg-gray-200 text-gray-600 hover:text-gray-800 transition-colors disabled:opacity-50"
+                        title={`Copy data dari quarter sebelumnya ke ${q.label} ${year}`}
+                        disabled={isCopying}
+                      >
+                        {isCopying && selectedQuarter === q.value ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Copy className="h-3.5 w-3.5" />
+                        )}
+                      </button>
 
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openResetConfirm(q.value);
-                      }}
-                      className="p-1.5 rounded hover:bg-red-100 text-gray-600 hover:text-red-600 transition-colors disabled:opacity-50"
-                      title={`Reset data untuk ${q.label} ${year}`}
-                      disabled={isResetting}
-                    >
-                      {isResetting && selectedQuarter === q.value ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <RefreshCw className="h-3.5 w-3.5" />
-                      )}
-                    </button>
-                  </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openResetConfirm(q.value);
+                        }}
+                        className="p-1.5 rounded hover:bg-red-100 text-gray-600 hover:text-red-600 transition-colors disabled:opacity-50"
+                        title={`Reset data untuk ${q.label} ${year}`}
+                        disabled={isResetting}
+                      >
+                        {isResetting && selectedQuarter === q.value ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <RefreshCw className="h-3.5 w-3.5" />
+                        )}
+                      </button>
+                    </div>
+                  )}
 
                   {activeQuarter === q.value && (
                     <Check className="h-4 w-4 text-blue-600 ml-2" />

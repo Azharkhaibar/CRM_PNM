@@ -888,29 +888,98 @@ export default function PeringkatKomposit() {
         </div>
       </div>
 
-      {/* Legenda */}
-      <div className="mt-6 rounded-lg border border-gray-200 bg-white p-3">
-        <div className="flex flex-col gap-3">
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="text-base font-semibold text-gray-950">INHERENT :</span>
-            {INHERENT_RISK_INDICATORS.map((i, idx) => (
-              <div key={idx} className="flex items-center gap-2 text-base font-semibold">
-                <span className="w-5 h-5 rounded border" style={{ backgroundColor: i.color }} />
-                <span className="text-gray-950">{i.label}</span>
-              </div>
-            ))}
+{/* DUA CARD DAN LEGENDA SEPERTI REKAP DATA 2 */}
+<div className="mt-6 gap-3 w-full grid grid-cols-10">
+
+
+  {/* LEGENDA / CATATAN INDIKATOR */}
+  <div className="rounded-lg border col-span-4 border-gray-200 bg-white p-4">
+    <div className="flex flex-col gap-3">
+      <span className="text-base font-semibold text-gray-950">RISK INDIKATOR</span>
+      <div className="flex flex-wrap items-center gap-3">
+        {INHERENT_RISK_INDICATORS.map((i, idx) => (
+          <div key={idx} className="flex items-center uppercase gap-2 text-sm font-semibold">
+            <span className="w-5 h-5 rounded border" style={{ backgroundColor: i.color }} />
+            <span className="text-gray-950">{i.label}</span>
           </div>
-          <div className="flex flex-wrap items-center gap-5">
-            <span className="text-base font-semibold text-gray-950">KPMR :</span>
-            {KPMR_RISK_INDICATORS.map((i, idx) => (
-              <div key={idx} className="flex items-center gap-2 text-base font-semibold">
-                <span className="w-5 h-5 rounded border" style={{ backgroundColor: i.color }} />
-                <span className="text-gray-950">{i.label}</span>
-              </div>
-            ))}
-          </div>
-        </div>
+        ))}
       </div>
+      <div className="flex flex-wrap items-center gap-8">
+        {KPMR_RISK_INDICATORS.map((i, idx) => (
+          <div key={idx} className="flex items-center uppercase gap-2 text-sm font-semibold">
+            <span className="w-5 h-5 rounded border" style={{ backgroundColor: i.color }} />
+            <span className="text-gray-950">{i.label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+
+  {/* CARD 1 - INHERENT (YANG SUDAH ADA) */}
+  <div className="bg-white col-span-3 shadow-md border border-gray-300 p-6 rounded-xl flex items-center gap-5">
+    <div className={`w-20 h-20 rounded-lg flex items-center justify-center shadow ${
+      footerData.hasInherentData 
+        ? '' 
+        : 'bg-gray-400 text-white'
+    }`}
+    style={footerData.hasInherentData ? {
+      backgroundColor: footerData.IndicatoravgInherentNilai?.color,
+      color: footerData.IndicatoravgInherentNilai?.text
+    } : {}}>
+      <span className="text-2xl font-bold">
+        {footerData.hasInherentData 
+          ? footerData.IndicatoravgInherentNilai?.score || 0
+          : 0}
+      </span>
+    </div>
+    <div className="flex-1 text-center">
+      <p className="text-lg font-semibold border-b border-black inline-block px-3 pb-1">
+        Komposit INHERENT : {formatTwoDecimalsTruncate(Number(footerData.avgInherentNilai) || 0)}
+      </p>
+      <p className="text-lg font-bold mt-1">
+        {footerData.hasInherentData 
+          ? footerData.IndicatoravgInherentNilai?.label 
+          : "Data Tidak Ditemukan"}
+      </p>
+      <p className="text-sm text-gray-500 mt-1">
+        {footerData.inherentDataCount} data dari total {footerData.totalCategories} data
+      </p>
+    </div>
+  </div>
+
+  {/* CARD 2 - KPMR (YANG SUDAH ADA) */}
+  <div className="bg-white col-span-3 shadow-md border border-gray-300 p-6 rounded-xl flex items-center gap-5">
+    <div className={`w-20 h-20 rounded-lg flex items-center justify-center shadow ${
+      footerData.hasKpmrData 
+        ? '' 
+        : 'bg-gray-400 text-white'
+    }`}
+    style={footerData.hasKpmrData ? {
+      backgroundColor: footerData.IndicatoravgkpmrNilai?.color,
+      color: footerData.IndicatoravgkpmrNilai?.text
+    } : {}}>
+      <span className="text-2xl font-bold">
+        {footerData.hasKpmrData 
+          ? footerData.IndicatoravgkpmrNilai?.score || 0
+          : 0}
+      </span>
+    </div>
+    <div className="flex-1 text-center">
+      <p className="text-lg font-semibold border-b border-black inline-block px-3 pb-1">
+        Komposit KPMR : {formatTwoDecimalsTruncate(Number(footerData.avgKpmrNilai) || 0)}
+      </p>
+      <p className="text-lg font-bold mt-1">
+        {footerData.hasKpmrData 
+          ? footerData.IndicatoravgkpmrNilai?.label 
+          : "Data Tidak Ditemukan"}
+      </p>
+      <p className="text-sm text-gray-500 mt-1">
+        {footerData.kpmrDataCount} data dari total {footerData.totalCategories} data
+      </p>
+    </div>
+  </div>
+
+</div>
     </div>
   );
 }

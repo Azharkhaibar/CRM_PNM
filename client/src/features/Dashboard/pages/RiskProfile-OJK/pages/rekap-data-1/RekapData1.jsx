@@ -1133,7 +1133,7 @@ export default function RekapData1() {
           </div>
           <div className="flex-1 text-center">
             <p className="text-lg font-semibold border-b border-black inline-block px-3 pb-1">
-              KPMR Komposit : {" "}
+              Komposit KPMR : {" "}
               {formatTwoDecimalsTruncate(Number(footerDisplay?.kpmrDisplay) || 0)}
             </p>
             <p className="text-lg font-bold mt-1">
@@ -1166,7 +1166,7 @@ export default function RekapData1() {
               </div>
               <div className="flex-1 text-center">
                 <p className="text-lg font-semibold border-b border-black inline-block px-3 pb-1">
-                  Komposit : {" "}
+                 Peringkat Komposit : {" "}
                   {formatTwoDecimalsTruncate(Number(footerDisplay?.ptkDisplay) || 0)}
                 </p>
                 <p className="text-lg font-bold mt-1">
