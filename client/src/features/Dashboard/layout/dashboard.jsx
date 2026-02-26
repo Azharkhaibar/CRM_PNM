@@ -86,7 +86,7 @@ export default function Dashboard() {
                     style={tabButtonStyle(activeTab === 'ojk')}
                     className="hover:shadow-md"
                 >
-                    🏛️ OJK (BANK INDONESIA)
+                    🏛️ OJK 
                 </button>
             </div>
 
