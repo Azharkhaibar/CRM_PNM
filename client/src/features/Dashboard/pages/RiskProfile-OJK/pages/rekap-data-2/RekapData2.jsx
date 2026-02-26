@@ -44,7 +44,7 @@ const INHERENT_RISK_INDICATORS = [
   { label: "Low To Moderate", value: "lowToModerate", color: "#92D050", min: 1.50, max: 2.49, score: 2 },
   { label: "Moderate", value: "moderate", color: "#FFFF00", min: 2.50, max: 3.49, score: 3 },
   { label: "Moderate To High", value: "moderateToHigh", color: "#FFC000", min: 3.50, max: 4.49, score: 4 },
-  { label: "High", value: "high", color: "#FF0000", min: 4.50, max: 5, score: 5 },
+  { label: "High", value: "high", color: "#FF0000", min: 4.50, max: Infinity, score: 5 }, 
 ];
 
 const KPMR_RISK_INDICATORS = [
@@ -52,7 +52,7 @@ const KPMR_RISK_INDICATORS = [
   { label: "Satisfactory", value: "satisfactory", color: "#92D050", min: 1.50, max: 2.49, score: 2 },
   { label: "Fair", value: "fair", color: "#FFFF00", min: 2.50, max: 3.49, score: 3 },
   { label: "Marginal", value: "marginal", color: "#FFC000", min: 3.50, max: 4.49, score: 4 },
-  { label: "Unsatisfactory", value: "unsatisfactory", color: "#FF0000", min: 4.50, max: 5, score: 5 },
+  { label: "Unsatisfactory", value: "unsatisfactory", color: "#FF0000", min: 4.50, max: Infinity, score: 5 }, 
 ];
 
 const RISK_MATRIX = [
@@ -527,13 +527,13 @@ const exportRekapData2 = async (year, useRank = true) => {
 
 const getIndicatorColor = (number) => {
   switch(number) {
-    case 0: return "bg-gray-400";
-    case 1: return "bg-[#4F6228] text-white";
-    case 2: return "bg-[#92D050]";
-    case 3: return "bg-[#FFFF00]";
-    case 4: return "bg-[#FFC000]";
-    case 5: return "bg-[#FF0000] text-white";
-    default: return "bg-gray-500";
+    case 0: return "bg-gray-400 text-white";
+    case 1: return "bg-[#4F6228] text-white"; 
+    case 2: return "bg-[#92D050] text-black"; 
+    case 3: return "bg-[#FFFF00] text-black";
+    case 4: return "bg-[#FFC000] text-black"; 
+    case 5: return "bg-[#FF0000] text-white"; 
+    default: return "bg-gray-500 text-white";
   }
 };
 
@@ -545,7 +545,7 @@ const getIndicatorNumberForCard = (score, isDataAvailable = true) => {
   if (score > 1.49 && score <= 2.49) return 2;
   if (score > 2.49 && score <= 3.49) return 3;
   if (score > 3.49 && score <= 4.49) return 4;
-  if (score > 4.49 && score <= 5) return 5;
+  if (score > 4.49) return 5; 
   return 0;
 };
 
@@ -556,7 +556,7 @@ const getScoreFromValue = (value) => {
   if (value > 1.49 && value <= 2.49) return 2;
   if (value > 2.49 && value <= 3.49) return 3;
   if (value > 3.49 && value <= 4.49) return 4;
-  if (value > 4.49 && value <= 5) return 5;
+  if (value > 4.49) return 5; 
   return 0;
 };
 
@@ -574,7 +574,7 @@ const getNetRiskIndicator = (value, hasInherentData, hasKpmrData) => {
   if (value > 1.49 && value <= 2.49) return { label: "Low to Moderate", color: "#92D050", value, score: 2, isNoData: false, isPartialData: false };
   if (value > 2.49 && value <= 3.49) return { label: "Moderate", color: "#FFFF00", value, score: 3, isNoData: false, isPartialData: false };
   if (value > 3.49 && value <= 4.49) return { label: "Moderate to High", color: "#FFC000", value, score: 4, isNoData: false, isPartialData: false };
-  if (value > 4.49 && value <= 5) return { label: "High", color: "#FF0000", value, score: 5, isNoData: false, isPartialData: false };
+  if (value > 4.49) return { label: "High", color: "#FF0000", value, score: 5, isNoData: false, isPartialData: false }; 
   return { label: "Data belum Lengkap", color: "#D1D5DB", value: 0, score: 0, isNoData: false, isPartialData: true };
 };
 
@@ -591,6 +591,7 @@ const getRiskIndicator = (score, type = "inherent", hasData = true) => {
     if (score >= indicator.min && score <= indicator.max) {
       return { ...indicator, value: score, isNoData: false, isPartialData: false };
     }
+    // Untuk nilai > 4.49, akan masuk ke indicator terakhir (max: 5 atau Infinity)
   }
   const defaultIndicator = type === "kpmr" ? KPMR_RISK_INDICATORS[KPMR_RISK_INDICATORS.length - 1] : INHERENT_RISK_INDICATORS[INHERENT_RISK_INDICATORS.length - 1];
   return { ...defaultIndicator, value: score, isNoData: false, isPartialData: false };
@@ -793,63 +794,96 @@ export default function RekapData2() {
     });
   }, [filteredData]);
 
-  const peringkatKomposit = useMemo(() => {
-    if (summaryPerHalaman.length === 0) {
-      return {
-        inherentAvg: 0, kpmrAvg: 0, netRiskAvg: 0,
-        inherentCount: 0, kpmrCount: 0, netRiskCount: 0,
-        totalInherentData: 0, totalKpmrData: 0,
-      };
+// Di bagian useMemo untuk peringkatKomposit, ganti dengan ini:
+
+const peringkatKomposit = useMemo(() => {
+  if (summaryPerHalaman.length === 0) {
+    return {
+      inherentAvg: 0, kpmrAvg: 0, netRiskAvg: 0,
+      inherentCount: 0, kpmrCount: 0, netRiskCount: 0,
+      totalInherentData: 0, totalKpmrData: 0,
+    };
+  }
+
+  // Menggunakan rumus yang sama seperti Rekap Data 1 (dengan pembobotan)
+  let totalInherent = 0, totalKpmr = 0, totalNetRisk = 0;
+  let inherentCount = 0, kpmrCount = 0, netRiskCount = 0;
+  let totalInherentData = 0, totalKpmrData = 0;
+
+  summaryPerHalaman.forEach((item) => {
+    const inherentSummary = item.inherentSummary || 0;
+    const kpmrSummary = item.kpmrSummary || 0;
+    const hasInherentData = item.hasInherentData;
+    const hasKpmrData = item.hasKpmrData;
+    
+    // Di Rekap Data 2 tidak ada BHz, jadi kita gunakan bobot yang sama untuk semua kategori
+    // atau bisa juga menggunakan bobot default (10 untuk sebagian besar, 20 untuk operasional dan strategis)
+    const bhz = (item.id === "operasional-regulatory" || item.id === "strategis-regulatory") ? 20 : 10;
+    const weight = bhz / 100;
+
+    if (hasInherentData && inherentSummary > 0) { 
+      totalInherent += inherentSummary * weight; // Gunakan pembobotan
+      inherentCount++; 
     }
-    let totalInherent = 0, totalKpmr = 0, totalNetRisk = 0;
-    let inherentCount = 0, kpmrCount = 0, netRiskCount = 0;
-    let totalInherentData = 0, totalKpmrData = 0;
+    if (hasInherentData) totalInherentData++;
+    
+    if (hasKpmrData && kpmrSummary > 0) { 
+      totalKpmr += kpmrSummary * weight; // Gunakan pembobotan
+      kpmrCount++; 
+    }
+    if (hasKpmrData) totalKpmrData++;
+    
+    const netRiskValue = getNetRiskFromMatrix(inherentSummary, kpmrSummary, hasInherentData, hasKpmrData);
+    if (netRiskValue > 0 && hasInherentData && hasKpmrData) { 
+      totalNetRisk += netRiskValue * weight; // Gunakan pembobotan untuk konsistensi
+      netRiskCount++; 
+    }
+  });
 
-    summaryPerHalaman.forEach((item) => {
-      const inherentSummary = item.inherentSummary || 0;
-      const kpmrSummary = item.kpmrSummary || 0;
-      const hasInherentData = item.hasInherentData;
-      const hasKpmrData = item.hasKpmrData;
-      const netRiskValue = getNetRiskFromMatrix(inherentSummary, kpmrSummary, hasInherentData, hasKpmrData);
+  // Hitung rata-rata dengan pembobotan (total sudah termasuk bobot)
+  return {
+    inherentAvg: inherentCount > 0 ? totalInherent : 0,
+    kpmrAvg: kpmrCount > 0 ? totalKpmr : 0,
+    netRiskAvg: netRiskCount > 0 ? totalNetRisk : 0,
+    inherentCount, kpmrCount, netRiskCount,
+    totalInherentData, totalKpmrData,
+  };
+}, [summaryPerHalaman]);
 
-      if (hasInherentData && inherentSummary > 0) { totalInherent += inherentSummary; inherentCount++; }
-      if (hasInherentData) totalInherentData++;
-      if (hasKpmrData && kpmrSummary > 0) { totalKpmr += kpmrSummary; kpmrCount++; }
-      if (hasKpmrData) totalKpmrData++;
-      if (netRiskValue > 0 && hasInherentData && hasKpmrData) { totalNetRisk += netRiskValue; netRiskCount++; }
-    });
+// Di bagian footerDisplay, tambahkan pembulatan:
 
-    return {
-      inherentAvg: inherentCount > 0 ? totalInherent / inherentCount : 0,
-      kpmrAvg: kpmrCount > 0 ? totalKpmr / kpmrCount : 0,
-      netRiskAvg: netRiskCount > 0 ? totalNetRisk / netRiskCount : 0,
-      inherentCount, kpmrCount, netRiskCount,
-      totalInherentData, totalKpmrData,
-    };
-  }, [summaryPerHalaman]);
+const footerDisplay = useMemo(() => {
+  const inherentAvg = Math.round(peringkatKomposit.inherentAvg * 100) / 100; // Bulatkan ke 2 desimal
+  const kpmrAvg = Math.round(peringkatKomposit.kpmrAvg * 100) / 100; // Bulatkan ke 2 desimal
+  const netRiskAvg = Math.round(peringkatKomposit.netRiskAvg * 100) / 100; // Bulatkan ke 2 desimal
+  
+  const hasInherentData = peringkatKomposit.totalInherentData > 0;
+  const hasKpmrData = peringkatKomposit.totalKpmrData > 0;
 
-  const footerDisplay = useMemo(() => {
-    const inherentAvg = peringkatKomposit.inherentAvg;
-    const kpmrAvg = peringkatKomposit.kpmrAvg;
-    const netRiskAvg = peringkatKomposit.netRiskAvg;
-    const hasInherentData = peringkatKomposit.totalInherentData > 0;
-    const hasKpmrData = peringkatKomposit.totalKpmrData > 0;
+  const inherentIndicator = getRiskIndicator(inherentAvg, "inherent", hasInherentData && inherentAvg > 0);
+  const kpmrIndicator = getRiskIndicator(kpmrAvg, "kpmr", hasKpmrData && kpmrAvg > 0);
+  
+  // Hitung Net Risk dari matrix menggunakan nilai yang sudah diboboti
+  const netRiskFromMatrix = getNetRiskFromMatrix(inherentAvg, kpmrAvg, hasInherentData, hasKpmrData);
+  const netRiskIndicator = getNetRiskIndicator(netRiskFromMatrix, hasInherentData, hasKpmrData);
+  
+  const inherentScoreForMatrix = inherentAvg > 0 ? getScoreFromValue(inherentAvg) : 0;
+  const kpmrScoreForMatrix = kpmrAvg > 0 ? getScoreFromValue(kpmrAvg) : 0;
 
-    const inherentIndicator = getRiskIndicator(inherentAvg, "inherent", hasInherentData && inherentAvg > 0);
-    const kpmrIndicator = getRiskIndicator(kpmrAvg, "kpmr", hasKpmrData && kpmrAvg > 0);
-    const netRiskFromMatrix = getNetRiskFromMatrix(inherentAvg, kpmrAvg, hasInherentData, hasKpmrData);
-    const netRiskIndicator = getNetRiskIndicator(netRiskFromMatrix, hasInherentData, hasKpmrData);
-    const inherentScoreForMatrix = inherentAvg > 0 ? getScoreFromValue(inherentAvg) : 0;
-    const kpmrScoreForMatrix = kpmrAvg > 0 ? getScoreFromValue(kpmrAvg) : 0;
-
-    return {
-      inherentAvg, kpmrAvg, netRiskAvg: netRiskFromMatrix,
-      inherentIndicator, kpmrIndicator, netRiskIndicator,
-      inherentScoreForMatrix, kpmrScoreForMatrix,
-      hasInherentData, hasKpmrData,
-      hasNetRiskData: netRiskFromMatrix > 0,
-    };
-  }, [peringkatKomposit]);
+  return {
+    inherentAvg, 
+    kpmrAvg, 
+    netRiskAvg: netRiskFromMatrix, // Gunakan hasil dari matrix
+    inherentIndicator, 
+    kpmrIndicator, 
+    netRiskIndicator,
+    inherentScoreForMatrix, 
+    kpmrScoreForMatrix,
+    hasInherentData, 
+    hasKpmrData,
+    hasNetRiskData: netRiskFromMatrix > 0,
+  };
+}, [peringkatKomposit]);
 
   const handleExportToExcel = async () => {
     try {
@@ -1068,7 +1102,7 @@ export default function RekapData2() {
       <div className="mt-6 gap-3 w-full grid grid-cols-5">
         <div className="bg-white col-span-1 shadow-md border border-gray-300 p-6 rounded-xl flex items-center gap-5">
           <div className={`w-20 h-20 rounded-lg flex items-center justify-center shadow ${getIndicatorColor(getIndicatorNumberForCard(footerDisplay?.inherentAvg || 0, footerDisplay?.hasInherentData))}`}>
-            <span className="text-2xl font-bold text-black">{getIndicatorNumberForCard(footerDisplay?.inherentAvg || 0, footerDisplay?.hasInherentData)}</span>
+            <span className="text-2xl font-bold ">{getIndicatorNumberForCard(footerDisplay?.inherentAvg || 0, footerDisplay?.hasInherentData)}</span>
           </div>
           <div className="flex-1 text-center">
             <p className="text-lg font-semibold border-b border-black inline-block px-3 pb-1">INHERENT : {(Number(footerDisplay?.inherentAvg) || 0).toFixed(2)}</p>
@@ -1078,7 +1112,7 @@ export default function RekapData2() {
         </div>
         <div className="bg-white col-span-1 shadow-md border border-gray-300 p-6 rounded-xl flex items-center gap-5">
           <div className={`w-20 h-20 rounded-lg flex items-center justify-center shadow ${getIndicatorColor(getIndicatorNumberForCard(footerDisplay?.kpmrAvg || 0, footerDisplay?.hasKpmrData))}`}>
-            <span className="text-2xl font-bold text-black">{getIndicatorNumberForCard(footerDisplay?.kpmrAvg || 0, footerDisplay?.hasKpmrData)}</span>
+            <span className="text-2xl font-bold ">{getIndicatorNumberForCard(footerDisplay?.kpmrAvg || 0, footerDisplay?.hasKpmrData)}</span>
           </div>
           <div className="flex-1 text-center">
             <p className="text-lg font-semibold border-b border-black inline-block px-3 pb-1">KPMR : {(Number(footerDisplay?.kpmrAvg) || 0).toFixed(2)}</p>
@@ -1088,7 +1122,7 @@ export default function RekapData2() {
         </div>
         <div className="bg-white col-span-1 shadow-md border border-gray-300 p-6 rounded-xl flex items-center gap-5">
           <div className={`w-20 h-20 rounded-lg flex items-center justify-center shadow ${getIndicatorColor(getIndicatorNumberForCard(footerDisplay?.netRiskAvg || 0, footerDisplay?.hasNetRiskData))}`}>
-            <span className="text-2xl font-bold text-black">{getIndicatorNumberForCard(footerDisplay?.netRiskAvg || 0, footerDisplay?.hasNetRiskData)}</span>
+            <span className="text-2xl font-bold">{getIndicatorNumberForCard(footerDisplay?.netRiskAvg || 0, footerDisplay?.hasNetRiskData)}</span>
           </div>
           <div className="flex-1 text-center">
             <p className="text-lg font-semibold border-b border-black inline-block px-3 pb-1">NET RISK: {(Number(footerDisplay?.netRiskAvg) || 0).toFixed(2)}</p>

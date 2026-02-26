@@ -7,17 +7,16 @@ import Avatar from 'react-avatar';
 import { useAuth } from '../../auth/hooks/useAuth.hook';
 import { useDarkMode } from '../../../shared/components/Darkmodecontext';
 import { ChevronsUpDown } from 'lucide-react';
+import { Funnel, FunctionSquareIcon } from 'lucide-react';
 
 const Sidebar = () => {
   const { pathname } = useLocation();
   const [openRisk, setOpenRisk] = useState(false);
-  const [openOjkRisk, setOpenOjkRisk] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const { user, logout } = useAuth();
   const { darkMode } = useDarkMode();
   const menuRef = useRef(null);
   const divisionRef = useRef(null);
-  const ojkRiskRef = useRef(null);
   const [divisionDropdownOpen, setDivisionDropdownOpen] = useState(false);
   const nvg = useNavigate();
 
@@ -34,30 +33,6 @@ const Sidebar = () => {
 
   const riskItems = ['investasi', 'pasar', 'likuiditas', 'operasional', 'hukum', 'stratejik', 'kepatuhan', 'reputasi'];
 
-  const ojkRiskItems = [
-    { name: 'Pasar Produk', path: '/dashboard/ojk-risk/pasar-produk' },
-    { name: 'Likuiditas Produk', path: '/dashboard/ojk-risk/likuiditas-produk' },
-    { name: 'Kredit Produk', path: '/dashboard/ojk-risk/kredit-produk' },
-    { name: 'Konsentrasi Produk', path: '/dashboard/ojk-risk/konsentrasi-produk' },
-    { name: 'Operasional', path: '/dashboard/ojk-risk/operasional-regulatory' },
-    { name: 'Hukum', path: '/dashboard/ojk-risk/hukum-regulatory' },
-    { name: 'Kepatuhan', path: '/dashboard/ojk-risk/kepatuhan-regulatory' },
-    { name: 'Reputasi', path: '/dashboard/ojk-risk/reputasi-regulatory' },
-    { name: 'Strategis', path: '/dashboard/ojk-risk/strategis-regulatory' },
-    { name: 'Investasi', path: '/dashboard/ojk-risk/investasi-regulatory' },
-    { name: 'Rentabilitas', path: '/dashboard/ojk-risk/rentabilitas-regulatory' },
-    { name: 'Permodalan', path: '/dashboard/ojk-risk/permodalan-regulatory' },
-    { name: 'Tata Kelola', path: '/dashboard/ojk-risk/tatakelola-regulatory' },
-
-    { name: 'Ringkasan', path: '/dashboard/ojk-risk/ringkasan' },
-    { name: 'Rekap Data', path: '/dashboard/ojk-risk/rekap-data' },
-    { name: 'Rekap Data 1', path: '/dashboard/ojk-risk/rekap-data1' },
-    { name: 'Rekap Data 2', path: '/dashboard/ojk-risk/rekap-data2' },
-    { name: 'Komposit', path: '/dashboard/ojk-risk/peringkat-komposit' },
-
-    
-  ];
-
   useEffect(() => {
     if (pathname.startsWith('/dashboard/risk-form')) {
       setOpenRisk(true);
@@ -73,10 +48,6 @@ const Sidebar = () => {
       if (menuRef.current && !menuRef.current.contains(event.target)) {
         setMenuOpen(false);
       }
-
-      if (ojkRiskRef.current && !ojkRiskRef.current.contains(event.target)) {
-        setOpenOjkRisk(false);
-      }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
@@ -88,24 +59,27 @@ const Sidebar = () => {
   const handleDivisionSelect = (division) => {
     setSelectedDivision(division);
     setDivisionDropdownOpen(false);
+    console.log('Divisi dipilih:', division.name);
   };
 
   const sidebarClass = `w-64 h-screen border-r p-4 flex flex-col transition-colors duration-300 ${darkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-200 text-gray-800'}`;
 
   const navItemClass = (active) =>
-    `block py-3 px-4 rounded-lg text-[16px] font-medium transition-all duration-200 ${
-      active ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25' : darkMode ? 'text-gray-300 hover:bg-gray-700 hover:text-white' : 'text-gray-700 hover:bg-blue-50 hover:text-blue-700'
+    `block py-3 gap px-4 rounded-lg text-[16px] font-medium transition-all duration-200 ${
+      active ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25' : darkMode ? 'text-gray-300 hover:bg-gray-700 hover:text-white' : 'text-gray-700 hover:bg-blue-50 hover:text-blue-700 '
     }`;
 
   const riskButtonClass = (active) =>
     `w-full flex items-center justify-between py-2 px-4 rounded-lg text-[16px] font-medium transition-all duration-200 ${
-      active ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25' : darkMode ? 'text-gray-300 hover:bg-gray-700 hover:text-white' : 'text-gray-700 hover:bg-blue-50 hover:text-blue-700'
+      active ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25' : darkMode ? 'text-gray-300 hover:bg-gray-700 hover:text-white' : 'text-gray-700 hover:bg-blue-50 hover:text-blue-700 '
     }`;
 
   const riskSubItemClass = (active) =>
     `block py-2 px-4 rounded-lg text-[14px] font-normal transition-all duration-200 ml-2 ${
       active ? 'bg-blue-500 text-white' : darkMode ? 'text-gray-400 hover:bg-gray-700 hover:text-white' : 'text-gray-600 hover:bg-blue-100 hover:text-blue-600'
     }`;
+
+  const borderClass = darkMode ? 'border-gray-600' : 'border-gray-200';
 
   const userSectionClass = `mt-auto relative flex items-center gap-3 p-3 rounded-lg border transition-colors duration-300 ${darkMode ? 'bg-gray-700 border-gray-600 hover:bg-gray-600' : 'bg-gray-50 border-gray-200 hover:bg-gray-100'}`;
 
@@ -121,35 +95,44 @@ const Sidebar = () => {
     darkMode ? 'bg-gray-700 border-gray-600 hover:bg-gray-600 hover:border-gray-500' : 'bg-white border-gray-200 hover:bg-blue-50 hover:border-blue-200'
   }`;
 
-  const divisionDropdownClass = `absolute top-full left-0 right-0 mt-2 border rounded-xl p-3 z-50 backdrop-blur-sm transition-colors duration-300 ${
+  const divisionDropdownClass = `absolute top-full left-0 right-0 mt-2 border rounded-xl  p-3 z-50 backdrop-blur-sm transition-colors duration-300 ${
     darkMode ? 'bg-gray-700/95 border-gray-600 text-white' : 'bg-white/95 border-gray-200 text-gray-800'
   }`;
 
   const divisionOptionClass = `flex items-center gap-3 w-full p-3 rounded-lg transition-all duration-200 cursor-pointer group ${darkMode ? 'hover:bg-gray-600 hover:text-white' : 'hover:bg-blue-50 hover:text-blue-700'}`;
 
   const scrollbarClass = `
+    /* Scrollbar untuk Webkit browsers (Chrome, Safari, Edge) */
     .sidebar-scrollbar::-webkit-scrollbar {
       width: 4px;
     }
+
     .sidebar-scrollbar::-webkit-scrollbar-track {
       background: transparent;
       margin: 2px 0;
     }
+
     .sidebar-scrollbar::-webkit-scrollbar-thumb {
       background: ${darkMode ? 'rgba(156, 163, 175, 0.3)' : 'rgba(156, 163, 175, 0.3)'};
       border-radius: 2px;
       transition: all 0.3s ease;
     }
+
     .sidebar-scrollbar::-webkit-scrollbar-thumb:hover {
       background: ${darkMode ? 'rgba(156, 163, 175, 0.5)' : 'rgba(156, 163, 175, 0.5)'};
     }
+
     .sidebar-scrollbar::-webkit-scrollbar-thumb:active {
       background: ${darkMode ? 'rgba(156, 163, 175, 0.7)' : 'rgba(156, 163, 175, 0.7)'};
     }
+
+    /* Scrollbar untuk Firefox */
     .sidebar-scrollbar {
       scrollbar-width: thin;
       scrollbar-color: ${darkMode ? 'rgba(156, 163, 175, 0.3) transparent' : 'rgba(156, 163, 175, 0.3) transparent'};
     }
+
+    /* Smooth scrolling */
     .sidebar-scrollbar {
       scroll-behavior: smooth;
     }
@@ -160,7 +143,7 @@ const Sidebar = () => {
       <style>{scrollbarClass}</style>
 
       <div className={sidebarClass}>
-        <div className="flex justify-center mb-8 mt-[25px] flex-shrink-0">
+        <div className="flex justify-center mb-8 mt-[25\px] flex-shrink-0">
           <img src={logo} alt="PNM" className="w-40 h-auto transition-all duration-300 hover:scale-105" />
         </div>
 
@@ -169,7 +152,7 @@ const Sidebar = () => {
             <div className={divisionButtonClass} onClick={() => setDivisionDropdownOpen(!divisionDropdownOpen)}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${selectedDivision.color} text-white`}>
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${selectedDivision.color} text-white `}>
                     <FaBuilding className="text-sm" />
                   </div>
                   <div className="flex flex-col items-start">
@@ -215,19 +198,18 @@ const Sidebar = () => {
           </div>
           <div className="flex-1 overflow-y-auto sidebar-scrollbar">
             <nav className="space-y-2 pr-1">
+              {' '}
               <div className="space-y-1">
                 <Link to="/dashboard" className={navItemClass(isActive('/dashboard', true))}>
                   Dashboard
                 </Link>
 
-                {/* Menu Risk Appetite Statement */}
-                <Link to="/dashboard/ras" className={navItemClass(isActive('/dashboard/ras'))}>
+                <Link to="#" className={navItemClass(isActive('/dashboard/ras'))}>
                   Risk Appetite Statement
                 </Link>
-
                 <div className="space-y-1">
                   <button onClick={() => setOpenRisk(!openRisk)} className={`${riskButtonClass(isActive('/dashboard/risk-form'))} w-full flex justify-between`}>
-                    <span className="text-left">Profil Resiko Holding</span>
+                    <span className="flex gap-2 text-left">Profil Resiko Holdingkout </span>
                     {openRisk ? <FaChevronUp className="text-xs" /> : <FaChevronDown className="text-xs" />}
                   </button>
 
@@ -250,34 +232,12 @@ const Sidebar = () => {
                   </AnimatePresence>
                 </div>
 
-                {/* Dropdown Profil Resiko OJK */}
-                <div className="space-y-1" ref={ojkRiskRef}>
-                  <button onClick={() => setOpenOjkRisk(!openOjkRisk)} className={`${riskButtonClass(isActive('/dashboard/ojk-risk'))} w-full flex justify-between`}>
-                    <span className="text-left">Profil Resiko OJK</span>
-                    {openOjkRisk ? <FaChevronUp className="text-xs" /> : <FaChevronDown className="text-xs" />}
-                  </button>
-
-                  <AnimatePresence>
-                    {openOjkRisk && (
-                      <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25 }} className="overflow-hidden">
-                        <div className="ml-4 mt-1 space-y-1 border-l-2 pl-3 py-1">
-                          {ojkRiskItems.map((item, index) => (
-                            <Link key={index} to={item.path} className={riskSubItemClass(false)}>
-                              {item.name}
-                            </Link>
-                          ))}
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-
                 <Link to="/dashboard/maturasi" className={navItemClass(isActive('/dashboard/maturasi', true))}>
-                  Maturitas Manajemen Resiko
+                  Maturasi
                 </Link>
 
                 <Link to="/dashboard/report" className={navItemClass(isActive('/dashboard/report', true))}>
-                  Rekap Data
+                  Laporan
                 </Link>
 
                 <div className={dividerClass} />
