@@ -115,28 +115,55 @@ function calculateInherentSummary(rows) {
   return count > 0 ? totalWeighted / count : 0;
 }
 
+function calculateInherentIndicatorCounts(rows) {
+  const counts = { high: 0, moderateToHigh: 0, moderate: 0, lowToModerate: 0, low: 0 };
+
+  rows.forEach((param, pIdx) => {
+    param.nilaiList?.forEach((item, iIdx) => {
+      console.log(`Item [${pIdx}-${iIdx}]:`, {
+        id: item.id,
+        derived: item.derived,
+        riskindikator: item.riskindikator,
+        peringkat: item.derived?.peringkat,
+        weighted: item.derived?.weighted,
+      });
+
+      // Deteksi peringkat
+      let peringkat = null;
+      if (item.derived?.peringkat !== undefined) peringkat = item.derived.peringkat;
+      else if (item.peringkat !== undefined) peringkat = item.peringkat;
+      else if (item.score !== undefined) peringkat = item.score;
+      else if (item.nilai !== undefined) peringkat = item.nilai;
+
+      if (peringkat !== null && !isNaN(peringkat) && peringkat > 0) {
+        console.log(`  → peringkat = ${peringkat}`);
+        if (peringkat >= 4.5) counts.high++;
+        else if (peringkat >= 3.5) counts.moderateToHigh++;
+        else if (peringkat >= 2.5) counts.moderate++;
+        else if (peringkat >= 1.5) counts.lowToModerate++;
+        else counts.low++;
+      } else {
+        console.log('  → peringkat null or non-positive, skipping from counts');
+      }
+    });
+  });
+
+  console.log('Final counts:', counts);
+  return counts;
+}
+
 const getRiskIndicator = (score, type = "inherent", hasData = true) => {
-  if (!hasData) {
+  if (!hasData || score === undefined || score === null || isNaN(score) || score <= 0) {
     return {
       label: "Data Tidak Ditemukan",
       value: "no-data",
-      color: "#6B7280",
+      color: "#9ca3af",
       text: "#FFFFFF",
       score: 0,
       hasData: false
     };
   }
-  
-  if (score === undefined || score === null || isNaN(score)) {
-    if (type === "kpmr") {
-      return { ...KPMR_RISK_INDICATORS[KPMR_RISK_INDICATORS.length - 1], hasData: true };
-    } else if (type === "ptk") {
-      return { ...PTK_RISK_INDICATORS[PTK_RISK_INDICATORS.length - 1], hasData: true };
-    } else {
-      return { ...INHERENT_RISK_INDICATORS[INHERENT_RISK_INDICATORS.length - 1], hasData: true };
-    }
-  }
-  
+
   let indicators;
   if (type === "kpmr") {
     indicators = KPMR_RISK_INDICATORS;
@@ -145,21 +172,23 @@ const getRiskIndicator = (score, type = "inherent", hasData = true) => {
   } else {
     indicators = INHERENT_RISK_INDICATORS;
   }
-  
+
   const truncatedScore = truncateToTwoDecimals(score);
   for (const indicator of indicators) {
     if (truncatedScore >= indicator.min && truncatedScore <= indicator.max) {
       return { ...indicator, hasData: true };
     }
   }
-  
-  if (type === "kpmr") {
-    return { ...KPMR_RISK_INDICATORS[KPMR_RISK_INDICATORS.length - 1], hasData: true };
-  } else if (type === "ptk") {
-    return { ...PTK_RISK_INDICATORS[PTK_RISK_INDICATORS.length - 1], hasData: true };
-  } else {
-    return { ...INHERENT_RISK_INDICATORS[INHERENT_RISK_INDICATORS.length - 1], hasData: true };
-  }
+
+  // Fallback for edge cases where score might be outside ranges but > 0
+  return {
+    label: "Data Tidak Ditemukan",
+    value: "no-data",
+    color: "#9ca3af",
+    text: "#FFFFFF",
+    score: 0,
+    hasData: false
+  };
 };
 
 export function useOjkData(year, quarter) {
@@ -187,13 +216,15 @@ export function useOjkData(year, quarter) {
         let kpmrFooter = 0;
         let categoriesWithInherentData = 0;
         let categoriesWithKpmrData = 0;
-        
+
         const risks = [];
 
         CATEGORIES.forEach((category) => {
           // INHERENT - Gunakan loadDerived seperti di RekapData1
           let inherentSummary = 0;
           let normalizedRows = [];
+
+          // Coba load dari derived terlebih dahulu
           const derivedData = loadDerived({
             categoryId: category.id,
             year: year.toString(),
@@ -202,6 +233,41 @@ export function useOjkData(year, quarter) {
 
           if (derivedData && typeof derivedData.summary === 'number' && derivedData.summary > 0) {
             inherentSummary = derivedData.summary;
+
+            // Jika pakai derived, kita perlu load rows untuk hitung distribusi
+            try {
+              const rows = loadInherent({
+                categoryId: category.id,
+                year: year.toString(),
+                quarter: quarter.toLowerCase(),
+              });
+              if (Array.isArray(rows) && rows.length > 0) {
+                normalizedRows = normalizeInherentRowsWithDerived(rows);
+
+                // Debug: lihat struktur data Pasar Produk
+                if (category.label === 'Pasar Produk') {
+                  console.log('Pasar Produk - RAW rows:', rows);
+                  console.log('Pasar Produk - Normalized rows:', normalizedRows);
+
+                  // Tampilkan setiap item di nilaiList
+                  normalizedRows.forEach((param, idx) => {
+                    console.log(`Parameter ${idx}:`, param);
+                    if (param.nilaiList) {
+                      param.nilaiList.forEach((item, itemIdx) => {
+                        console.log(`  Item ${itemIdx}:`, {
+                          derived: item.derived,
+                          riskindikator: item.riskindikator,
+                          score: item.score,
+                          nilai: item.nilai
+                        });
+                      });
+                    }
+                  });
+                }
+              }
+            } catch (e) {
+              console.error(`Error loading rows for ${category.id}:`, e);
+            }
           } else {
             try {
               const rows = loadInherent({
@@ -218,25 +284,12 @@ export function useOjkData(year, quarter) {
             }
           }
 
-          // Hitung distribusi indikator inherent
-          let highCount = 0, moderateHighCount = 0, moderateCount = 0, lowToModerateCount = 0, lowCount = 0;
-          if (normalizedRows.length > 0) {
-            normalizedRows.forEach(param => {
-              param.nilaiList.forEach(item => {
-                if (item.derived && typeof item.derived.weighted === 'number') {
-                  const score = item.derived.weighted;
-                  const indicator = getRiskIndicator(score, "inherent", true);
-                  switch (indicator.value) {
-                    case 'high': highCount++; break;
-                    case 'moderateToHigh': moderateHighCount++; break;
-                    case 'moderate': moderateCount++; break;
-                    case 'lowToModerate': lowToModerateCount++; break;
-                    case 'low': lowCount++; break;
-                    default: break;
-                  }
-                }
-              });
-            });
+          // Hitung distribusi indikator inherent menggunakan fungsi baru
+          const inherentIndicatorCounts = calculateInherentIndicatorCounts(normalizedRows);
+
+          // Debug: log counts untuk Pasar Produk
+          if (category.label === 'Pasar Produk') {
+            console.log(`Pasar Produk counts:`, inherentIndicatorCounts);
           }
 
           // KPMR - Pastikan format quarter benar
@@ -273,7 +326,7 @@ export function useOjkData(year, quarter) {
           const bhz = defaultBhz(category.id);
           const weight = bhz / 100;
           const bvt = 100;
-          
+
           const inherentSkor = truncateToTwoDecimals(inherentSummary * (bvt / 100));
           const kpmrSkor = truncateToTwoDecimals(kpmrSummary);
 
@@ -299,13 +352,7 @@ export function useOjkData(year, quarter) {
             bhz,
             hasInherentData: hasInherent,
             hasKpmrData: hasKpmr,
-            inherentIndicatorCounts: {
-              high: highCount,
-              moderateToHigh: moderateHighCount,
-              moderate: moderateCount,
-              lowToModerate: lowToModerateCount,
-              low: lowCount
-            }
+            inherentIndicatorCounts: inherentIndicatorCounts
           });
         });
 
@@ -346,7 +393,7 @@ export function useOjkData(year, quarter) {
     const handleUpdate = () => fetchData();
     window.addEventListener("risk-data-updated", handleUpdate);
     return () => window.removeEventListener("risk-data-updated", handleUpdate);
-    
+
   }, [year, quarter]);
 
   return data;
