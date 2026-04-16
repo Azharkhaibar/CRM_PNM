@@ -375,10 +375,9 @@ __decorate([
     __metadata("design:type", Object)
 ], Investasi.prototype, "revisionNotes", void 0);
 exports.Investasi = Investasi = __decorate([
-    (0, typeorm_1.Entity)('indikators_investasi'),
+    (0, typeorm_1.Entity)('indikators_investasi_holding'),
     (0, typeorm_1.Unique)('UQ_INVESTASI_PERIOD_SUBNO', ['year', 'quarter', 'subNo', 'sectionId']),
     (0, typeorm_1.Index)('IDX_INVESTASI_PERIOD', ['year', 'quarter']),
-    (0, typeorm_1.Index)('IDX_INVESTASI_SECTION', ['sectionId']),
-    (0, typeorm_1.Index)('IDX_INVESTASI_YEAR_QUARTER', ['year', 'quarter'])
+    (0, typeorm_1.Index)('IDX_INVESTASI_SECTION', ['sectionId'])
 ], Investasi);
 //# sourceMappingURL=new-investasi.entity.js.map

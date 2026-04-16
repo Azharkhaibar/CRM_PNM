@@ -1,10 +1,10 @@
 import { Repository } from 'typeorm';
-import { PasarSection } from './entities/section.entity';
-import { Pasar, Quarter } from './entities/indikator.entity';
-import { CreatePasarSectionDto } from './dto/create-pasar-section.dto';
+import { PasarSection } from './entities/pasar-section.entity';
+import { Pasar, Quarter } from './entities/pasar.entity';
+import { CreatePasarDto } from './dto/create-pasar.dto';
 import { UpdatePasarSectionDto } from './dto/update-pasar-section.dto';
-import { CreatePasarDto } from './dto/create-pasar-indikator.dto';
 import { UpdatePasarDto } from './dto/update-pasar.dto';
+import { CreatePasarSectionDto } from './dto/create-pasar-section.dto';
 export declare class PasarService {
     private readonly pasarSectionRepository;
     private readonly pasarRepository;
@@ -29,13 +29,13 @@ export declare class PasarService {
     }>;
     searchIndikators(query?: string, year?: number, quarter?: Quarter): Promise<Pasar[]>;
     getTotalWeightedByPeriod(year: number, quarter: Quarter): Promise<number>;
-    private validateModeSpecificFields;
-    private calculateWeighted;
-    duplicateIndikatorToNewPeriod(sourceId: number, targetYear: number, targetQuarter: Quarter, createdBy?: string): Promise<Pasar>;
-    getIndikatorCountByPeriod(year: number, quarter: Quarter): Promise<number>;
     getSectionsWithIndicatorsByPeriod(year: number, quarter: Quarter): Promise<any>;
     getPeriods(): Promise<Array<{
         year: number;
         quarter: Quarter;
     }>>;
+    getIndikatorCountByPeriod(year: number, quarter: Quarter): Promise<number>;
+    duplicateIndikatorToNewPeriod(sourceId: number, targetYear: number, targetQuarter: Quarter, createdBy?: string): Promise<Pasar>;
+    private validateModeSpecificFields;
+    private calculateWeighted;
 }

@@ -1,7 +1,7 @@
 // constant/constant.jsx
 // Import dari formtemplate.jsx - pastikan pathnya benar
 // import { emptyIndicator, KPMR_EMPTY_FORM } from './formtemplate.jsx';
-import { emptyIndicator, KPMR_EMPTY_FORM } from '../components/formtemplate';
+import { emptyIndicator, KPMR_EMPTY_FORM } from '../components/pasar/formtemplate';
 // ===================== B_rand =====================
 export const PNM_BRAND = {
   primary: '#0068B3',

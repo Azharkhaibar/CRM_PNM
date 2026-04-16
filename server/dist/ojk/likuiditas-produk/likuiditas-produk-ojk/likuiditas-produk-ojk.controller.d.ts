@@ -29,7 +29,7 @@ export declare class LikuiditasProdukOjkController {
     addNilai(inherentId: number, parameterId: number, createNilaiDto: CreateLikuiditasNilaiDto, req: any): Promise<{
         nomor: string;
         judul: {
-            type: import("./dto/likuditas-produk-inherent.dto").LikuiditasJudulType;
+            type: import("./dto/likuditas-produk-inherent.dto").JudulType;
             text: string;
             value: string | number | null;
             pembilang: string;
@@ -42,7 +42,7 @@ export declare class LikuiditasProdukOjkController {
         bobot: number;
         portofolio: string;
         keterangan: string;
-        riskindikator: import("./dto/likuditas-produk-inherent.dto").LikuiditasRiskindikatorDto;
+        riskindikator: import("./dto/likuditas-produk-inherent.dto").RiskindikatorDto;
         parameterId: number;
         orderIndex: number;
     } & import("./entities/likuditas-nilai.entity").LikuiditasNilai>;
@@ -141,17 +141,8 @@ export declare class LikuiditasProdukOjkController {
         exists: boolean;
         data: import("./entities/likuiditas-produk-ojk.entity").LikuiditasProdukOjk | null;
     }>;
-    validateKomprehensif(id: number): Promise<{
-        isValid: boolean;
-        warnings: string[];
-        errors: string[];
-    }>;
-    getStatistics(id: number): Promise<{
-        totalQuestions: number;
-        aspekCount: number;
-        averageScore: number;
-        rating: string;
-    }>;
+    validateKomprehensif(id: number): Promise<any>;
+    getStatistics(id: number): Promise<any>;
     private getInherentByIdOrThrow;
     private getInherentByIdDirect;
 }

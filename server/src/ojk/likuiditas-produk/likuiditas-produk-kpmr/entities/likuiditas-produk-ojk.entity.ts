@@ -13,7 +13,7 @@ import { KpmrAspekLikuiditas } from './likuiditas-kpmr-aspek.entity';
 @Index(['year', 'quarter'], { unique: true })
 @Index(['isActive', 'year', 'quarter'])
 @Index(['createdAt'])
-export class KpmrLikuiditas {
+export class KpmrLikuiditasOjk {
   @PrimaryGeneratedColumn()
   id: number;
 

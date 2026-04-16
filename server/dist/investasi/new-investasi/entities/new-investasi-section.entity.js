@@ -25,6 +25,8 @@ let InvestasiSection = class InvestasiSection {
     createdAt;
     updatedAt;
     isDeleted;
+    createdBy;
+    updatedBy;
     investasiIndicators;
 };
 exports.InvestasiSection = InvestasiSection;
@@ -95,11 +97,29 @@ __decorate([
     __metadata("design:type", Boolean)
 ], InvestasiSection.prototype, "isDeleted", void 0);
 __decorate([
+    (0, typeorm_1.Column)({
+        name: 'created_by',
+        type: 'varchar',
+        length: 100,
+        nullable: true,
+    }),
+    __metadata("design:type", Object)
+], InvestasiSection.prototype, "createdBy", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        name: 'updated_by',
+        type: 'varchar',
+        length: 100,
+        nullable: true,
+    }),
+    __metadata("design:type", Object)
+], InvestasiSection.prototype, "updatedBy", void 0);
+__decorate([
     (0, typeorm_1.OneToMany)(() => new_investasi_entity_1.Investasi, (investasi) => investasi.section),
     __metadata("design:type", Array)
 ], InvestasiSection.prototype, "investasiIndicators", void 0);
 exports.InvestasiSection = InvestasiSection = __decorate([
-    (0, typeorm_1.Entity)('sections_investasi'),
+    (0, typeorm_1.Entity)('sections_investasi_holding'),
     (0, typeorm_1.Index)('IDX_INVESTASI_SECTION_PERIOD_UNIQUE', ['year', 'quarter', 'no', 'parameter'], { unique: true })
 ], InvestasiSection);
 //# sourceMappingURL=new-investasi-section.entity.js.map

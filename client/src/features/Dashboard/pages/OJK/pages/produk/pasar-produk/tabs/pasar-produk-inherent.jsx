@@ -1,4 +1,4 @@
-// src/ojk/pasar-produk/pasar-produk-ojk/pasar-produk-ojk.service.ts
+// src/ojk/pasar-produk/pasar-produk-ojk/pasar-produk-inherent.jsx
 import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useHeaderStore } from '../../../../store/header';
@@ -2054,7 +2054,7 @@ function NilaiPanel({ param, nilaiList = [], activeNilaiIndex, setActiveNilaiInd
       }
     }
 
-    // Keluar dari edit mode
+    // Keluar dari mode edit
     setEditModeNilai(false);
     setOriginalNilai(null);
 

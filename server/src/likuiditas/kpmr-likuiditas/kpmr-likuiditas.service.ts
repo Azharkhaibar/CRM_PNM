@@ -1,225 +1,780 @@
-// src/kpmr-likuiditas/kpmr-likuiditas.service.ts
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+  Logger,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Like, FindManyOptions } from 'typeorm';
-import { KpmrLikuiditas } from './entities/kpmr-likuidita.entity';
-import { CreateKpmrLikuiditasDto } from './dto/create-kpmr-likuidita.dto';
-import { UpdateKpmrLikuiditasDto } from './dto/update-kpmr-likuiditas.dto';
-import { KpmrLikuiditasQueryDto } from './dto/kpmr-likuiditas-query.dto';
-
-export interface KpmrGroup {
-  aspekNo: string;
-  aspekTitle: string;
-  aspekBobot: number;
-  items: KpmrLikuiditas[];
-  skorAverage: number;
-}
-
-export interface GroupedKpmrResponse {
-  data: KpmrLikuiditas[];
-  groups: KpmrGroup[];
-  overallAverage: number;
-}
-
-export interface KpmrListResponse {
-  data: KpmrLikuiditas[];
-  total: number;
-}
-
-export interface KpmrExportData {
-  year: number;
-  quarter: string;
-  rows: KpmrLikuiditas[];
-  groups: KpmrGroup[];
-  overallAverage: number;
-  exportDate: string;
-}
-
-export interface KpmrWhereClause {
-  year?: number;
-  quarter?: string;
-  aspekNo?: string;
-  indikator?: any;
-}
+import { Repository, Not } from 'typeorm';
+import { KPMRLikuiditasDefinition } from './entities/kpmr-likuiditas-definisi.entity';
+import { KPMRLikuiditasScore } from './entities/kpmr-likuiditas-skor.entity';
+import { KPMRLikuiditasAspect } from './entities/kpmr-likuiditas-aspek.entity';
+import { KPMRLikuiditasQuestion } from './entities/kpmr-likuiditas-pertanyaan.entity';
+import {
+  CreateKPMRLikuiditasAspectDto,
+  UpdateKPMRLikuiditasAspectDto,
+  CreateKPMRLikuiditasQuestionDto,
+  UpdateKPMRLikuiditasQuestionDto,
+  CreateKPMRLikuiditasDefinitionDto,
+  UpdateKPMRLikuiditasDefinitionDto,
+  CreateKPMRLikuiditasScoreDto,
+  UpdateKPMRLikuiditasScoreDto,
+} from './dto/kpmr-likuiditas.dto';
 
 @Injectable()
-export class KpmrLikuiditasService {
+export class KPMRLikuiditasService {
+  private readonly logger = new Logger(KPMRLikuiditasService.name);
+
   constructor(
-    @InjectRepository(KpmrLikuiditas)
-    private readonly kpmrLikuiditasRepo: Repository<KpmrLikuiditas>,
+    @InjectRepository(KPMRLikuiditasDefinition)
+    private readonly definitionRepo: Repository<KPMRLikuiditasDefinition>,
+
+    @InjectRepository(KPMRLikuiditasScore)
+    private readonly scoreRepo: Repository<KPMRLikuiditasScore>,
+
+    @InjectRepository(KPMRLikuiditasAspect)
+    private readonly aspectRepo: Repository<KPMRLikuiditasAspect>,
+
+    @InjectRepository(KPMRLikuiditasQuestion)
+    private readonly questionRepo: Repository<KPMRLikuiditasQuestion>,
   ) {}
 
-  async create(createDto: CreateKpmrLikuiditasDto): Promise<KpmrLikuiditas> {
-    const existing = await this.kpmrLikuiditasRepo.findOne({
+  // ==================== HELPER METHODS ====================
+
+  private validateQuarter(quarter: string): void {
+    const validQuarters = ['Q1', 'Q2', 'Q3', 'Q4'];
+    if (!validQuarters.includes(quarter)) {
+      throw new BadRequestException(
+        `Quarter harus salah satu dari: ${validQuarters.join(', ')}`,
+      );
+    }
+  }
+
+  async validateDefinitionExists(
+    definitionId: number,
+  ): Promise<KPMRLikuiditasDefinition> {
+    const definition = await this.definitionRepo.findOne({
+      where: { id: definitionId },
+    });
+
+    if (!definition) {
+      throw new NotFoundException(
+        `Definition dengan ID ${definitionId} tidak ditemukan`,
+      );
+    }
+
+    return definition;
+  }
+
+  // ========== ASPECT SERVICES ==========
+  async createAspect(
+    createDto: CreateKPMRLikuiditasAspectDto,
+  ): Promise<KPMRLikuiditasAspect> {
+    this.logger.log(
+      `Creating aspect for year ${createDto.year}: ${JSON.stringify(createDto)}`,
+    );
+
+    const existing = await this.aspectRepo.findOne({
       where: {
         year: createDto.year,
-        quarter: createDto.quarter,
+        aspekNo: createDto.aspekNo,
+      },
+    });
+
+    if (existing) {
+      existing.aspekTitle = createDto.aspekTitle;
+      existing.aspekBobot = createDto.aspekBobot;
+      return await this.aspectRepo.save(existing);
+    }
+
+    const aspect = this.aspectRepo.create(createDto);
+    return await this.aspectRepo.save(aspect);
+  }
+
+  async findAllAspects(year?: number): Promise<KPMRLikuiditasAspect[]> {
+    const where: any = {};
+    if (year) {
+      where.year = year;
+    }
+
+    return await this.aspectRepo.find({
+      where,
+      order: { year: 'DESC', aspekNo: 'ASC' },
+    });
+  }
+
+  async findAspectById(id: number): Promise<KPMRLikuiditasAspect> {
+    const aspect = await this.aspectRepo.findOne({
+      where: { id },
+    });
+
+    if (!aspect) {
+      throw new NotFoundException(`Aspek dengan ID ${id} tidak ditemukan`);
+    }
+
+    return aspect;
+  }
+
+  async updateAspect(
+    id: number,
+    updateDto: UpdateKPMRLikuiditasAspectDto,
+  ): Promise<KPMRLikuiditasAspect> {
+    const aspect = await this.findAspectById(id);
+    Object.assign(aspect, updateDto);
+    return await this.aspectRepo.save(aspect);
+  }
+
+  async deleteAspect(
+    id: number,
+  ): Promise<{ success: boolean; message: string }> {
+    const aspect = await this.aspectRepo.findOne({
+      where: { id },
+    });
+
+    if (!aspect) {
+      throw new NotFoundException(`Aspek dengan ID ${id} tidak ditemukan`);
+    }
+
+    this.logger.log(
+      `🗑️ Deleting aspect ID ${id} (${aspect.aspekNo} - ${aspect.year})`,
+    );
+
+    await this.aspectRepo.delete(id);
+
+    this.logger.log(
+      `✅ Aspect ID ${id} and all related data deleted (cascade)`,
+    );
+
+    return {
+      success: true,
+      message: `Aspek "${aspect.aspekTitle}" untuk tahun ${aspect.year} berhasil dihapus permanen.`,
+    };
+  }
+
+  // ========== QUESTION SERVICES ==========
+  async createQuestion(
+    createDto: CreateKPMRLikuiditasQuestionDto,
+  ): Promise<KPMRLikuiditasQuestion> {
+    this.logger.log(
+      `Creating question for year ${createDto.year}: ${JSON.stringify(createDto)}`,
+    );
+
+    if (!createDto.aspekNo || !createDto.sectionNo || !createDto.sectionTitle) {
+      throw new BadRequestException(
+        'aspekNo, sectionNo, dan sectionTitle harus diisi',
+      );
+    }
+
+    const aspect = await this.aspectRepo.findOne({
+      where: {
+        year: createDto.year,
+        aspekNo: createDto.aspekNo,
+      },
+    });
+
+    if (!aspect) {
+      throw new NotFoundException(
+        `Aspek dengan nomor "${createDto.aspekNo}" untuk tahun ${createDto.year} tidak ditemukan. Silakan buat aspek terlebih dahulu.`,
+      );
+    }
+
+    try {
+      const question = this.questionRepo.create(createDto);
+      const savedQuestion = await this.questionRepo.save(question);
+      this.logger.log(
+        `✅ Question created successfully: ID ${savedQuestion.id}`,
+      );
+      return savedQuestion;
+    } catch (error) {
+      this.logger.error(`❌ Failed to create question: ${error.message}`);
+      throw new BadRequestException(
+        `Gagal membuat pertanyaan: ${error.message}`,
+      );
+    }
+  }
+
+  async findAllQuestions(year?: number): Promise<KPMRLikuiditasQuestion[]> {
+    const where: any = {};
+    if (year) {
+      where.year = year;
+    }
+
+    return await this.questionRepo.find({
+      where,
+      order: { year: 'DESC', aspekNo: 'ASC', sectionNo: 'ASC' },
+    });
+  }
+
+  async findQuestionsByAspect(
+    aspekNo: string,
+    year?: number,
+  ): Promise<KPMRLikuiditasQuestion[]> {
+    const where: any = { aspekNo };
+    if (year) {
+      where.year = year;
+    }
+
+    return await this.questionRepo.find({
+      where,
+      order: { year: 'DESC', sectionNo: 'ASC' },
+    });
+  }
+
+  async findQuestionById(id: number): Promise<KPMRLikuiditasQuestion> {
+    const question = await this.questionRepo.findOne({
+      where: { id },
+    });
+
+    if (!question) {
+      throw new NotFoundException(`Pertanyaan dengan ID ${id} tidak ditemukan`);
+    }
+
+    return question;
+  }
+
+  async updateQuestion(
+    id: number,
+    updateDto: UpdateKPMRLikuiditasQuestionDto,
+  ): Promise<KPMRLikuiditasQuestion> {
+    const question = await this.findQuestionById(id);
+    Object.assign(question, updateDto);
+    return await this.questionRepo.save(question);
+  }
+
+  async deleteQuestion(
+    id: number,
+  ): Promise<{ success: boolean; message: string }> {
+    const question = await this.findQuestionById(id);
+
+    this.logger.log(
+      `🗑️ Deleting question ID ${id} (${question.sectionNo} - ${question.sectionTitle}) for year ${question.year}`,
+    );
+
+    const definitions = await this.definitionRepo.find({
+      where: {
+        year: question.year,
+        aspekNo: question.aspekNo,
+        sectionNo: question.sectionNo,
+      },
+    });
+
+    const definitionsCount = definitions.length;
+
+    await this.questionRepo.delete(id);
+
+    this.logger.log(
+      `✅ Question ID ${id} and ${definitionsCount} definitions permanently deleted`,
+    );
+
+    return {
+      success: true,
+      message: `Pertanyaan "${question.sectionTitle}" untuk tahun ${question.year} berhasil dihapus permanen beserta ${definitionsCount} data terkait.`,
+    };
+  }
+
+  // ========== DEFINITION SERVICES ==========
+  async createOrUpdateDefinition(
+    createDto: CreateKPMRLikuiditasDefinitionDto,
+    createdBy?: string,
+  ): Promise<KPMRLikuiditasDefinition> {
+    this.logger.log(
+      `Creating/updating definition: ${JSON.stringify(createDto)}`,
+    );
+
+    const aspect = await this.aspectRepo.findOne({
+      where: {
+        year: createDto.year,
+        aspekNo: createDto.aspekNo,
+      },
+    });
+
+    if (!aspect) {
+      throw new NotFoundException(
+        `Aspek dengan nomor "${createDto.aspekNo}" untuk tahun ${createDto.year} tidak ditemukan`,
+      );
+    }
+
+    const question = await this.questionRepo.findOne({
+      where: {
+        year: createDto.year,
+        aspekNo: createDto.aspekNo,
+        sectionNo: createDto.sectionNo,
+      },
+    });
+
+    if (!question) {
+      throw new NotFoundException(
+        `Pertanyaan dengan aspek ${createDto.aspekNo} dan section ${createDto.sectionNo} untuk tahun ${createDto.year} tidak ditemukan`,
+      );
+    }
+
+    const existing = await this.definitionRepo.findOne({
+      where: {
+        year: createDto.year,
         aspekNo: createDto.aspekNo,
         sectionNo: createDto.sectionNo,
       },
     });
 
     if (existing) {
-      throw new Error(
-        'Data dengan tahun, quarter, aspekNo, dan sectionNo yang sama sudah ada',
-      );
-    }
+      existing.aspekTitle = createDto.aspekTitle;
+      existing.aspekBobot = createDto.aspekBobot;
+      existing.sectionTitle = createDto.sectionTitle;
+      existing.level1 = createDto.level1 ?? existing.level1;
+      existing.level2 = createDto.level2 ?? existing.level2;
+      existing.level3 = createDto.level3 ?? existing.level3;
+      existing.level4 = createDto.level4 ?? existing.level4;
+      existing.level5 = createDto.level5 ?? existing.level5;
+      existing.evidence = createDto.evidence ?? existing.evidence;
 
-    const kpmr = this.kpmrLikuiditasRepo.create(createDto);
-    return await this.kpmrLikuiditasRepo.save(kpmr);
+      if (createdBy) {
+        existing.updatedBy = createdBy;
+      }
+
+      this.logger.log(`✅ Definition updated: ID ${existing.id}`);
+      return await this.definitionRepo.save(existing);
+    } else {
+      const definitionData = {
+        ...createDto,
+        createdBy,
+      };
+
+      const definition = this.definitionRepo.create(definitionData);
+      this.logger.log(`✅ New definition created: ID ${definition.id}`);
+      return await this.definitionRepo.save(definition);
+    }
   }
 
-  async findAll(query: KpmrLikuiditasQueryDto): Promise<KpmrListResponse> {
-    const { year, quarter, search, aspekNo, page = 1, limit = 50 } = query;
+  async findAllDefinitions(): Promise<KPMRLikuiditasDefinition[]> {
+    return await this.definitionRepo.find({
+      relations: ['question', 'scores'],
+      order: { year: 'DESC', aspekNo: 'ASC', sectionNo: 'ASC' },
+    });
+  }
 
-    const where: KpmrWhereClause = {};
+  async findDefinitionsByYear(
+    year: number,
+  ): Promise<KPMRLikuiditasDefinition[]> {
+    return await this.definitionRepo.find({
+      where: { year },
+      relations: ['question', 'scores'],
+      order: { aspekNo: 'ASC', sectionNo: 'ASC' },
+    });
+  }
 
-    if (year) where.year = year;
-    if (quarter) where.quarter = quarter;
-    if (aspekNo) where.aspekNo = aspekNo;
+  async findDefinitionById(id: number): Promise<KPMRLikuiditasDefinition> {
+    const definition = await this.definitionRepo.findOne({
+      where: { id },
+      relations: ['question', 'scores'],
+    });
 
-    if (search) {
-      where.indikator = Like(`%${search}%`);
+    if (!definition) {
+      throw new NotFoundException(`Definition dengan ID ${id} tidak ditemukan`);
     }
 
-    const options: FindManyOptions<KpmrLikuiditas> = {
+    return definition;
+  }
+
+  async updateDefinition(
+    id: number,
+    updateDto: UpdateKPMRLikuiditasDefinitionDto,
+    updatedBy?: string,
+  ): Promise<KPMRLikuiditasDefinition> {
+    const definition = await this.findDefinitionById(id);
+
+    if (updateDto.aspekNo || updateDto.sectionNo) {
+      const checkAspekNo = updateDto.aspekNo || definition.aspekNo;
+      const checkSectionNo = updateDto.sectionNo || definition.sectionNo;
+
+      const existing = await this.definitionRepo.findOne({
+        where: {
+          year: definition.year,
+          aspekNo: checkAspekNo,
+          sectionNo: checkSectionNo,
+          id: Not(id),
+        },
+      });
+
+      if (existing) {
+        throw new ConflictException(
+          `Definition dengan aspek ${checkAspekNo} dan section ${checkSectionNo} sudah ada untuk tahun ${definition.year}`,
+        );
+      }
+    }
+
+    Object.assign(definition, updateDto);
+
+    if (updatedBy) {
+      definition.updatedBy = updatedBy;
+    }
+
+    return await this.definitionRepo.save(definition);
+  }
+
+  async deleteDefinition(
+    definitionId: number,
+    year: number,
+  ): Promise<{ success: boolean; message: string }> {
+    this.logger.log(`🗑️ Deleting definition ${definitionId} for year ${year}`);
+
+    try {
+      const definition = await this.definitionRepo.findOne({
+        where: { id: definitionId, year },
+      });
+
+      if (!definition) {
+        this.logger.warn(
+          `Definition ${definitionId} for year ${year} not found`,
+        );
+        return {
+          success: true,
+          message: 'Data sudah tidak ada',
+        };
+      }
+
+      await this.definitionRepo.delete(definition.id);
+
+      this.logger.log(`Deleted definition ID ${definition.id}`);
+
+      return {
+        success: true,
+        message: 'Data berhasil dihapus',
+      };
+    } catch (error) {
+      this.logger.error(`Error deleting definition: ${error.message}`);
+      return {
+        success: false,
+        message: `Gagal menghapus: ${error.message}`,
+      };
+    }
+  }
+
+  // ========== SCORE SERVICES ==========
+  async createOrUpdateScore(
+    createDto: CreateKPMRLikuiditasScoreDto,
+    createdBy?: string,
+  ): Promise<KPMRLikuiditasScore> {
+    this.logger.log(`Creating/updating score: ${JSON.stringify(createDto)}`);
+
+    await this.validateDefinitionExists(createDto.definitionId);
+    this.validateQuarter(createDto.quarter);
+
+    const existing = await this.scoreRepo.findOne({
+      where: {
+        definitionId: createDto.definitionId,
+        year: createDto.year,
+        quarter: createDto.quarter,
+      },
+    });
+
+    if (existing) {
+      existing.sectionSkor = createDto.sectionSkor ?? null;
+
+      if (createdBy) {
+        existing.updatedBy = createdBy;
+      }
+
+      return await this.scoreRepo.save(existing);
+    } else {
+      const scoreData = {
+        ...createDto,
+        createdBy,
+      };
+
+      const score = this.scoreRepo.create(scoreData);
+      return await this.scoreRepo.save(score);
+    }
+  }
+
+  async findAllScores(): Promise<KPMRLikuiditasScore[]> {
+    return await this.scoreRepo.find({
+      relations: ['definition'],
+      order: { year: 'DESC', quarter: 'ASC' },
+    });
+  }
+
+  async findScoresByPeriod(
+    year: number,
+    quarter?: string,
+  ): Promise<KPMRLikuiditasScore[]> {
+    const where: any = { year };
+
+    if (quarter) {
+      this.validateQuarter(quarter);
+      where.quarter = quarter;
+    }
+
+    return await this.scoreRepo.find({
       where,
-      order: {
-        aspekNo: 'ASC',
-        sectionNo: 'ASC',
-      },
-      skip: (page - 1) * limit,
-      take: limit,
-    };
-
-    const [data, total] = await this.kpmrLikuiditasRepo.findAndCount(options);
-
-    return { data, total };
+      relations: ['definition'],
+      order: { quarter: 'ASC' },
+    });
   }
 
-  async findOne(id_kpmr_likuiditas: number): Promise<KpmrLikuiditas> {
-    const kpmr = await this.kpmrLikuiditasRepo.findOne({
-      where: { id_kpmr_likuiditas },
+  async findScoresByDefinition(
+    definitionId: number,
+  ): Promise<KPMRLikuiditasScore[]> {
+    await this.validateDefinitionExists(definitionId);
+    return await this.scoreRepo.find({
+      where: { definitionId },
+      relations: ['definition'],
+      order: { quarter: 'ASC' },
+    });
+  }
+
+  async findScoreById(id: number): Promise<KPMRLikuiditasScore> {
+    const score = await this.scoreRepo.findOne({
+      where: { id },
+      relations: ['definition'],
     });
 
-    if (!kpmr) {
-      throw new NotFoundException(
-        `KPMR Likuiditas dengan ID ${id_kpmr_likuiditas} tidak ditemukan`,
-      );
+    if (!score) {
+      throw new NotFoundException(`Score dengan ID ${id} tidak ditemukan`);
     }
 
-    return kpmr;
+    return score;
   }
 
-  async update(
-    id_kpmr_likuiditas: number,
-    updateDto: UpdateKpmrLikuiditasDto,
-  ): Promise<KpmrLikuiditas> {
-    const kpmr = await this.findOne(id_kpmr_likuiditas);
+  async updateScore(
+    id: number,
+    updateDto: UpdateKPMRLikuiditasScoreDto,
+    updatedBy?: string,
+  ): Promise<KPMRLikuiditasScore> {
+    const score = await this.findScoreById(id);
 
-    Object.assign(kpmr, updateDto);
+    if (updateDto.definitionId) {
+      await this.validateDefinitionExists(updateDto.definitionId);
+    }
 
-    return await this.kpmrLikuiditasRepo.save(kpmr);
+    if (updateDto.quarter) {
+      this.validateQuarter(updateDto.quarter);
+    }
+
+    Object.assign(score, updateDto);
+
+    if (updatedBy) {
+      score.updatedBy = updatedBy;
+    }
+
+    return await this.scoreRepo.save(score);
   }
 
-  async remove(id_kpmr_likuiditas: number): Promise<void> {
-    const kpmr = await this.findOne(id_kpmr_likuiditas);
-    await this.kpmrLikuiditasRepo.remove(kpmr);
+  async deleteScore(
+    id: number,
+  ): Promise<{ success: boolean; message: string }> {
+    const score = await this.findScoreById(id);
+    await this.scoreRepo.delete(id);
+    this.logger.log(`Score ID ${id} permanently deleted`);
+    return {
+      success: true,
+      message: 'Score berhasil dihapus permanen',
+    };
   }
 
-  async findByPeriod(year: number, quarter: string): Promise<KpmrLikuiditas[]> {
-    return await this.kpmrLikuiditasRepo.find({
-      where: { year, quarter },
-      order: {
-        aspekNo: 'ASC',
-        sectionNo: 'ASC',
-      },
-    });
-  }
-
-  async getGroupedData(
+  async deleteScoreByTarget(
+    definitionId: number,
     year: number,
     quarter: string,
-  ): Promise<GroupedKpmrResponse> {
-    const data = await this.findByPeriod(year, quarter);
+  ): Promise<{ success: boolean; message: string }> {
+    this.logger.log(
+      `Deleting score: definitionId=${definitionId}, year=${year}, quarter=${quarter}`,
+    );
 
-    const groups = new Map<string, KpmrGroup>();
+    this.validateQuarter(quarter);
 
-    data.forEach((item: KpmrLikuiditas) => {
-      const key = `${item.aspekNo}|${item.aspekTitle}|${item.aspekBobot}`;
+    const score = await this.scoreRepo.findOne({
+      where: {
+        definitionId,
+        year,
+        quarter,
+      },
+    });
 
-      if (!groups.has(key)) {
-        groups.set(key, {
-          aspekNo: item.aspekNo || '',
-          aspekTitle: item.aspekTitle || '',
-          aspekBobot: item.aspekBobot || 0,
-          items: [],
-          skorAverage: 0,
+    if (!score) {
+      this.logger.warn('Score not found');
+      return {
+        success: true,
+        message: 'Data sudah tidak ada',
+      };
+    }
+
+    await this.scoreRepo.delete(score.id);
+    this.logger.log(`Score ID ${score.id} permanently deleted`);
+
+    return {
+      success: true,
+      message: 'Score berhasil dihapus permanen',
+    };
+  }
+
+  // ========== COMPLEX QUERIES ==========
+  async getKPMRFullData(year: number): Promise<any> {
+    this.logger.log(`Getting full KPMR Likuiditas data for year: ${year}`);
+
+    const definitions = await this.definitionRepo.find({
+      where: { year },
+      relations: ['scores'],
+      order: { aspekNo: 'ASC', sectionNo: 'ASC' },
+    });
+
+    const aspekMap = new Map();
+
+    for (const def of definitions) {
+      const aspekKey = def.aspekNo;
+
+      if (!aspekMap.has(aspekKey)) {
+        aspekMap.set(aspekKey, {
+          aspekNo: def.aspekNo,
+          aspekTitle: def.aspekTitle,
+          aspekBobot: def.aspekBobot,
+          sections: [],
         });
       }
 
-      const group = groups.get(key);
-      if (group) {
-        group.items.push(item);
-      }
-    });
+      const sectionScores = (def.scores || []).reduce(
+        (acc, score) => {
+          acc[score.quarter] = {
+            sectionSkor: score.sectionSkor,
+            id: score.id,
+          };
+          return acc;
+        },
+        {} as Record<string, any>,
+      );
 
-    const groupedArray: KpmrGroup[] = Array.from(groups.values()).map(
-      (group: KpmrGroup) => {
-        const validScores: number[] = group.items
-          .map((item: KpmrLikuiditas) => item.sectionSkor || 0)
-          .filter(
-            (score: number) => score !== null && !isNaN(score) && score > 0,
-          );
+      aspekMap.get(aspekKey).sections.push({
+        definitionId: def.id,
+        sectionNo: def.sectionNo,
+        sectionTitle: def.sectionTitle,
+        level1: def.level1,
+        level2: def.level2,
+        level3: def.level3,
+        level4: def.level4,
+        level5: def.level5,
+        evidence: def.evidence,
+        scores: sectionScores,
+      });
+    }
 
-        group.skorAverage =
-          validScores.length > 0
-            ? Number(
-                (
-                  validScores.reduce(
-                    (sum: number, score: number) => sum + score,
-                    0,
-                  ) / validScores.length
-                ).toFixed(2),
-              )
-            : 0;
+    const result = Array.from(aspekMap.values());
 
-        return group;
-      },
-    );
+    for (const aspek of result) {
+      const quarterAverages: Record<string, number | null> = {};
+      ['Q1', 'Q2', 'Q3', 'Q4'].forEach((quarter) => {
+        const allScores = aspek.sections
+          .map((s: any) => s.scores[quarter]?.sectionSkor)
+          .filter((s: number) => s != null && !isNaN(s));
+        quarterAverages[quarter] = allScores.length
+          ? Number(
+              (
+                allScores.reduce((a: number, b: number) => a + b, 0) /
+                allScores.length
+              ).toFixed(2),
+            )
+          : null;
+      });
+      aspek.quarterAverages = quarterAverages;
+    }
 
-    const validAverages: number[] = groupedArray
-      .map((group: KpmrGroup) => group.skorAverage)
-      .filter((avg: number) => avg > 0);
-
-    const overallAverage: number =
-      validAverages.length > 0
+    const overallAverages: Record<string, number | null> = {};
+    ['Q1', 'Q2', 'Q3', 'Q4'].forEach((quarter) => {
+      const allAspectAverages = result
+        .map((aspek) => aspek.quarterAverages[quarter])
+        .filter((avg) => avg != null && !isNaN(avg));
+      overallAverages[quarter] = allAspectAverages.length
         ? Number(
             (
-              validAverages.reduce((sum: number, avg: number) => sum + avg, 0) /
-              validAverages.length
+              allAspectAverages.reduce((a, b) => a + b, 0) /
+              allAspectAverages.length
             ).toFixed(2),
           )
-        : 0;
+        : null;
+    });
 
     return {
-      data,
-      groups: groupedArray,
-      overallAverage,
+      success: true,
+      year,
+      aspects: result,
+      overallAverages,
     };
   }
 
-  async getExportData(year: number, quarter: string): Promise<KpmrExportData> {
-    const data = await this.findByPeriod(year, quarter);
-    const groupedData = await this.getGroupedData(year, quarter);
+  async searchKPMR(
+    year?: number,
+    query?: string,
+    aspekNo?: string,
+  ): Promise<KPMRLikuiditasDefinition[]> {
+    const qb = this.definitionRepo
+      .createQueryBuilder('def')
+      .leftJoinAndSelect('def.scores', 'scores')
+      .leftJoinAndSelect('def.question', 'question');
 
-    return {
-      year,
-      quarter,
-      rows: data,
-      groups: groupedData.groups,
-      overallAverage: groupedData.overallAverage,
-      exportDate: new Date().toISOString(),
-    };
+    if (year) {
+      qb.andWhere('def.year = :year', { year });
+    }
+
+    if (aspekNo) {
+      qb.andWhere('def.aspekNo = :aspekNo', { aspekNo });
+    }
+
+    if (query) {
+      qb.andWhere(
+        '(def.aspekNo LIKE :query OR def.aspekTitle LIKE :query OR def.sectionNo LIKE :query OR def.sectionTitle LIKE :query OR def.evidence LIKE :query OR def.level1 LIKE :query OR def.level2 LIKE :query OR def.level3 LIKE :query OR def.level4 LIKE :query OR def.level5 LIKE :query)',
+        { query: `%${query}%` },
+      );
+    }
+
+    qb.orderBy('def.aspekNo', 'ASC').addOrderBy('def.sectionNo', 'ASC');
+
+    return await qb.getMany();
+  }
+
+  async getAvailableYears(): Promise<number[]> {
+    try {
+      const definitionYears = await this.definitionRepo
+        .createQueryBuilder('def')
+        .select('DISTINCT def.year', 'year')
+        .orderBy('def.year', 'DESC')
+        .getRawMany();
+
+      const scoreYears = await this.scoreRepo
+        .createQueryBuilder('score')
+        .select('DISTINCT score.year', 'year')
+        .orderBy('score.year', 'DESC')
+        .getRawMany();
+
+      const allYears = [
+        ...new Set([
+          ...definitionYears.map((y) => Number(y.year)),
+          ...scoreYears.map((y) => Number(y.year)),
+        ]),
+      ];
+
+      return allYears.length > 0 ? allYears : [new Date().getFullYear()];
+    } catch (error) {
+      this.logger.error('Error getting available years:', error);
+      return [new Date().getFullYear()];
+    }
+  }
+
+  async getPeriods(): Promise<Array<{ year: number; quarter: string }>> {
+    try {
+      const periods = await this.scoreRepo
+        .createQueryBuilder('score')
+        .select('DISTINCT score.year', 'year')
+        .addSelect('score.quarter', 'quarter')
+        .orderBy('score.year', 'DESC')
+        .addOrderBy('score.quarter', 'DESC')
+        .getRawMany();
+
+      return periods.map((p) => ({
+        year: Number(p.year),
+        quarter: p.quarter,
+      }));
+    } catch (error) {
+      this.logger.error('Error getting periods:', error);
+      return [];
+    }
   }
 }

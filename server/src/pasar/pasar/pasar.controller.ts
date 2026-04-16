@@ -9,11 +9,8 @@ import {
   Param,
   Query,
   ParseIntPipe,
-  UsePipes,
-  ValidationPipe,
   HttpCode,
   HttpStatus,
-  BadRequestException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
 // import { PasarService } from '../services/pasar.service';
@@ -22,12 +19,13 @@ import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
 // import { CreatePasarDto } from '../dto/create-pasar.dto';
 // import { UpdatePasarDto } from '../dto/update-pasar.dto';
 // import { Quarter } from '../entities/pasar.entity';
+
 import { PasarService } from './pasar.service';
 import { CreatePasarSectionDto } from './dto/create-pasar-section.dto';
 import { UpdatePasarSectionDto } from './dto/update-pasar-section.dto';
-import { CreatePasarDto } from './dto/create-pasar-indikator.dto';
+import { CreatePasarDto } from './dto/create-pasar.dto';
 import { UpdatePasarDto } from './dto/update-pasar.dto';
-import { Quarter } from './entities/indikator.entity';
+import { Quarter } from './entities/pasar.entity';
 
 @ApiTags('Pasar')
 @Controller('pasar')
@@ -39,6 +37,8 @@ export class PasarController {
   @Post('sections')
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Create new pasar section' })
+  @ApiResponse({ status: 201, description: 'Section created successfully' })
+  @ApiResponse({ status: 409, description: 'Section already exists' })
   async createSection(@Body() createDto: CreatePasarSectionDto) {
     return await this.pasarService.createSection(createDto);
   }
@@ -56,6 +56,17 @@ export class PasarController {
     return await this.pasarService.findSectionById(id);
   }
 
+  @Get('sections/period')
+  @ApiOperation({ summary: 'Get pasar sections by period' })
+  @ApiQuery({ name: 'year', required: true, type: Number })
+  @ApiQuery({ name: 'quarter', required: true, enum: Quarter })
+  async getSectionsByPeriod(
+    @Query('year', ParseIntPipe) year: number,
+    @Query('quarter') quarter: Quarter,
+  ) {
+    return await this.pasarService.findSectionsByPeriod(year, quarter);
+  }
+
   @Put('sections/:id')
   @ApiOperation({ summary: 'Update pasar section' })
   async updateSection(
@@ -66,23 +77,10 @@ export class PasarController {
   }
 
   @Delete('sections/:id')
-  @HttpCode(HttpStatus.NO_CONTENT)
+  @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Delete pasar section' })
   async deleteSection(@Param('id', ParseIntPipe) id: number) {
-    await this.pasarService.deleteSection(id);
-  }
-
-  @Get('indikators/sections-by-period')
-  @ApiOperation({ summary: 'Get sections with indicators by period' })
-  async getSectionsWithIndicatorsByPeriod(
-    @Query('year', new ParseIntPipe()) year: number,
-    @Query('quarter') quarter: Quarter,
-  ) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-    return await this.pasarService.getSectionsWithIndicatorsByPeriod(
-      year,
-      quarter,
-    );
+    return await this.pasarService.deleteSection(id);
   }
 
   // ========== INDIKATOR ENDPOINTS ==========
@@ -90,6 +88,8 @@ export class PasarController {
   @Post('indikators')
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Create new pasar indikator' })
+  @ApiResponse({ status: 201, description: 'Indikator created successfully' })
+  @ApiResponse({ status: 409, description: 'Indikator already exists' })
   async createIndikator(@Body() createDto: CreatePasarDto) {
     return await this.pasarService.createIndikator(createDto);
   }
@@ -140,15 +140,35 @@ export class PasarController {
   }
 
   @Delete('indikators/:id')
-  @HttpCode(HttpStatus.NO_CONTENT)
+  @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Delete pasar indikator' })
   async deleteIndikator(@Param('id', ParseIntPipe) id: number) {
-    await this.pasarService.deleteIndikator(id);
+    return await this.pasarService.deleteIndikator(id);
+  }
+
+  // ========== COMPLEX QUERIES ENDPOINTS ==========
+
+  @Get('data/with-indicators')
+  @ApiOperation({
+    summary: 'Get sections with their indicators for a period',
+    description:
+      'Returns sections with nested indicators for a specific year and quarter',
+  })
+  @ApiQuery({ name: 'year', required: true, type: Number })
+  @ApiQuery({ name: 'quarter', required: true, enum: Quarter })
+  async getSectionsWithIndicatorsByPeriod(
+    @Query('year', ParseIntPipe) year: number,
+    @Query('quarter') quarter: Quarter,
+  ) {
+    return await this.pasarService.getSectionsWithIndicatorsByPeriod(
+      year,
+      quarter,
+    );
   }
 
   @Get('total-weighted')
-  @ApiOperation({ summary: 'Get total weighted by period' })
-  @ApiQuery({ name: 'year', required: true })
+  @ApiOperation({ summary: 'Get total weighted value by period' })
+  @ApiQuery({ name: 'year', required: true, type: Number })
   @ApiQuery({ name: 'quarter', required: true, enum: Quarter })
   async getTotalWeighted(
     @Query('year', ParseIntPipe) year: number,
@@ -158,18 +178,12 @@ export class PasarController {
       year,
       quarter,
     );
-    return { total };
-  }
-
-  @Get('sections/period')
-  @ApiOperation({ summary: 'Get pasar sections by period' })
-  @ApiQuery({ name: 'year', required: true, type: Number })
-  @ApiQuery({ name: 'quarter', required: true, enum: Quarter })
-  async getSectionsByPeriod(
-    @Query('year', ParseIntPipe) year: number,
-    @Query('quarter') quarter: Quarter,
-  ) {
-    return await this.pasarService.findSectionsByPeriod(year, quarter);
+    return {
+      success: true,
+      year,
+      quarter,
+      total,
+    };
   }
 
   @Get('periods')
@@ -186,21 +200,20 @@ export class PasarController {
         count: periods.length,
       };
     } catch (error) {
-      console.error('[PASAR] Error in getAvailablePeriods:', error);
+      console.error('Error in getAvailablePeriods:', error);
       throw error;
     }
   }
 
-  @Get('all-periods')
+  @Get('periods/with-counts')
   @ApiOperation({
-    summary: 'Get all periods with count',
-    description: 'Get periods with indicator counts',
+    summary: 'Get all periods with indicator counts',
+    description: 'Get periods with indicator counts for each period',
   })
-  async getAllPeriods() {
+  async getAllPeriodsWithCounts() {
     try {
       const periods = await this.pasarService.getPeriods();
 
-      // Hitung jumlah indikator per periode
       const periodsWithCounts = await Promise.all(
         periods.map(async (period) => {
           const count = await this.pasarService.getIndikatorCountByPeriod(
@@ -220,14 +233,38 @@ export class PasarController {
         count: periodsWithCounts.length,
       };
     } catch (error) {
-      console.error('[PASAR] Error in getAllPeriods:', error);
+      console.error('Error in getAllPeriodsWithCounts:', error);
       throw error;
     }
   }
 
+  @Get('indikators/count')
+  @ApiOperation({ summary: 'Get indikator count by period' })
+  @ApiQuery({ name: 'year', required: true, type: Number })
+  @ApiQuery({ name: 'quarter', required: true, enum: Quarter })
+  async getIndikatorCount(
+    @Query('year', ParseIntPipe) year: number,
+    @Query('quarter') quarter: Quarter,
+  ) {
+    const count = await this.pasarService.getIndikatorCountByPeriod(
+      year,
+      quarter,
+    );
+    return {
+      success: true,
+      year,
+      quarter,
+      count,
+    };
+  }
+
+  // ========== DUPLICATION ENDPOINT ==========
   @Post('indikators/:id/duplicate')
   @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'Duplicate indikator to new period' })
+  @ApiOperation({
+    summary: 'Duplicate indikator to new period',
+    description: 'Copy an existing indikator to a different period',
+  })
   async duplicateIndikator(
     @Param('id', ParseIntPipe) id: number,
     @Query('year', ParseIntPipe) year: number,

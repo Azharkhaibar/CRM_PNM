@@ -22,10 +22,11 @@ async function bootstrap() {
 
   app.useGlobalPipes(
     new ValidationPipe({
-      transform: false,
-      whitelist: false,
-      forbidNonWhitelisted: true,
+      transform: true,
+      whitelist: true,
+      forbidNonWhitelisted: false,
       transformOptions: { enableImplicitConversion: true },
+      skipMissingProperties: true,
       exceptionFactory: (errors) => {
         console.log('❌ Validation Error:', errors);
         const messages = errors.map((error) => {

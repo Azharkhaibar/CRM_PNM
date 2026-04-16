@@ -1,11 +1,13 @@
+// src/features/Dashboard/pages/RiskProfile/pages/Investasi/investasi.module.ts
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+// import { InvestasiController } from './controllers/investasi.controller';
+// import { InvestasiService } from './services/new-investasi.service';
 
 import { InvestasiController } from './new-investasi.controller';
 import { InvestasiService } from './new-investasi.service';
 import { Investasi } from './entities/new-investasi.entity';
 import { InvestasiSection } from './entities/new-investasi-section.entity';
-
 
 @Module({
   imports: [TypeOrmModule.forFeature([Investasi, InvestasiSection])],
@@ -13,4 +15,4 @@ import { InvestasiSection } from './entities/new-investasi-section.entity';
   providers: [InvestasiService],
   exports: [InvestasiService],
 })
-export class NewInvestasiModule {}
+export class InvestasiModule {}

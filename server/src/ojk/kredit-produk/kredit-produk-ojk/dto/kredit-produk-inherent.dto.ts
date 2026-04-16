@@ -1,4 +1,4 @@
-// src/ojk/kredit-produk/kredit-produk-ojk/dto/kredit-produk.dto.ts
+// src/ojk/kredit-produk/kredit-produk-ojk/dto/kredit-produk-inherent.dto.ts
 import {
   IsInt,
   Min,
@@ -18,10 +18,16 @@ import { Type } from 'class-transformer';
 
 // === ENUMS ===
 export enum KategoriModel {
-  KONVENSIONAL = 'konvensional',
-  SYARIAH = 'syariah',
-  KOMBINASI = 'kombinasi',
-  LAINNYA = 'lainnya',
+  TANPA_MODEL = 'tanpa_model',
+  OPEN_END = 'open_end',
+  TERSTRUKTUR = 'terstruktur',
+}
+
+export enum KategoriUnderlying {
+  INDEKS = 'indeks',
+  EBA = 'eba',
+  DINFRA = 'dinfra',
+  OBLIGASI = 'obligasi',
 }
 
 export enum KategoriPrinsip {
@@ -30,18 +36,12 @@ export enum KategoriPrinsip {
 }
 
 export enum KategoriJenis {
-  MODAL_KERJA = 'modal_kerja',
-  INVESTASI = 'investasi',
-  KONSUMSI = 'konsumsi',
-  MULTIGUNA = 'multiguna',
-}
-
-export enum KategoriUnderlying {
-  PIUTANG = 'piutang',
-  PERSEDIAAN = 'persediaan',
-  ASET_TETAP = 'aset_tetap',
-  PROYEK = 'proyek',
-  KOMODITAS = 'komoditas',
+  PASAR_UANG = 'pasar_uang',
+  PENDAPATAN_TETAP = 'pendapatan_tetap',
+  CAMPURAN = 'campuran',
+  SAHAM = 'saham',
+  INDEKS = 'indeks',
+  TERPROTEKSI = 'terproteksi',
 }
 
 export enum JudulType {
@@ -55,9 +55,8 @@ export enum JudulType {
 export class KategoriDto {
   @IsOptional()
   @IsString()
-  @IsIn(['konvensional', 'syariah', 'kombinasi', 'lainnya'], {
-    message:
-      'Model harus salah satu dari: konvensional, syariah, kombinasi, lainnya',
+  @IsIn(['tanpa_model', 'open_end', 'terstruktur'], {
+    message: 'Model harus salah satu dari: tanpa_model, open_end, terstruktur',
   })
   model?: string;
 
@@ -70,18 +69,26 @@ export class KategoriDto {
 
   @IsOptional()
   @IsString()
-  @IsIn(['modal_kerja', 'investasi', 'konsumsi', 'multiguna'], {
-    message:
-      'Jenis harus salah satu dari: modal_kerja, investasi, konsumsi, multiguna',
-  })
+  @IsIn(
+    [
+      'pasar_uang',
+      'pendapatan_tetap',
+      'campuran',
+      'saham',
+      'indeks',
+      'terproteksi',
+    ],
+    {
+      message:
+        'Jenis harus salah satu dari: pasar_uang, pendapatan_tetap, campuran, saham, indeks, terproteksi',
+    },
+  )
   jenis?: string;
 
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
-  @IsIn(['piutang', 'persediaan', 'aset_tetap', 'proyek', 'komoditas'], {
-    each: true,
-  })
+  @IsIn(['indeks', 'eba', 'dinfra', 'obligasi'], { each: true })
   underlying?: string[];
 }
 
@@ -145,7 +152,7 @@ export class RiskindikatorDto {
 // === MAIN DTOs ===
 
 // DTO untuk membuat KreditProdukOjk (header)
-export class CreateKreditProdukDto {
+export class CreateKreditProdukInherentDto {
   @IsInt()
   @Min(2000)
   year: number;
@@ -169,7 +176,7 @@ export class CreateKreditProdukDto {
 }
 
 // DTO untuk update KreditProdukOjk
-export class UpdateKreditProdukDto {
+export class UpdateKreditProdukInherentDto {
   @IsOptional()
   @IsInt()
   @Min(2000)

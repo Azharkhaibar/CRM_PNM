@@ -1,9 +1,22 @@
+// src/ojk/hukum/hukum-kpmr/hukum-kpmr.module.ts
+
 import { Module } from '@nestjs/common';
-import { HukumKpmrOjkService } from './hukum-kpmr-ojk.service';
-import { HukumKpmrOjkController } from './hukum-kpmr-ojk.controller';
+import { TypeOrmModule } from '@nestjs/typeorm';
+
+import { KpmrAspekHukum } from './entities/hukum-kpmr-aspek.entity';
+import { KpmrPertanyaanHukum } from './entities/hukum-kpmr-pertanyaan.entity';
+// import { KpmrHukum } from './entities/hukum-produk.entity';
+// import { KpmrHukumController } from './hukum-kpmr.controller';
+import { KpmrHukum } from './entities/hukum-kpmr-ojk.entity';
+import { KpmrHukumController } from './hukum-kpmr-ojk.controller';
+import { KpmrHukumService } from './hukum-kpmr-ojk.service';
 
 @Module({
-  controllers: [HukumKpmrOjkController],
-  providers: [HukumKpmrOjkService],
+  imports: [
+    TypeOrmModule.forFeature([KpmrHukum, KpmrAspekHukum, KpmrPertanyaanHukum]),
+  ],
+  controllers: [KpmrHukumController],
+  providers: [KpmrHukumService],
+  exports: [KpmrHukumService],
 })
-export class HukumKpmrOjkModule {}
+export class HukumKpmrModule {}

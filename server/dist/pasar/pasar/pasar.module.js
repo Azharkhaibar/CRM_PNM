@@ -11,14 +11,14 @@ const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
 const pasar_service_1 = require("./pasar.service");
 const pasar_controller_1 = require("./pasar.controller");
-const section_entity_1 = require("./entities/section.entity");
-const indikator_entity_1 = require("./entities/indikator.entity");
+const pasar_section_entity_1 = require("./entities/pasar-section.entity");
+const pasar_entity_1 = require("./entities/pasar.entity");
 let PasarModule = class PasarModule {
 };
 exports.PasarModule = PasarModule;
 exports.PasarModule = PasarModule = __decorate([
     (0, common_1.Module)({
-        imports: [typeorm_1.TypeOrmModule.forFeature([section_entity_1.PasarSection, indikator_entity_1.Pasar])],
+        imports: [typeorm_1.TypeOrmModule.forFeature([pasar_section_entity_1.PasarSection, pasar_entity_1.Pasar])],
         controllers: [pasar_controller_1.PasarController],
         providers: [pasar_service_1.PasarService],
         exports: [pasar_service_1.PasarService],

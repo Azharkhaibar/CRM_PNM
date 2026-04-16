@@ -46,8 +46,7 @@ let InvestasiService = class InvestasiService {
             deletedSection.sortOrder =
                 createDto.sortOrder || deletedSection.sortOrder;
             if (createdBy) {
-                deletedSection['updatedBy'] = createdBy;
-                deletedSection['updatedAt'] = new Date();
+                deletedSection.updatedBy = createdBy;
             }
             return await this.investasiSectionRepository.save(deletedSection);
         }
@@ -75,7 +74,7 @@ let InvestasiService = class InvestasiService {
             isDeleted: false,
         };
         if (createdBy) {
-            sectionData['createdBy'] = createdBy;
+            sectionData.createdBy = createdBy;
         }
         const section = this.investasiSectionRepository.create(sectionData);
         return await this.investasiSectionRepository.save(section);
@@ -92,13 +91,11 @@ let InvestasiService = class InvestasiService {
     }
     async findSectionById(id) {
         try {
-            console.log(`🔍 [SERVICE] Finding section by ID: ${id}`);
             const section = await this.investasiSectionRepository
                 .createQueryBuilder('section')
                 .where('section.id = :id', { id })
                 .andWhere('section.is_deleted = false')
                 .getOne();
-            console.log(`🔍 [SERVICE] Found section:`, section);
             if (!section) {
                 throw new common_1.NotFoundException(`Section dengan ID ${id} tidak ditemukan`);
             }
@@ -156,7 +153,7 @@ let InvestasiService = class InvestasiService {
         if (updateDto.quarter !== undefined)
             section.quarter = updateDto.quarter;
         if (updatedBy) {
-            section['updatedBy'] = updatedBy;
+            section.updatedBy = updatedBy;
         }
         return await this.investasiSectionRepository.save(section);
     }
@@ -165,15 +162,16 @@ let InvestasiService = class InvestasiService {
             where: { id },
         });
         if (!section) {
-            throw new common_1.NotFoundException(`tidak ditemukan id section ${id}`);
+            throw new common_1.NotFoundException(`Section dengan ID ${id} tidak ditemukan`);
         }
         const countIndikator = await this.investasiRepository.count({
-            where: { sectionId: id },
+            where: { sectionId: id, isDeleted: false },
         });
         if (countIndikator > 0) {
             throw new common_1.ConflictException(`Section tidak dapat dihapus karena masih digunakan oleh ${countIndikator} indikator`);
         }
-        await this.investasiSectionRepository.delete(id);
+        section.isDeleted = true;
+        await this.investasiSectionRepository.save(section);
         return {
             success: true,
             message: `Section "${section.parameter}" berhasil dihapus`,
@@ -345,13 +343,10 @@ let InvestasiService = class InvestasiService {
             };
             this.validateModeSpecificFields(validationDto);
         }
-        if (updateDto.bobotSection ||
-            updateDto.bobotIndikator ||
-            updateDto.peringkat) {
-            const bobotSection = updateDto.bobotSection || indikator.bobotSection;
+        if (updateDto.bobotIndikator || updateDto.peringkat) {
             const bobotIndikator = updateDto.bobotIndikator || indikator.bobotIndikator;
             const peringkat = updateDto.peringkat || indikator.peringkat;
-            updateDto.weighted = this.calculateWeighted(bobotSection, bobotIndikator, peringkat);
+            updateDto.weighted = this.calculateWeighted(indikator.bobotSection, bobotIndikator, peringkat);
         }
         Object.keys(updateDto).forEach((key) => {
             if (updateDto[key] !== undefined) {
@@ -371,7 +366,9 @@ let InvestasiService = class InvestasiService {
         if (!indikator) {
             throw new common_1.NotFoundException(`Indikator dengan ID ${id} tidak ditemukan`);
         }
-        await this.investasiRepository.delete(id);
+        indikator.isDeleted = true;
+        indikator.deletedAt = new Date();
+        await this.investasiRepository.save(indikator);
         return {
             success: true,
             message: `Indikator "${indikator.indikator}" (${indikator.subNo}) berhasil dihapus`,
@@ -411,77 +408,6 @@ let InvestasiService = class InvestasiService {
             .andWhere('investasi.is_deleted = false')
             .getRawOne();
         return parseFloat(result?.total || 0) || 0;
-    }
-    validateModeSpecificFields(dto) {
-        const mode = dto.mode;
-        if (mode === new_investasi_entity_1.CalculationMode.RASIO) {
-            if (dto.pembilangValue !== undefined && dto.pembilangValue < 0) {
-                throw new common_1.BadRequestException('Pembilang value tidak boleh negatif untuk mode RASIO');
-            }
-            if (dto.penyebutValue !== undefined && dto.penyebutValue <= 0) {
-                throw new common_1.BadRequestException('Penyebut value harus lebih besar dari 0 untuk mode RASIO');
-            }
-        }
-        else if (mode === new_investasi_entity_1.CalculationMode.NILAI_TUNGGAL) {
-            if (dto.penyebutValue !== undefined && dto.penyebutValue < 0) {
-                throw new common_1.BadRequestException('Nilai penyebut tidak boleh negatif untuk mode NILAI_TUNGGAL');
-            }
-        }
-        else if (mode === new_investasi_entity_1.CalculationMode.TEKS) {
-            if (!dto.hasilText && !dto.hasilText?.trim()) {
-                throw new common_1.BadRequestException('Hasil text wajib diisi untuk mode TEKS');
-            }
-        }
-    }
-    calculateWeighted(bobotSection, bobotIndikator, peringkat) {
-        return (bobotSection * bobotIndikator * peringkat) / 10000;
-    }
-    async duplicateIndikatorToNewPeriod(sourceId, targetYear, targetQuarter, createdBy) {
-        const source = await this.findIndikatorById(sourceId);
-        const existing = await this.investasiRepository.findOne({
-            where: {
-                year: targetYear,
-                quarter: targetQuarter,
-                sectionId: source.sectionId,
-                subNo: source.subNo,
-                isDeleted: false,
-            },
-        });
-        if (existing) {
-            throw new common_1.ConflictException(`Indikator dengan subNo "${source.subNo}" sudah ada pada periode ${targetYear}-${targetQuarter}`);
-        }
-        const newIndikatorData = {
-            ...source,
-            id: undefined,
-            year: targetYear,
-            quarter: targetQuarter,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-            version: 1,
-            revisionNotes: `Duplikasi dari periode ${source.year}-${source.quarter}`,
-            isDeleted: false,
-        };
-        if (createdBy) {
-            newIndikatorData.createdBy = createdBy;
-        }
-        const newIndikator = this.investasiRepository.create(newIndikatorData);
-        return await this.investasiRepository.save(newIndikator);
-    }
-    async getIndikatorCountByPeriod(year, quarter) {
-        try {
-            const result = await this.investasiRepository
-                .createQueryBuilder('investasi')
-                .select('COUNT(investasi.id)', 'count')
-                .where('investasi.year = :year', { year })
-                .andWhere('investasi.quarter = :quarter', { quarter })
-                .andWhere('investasi.is_deleted = false')
-                .getRawOne();
-            return parseInt(result?.count || 0) || 0;
-        }
-        catch (error) {
-            console.error('Error in getIndikatorCountByPeriod:', error);
-            return 0;
-        }
     }
     async getSectionsWithIndicatorsByPeriod(year, quarter) {
         try {
@@ -579,6 +505,77 @@ let InvestasiService = class InvestasiService {
             year: p.investasi_year,
             quarter: p.investasi_quarter,
         }));
+    }
+    async getIndikatorCountByPeriod(year, quarter) {
+        try {
+            const result = await this.investasiRepository
+                .createQueryBuilder('investasi')
+                .select('COUNT(investasi.id)', 'count')
+                .where('investasi.year = :year', { year })
+                .andWhere('investasi.quarter = :quarter', { quarter })
+                .andWhere('investasi.is_deleted = false')
+                .getRawOne();
+            return parseInt(result?.count || 0) || 0;
+        }
+        catch (error) {
+            console.error('Error in getIndikatorCountByPeriod:', error);
+            return 0;
+        }
+    }
+    async duplicateIndikatorToNewPeriod(sourceId, targetYear, targetQuarter, createdBy) {
+        const source = await this.findIndikatorById(sourceId);
+        const existing = await this.investasiRepository.findOne({
+            where: {
+                year: targetYear,
+                quarter: targetQuarter,
+                sectionId: source.sectionId,
+                subNo: source.subNo,
+                isDeleted: false,
+            },
+        });
+        if (existing) {
+            throw new common_1.ConflictException(`Indikator dengan subNo "${source.subNo}" sudah ada pada periode ${targetYear}-${targetQuarter}`);
+        }
+        const newIndikatorData = {
+            ...source,
+            id: undefined,
+            year: targetYear,
+            quarter: targetQuarter,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            version: 1,
+            revisionNotes: `Duplikasi dari periode ${source.year}-${source.quarter}`,
+            isDeleted: false,
+        };
+        if (createdBy) {
+            newIndikatorData.createdBy = createdBy;
+        }
+        const newIndikator = this.investasiRepository.create(newIndikatorData);
+        return await this.investasiRepository.save(newIndikator);
+    }
+    validateModeSpecificFields(dto) {
+        const mode = dto.mode;
+        if (mode === new_investasi_entity_1.CalculationMode.RASIO) {
+            if (dto.pembilangValue !== undefined && dto.pembilangValue < 0) {
+                throw new common_1.BadRequestException('Pembilang value tidak boleh negatif untuk mode RASIO');
+            }
+            if (dto.penyebutValue !== undefined && dto.penyebutValue <= 0) {
+                throw new common_1.BadRequestException('Penyebut value harus lebih besar dari 0 untuk mode RASIO');
+            }
+        }
+        else if (mode === new_investasi_entity_1.CalculationMode.NILAI_TUNGGAL) {
+            if (dto.penyebutValue !== undefined && dto.penyebutValue < 0) {
+                throw new common_1.BadRequestException('Nilai penyebut tidak boleh negatif untuk mode NILAI_TUNGGAL');
+            }
+        }
+        else if (mode === new_investasi_entity_1.CalculationMode.TEKS) {
+            if (!dto.hasilText || !dto.hasilText.trim()) {
+                throw new common_1.BadRequestException('Hasil text wajib diisi untuk mode TEKS');
+            }
+        }
+    }
+    calculateWeighted(bobotSection, bobotIndikator, peringkat) {
+        return (bobotSection * bobotIndikator * peringkat) / 10000;
     }
 };
 exports.InvestasiService = InvestasiService;

@@ -48,14 +48,14 @@ __decorate([
     __metadata("design:type", Object)
 ], OperasionalParameter.prototype, "kategori", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ name: 'operasional_id' }),
+    (0, typeorm_1.Column)({ name: 'operasional_ojk_id' }),
     __metadata("design:type", Number)
 ], OperasionalParameter.prototype, "operasionalId", void 0);
 __decorate([
     (0, typeorm_1.ManyToOne)(() => operasional_ojk_entity_1.Operasional, (operasional) => operasional.parameters, {
         onDelete: 'CASCADE',
     }),
-    (0, typeorm_1.JoinColumn)({ name: 'operasional_id' }),
+    (0, typeorm_1.JoinColumn)({ name: 'operasional_ojk_id' }),
     __metadata("design:type", operasional_ojk_entity_1.Operasional)
 ], OperasionalParameter.prototype, "operasional", void 0);
 __decorate([
@@ -77,7 +77,7 @@ __decorate([
     __metadata("design:type", Number)
 ], OperasionalParameter.prototype, "orderIndex", void 0);
 exports.OperasionalParameter = OperasionalParameter = __decorate([
-    (0, typeorm_1.Entity)('operasional_parameters'),
+    (0, typeorm_1.Entity)('operasional_parameters_ojk'),
     (0, typeorm_1.Index)(['operasionalId', 'nomor'], { unique: false })
 ], OperasionalParameter);
 //# sourceMappingURL=operasional-produk-parameter.entity.js.map

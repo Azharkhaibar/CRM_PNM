@@ -16,11 +16,11 @@ exports.InvestasiController = void 0;
 const common_1 = require("@nestjs/common");
 const swagger_1 = require("@nestjs/swagger");
 const new_investasi_service_1 = require("./new-investasi.service");
-const create_stratejik_section_dto_1 = require("../../stratejik/stratejik/dto/create-stratejik-section.dto");
-const update_stratejik_section_dto_1 = require("../../stratejik/stratejik/dto/update-stratejik-section.dto");
+const create_investasi_section_dto_1 = require("./dto/create-investasi-section.dto");
+const update_new_investasi_section_dto_1 = require("./dto/update-new-investasi-section.dto");
+const create_new_investasi_dto_1 = require("./dto/create-new-investasi.dto");
+const update_new_investasi_dto_1 = require("./dto/update-new-investasi.dto");
 const new_investasi_entity_1 = require("./entities/new-investasi.entity");
-const create_stratejik_dto_1 = require("../../stratejik/stratejik/dto/create-stratejik.dto");
-const update_stratejik_dto_1 = require("../../stratejik/stratejik/dto/update-stratejik.dto");
 let InvestasiController = class InvestasiController {
     investasiService;
     constructor(investasiService) {
@@ -35,14 +35,14 @@ let InvestasiController = class InvestasiController {
     async getSection(id) {
         return await this.investasiService.findSectionById(id);
     }
+    async getSectionsByPeriod(year, quarter) {
+        return await this.investasiService.findSectionsByPeriod(year, quarter);
+    }
     async updateSection(id, updateDto) {
         return await this.investasiService.updateSection(id, updateDto);
     }
     async deleteSection(id) {
-        await this.investasiService.deleteSection(id);
-    }
-    async getSectionsWithIndicatorsByPeriod(year, quarter) {
-        return await this.investasiService.getSectionsWithIndicatorsByPeriod(year, quarter);
+        return await this.investasiService.deleteSection(id);
     }
     async createIndikator(createDto) {
         return await this.investasiService.createIndikator(createDto);
@@ -63,14 +63,19 @@ let InvestasiController = class InvestasiController {
         return await this.investasiService.updateIndikator(id, updateDto);
     }
     async deleteIndikator(id) {
-        await this.investasiService.deleteIndikator(id);
+        return await this.investasiService.deleteIndikator(id);
+    }
+    async getSectionsWithIndicatorsByPeriod(year, quarter) {
+        return await this.investasiService.getSectionsWithIndicatorsByPeriod(year, quarter);
     }
     async getTotalWeighted(year, quarter) {
         const total = await this.investasiService.getTotalWeightedByPeriod(year, quarter);
-        return { total };
-    }
-    async getSectionsByPeriod(year, quarter) {
-        return await this.investasiService.findSectionsByPeriod(year, quarter);
+        return {
+            success: true,
+            year,
+            quarter,
+            total,
+        };
     }
     async getAvailablePeriods() {
         try {
@@ -86,7 +91,7 @@ let InvestasiController = class InvestasiController {
             throw error;
         }
     }
-    async getAllPeriods() {
+    async getAllPeriodsWithCounts() {
         try {
             const periods = await this.investasiService.getPeriods();
             const periodsWithCounts = await Promise.all(periods.map(async (period) => {
@@ -103,9 +108,18 @@ let InvestasiController = class InvestasiController {
             };
         }
         catch (error) {
-            console.error('Error in getAllPeriods:', error);
+            console.error('Error in getAllPeriodsWithCounts:', error);
             throw error;
         }
+    }
+    async getIndikatorCount(year, quarter) {
+        const count = await this.investasiService.getIndikatorCountByPeriod(year, quarter);
+        return {
+            success: true,
+            year,
+            quarter,
+            count,
+        };
     }
     async duplicateIndikator(id, year, quarter) {
         return await this.investasiService.duplicateIndikatorToNewPeriod(id, year, quarter);
@@ -115,15 +129,17 @@ exports.InvestasiController = InvestasiController;
 __decorate([
     (0, common_1.Post)('sections'),
     (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
-    (0, swagger_1.ApiOperation)({ summary: 'Create new strategik section' }),
+    (0, swagger_1.ApiOperation)({ summary: 'Create new investasi section' }),
+    (0, swagger_1.ApiResponse)({ status: 201, description: 'Section created successfully' }),
+    (0, swagger_1.ApiResponse)({ status: 409, description: 'Section already exists' }),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [create_stratejik_section_dto_1.CreateStrategikSectionDto]),
+    __metadata("design:paramtypes", [create_investasi_section_dto_1.CreateInvestasiSectionDto]),
     __metadata("design:returntype", Promise)
 ], InvestasiController.prototype, "createSection", null);
 __decorate([
     (0, common_1.Get)('sections'),
-    (0, swagger_1.ApiOperation)({ summary: 'Get all strategik sections' }),
+    (0, swagger_1.ApiOperation)({ summary: 'Get all investasi sections' }),
     (0, swagger_1.ApiQuery)({ name: 'isActive', required: false, type: Boolean }),
     __param(0, (0, common_1.Query)('isActive')),
     __metadata("design:type", Function),
@@ -132,58 +148,62 @@ __decorate([
 ], InvestasiController.prototype, "getSections", null);
 __decorate([
     (0, common_1.Get)('sections/:id'),
-    (0, swagger_1.ApiOperation)({ summary: 'Get strategik section by ID' }),
+    (0, swagger_1.ApiOperation)({ summary: 'Get investasi section by ID' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
     __metadata("design:returntype", Promise)
 ], InvestasiController.prototype, "getSection", null);
 __decorate([
+    (0, common_1.Get)('sections/period'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get investasi sections by period' }),
+    (0, swagger_1.ApiQuery)({ name: 'year', required: true, type: Number }),
+    (0, swagger_1.ApiQuery)({ name: 'quarter', required: true, enum: new_investasi_entity_1.Quarter }),
+    __param(0, (0, common_1.Query)('year', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Query)('quarter')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, String]),
+    __metadata("design:returntype", Promise)
+], InvestasiController.prototype, "getSectionsByPeriod", null);
+__decorate([
     (0, common_1.Put)('sections/:id'),
-    (0, swagger_1.ApiOperation)({ summary: 'Update strategik section' }),
+    (0, swagger_1.ApiOperation)({ summary: 'Update investasi section' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number, update_stratejik_section_dto_1.UpdateStrategikSectionDto]),
+    __metadata("design:paramtypes", [Number, update_new_investasi_section_dto_1.UpdateInvestasiSectionDto]),
     __metadata("design:returntype", Promise)
 ], InvestasiController.prototype, "updateSection", null);
 __decorate([
     (0, common_1.Delete)('sections/:id'),
-    (0, common_1.HttpCode)(common_1.HttpStatus.NO_CONTENT),
-    (0, swagger_1.ApiOperation)({ summary: 'Delete strategik section' }),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, swagger_1.ApiOperation)({ summary: 'Delete investasi section' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
     __metadata("design:returntype", Promise)
 ], InvestasiController.prototype, "deleteSection", null);
 __decorate([
-    (0, common_1.Get)('indikators/sections-by-period'),
-    (0, swagger_1.ApiOperation)({ summary: 'Get sections with indicators by period' }),
-    __param(0, (0, common_1.Query)('year', new common_1.ParseIntPipe())),
-    __param(1, (0, common_1.Query)('quarter')),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number, String]),
-    __metadata("design:returntype", Promise)
-], InvestasiController.prototype, "getSectionsWithIndicatorsByPeriod", null);
-__decorate([
     (0, common_1.Post)('indikators'),
     (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
-    (0, swagger_1.ApiOperation)({ summary: 'Create new strategik indikator' }),
+    (0, swagger_1.ApiOperation)({ summary: 'Create new investasi indikator' }),
+    (0, swagger_1.ApiResponse)({ status: 201, description: 'Indikator created successfully' }),
+    (0, swagger_1.ApiResponse)({ status: 409, description: 'Indikator already exists' }),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [create_stratejik_dto_1.CreateStrategikDto]),
+    __metadata("design:paramtypes", [create_new_investasi_dto_1.CreateInvestasiDto]),
     __metadata("design:returntype", Promise)
 ], InvestasiController.prototype, "createIndikator", null);
 __decorate([
     (0, common_1.Get)('indikators'),
-    (0, swagger_1.ApiOperation)({ summary: 'Get all strategik indikators' }),
+    (0, swagger_1.ApiOperation)({ summary: 'Get all investasi indikators' }),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)
 ], InvestasiController.prototype, "getAllIndikators", null);
 __decorate([
     (0, common_1.Get)('indikators/period'),
-    (0, swagger_1.ApiOperation)({ summary: 'Get strategik indikators by period' }),
+    (0, swagger_1.ApiOperation)({ summary: 'Get investasi indikators by period' }),
     (0, swagger_1.ApiQuery)({ name: 'year', required: true, type: Number }),
     (0, swagger_1.ApiQuery)({ name: 'quarter', required: true, enum: new_investasi_entity_1.Quarter }),
     __param(0, (0, common_1.Query)('year', common_1.ParseIntPipe)),
@@ -194,7 +214,7 @@ __decorate([
 ], InvestasiController.prototype, "getIndikatorsByPeriod", null);
 __decorate([
     (0, common_1.Get)('indikators/search'),
-    (0, swagger_1.ApiOperation)({ summary: 'Search strategik indikators' }),
+    (0, swagger_1.ApiOperation)({ summary: 'Search investasi indikators' }),
     (0, swagger_1.ApiQuery)({ name: 'query', required: false }),
     (0, swagger_1.ApiQuery)({ name: 'year', required: false }),
     (0, swagger_1.ApiQuery)({ name: 'quarter', required: false, enum: new_investasi_entity_1.Quarter }),
@@ -207,7 +227,7 @@ __decorate([
 ], InvestasiController.prototype, "searchIndikators", null);
 __decorate([
     (0, common_1.Get)('indikators/:id'),
-    (0, swagger_1.ApiOperation)({ summary: 'Get strategik indikator by ID' }),
+    (0, swagger_1.ApiOperation)({ summary: 'Get investasi indikator by ID' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
@@ -215,36 +235,28 @@ __decorate([
 ], InvestasiController.prototype, "getIndikator", null);
 __decorate([
     (0, common_1.Put)('indikators/:id'),
-    (0, swagger_1.ApiOperation)({ summary: 'Update strategik indikator' }),
+    (0, swagger_1.ApiOperation)({ summary: 'Update investasi indikator' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number, update_stratejik_dto_1.UpdateStrategikDto]),
+    __metadata("design:paramtypes", [Number, update_new_investasi_dto_1.UpdateInvestasiDto]),
     __metadata("design:returntype", Promise)
 ], InvestasiController.prototype, "updateIndikator", null);
 __decorate([
     (0, common_1.Delete)('indikators/:id'),
-    (0, common_1.HttpCode)(common_1.HttpStatus.NO_CONTENT),
-    (0, swagger_1.ApiOperation)({ summary: 'Delete strategik indikator' }),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, swagger_1.ApiOperation)({ summary: 'Delete investasi indikator' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
     __metadata("design:returntype", Promise)
 ], InvestasiController.prototype, "deleteIndikator", null);
 __decorate([
-    (0, common_1.Get)('total-weighted'),
-    (0, swagger_1.ApiOperation)({ summary: 'Get total weighted by period' }),
-    (0, swagger_1.ApiQuery)({ name: 'year', required: true }),
-    (0, swagger_1.ApiQuery)({ name: 'quarter', required: true, enum: new_investasi_entity_1.Quarter }),
-    __param(0, (0, common_1.Query)('year', common_1.ParseIntPipe)),
-    __param(1, (0, common_1.Query)('quarter')),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number, String]),
-    __metadata("design:returntype", Promise)
-], InvestasiController.prototype, "getTotalWeighted", null);
-__decorate([
-    (0, common_1.Get)('sections/period'),
-    (0, swagger_1.ApiOperation)({ summary: 'Get strategik sections by period' }),
+    (0, common_1.Get)('data/with-indicators'),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Get sections with their indicators for a period',
+        description: 'Returns sections with nested indicators for a specific year and quarter',
+    }),
     (0, swagger_1.ApiQuery)({ name: 'year', required: true, type: Number }),
     (0, swagger_1.ApiQuery)({ name: 'quarter', required: true, enum: new_investasi_entity_1.Quarter }),
     __param(0, (0, common_1.Query)('year', common_1.ParseIntPipe)),
@@ -252,7 +264,18 @@ __decorate([
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number, String]),
     __metadata("design:returntype", Promise)
-], InvestasiController.prototype, "getSectionsByPeriod", null);
+], InvestasiController.prototype, "getSectionsWithIndicatorsByPeriod", null);
+__decorate([
+    (0, common_1.Get)('total-weighted'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get total weighted value by period' }),
+    (0, swagger_1.ApiQuery)({ name: 'year', required: true, type: Number }),
+    (0, swagger_1.ApiQuery)({ name: 'quarter', required: true, enum: new_investasi_entity_1.Quarter }),
+    __param(0, (0, common_1.Query)('year', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Query)('quarter')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, String]),
+    __metadata("design:returntype", Promise)
+], InvestasiController.prototype, "getTotalWeighted", null);
 __decorate([
     (0, common_1.Get)('periods'),
     (0, swagger_1.ApiOperation)({
@@ -264,19 +287,33 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], InvestasiController.prototype, "getAvailablePeriods", null);
 __decorate([
-    (0, common_1.Get)('all-periods'),
+    (0, common_1.Get)('periods/with-counts'),
     (0, swagger_1.ApiOperation)({
-        summary: 'Get all periods with count',
-        description: 'Get periods with indicator counts',
+        summary: 'Get all periods with indicator counts',
+        description: 'Get periods with indicator counts for each period',
     }),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)
-], InvestasiController.prototype, "getAllPeriods", null);
+], InvestasiController.prototype, "getAllPeriodsWithCounts", null);
+__decorate([
+    (0, common_1.Get)('indikators/count'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get indikator count by period' }),
+    (0, swagger_1.ApiQuery)({ name: 'year', required: true, type: Number }),
+    (0, swagger_1.ApiQuery)({ name: 'quarter', required: true, enum: new_investasi_entity_1.Quarter }),
+    __param(0, (0, common_1.Query)('year', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Query)('quarter')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, String]),
+    __metadata("design:returntype", Promise)
+], InvestasiController.prototype, "getIndikatorCount", null);
 __decorate([
     (0, common_1.Post)('indikators/:id/duplicate'),
     (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
-    (0, swagger_1.ApiOperation)({ summary: 'Duplicate indikator to new period' }),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Duplicate indikator to new period',
+        description: 'Copy an existing indikator to a different period',
+    }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __param(1, (0, common_1.Query)('year', common_1.ParseIntPipe)),
     __param(2, (0, common_1.Query)('quarter')),

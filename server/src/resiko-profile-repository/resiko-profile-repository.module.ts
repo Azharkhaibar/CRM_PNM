@@ -14,7 +14,7 @@ import { Kepatuhan } from 'src/kepatuhan/kepatuhan/entities/kepatuhan.entity';
 import { Investasi } from 'src/investasi/new-investasi/entities/new-investasi.entity';
 import { InvestasiSection } from 'src/investasi/new-investasi/entities/new-investasi-section.entity';
 import { Likuiditas } from 'src/likuiditas/likuiditas/entities/likuiditas.entity';
-import { LikuiditasSection } from 'src/likuiditas/likuiditas/entities/section-likuiditas.entity';
+import { LikuiditasSection } from 'src/likuiditas/likuiditas/entities/likuiditas-section.entity';
 import { Operasional } from 'src/operasional/operasional/entities/operasional.entity';
 import { OperasionalSection } from 'src/operasional/operasional/entities/operasional-section.entity';
 import { Hukum } from 'src/hukum/hukum/entities/hukum.entity';

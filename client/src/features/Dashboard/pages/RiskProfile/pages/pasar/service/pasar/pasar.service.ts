@@ -24,8 +24,6 @@ export interface PasarSection {
   description: string | null;
   sortOrder: number;
   isActive: boolean;
-  year: number;
-  quarter: Quarter;
   createdAt: Date;
   updatedAt: Date;
   isDeleted: boolean;
@@ -81,8 +79,6 @@ export interface CreatePasarSectionData {
   description?: string;
   sortOrder?: number;
   isActive?: boolean;
-  year: number;
-  quarter: Quarter;
 }
 
 export interface UpdatePasarSectionData {
@@ -92,8 +88,6 @@ export interface UpdatePasarSectionData {
   description?: string;
   sortOrder?: number;
   isActive?: boolean;
-  year?: number;
-  quarter?: Quarter;
 }
 
 export interface CreatePasarData {
@@ -166,29 +160,31 @@ export interface TotalWeightedResponse {
 export interface Period {
   year: number;
   quarter: Quarter;
-  indicatorCount?: number;
+}
+
+export interface DeleteResponse {
+  success: boolean;
+  message: string;
 }
 
 export interface SectionsWithIndicatorsResponse {
   success: boolean;
   year: number;
   quarter: Quarter;
-  sections: Array<
-    PasarSection & {
-      indicators: PasarIndikator[];
-      totalWeighted?: number;
-      indicatorCount: number;
-      hasIndicators: boolean;
-    }
-  >;
-  sectionsWithIndicators: Array<
-    PasarSection & {
-      indicators: PasarIndikator[];
-      totalWeighted?: number;
-      indicatorCount: number;
-      hasIndicators: boolean;
-    }
-  >;
+  sections: Array<{
+    id: number;
+    no: string;
+    parameter: string;
+    bobotSection: number;
+    description: string | null;
+    year: number;
+    quarter: Quarter;
+    isActive: boolean;
+    indicators: PasarIndikator[];
+    totalWeighted: number;
+    indicatorCount: number;
+  }>;
+  sectionsWithIndicators: Array<any>;
   overallTotalWeighted: number;
   sectionCount: number;
   totalIndicators: number;
@@ -207,16 +203,14 @@ export const formatHasilNumber = (value: any, maxDecimals = 4): string => {
   const n = Number(value);
   if (!isFinite(n) || isNaN(n)) return '';
 
-  // batasi maxDecimals, lalu buang .0000 di belakang
   const fixed = n.toFixed(maxDecimals);
-  return fixed.replace(/\.?0+$/, ''); // "1.2300" -> "1.23", "0.0000" -> "0"
+  return fixed.replace(/\.?0+$/, '');
 };
 
 export const parseNum = (v: any): number => {
   if (v == null || v === '') return 0;
   if (typeof v === 'number') return v;
 
-  // buang koma, spasi, dll biar "1,000" -> "1000"
   const cleaned = String(v).replace(/,/g, '').replace(/\s/g, '');
   const n = Number(cleaned);
   return isNaN(n) ? 0 : n;
@@ -228,6 +222,11 @@ export const computeHasil = (ind: any): number | null => {
 
   const pemb = parseNum(ind.pembilangValue);
   const peny = parseNum(ind.penyebutValue);
+
+  if (mode === 'RASIO' && peny === 0) {
+    console.warn('Penyebut value adalah 0 untuk mode RASIO');
+    return null;
+  }
 
   if (ind.formula && ind.formula.trim() !== '') {
     try {
@@ -242,18 +241,16 @@ export const computeHasil = (ind: any): number | null => {
       if (!isFinite(res) || isNaN(res)) return null;
       return Number(res);
     } catch (e) {
-      console.warn('[PASAR] Invalid formula:', ind.formula, e);
+      console.warn('Invalid formula:', ind.formula, e);
       return null;
     }
   }
 
-  // 🔹 NILAI_TUNGGAL → langsung pakai nilai penyebut
   if (mode === 'NILAI_TUNGGAL') {
     if (ind.penyebutValue === '' || ind.penyebutValue == null) return null;
-    return peny; // boleh 0, 10, 100, dll
+    return peny;
   }
 
-  // 🔹 RASIO (default) → pemb / peny
   if (peny === 0) return null;
   const result = pemb / peny;
   if (!isFinite(result) || isNaN(result)) return null;
@@ -271,6 +268,14 @@ export const computeWeightedAuto = (ind: any, sectionBobot: number): number => {
 
 export const transformIndicatorToBackend = (indicatorData: any, year: number, quarter: Quarter, sectionId: number, sectionData: any): CreatePasarData => {
   const hasilNum = computeHasil(indicatorData);
+
+  let penyebutValue = indicatorData.penyebutValue !== undefined && indicatorData.penyebutValue !== '' ? Number(indicatorData.penyebutValue) : undefined;
+
+  if (indicatorData.mode === CalculationMode.RASIO) {
+    if (penyebutValue === 0 || penyebutValue === undefined || isNaN(penyebutValue)) {
+      console.warn('Penyebut value untuk mode RASIO tidak valid:', penyebutValue);
+    }
+  }
 
   return {
     year,
@@ -295,7 +300,7 @@ export const transformIndicatorToBackend = (indicatorData: any, year: number, qu
     pembilangLabel: indicatorData.pembilangLabel?.trim() || undefined,
     pembilangValue: indicatorData.pembilangValue !== undefined && indicatorData.pembilangValue !== '' ? Number(indicatorData.pembilangValue) : undefined,
     penyebutLabel: indicatorData.penyebutLabel?.trim() || undefined,
-    penyebutValue: indicatorData.penyebutValue !== undefined && indicatorData.penyebutValue !== '' ? Number(indicatorData.penyebutValue) : undefined,
+    penyebutValue: penyebutValue,
     hasil: hasilNum !== null ? hasilNum : undefined,
     hasilText: indicatorData.mode === CalculationMode.TEKS ? indicatorData.hasilText || indicatorData.keterangan || '' : undefined,
     peringkat: Number(indicatorData.peringkat) || 1,
@@ -347,8 +352,6 @@ export const transformSectionToBackend = (sectionData: any, year: number, quarte
     description: sectionData.description || undefined,
     sortOrder: sectionData.sortOrder || 0,
     isActive: sectionData.isActive ?? true,
-    year,
-    quarter,
   };
 };
 
@@ -381,12 +384,8 @@ class PasarApiService {
     return this.request<PasarSection>('put', `/pasar/sections/${id}`, data);
   }
 
-  async deleteSection(id: number): Promise<void> {
-    return this.request<void>('delete', `/pasar/sections/${id}`);
-  }
-
-  async getSectionsByPeriod(year: number, quarter: Quarter): Promise<PasarSection[]> {
-    return this.request<PasarSection[]>('get', '/pasar/sections/period', null, { year, quarter });
+  async deleteSection(id: number): Promise<DeleteResponse> {
+    return this.request<DeleteResponse>('delete', `/pasar/sections/${id}`);
   }
 
   // ========== INDIKATOR API ==========
@@ -403,7 +402,25 @@ class PasarApiService {
   }
 
   async getSectionsWithIndicatorsByPeriod(year: number, quarter: Quarter): Promise<SectionsWithIndicatorsResponse> {
-    return this.request<SectionsWithIndicatorsResponse>('get', '/pasar/indikators/sections-by-period', null, { year, quarter });
+    try {
+      console.log(`📡 Calling API: getSectionsWithIndicatorsByPeriod for ${year}-${quarter}`);
+
+      const params = new URLSearchParams();
+      params.append('year', String(year));
+      params.append('quarter', String(quarter));
+
+      const url = `${this.baseUrl}/pasar/data/with-indicators?${params.toString()}`;
+      console.log('🔍 Full URL:', url);
+
+      const response = await axios.get(url);
+
+      console.log('✅ Response from backend:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error in getSectionsWithIndicatorsByPeriod:', error);
+      this.handleError(error);
+      throw error;
+    }
   }
 
   async searchIndikators(query?: string, year?: number, quarter?: Quarter): Promise<PasarIndikator[]> {
@@ -423,8 +440,8 @@ class PasarApiService {
     return this.request<PasarIndikator>('put', `/pasar/indikators/${id}`, data);
   }
 
-  async deleteIndikator(id: number): Promise<void> {
-    return this.request<void>('delete', `/pasar/indikators/${id}`);
+  async deleteIndikator(id: number): Promise<DeleteResponse> {
+    return this.request<DeleteResponse>('delete', `/pasar/indikators/${id}`);
   }
 
   async getTotalWeightedByPeriod(year: number, quarter: Quarter): Promise<number> {
@@ -436,12 +453,20 @@ class PasarApiService {
     return this.request<Period[]>('get', '/pasar/periods');
   }
 
-  async getAllPeriods(): Promise<Array<Period & { indicatorCount: number }>> {
-    return this.request<Array<Period & { indicatorCount: number }>>('get', '/pasar/all-periods');
+  async getPeriodsWithCounts(): Promise<(Period & { indicatorCount: number })[]> {
+    return this.request<(Period & { indicatorCount: number })[]>('get', '/pasar/periods/with-counts');
+  }
+
+  async getIndikatorCount(year: number, quarter: Quarter): Promise<number> {
+    const response = await this.request<{ count: number }>('get', '/pasar/indikators/count', null, { year, quarter });
+    return response.count;
   }
 
   async duplicateIndikator(sourceId: number, targetYear: number, targetQuarter: Quarter): Promise<PasarIndikator> {
-    return this.request<PasarIndikator>('post', `/pasar/indikators/${sourceId}/duplicate`, null, { year: targetYear, quarter: targetQuarter });
+    return this.request<PasarIndikator>('post', `/pasar/indikators/${sourceId}/duplicate`, null, {
+      year: targetYear,
+      quarter: targetQuarter,
+    });
   }
 
   // ========== HELPER METHODS ==========
@@ -457,10 +482,7 @@ class PasarApiService {
         },
       };
 
-      console.log(`[PASAR API] ${method.toUpperCase()} ${endpoint}`, { data, params });
-
       const response: AxiosResponse<T> = await axios(config);
-      console.log(`[PASAR API] Response from ${endpoint}:`, response.data);
       return response.data;
     } catch (error) {
       this.handleError(error);
@@ -473,9 +495,8 @@ class PasarApiService {
       if (error.response) {
         const message = error.response.data?.message || 'Terjadi kesalahan pada server';
         const status = error.response.status;
-        const data = error.response.data;
 
-        console.error(`[PASAR API Error ${status}]:`, message, data);
+        console.error(`API Error [${status}]:`, message);
 
         switch (status) {
           case 400:
@@ -491,17 +512,17 @@ class PasarApiService {
           case 500:
             throw new Error('Server Error: Silakan coba lagi nanti');
           default:
-            throw new Error(`Server Error [${status}]: ${message}`);
+            throw new Error(`Server Error: ${message}`);
         }
       } else if (error.request) {
-        console.error('[PASAR API] Network Error:', error.message);
+        console.error('Network Error:', error.message);
         throw new Error('Koneksi jaringan bermasalah. Periksa koneksi internet Anda.');
       } else {
-        console.error('[PASAR API] Request Error:', error.message);
+        console.error('Request Error:', error.message);
         throw new Error(`Gagal membuat permintaan: ${error.message}`);
       }
     } else {
-      console.error('[PASAR API] Unexpected Error:', error);
+      console.error('Unexpected Error:', error);
       throw new Error('Terjadi kesalahan yang tidak diketahui');
     }
   }

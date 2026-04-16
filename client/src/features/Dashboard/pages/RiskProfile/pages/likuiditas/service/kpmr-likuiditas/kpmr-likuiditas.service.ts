@@ -1,363 +1,439 @@
-// services/kpmr-likuiditas.service.ts
-import axios from 'axios';
+import api_likuiditas from '../api-likuiditas.service';
 
-const API_BASE_URL = 'http://localhost:5530/api/v1/kpmr-likuiditas';
+// ============================================================================
+// INTERFACES - Sesuai dengan Entity Backend (dengan Year) - HARD DELETE ONLY
+// ============================================================================
 
-// Interfaces berdasarkan entity KPMR Likuiditas
-export interface KpmrLikuiditas {
-  id_kpmr_likuiditas: number;
+// ---------- ASPEK (Master) ----------
+export interface KPMRLikuiditasAspect {
+  id: number;
   year: number;
-  quarter: string;
-  aspekNo?: string | null;
-  aspekBobot?: number | null;
-  aspekTitle?: string | null;
-  sectionNo?: string | null;
-  indikator?: string | null;
-  sectionSkor?: number | null;
-  strong?: string | null;
-  satisfactory?: string | null;
-  fair?: string | null;
-  marginal?: string | null;
-  unsatisfactory?: string | null;
-  evidence?: string | null;
-  created_at?: string;
-  updated_at?: string;
-}
-
-export interface KpmrGroup {
   aspekNo: string;
   aspekTitle: string;
   aspekBobot: number;
-  items: KpmrLikuiditas[];
-  skorAverage: number;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
-export interface GroupedKpmrResponse {
-  data: KpmrLikuiditas[];
-  groups: KpmrGroup[];
-  overallAverage: number;
-}
-
-export interface KpmrListResponse {
-  data: KpmrLikuiditas[];
-  total: number;
-}
-
-export interface PeriodResult {
+export interface CreateKPMRLikuiditasAspectData {
   year: number;
-  quarter: string;
-  total_records?: number;
+  aspekNo: string;
+  aspekTitle: string;
+  aspekBobot: number;
 }
 
-// Interface untuk response dari backend
-export interface ApiResponse<T> {
-  success: boolean;
-  message?: string;
-  data?: T;
-}
-
-// DTOs untuk create/update operations
-export interface CreateKpmrLikuiditasDto {
-  year: number;
-  quarter: string;
+export interface UpdateKPMRLikuiditasAspectData {
   aspekNo?: string;
-  aspekBobot?: number;
   aspekTitle?: string;
+  aspekBobot?: number;
+}
+
+// ---------- QUESTION (Master Pertanyaan) ----------
+export interface KPMRLikuiditasQuestion {
+  id: number;
+  year: number;
+  aspekNo: string;
+  sectionNo: string;
+  sectionTitle: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+export interface CreateKPMRLikuiditasQuestionData {
+  year: number;
+  aspekNo: string;
+  sectionNo: string;
+  sectionTitle: string;
+}
+
+export interface UpdateKPMRLikuiditasQuestionData {
+  aspekNo?: string;
   sectionNo?: string;
-  indikator?: string;
-  sectionSkor?: number;
-  strong?: string;
-  satisfactory?: string;
-  fair?: string;
-  marginal?: string;
-  unsatisfactory?: string;
+  sectionTitle?: string;
+}
+
+// ---------- DEFINITION (Year-Level) ----------
+export interface KPMRLikuiditasDefinition {
+  id: number;
+  year: number;
+  aspekNo: string;
+  aspekTitle: string;
+  aspekBobot: number;
+  sectionNo: string;
+  sectionTitle: string;
+  level1: string | null;
+  level2: string | null;
+  level3: string | null;
+  level4: string | null;
+  level5: string | null;
+  evidence: string | null;
+  createdAt?: Date;
+  updatedAt?: Date;
+  createdBy?: string;
+  updatedBy?: string;
+  scores?: KPMRLikuiditasScore[];
+}
+
+export interface CreateKPMRLikuiditasDefinitionData {
+  year: number;
+  aspekNo: string;
+  aspekTitle: string;
+  aspekBobot: number;
+  sectionNo: string;
+  sectionTitle: string;
+  level1?: string;
+  level2?: string;
+  level3?: string;
+  level4?: string;
+  level5?: string;
   evidence?: string;
 }
 
-export interface UpdateKpmrLikuiditasDto extends Partial<CreateKpmrLikuiditasDto> {}
+export interface UpdateKPMRLikuiditasDefinitionData {
+  year?: number;
+  aspekNo?: string;
+  aspekTitle?: string;
+  aspekBobot?: number;
+  sectionNo?: string;
+  sectionTitle?: string;
+  level1?: string;
+  level2?: string;
+  level3?: string;
+  level4?: string;
+  level5?: string;
+  evidence?: string;
+}
 
-// Filter interfaces
-export interface PeriodFilter {
+// ---------- SCORE (Quarter-Level) ----------
+export interface KPMRLikuiditasScore {
+  id: number;
+  definitionId: number;
+  year: number;
+  quarter: string;
+  sectionSkor: number | null;
+  createdAt?: Date;
+  updatedAt?: Date;
+  createdBy?: string;
+  updatedBy?: string;
+  definition?: KPMRLikuiditasDefinition;
+}
+
+export interface CreateKPMRLikuiditasScoreData {
+  definitionId: number;
+  year: number;
+  quarter: string;
+  sectionSkor?: number;
+}
+
+export interface UpdateKPMRLikuiditasScoreData {
+  definitionId?: number;
+  year?: number;
+  quarter?: string;
+  sectionSkor?: number;
+}
+
+// ---------- RESPONSE INTERFACES ----------
+export interface KPMRLikuiditasFullDataResponse {
+  success: boolean;
+  year: number;
+  aspects: Array<{
+    aspekNo: string;
+    aspekTitle: string;
+    aspekBobot: number;
+    sections: Array<{
+      definitionId: number;
+      sectionNo: string;
+      sectionTitle: string;
+      level1: string | null;
+      level2: string | null;
+      level3: string | null;
+      level4: string | null;
+      level5: string | null;
+      evidence: string | null;
+      scores: Record<
+        string,
+        {
+          sectionSkor: number | null;
+          id: number;
+        }
+      >;
+    }>;
+    quarterAverages: Record<string, number | null>;
+  }>;
+  overallAverages: Record<string, number | null>;
+}
+
+export interface Period {
   year: number;
   quarter: string;
 }
 
-export interface SearchFilter {
-  query?: string;
-  year?: number;
-  quarter?: string;
-  aspekNo?: string;
-  sectionNo?: string;
+export interface PeriodsResponse {
+  success: boolean;
+  data: Period[];
 }
 
-// Utility function untuk handle error
-const handleServiceError = (error: any, defaultMessage: string): never => {
-  console.error('KPMR Likuiditas Service Error:', {
-    message: defaultMessage,
-    error: error.response?.data || error.message,
-    url: error.config?.url || 'URL tidak tersedia',
-    method: error.config?.method || 'METHOD tidak tersedia',
-    status: error.response?.status,
-    statusText: error.response?.statusText,
-  });
+export interface YearsResponse {
+  success: boolean;
+  data: number[];
+}
 
-  if (axios.isAxiosError(error)) {
-    if (error.response) {
-      // Server responded with error status
-      const message = error.response.data?.message || error.response.data?.error || defaultMessage;
-      throw new Error(message);
-    } else if (error.request) {
-      // Request made but no response received
-      throw new Error('Tidak ada response dari server. Periksa koneksi jaringan.');
-    }
+export interface DeleteResponse {
+  success: boolean;
+  message: string;
+}
+
+// ============================================================================
+// API SERVICE CLASS - HARD DELETE ONLY
+// ============================================================================
+
+class KPMRLikuiditasApiService {
+  // ========== ASPECT API ==========
+  async createAspect(data: CreateKPMRLikuiditasAspectData): Promise<KPMRLikuiditasAspect> {
+    console.log('📤 POST to: /kpmr-likuiditas/aspects', data);
+    const response = await api_likuiditas.post<KPMRLikuiditasAspect>('/kpmr-likuiditas/aspects', data);
+    return response.data;
   }
 
-  throw new Error(defaultMessage);
-};
-
-export const transformFormToDto = (formData: any): CreateKpmrLikuiditasDto => {
-  console.log('🔄 [TRANSFORM DTO] Original form data:', {
-    indikator: formData.indikator,
-    sectionTitle: formData.sectionTitle,
-    allFields: Object.keys(formData),
-  });
-
-  const dto = {
-    year: formData.year,
-    quarter: formData.quarter,
-    aspekNo: formData.aspekNo || undefined,
-    aspekBobot: formData.aspekBobot ? Number(formData.aspekBobot) : undefined,
-    aspekTitle: formData.aspekTitle || undefined,
-    sectionNo: formData.sectionNo || undefined,
-    // ✅ PERBAIKAN: gunakan indikator langsung, bukan sectionTitle
-    indikator: formData.indikator || undefined, // INI YANG HARUS DIPERBAIKI
-    sectionSkor: formData.sectionSkor ? Number(formData.sectionSkor) : undefined,
-    strong: formData.level1 || undefined,
-    satisfactory: formData.level2 || undefined,
-    fair: formData.level3 || undefined,
-    marginal: formData.level4 || undefined,
-    unsatisfactory: formData.level5 || undefined,
-    evidence: formData.evidence || undefined,
-  };
-
-  console.log('✅ [TRANSFORM DTO] Result DTO:', {
-    hasIndikator: !!dto.indikator,
-    indikatorValue: dto.indikator,
-    dtoSummary: {
-      aspek: `${dto.aspekNo} - ${dto.aspekTitle}`,
-      section: dto.sectionNo,
-      indikator_length: dto.indikator?.length,
-    },
-  });
-
-  return dto;
-};
-
-// Service class untuk KPMR Likuiditas
-class KpmrLikuiditasService {
-  // ==================== CRUD METHODS ====================
-
-  async getAll(): Promise<KpmrLikuiditas[]> {
-    try {
-      // Backend langsung return array, tanpa wrapper ApiResponse
-      const response = await axios.get<KpmrLikuiditas[]>(`${API_BASE_URL}`);
-      return response.data || [];
-    } catch (error) {
-      throw handleServiceError(error, 'Gagal mengambil data KPMR Likuiditas');
-    }
+  async getAllAspects(year?: number): Promise<KPMRLikuiditasAspect[]> {
+    console.log('📥 GET from: /kpmr-likuiditas/aspects', { year });
+    const response = await api_likuiditas.get<KPMRLikuiditasAspect[]>('/kpmr-likuiditas/aspects', { params: { year } });
+    return response.data;
   }
 
-  async getByPeriod(year: number, quarter: string): Promise<KpmrLikuiditas[]> {
-    try {
-      console.log('Fetching data for period:', year, quarter);
-      // Backend langsung return array
-      const response = await axios.get<KpmrLikuiditas[]>(`${API_BASE_URL}/period/${year}/${quarter}`);
-      console.log('Response data:', response.data);
-      return response.data || [];
-    } catch (error) {
-      throw handleServiceError(error, 'Gagal mengambil data KPMR Likuiditas berdasarkan periode');
-    }
+  async getAspectById(id: number): Promise<KPMRLikuiditasAspect> {
+    console.log(`📥 GET from: /kpmr-likuiditas/aspects/${id}`);
+    const response = await api_likuiditas.get<KPMRLikuiditasAspect>(`/kpmr-likuiditas/aspects/${id}`);
+    return response.data;
   }
 
-  async getGroupedByPeriod(year: number, quarter: string): Promise<GroupedKpmrResponse> {
-    try {
-      console.log('Fetching grouped data for period:', year, quarter);
-
-      // PERBAIKAN UTAMA: Backend langsung return GroupedKpmrResponse, tanpa wrapper ApiResponse
-      const response = await axios.get<GroupedKpmrResponse>(`${API_BASE_URL}/grouped`, {
-        params: { year, quarter }, // Gunakan params object, bukan query string manual
-      });
-
-      console.log('Grouped data response:', response.data);
-      return response.data || { data: [], groups: [], overallAverage: 0 };
-    } catch (error) {
-      throw handleServiceError(error, 'Gagal mengambil data grouped KPMR Likuiditas');
-    }
+  async updateAspect(id: number, data: UpdateKPMRLikuiditasAspectData): Promise<KPMRLikuiditasAspect> {
+    console.log(`📤 PUT to: /kpmr-likuiditas/aspects/${id}`, data);
+    const response = await api_likuiditas.put<KPMRLikuiditasAspect>(`/kpmr-likuiditas/aspects/${id}`, data);
+    return response.data;
   }
 
-  async getById(id: number): Promise<KpmrLikuiditas> {
-    try {
-      // Backend langsung return object KpmrLikuiditas
-      const response = await axios.get<KpmrLikuiditas>(`${API_BASE_URL}/${id}`);
-      return response.data;
-    } catch (error) {
-      throw handleServiceError(error, `Gagal mengambil KPMR Likuiditas ${id}`);
-    }
+  async deleteAspect(id: number): Promise<DeleteResponse> {
+    console.log(`🗑️ DELETE (hard) from: /kpmr-likuiditas/aspects/${id}`);
+    const response = await api_likuiditas.delete<DeleteResponse>(`/kpmr-likuiditas/aspects/${id}`);
+    return response.data;
   }
 
-  async create(dto: CreateKpmrLikuiditasDto): Promise<KpmrLikuiditas> {
-    try {
-      console.log('Creating KPMR Likuiditas with data:', dto);
-      // Backend langsung return object KpmrLikuiditas
-      const response = await axios.post<KpmrLikuiditas>(`${API_BASE_URL}`, dto);
-      console.log('Create response:', response.data);
-      return response.data;
-    } catch (error) {
-      throw handleServiceError(error, 'Gagal membuat KPMR Likuiditas');
-    }
+  // ========== QUESTION API ==========
+  async createQuestion(data: CreateKPMRLikuiditasQuestionData): Promise<KPMRLikuiditasQuestion> {
+    console.log('📤 POST to: /kpmr-likuiditas/questions', data);
+    const response = await api_likuiditas.post<KPMRLikuiditasQuestion>('/kpmr-likuiditas/questions', data);
+    return response.data;
   }
 
-  async update(id: number, dto: UpdateKpmrLikuiditasDto): Promise<KpmrLikuiditas> {
-    try {
-      console.log('Updating KPMR Likuiditas:', id, dto);
-      // Backend langsung return object KpmrLikuiditas
-      const response = await axios.patch<KpmrLikuiditas>(`${API_BASE_URL}/${id}`, dto);
-      return response.data;
-    } catch (error) {
-      throw handleServiceError(error, `Gagal mengupdate KPMR Likuiditas ${id}`);
-    }
+  async getAllQuestions(year?: number): Promise<KPMRLikuiditasQuestion[]> {
+    console.log('📥 GET from: /kpmr-likuiditas/questions', { year });
+    const response = await api_likuiditas.get<KPMRLikuiditasQuestion[]>('/kpmr-likuiditas/questions', { params: { year } });
+    return response.data;
   }
 
-  async delete(id: number): Promise<void> {
-    try {
-      console.log('Deleting KPMR Likuiditas:', id);
-      await axios.delete(`${API_BASE_URL}/${id}`);
-    } catch (error) {
-      throw handleServiceError(error, `Gagal menghapus KPMR Likuiditas ${id}`);
-    }
+  async getQuestionsByAspect(aspekNo: string, year?: number): Promise<KPMRLikuiditasQuestion[]> {
+    console.log('📥 GET from: /kpmr-likuiditas/questions/aspect/${aspekNo}', { year });
+    const response = await api_likuiditas.get<KPMRLikuiditasQuestion[]>(`/kpmr-likuiditas/questions/aspect/${aspekNo}`, { params: { year } });
+    return response.data;
   }
 
-  // ==================== SPECIAL METHODS ====================
-
-  async getPeriods(): Promise<PeriodResult[]> {
-    try {
-      // Backend langsung return array PeriodResult
-      const response = await axios.get<PeriodResult[]>(`${API_BASE_URL}/periods`);
-      return response.data || [];
-    } catch (error) {
-      throw handleServiceError(error, 'Gagal mengambil daftar periode');
-    }
+  async getQuestionById(id: number): Promise<KPMRLikuiditasQuestion> {
+    console.log(`📥 GET from: /kpmr-likuiditas/questions/${id}`);
+    const response = await api_likuiditas.get<KPMRLikuiditasQuestion>(`/kpmr-likuiditas/questions/${id}`);
+    return response.data;
   }
 
-  async getTotalAverage(year: number, quarter: string): Promise<number> {
-    try {
-      const groupedData = await this.getGroupedByPeriod(year, quarter);
-      return groupedData.overallAverage || 0;
-    } catch (error) {
-      throw handleServiceError(error, 'Gagal mengambil rata-rata total');
-    }
+  async updateQuestion(id: number, data: UpdateKPMRLikuiditasQuestionData): Promise<KPMRLikuiditasQuestion> {
+    console.log(`📤 PUT to: /kpmr-likuiditas/questions/${id}`, data);
+    const response = await api_likuiditas.put<KPMRLikuiditasQuestion>(`/kpmr-likuiditas/questions/${id}`, data);
+    return response.data;
   }
 
-  async searchByCriteria(criteria: SearchFilter): Promise<KpmrLikuiditas[]> {
-    try {
-      const params = new URLSearchParams();
-      if (criteria.year) params.append('year', criteria.year.toString());
-      if (criteria.quarter) params.append('quarter', criteria.quarter);
-      if (criteria.aspekNo) params.append('aspekNo', criteria.aspekNo);
-      if (criteria.sectionNo) params.append('sectionNo', criteria.sectionNo);
-      if (criteria.query) params.append('search', criteria.query);
-
-      // Backend langsung return KpmrListResponse
-      const response = await axios.get<KpmrListResponse>(`${API_BASE_URL}?${params.toString()}`);
-      return response.data.data || [];
-    } catch (error) {
-      throw handleServiceError(error, 'Gagal mencari data');
-    }
+  async deleteQuestion(id: number): Promise<DeleteResponse> {
+    console.log(`🗑️ DELETE (hard) from: /kpmr-likuiditas/questions/${id}`);
+    const response = await api_likuiditas.delete<DeleteResponse>(`/kpmr-likuiditas/questions/${id}`);
+    return response.data;
   }
 
-  async getExportData(year: number, quarter: string): Promise<GroupedKpmrResponse> {
-    try {
-      // Backend langsung return GroupedKpmrResponse
-      const response = await axios.get<GroupedKpmrResponse>(`${API_BASE_URL}/export/${year}/${quarter}`);
-      return response.data || { data: [], groups: [], overallAverage: 0 };
-    } catch (error) {
-      throw handleServiceError(error, 'Gagal mengambil data export');
-    }
+  // ========== DEFINITION API ==========
+  async createOrUpdateDefinition(data: CreateKPMRLikuiditasDefinitionData): Promise<KPMRLikuiditasDefinition> {
+    console.log('📤 POST to: /kpmr-likuiditas/definitions', data);
+    const response = await api_likuiditas.post<KPMRLikuiditasDefinition>('/kpmr-likuiditas/definitions', data);
+    return response.data;
   }
 
-  // ==================== COMPREHENSIVE DATA FETCHING ====================
+  async getAllDefinitions(): Promise<KPMRLikuiditasDefinition[]> {
+    console.log('📥 GET from: /kpmr-likuiditas/definitions');
+    const response = await api_likuiditas.get<KPMRLikuiditasDefinition[]>('/kpmr-likuiditas/definitions');
+    return response.data;
+  }
 
-  async getComprehensiveData(filter: PeriodFilter): Promise<{
-    groupedData: GroupedKpmrResponse;
-    totalAverage: number;
-    periods: PeriodResult[];
-  }> {
-    try {
-      const [groupedData, periods] = await Promise.all([this.getGroupedByPeriod(filter.year, filter.quarter), this.getPeriods()]);
+  async getDefinitionsByYear(year: number): Promise<KPMRLikuiditasDefinition[]> {
+    console.log(`📥 GET from: /kpmr-likuiditas/definitions/year/${year}`);
+    const response = await api_likuiditas.get<KPMRLikuiditasDefinition[]>(`/kpmr-likuiditas/definitions/year/${year}`);
+    return response.data;
+  }
 
-      return {
-        groupedData,
-        totalAverage: groupedData.overallAverage,
-        periods,
+  async getDefinitionById(id: number): Promise<KPMRLikuiditasDefinition> {
+    console.log(`📥 GET from: /kpmr-likuiditas/definitions/${id}`);
+    const response = await api_likuiditas.get<KPMRLikuiditasDefinition>(`/kpmr-likuiditas/definitions/${id}`);
+    return response.data;
+  }
+
+  async updateDefinition(id: number, data: UpdateKPMRLikuiditasDefinitionData): Promise<KPMRLikuiditasDefinition> {
+    console.log(`📤 PUT to: /kpmr-likuiditas/definitions/${id}`, data);
+    const response = await api_likuiditas.put<KPMRLikuiditasDefinition>(`/kpmr-likuiditas/definitions/${id}`, data);
+    return response.data;
+  }
+
+  async deleteDefinitionPermanent(definitionId: number, year: number): Promise<DeleteResponse> {
+    console.log(`🗑️ DELETE to: /kpmr-likuiditas/definition/${definitionId}/${year}`);
+    const response = await api_likuiditas.delete<DeleteResponse>(`/kpmr-likuiditas/definition/${definitionId}/${year}`);
+    return response.data;
+  }
+
+  // ========== SCORE API ==========
+  async createOrUpdateScore(data: CreateKPMRLikuiditasScoreData): Promise<KPMRLikuiditasScore> {
+    console.log('📤 POST to: /kpmr-likuiditas/scores', data);
+    const response = await api_likuiditas.post<KPMRLikuiditasScore>('/kpmr-likuiditas/scores', data);
+    return response.data;
+  }
+
+  async getAllScores(): Promise<KPMRLikuiditasScore[]> {
+    console.log('📥 GET from: /kpmr-likuiditas/scores');
+    const response = await api_likuiditas.get<KPMRLikuiditasScore[]>('/kpmr-likuiditas/scores');
+    return response.data;
+  }
+
+  async getScoresByPeriod(year: number, quarter?: string): Promise<KPMRLikuiditasScore[]> {
+    console.log('📥 GET from: /kpmr-likuiditas/scores/period', { year, quarter });
+    const response = await api_likuiditas.get<KPMRLikuiditasScore[]>('/kpmr-likuiditas/scores/period', { params: { year, quarter } });
+    return response.data;
+  }
+
+  async getScoresByDefinition(definitionId: number): Promise<KPMRLikuiditasScore[]> {
+    console.log(`📥 GET from: /kpmr-likuiditas/scores/definition/${definitionId}`);
+    const response = await api_likuiditas.get<KPMRLikuiditasScore[]>(`/kpmr-likuiditas/scores/definition/${definitionId}`);
+    return response.data;
+  }
+
+  async getScoreById(id: number): Promise<KPMRLikuiditasScore> {
+    console.log(`📥 GET from: /kpmr-likuiditas/scores/${id}`);
+    const response = await api_likuiditas.get<KPMRLikuiditasScore>(`/kpmr-likuiditas/scores/${id}`);
+    return response.data;
+  }
+
+  async updateScore(id: number, data: UpdateKPMRLikuiditasScoreData): Promise<KPMRLikuiditasScore> {
+    console.log(`📤 PUT to: /kpmr-likuiditas/scores/${id}`, data);
+    const response = await api_likuiditas.put<KPMRLikuiditasScore>(`/kpmr-likuiditas/scores/${id}`, data);
+    return response.data;
+  }
+
+  async deleteScore(id: number): Promise<DeleteResponse> {
+    console.log(`🗑️ DELETE (hard) from: /kpmr-likuiditas/scores/${id}`);
+    const response = await api_likuiditas.delete<DeleteResponse>(`/kpmr-likuiditas/scores/${id}`);
+    return response.data;
+  }
+
+  async deleteScoreByTarget(definitionId: number, year: number, quarter: string): Promise<DeleteResponse> {
+    console.log('🗑️ POST to: /kpmr-likuiditas/scores/target/delete', { definitionId, year, quarter });
+    const response = await api_likuiditas.post<DeleteResponse>('/kpmr-likuiditas/scores/target/delete', { definitionId, year, quarter });
+    return response.data;
+  }
+
+  // ========== COMPLEX QUERIES ==========
+  async getFullData(year: number): Promise<KPMRLikuiditasFullDataResponse> {
+    console.log(`📥 GET full data from: /kpmr-likuiditas/full-data/${year}`);
+    const response = await api_likuiditas.get<KPMRLikuiditasFullDataResponse>(`/kpmr-likuiditas/full-data/${year}`);
+    return response.data;
+  }
+
+  async searchKPMR(year?: number, query?: string, aspekNo?: string): Promise<KPMRLikuiditasDefinition[]> {
+    console.log('📥 GET from: /kpmr-likuiditas/search', { year, query, aspekNo });
+    const response = await api_likuiditas.get<KPMRLikuiditasDefinition[]>('/kpmr-likuiditas/search', { params: { year, query, aspekNo } });
+    return response.data;
+  }
+
+  async getAvailableYears(): Promise<number[]> {
+    console.log('📥 GET from: /kpmr-likuiditas/years');
+    const response = await api_likuiditas.get<YearsResponse>('/kpmr-likuiditas/years');
+    return response.data.data;
+  }
+
+  async getPeriods(): Promise<Period[]> {
+    console.log('📥 GET from: /kpmr-likuiditas/periods');
+    const response = await api_likuiditas.get<PeriodsResponse>('/kpmr-likuiditas/periods');
+    return response.data.data;
+  }
+}
+
+// ============================================================================
+// EXPORT SINGLETON
+// ============================================================================
+
+export const kpmrLikuiditasApiService = new KPMRLikuiditasApiService();
+
+// ============================================================================
+// UTILITY FUNCTIONS untuk Transform Data
+// ============================================================================
+
+export const transformDefinitionToComponent = (definition: KPMRLikuiditasDefinition, scores: KPMRLikuiditasScore[] = []) => {
+  const quarterScores = scores.reduce(
+    (acc, score) => {
+      acc[score.quarter] = {
+        sectionSkor: score.sectionSkor,
+        id: score.id,
       };
-    } catch (error) {
-      throw handleServiceError(error, 'Gagal mengambil data komprehensif');
-    }
-  }
+      return acc;
+    },
+    {} as Record<string, { sectionSkor: number | null; id: number }>,
+  );
 
-  // ==================== UTILITY METHODS ====================
+  return {
+    definitionId: definition.id,
+    year: definition.year,
+    aspekNo: definition.aspekNo,
+    aspekTitle: definition.aspekTitle,
+    aspekBobot: definition.aspekBobot,
+    sectionNo: definition.sectionNo,
+    sectionTitle: definition.sectionTitle,
+    level1: definition.level1,
+    level2: definition.level2,
+    level3: definition.level3,
+    level4: definition.level4,
+    level5: definition.level5,
+    evidence: definition.evidence,
+    scores: quarterScores,
+  };
+};
 
-  validateQuarter(quarter: string): boolean {
-    return ['Q1', 'Q2', 'Q3', 'Q4'].includes(quarter);
-  }
-
-  validateYear(year: number): boolean {
-    const currentYear = new Date().getFullYear();
-    return year >= 2000 && year <= currentYear + 5;
-  }
-
-  calculateSectionAverage(sections: KpmrLikuiditas[]): number {
-    const validScores = sections.map((section) => section.sectionSkor).filter((score): score is number => typeof score === 'number' && !isNaN(score));
-
-    if (validScores.length === 0) return 0;
-
-    const average = validScores.reduce((sum, score) => sum + score, 0) / validScores.length;
-    return Number(average.toFixed(2));
-  }
-
-  // Method untuk transform form data ke DTO
-  transformToDto(formData: any): CreateKpmrLikuiditasDto {
-    return transformFormToDto(formData);
-  }
-
-  // Method untuk validasi data sebelum submit
-  validateData(data: CreateKpmrLikuiditasDto): string | null {
-    if (!data.year || !data.quarter) {
-      return 'Year dan Quarter harus diisi';
-    }
-
-    if (!this.validateQuarter(data.quarter)) {
-      return 'Quarter harus Q1, Q2, Q3, atau Q4';
-    }
-
-    if (!this.validateYear(data.year)) {
-      return 'Year tidak valid';
-    }
-
-    if (data.sectionSkor && (data.sectionSkor < 1 || data.sectionSkor > 5)) {
-      return 'Section Skor harus antara 1-5';
-    }
-
-    if (data.aspekBobot && (data.aspekBobot < 0 || data.aspekBobot > 100)) {
-      return 'Bobot Aspek harus antara 0-100';
-    }
-
-    return null;
-  }
-}
-
-// Export singleton instance
-export const kpmrLikuiditasService = new KpmrLikuiditasService();
-
-// Export class untuk testing atau extension
-export default KpmrLikuiditasService;
+export const transformFullDataToGroups = (fullData: KPMRLikuiditasFullDataResponse) => {
+  return fullData.aspects.map((aspect) => ({
+    aspekNo: aspect.aspekNo,
+    aspekTitle: aspect.aspekTitle,
+    aspekBobot: aspect.aspekBobot,
+    sections: aspect.sections.map((section) => ({
+      sectionNo: section.sectionNo,
+      sectionTitle: section.sectionTitle,
+      definitionId: section.definitionId,
+      level1: section.level1,
+      level2: section.level2,
+      level3: section.level3,
+      level4: section.level4,
+      level5: section.level5,
+      evidence: section.evidence,
+      quarters: Object.keys(section.scores).reduce(
+        (acc, quarter) => {
+          acc[quarter] = {
+            sectionSkor: section.scores[quarter].sectionSkor,
+            id: section.scores[quarter].id,
+          };
+          return acc;
+        },
+        {} as Record<string, { sectionSkor: number | null; id: number }>,
+      ),
+    })),
+    quarterAverages: aspect.quarterAverages,
+  }));
+};

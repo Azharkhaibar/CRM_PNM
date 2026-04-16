@@ -3,11 +3,11 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { OperasionalController } from './operasional.controller';
 import { OperasionalService } from './operasional.service';
-import { OperasionalSection } from './entities/operasional-section.entity';
 import { Operasional } from './entities/operasional.entity';
+import { OperasionalSection } from './entities/operasional-section.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([OperasionalSection, Operasional])],
+  imports: [TypeOrmModule.forFeature([Operasional, OperasionalSection])],
   controllers: [OperasionalController],
   providers: [OperasionalService],
   exports: [OperasionalService],

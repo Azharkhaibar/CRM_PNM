@@ -1,5 +1,5 @@
 import { KpmrAspekLikuiditas } from './likuiditas-kpmr-aspek.entity';
-export declare class KpmrLikuiditas {
+export declare class KpmrLikuiditasOjk {
     id: number;
     year: number;
     quarter: number;

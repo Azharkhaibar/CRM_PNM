@@ -6,22 +6,22 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.NewInvestasiModule = void 0;
+exports.InvestasiModule = void 0;
 const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
 const new_investasi_controller_1 = require("./new-investasi.controller");
 const new_investasi_service_1 = require("./new-investasi.service");
 const new_investasi_entity_1 = require("./entities/new-investasi.entity");
 const new_investasi_section_entity_1 = require("./entities/new-investasi-section.entity");
-let NewInvestasiModule = class NewInvestasiModule {
+let InvestasiModule = class InvestasiModule {
 };
-exports.NewInvestasiModule = NewInvestasiModule;
-exports.NewInvestasiModule = NewInvestasiModule = __decorate([
+exports.InvestasiModule = InvestasiModule;
+exports.InvestasiModule = InvestasiModule = __decorate([
     (0, common_1.Module)({
         imports: [typeorm_1.TypeOrmModule.forFeature([new_investasi_entity_1.Investasi, new_investasi_section_entity_1.InvestasiSection])],
         controllers: [new_investasi_controller_1.InvestasiController],
         providers: [new_investasi_service_1.InvestasiService],
         exports: [new_investasi_service_1.InvestasiService],
     })
-], NewInvestasiModule);
+], InvestasiModule);
 //# sourceMappingURL=new-investasi.module.js.map

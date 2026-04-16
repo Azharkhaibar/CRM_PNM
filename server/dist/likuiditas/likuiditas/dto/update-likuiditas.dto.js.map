@@ -1,1 +1,1 @@
-{"version":3,"file":"update-likuiditas.dto.js","sourceRoot":"","sources":["../../../../src/likuiditas/likuiditas/dto/update-likuiditas.dto.ts"],"names":[],"mappings":";;;AAAA,6CAA8C;AAC9C,mEAA8D;AAC9D,MAAa,mBAAoB,SAAQ,IAAA,qBAAW,EAAC,2CAAmB,CAAC;CAAG;AAA5E,kDAA4E"}
+{"version":3,"file":"update-likuiditas.dto.js","sourceRoot":"","sources":["../../../../src/likuiditas/likuiditas/dto/update-likuiditas.dto.ts"],"names":[],"mappings":";;;AAAA,uDAAmD;AACnD,mEAA8D;AAE9D,MAAa,mBAAoB,SAAQ,IAAA,0BAAW,EAAC,2CAAmB,CAAC;CAAG;AAA5E,kDAA4E"}

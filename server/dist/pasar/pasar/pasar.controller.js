@@ -18,9 +18,9 @@ const swagger_1 = require("@nestjs/swagger");
 const pasar_service_1 = require("./pasar.service");
 const create_pasar_section_dto_1 = require("./dto/create-pasar-section.dto");
 const update_pasar_section_dto_1 = require("./dto/update-pasar-section.dto");
-const create_pasar_indikator_dto_1 = require("./dto/create-pasar-indikator.dto");
+const create_pasar_dto_1 = require("./dto/create-pasar.dto");
 const update_pasar_dto_1 = require("./dto/update-pasar.dto");
-const indikator_entity_1 = require("./entities/indikator.entity");
+const pasar_entity_1 = require("./entities/pasar.entity");
 let PasarController = class PasarController {
     pasarService;
     constructor(pasarService) {
@@ -35,14 +35,14 @@ let PasarController = class PasarController {
     async getSection(id) {
         return await this.pasarService.findSectionById(id);
     }
+    async getSectionsByPeriod(year, quarter) {
+        return await this.pasarService.findSectionsByPeriod(year, quarter);
+    }
     async updateSection(id, updateDto) {
         return await this.pasarService.updateSection(id, updateDto);
     }
     async deleteSection(id) {
-        await this.pasarService.deleteSection(id);
-    }
-    async getSectionsWithIndicatorsByPeriod(year, quarter) {
-        return await this.pasarService.getSectionsWithIndicatorsByPeriod(year, quarter);
+        return await this.pasarService.deleteSection(id);
     }
     async createIndikator(createDto) {
         return await this.pasarService.createIndikator(createDto);
@@ -63,14 +63,19 @@ let PasarController = class PasarController {
         return await this.pasarService.updateIndikator(id, updateDto);
     }
     async deleteIndikator(id) {
-        await this.pasarService.deleteIndikator(id);
+        return await this.pasarService.deleteIndikator(id);
+    }
+    async getSectionsWithIndicatorsByPeriod(year, quarter) {
+        return await this.pasarService.getSectionsWithIndicatorsByPeriod(year, quarter);
     }
     async getTotalWeighted(year, quarter) {
         const total = await this.pasarService.getTotalWeightedByPeriod(year, quarter);
-        return { total };
-    }
-    async getSectionsByPeriod(year, quarter) {
-        return await this.pasarService.findSectionsByPeriod(year, quarter);
+        return {
+            success: true,
+            year,
+            quarter,
+            total,
+        };
     }
     async getAvailablePeriods() {
         try {
@@ -82,11 +87,11 @@ let PasarController = class PasarController {
             };
         }
         catch (error) {
-            console.error('[PASAR] Error in getAvailablePeriods:', error);
+            console.error('Error in getAvailablePeriods:', error);
             throw error;
         }
     }
-    async getAllPeriods() {
+    async getAllPeriodsWithCounts() {
         try {
             const periods = await this.pasarService.getPeriods();
             const periodsWithCounts = await Promise.all(periods.map(async (period) => {
@@ -103,9 +108,18 @@ let PasarController = class PasarController {
             };
         }
         catch (error) {
-            console.error('[PASAR] Error in getAllPeriods:', error);
+            console.error('Error in getAllPeriodsWithCounts:', error);
             throw error;
         }
+    }
+    async getIndikatorCount(year, quarter) {
+        const count = await this.pasarService.getIndikatorCountByPeriod(year, quarter);
+        return {
+            success: true,
+            year,
+            quarter,
+            count,
+        };
     }
     async duplicateIndikator(id, year, quarter) {
         return await this.pasarService.duplicateIndikatorToNewPeriod(id, year, quarter);
@@ -116,6 +130,8 @@ __decorate([
     (0, common_1.Post)('sections'),
     (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
     (0, swagger_1.ApiOperation)({ summary: 'Create new pasar section' }),
+    (0, swagger_1.ApiResponse)({ status: 201, description: 'Section created successfully' }),
+    (0, swagger_1.ApiResponse)({ status: 409, description: 'Section already exists' }),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [create_pasar_section_dto_1.CreatePasarSectionDto]),
@@ -139,6 +155,17 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], PasarController.prototype, "getSection", null);
 __decorate([
+    (0, common_1.Get)('sections/period'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get pasar sections by period' }),
+    (0, swagger_1.ApiQuery)({ name: 'year', required: true, type: Number }),
+    (0, swagger_1.ApiQuery)({ name: 'quarter', required: true, enum: pasar_entity_1.Quarter }),
+    __param(0, (0, common_1.Query)('year', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Query)('quarter')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, String]),
+    __metadata("design:returntype", Promise)
+], PasarController.prototype, "getSectionsByPeriod", null);
+__decorate([
     (0, common_1.Put)('sections/:id'),
     (0, swagger_1.ApiOperation)({ summary: 'Update pasar section' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
@@ -149,7 +176,7 @@ __decorate([
 ], PasarController.prototype, "updateSection", null);
 __decorate([
     (0, common_1.Delete)('sections/:id'),
-    (0, common_1.HttpCode)(common_1.HttpStatus.NO_CONTENT),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
     (0, swagger_1.ApiOperation)({ summary: 'Delete pasar section' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
@@ -157,21 +184,14 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], PasarController.prototype, "deleteSection", null);
 __decorate([
-    (0, common_1.Get)('indikators/sections-by-period'),
-    (0, swagger_1.ApiOperation)({ summary: 'Get sections with indicators by period' }),
-    __param(0, (0, common_1.Query)('year', new common_1.ParseIntPipe())),
-    __param(1, (0, common_1.Query)('quarter')),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number, String]),
-    __metadata("design:returntype", Promise)
-], PasarController.prototype, "getSectionsWithIndicatorsByPeriod", null);
-__decorate([
     (0, common_1.Post)('indikators'),
     (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
     (0, swagger_1.ApiOperation)({ summary: 'Create new pasar indikator' }),
+    (0, swagger_1.ApiResponse)({ status: 201, description: 'Indikator created successfully' }),
+    (0, swagger_1.ApiResponse)({ status: 409, description: 'Indikator already exists' }),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [create_pasar_indikator_dto_1.CreatePasarDto]),
+    __metadata("design:paramtypes", [create_pasar_dto_1.CreatePasarDto]),
     __metadata("design:returntype", Promise)
 ], PasarController.prototype, "createIndikator", null);
 __decorate([
@@ -185,7 +205,7 @@ __decorate([
     (0, common_1.Get)('indikators/period'),
     (0, swagger_1.ApiOperation)({ summary: 'Get pasar indikators by period' }),
     (0, swagger_1.ApiQuery)({ name: 'year', required: true, type: Number }),
-    (0, swagger_1.ApiQuery)({ name: 'quarter', required: true, enum: indikator_entity_1.Quarter }),
+    (0, swagger_1.ApiQuery)({ name: 'quarter', required: true, enum: pasar_entity_1.Quarter }),
     __param(0, (0, common_1.Query)('year', common_1.ParseIntPipe)),
     __param(1, (0, common_1.Query)('quarter')),
     __metadata("design:type", Function),
@@ -197,7 +217,7 @@ __decorate([
     (0, swagger_1.ApiOperation)({ summary: 'Search pasar indikators' }),
     (0, swagger_1.ApiQuery)({ name: 'query', required: false }),
     (0, swagger_1.ApiQuery)({ name: 'year', required: false }),
-    (0, swagger_1.ApiQuery)({ name: 'quarter', required: false, enum: indikator_entity_1.Quarter }),
+    (0, swagger_1.ApiQuery)({ name: 'quarter', required: false, enum: pasar_entity_1.Quarter }),
     __param(0, (0, common_1.Query)('query')),
     __param(1, (0, common_1.Query)('year')),
     __param(2, (0, common_1.Query)('quarter')),
@@ -224,7 +244,7 @@ __decorate([
 ], PasarController.prototype, "updateIndikator", null);
 __decorate([
     (0, common_1.Delete)('indikators/:id'),
-    (0, common_1.HttpCode)(common_1.HttpStatus.NO_CONTENT),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
     (0, swagger_1.ApiOperation)({ summary: 'Delete pasar indikator' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
@@ -232,27 +252,30 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], PasarController.prototype, "deleteIndikator", null);
 __decorate([
+    (0, common_1.Get)('data/with-indicators'),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Get sections with their indicators for a period',
+        description: 'Returns sections with nested indicators for a specific year and quarter',
+    }),
+    (0, swagger_1.ApiQuery)({ name: 'year', required: true, type: Number }),
+    (0, swagger_1.ApiQuery)({ name: 'quarter', required: true, enum: pasar_entity_1.Quarter }),
+    __param(0, (0, common_1.Query)('year', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Query)('quarter')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, String]),
+    __metadata("design:returntype", Promise)
+], PasarController.prototype, "getSectionsWithIndicatorsByPeriod", null);
+__decorate([
     (0, common_1.Get)('total-weighted'),
-    (0, swagger_1.ApiOperation)({ summary: 'Get total weighted by period' }),
-    (0, swagger_1.ApiQuery)({ name: 'year', required: true }),
-    (0, swagger_1.ApiQuery)({ name: 'quarter', required: true, enum: indikator_entity_1.Quarter }),
+    (0, swagger_1.ApiOperation)({ summary: 'Get total weighted value by period' }),
+    (0, swagger_1.ApiQuery)({ name: 'year', required: true, type: Number }),
+    (0, swagger_1.ApiQuery)({ name: 'quarter', required: true, enum: pasar_entity_1.Quarter }),
     __param(0, (0, common_1.Query)('year', common_1.ParseIntPipe)),
     __param(1, (0, common_1.Query)('quarter')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number, String]),
     __metadata("design:returntype", Promise)
 ], PasarController.prototype, "getTotalWeighted", null);
-__decorate([
-    (0, common_1.Get)('sections/period'),
-    (0, swagger_1.ApiOperation)({ summary: 'Get pasar sections by period' }),
-    (0, swagger_1.ApiQuery)({ name: 'year', required: true, type: Number }),
-    (0, swagger_1.ApiQuery)({ name: 'quarter', required: true, enum: indikator_entity_1.Quarter }),
-    __param(0, (0, common_1.Query)('year', common_1.ParseIntPipe)),
-    __param(1, (0, common_1.Query)('quarter')),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number, String]),
-    __metadata("design:returntype", Promise)
-], PasarController.prototype, "getSectionsByPeriod", null);
 __decorate([
     (0, common_1.Get)('periods'),
     (0, swagger_1.ApiOperation)({
@@ -264,19 +287,33 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], PasarController.prototype, "getAvailablePeriods", null);
 __decorate([
-    (0, common_1.Get)('all-periods'),
+    (0, common_1.Get)('periods/with-counts'),
     (0, swagger_1.ApiOperation)({
-        summary: 'Get all periods with count',
-        description: 'Get periods with indicator counts',
+        summary: 'Get all periods with indicator counts',
+        description: 'Get periods with indicator counts for each period',
     }),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)
-], PasarController.prototype, "getAllPeriods", null);
+], PasarController.prototype, "getAllPeriodsWithCounts", null);
+__decorate([
+    (0, common_1.Get)('indikators/count'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get indikator count by period' }),
+    (0, swagger_1.ApiQuery)({ name: 'year', required: true, type: Number }),
+    (0, swagger_1.ApiQuery)({ name: 'quarter', required: true, enum: pasar_entity_1.Quarter }),
+    __param(0, (0, common_1.Query)('year', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Query)('quarter')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, String]),
+    __metadata("design:returntype", Promise)
+], PasarController.prototype, "getIndikatorCount", null);
 __decorate([
     (0, common_1.Post)('indikators/:id/duplicate'),
     (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
-    (0, swagger_1.ApiOperation)({ summary: 'Duplicate indikator to new period' }),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Duplicate indikator to new period',
+        description: 'Copy an existing indikator to a different period',
+    }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __param(1, (0, common_1.Query)('year', common_1.ParseIntPipe)),
     __param(2, (0, common_1.Query)('quarter')),

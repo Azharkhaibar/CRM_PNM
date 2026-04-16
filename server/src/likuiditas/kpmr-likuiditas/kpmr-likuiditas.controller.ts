@@ -1,98 +1,287 @@
-// src/kpmr-likuiditas/kpmr-likuiditas.controller.ts
+// kpmr-likuiditas.controller.ts
 import {
   Controller,
   Get,
   Post,
-  Body,
-  Patch,
-  Param,
+  Put,
   Delete,
+  Body,
+  Param,
   Query,
   HttpCode,
   HttpStatus,
   ParseIntPipe,
-  DefaultValuePipe,
   BadRequestException,
 } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
+import { KPMRLikuiditasService } from './kpmr-likuiditas.service';
 import {
-  KpmrLikuiditasService,
-  GroupedKpmrResponse,
-  KpmrListResponse,
-} from './kpmr-likuiditas.service';
-import { CreateKpmrLikuiditasDto } from './dto/create-kpmr-likuidita.dto';
-import { UpdateKpmrLikuiditasDto } from './dto/update-kpmr-likuiditas.dto';
-import { KpmrLikuiditasQueryDto } from './dto/kpmr-likuiditas-query.dto';
+  CreateKPMRLikuiditasAspectDto,
+  UpdateKPMRLikuiditasAspectDto,
+  CreateKPMRLikuiditasQuestionDto,
+  UpdateKPMRLikuiditasQuestionDto,
+  CreateKPMRLikuiditasDefinitionDto,
+  UpdateKPMRLikuiditasDefinitionDto,
+  CreateKPMRLikuiditasScoreDto,
+  UpdateKPMRLikuiditasScoreDto,
+} from './dto/kpmr-likuiditas.dto';
 
+@ApiTags('KPMR Likuiditas')
 @Controller('kpmr-likuiditas')
-export class KpmrLikuiditasController {
-  constructor(private readonly kpmrLikuiditasService: KpmrLikuiditasService) {}
+export class KPMRLikuiditasController {
+  constructor(private readonly kpmrLikuiditasService: KPMRLikuiditasService) {}
 
-  @Post()
-  async create(@Body() createDto: CreateKpmrLikuiditasDto) {
-    return await this.kpmrLikuiditasService.create(createDto);
+  // ========== ASPECT ENDPOINTS ==========
+  @Post('aspects')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Create new KPMR Likuiditas aspect' })
+  async createAspect(@Body() createDto: CreateKPMRLikuiditasAspectDto) {
+    return await this.kpmrLikuiditasService.createAspect(createDto);
   }
 
-  @Get()
-  async findAll(
-    @Query() query: KpmrLikuiditasQueryDto,
-  ): Promise<KpmrListResponse> {
-    return await this.kpmrLikuiditasService.findAll(query);
+  @Get('aspects')
+  @ApiOperation({ summary: 'Get all KPMR Likuiditas aspects' })
+  @ApiQuery({ name: 'year', required: false })
+  async getAllAspects(@Query('year') year?: string) {
+    const yearNum = year ? parseInt(year, 10) : undefined;
+    return await this.kpmrLikuiditasService.findAllAspects(yearNum);
   }
 
-  @Get('grouped')
-  async getGroupedData(
-    @Query('year', new DefaultValuePipe(new Date().getFullYear()), ParseIntPipe)
-    year: number,
-    @Query('quarter', new DefaultValuePipe('Q1'))
-    quarter: string,
-  ): Promise<GroupedKpmrResponse> {
-    // Validasi quarter
-    if (!['Q1', 'Q2', 'Q3', 'Q4'].includes(quarter)) {
-      throw new BadRequestException('Quarter harus Q1, Q2, Q3, atau Q4');
-    }
-    return await this.kpmrLikuiditasService.getGroupedData(year, quarter);
+  @Get('aspects/:id')
+  @ApiOperation({ summary: 'Get KPMR Likuiditas aspect by ID' })
+  async getAspect(@Param('id', ParseIntPipe) id: number) {
+    return await this.kpmrLikuiditasService.findAspectById(id);
   }
 
-  @Get(':id')
-  async findOne(@Param('id', ParseIntPipe) id: number) {
-    return await this.kpmrLikuiditasService.findOne(id);
-  }
-
-  @Patch(':id')
-  async update(
+  @Put('aspects/:id')
+  @ApiOperation({ summary: 'Update KPMR Likuiditas aspect' })
+  async updateAspect(
     @Param('id', ParseIntPipe) id: number,
-    @Body() updateDto: UpdateKpmrLikuiditasDto,
+    @Body() updateDto: UpdateKPMRLikuiditasAspectDto,
   ) {
-    return await this.kpmrLikuiditasService.update(id, updateDto);
+    return await this.kpmrLikuiditasService.updateAspect(id, updateDto);
   }
 
-  @Delete(':id')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  async remove(@Param('id', ParseIntPipe) id: number) {
-    return await this.kpmrLikuiditasService.remove(id);
+  @Delete('aspects/:id')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Permanently delete KPMR Likuiditas aspect' })
+  async deleteAspect(@Param('id', ParseIntPipe) id: number) {
+    return await this.kpmrLikuiditasService.deleteAspect(id);
   }
 
-  @Get('period/:year/:quarter')
-  async findByPeriod(
+  // ========== QUESTION ENDPOINTS ==========
+  @Post('questions')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Create new KPMR Likuiditas question' })
+  async createQuestion(@Body() createDto: CreateKPMRLikuiditasQuestionDto) {
+    return await this.kpmrLikuiditasService.createQuestion(createDto);
+  }
+
+  @Get('questions')
+  @ApiOperation({ summary: 'Get all KPMR Likuiditas questions' })
+  @ApiQuery({ name: 'year', required: false })
+  async getAllQuestions(@Query('year') year?: string) {
+    const yearNum = year ? parseInt(year, 10) : undefined;
+    return await this.kpmrLikuiditasService.findAllQuestions(yearNum);
+  }
+
+  @Get('questions/aspect/:aspekNo')
+  @ApiOperation({ summary: 'Get questions by aspect' })
+  @ApiQuery({ name: 'year', required: false })
+  async getQuestionsByAspect(
+    @Param('aspekNo') aspekNo: string,
+    @Query('year') year?: string,
+  ) {
+    const yearNum = year ? parseInt(year, 10) : undefined;
+    return await this.kpmrLikuiditasService.findQuestionsByAspect(
+      aspekNo,
+      yearNum,
+    );
+  }
+
+  @Get('questions/:id')
+  @ApiOperation({ summary: 'Get question by ID' })
+  async getQuestion(@Param('id', ParseIntPipe) id: number) {
+    return await this.kpmrLikuiditasService.findQuestionById(id);
+  }
+
+  @Put('questions/:id')
+  @ApiOperation({ summary: 'Update KPMR Likuiditas question' })
+  async updateQuestion(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateDto: UpdateKPMRLikuiditasQuestionDto,
+  ) {
+    return await this.kpmrLikuiditasService.updateQuestion(id, updateDto);
+  }
+
+  @Delete('questions/:id')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Permanently delete KPMR Likuiditas question' })
+  async deleteQuestion(@Param('id', ParseIntPipe) id: number) {
+    return await this.kpmrLikuiditasService.deleteQuestion(id);
+  }
+
+  // ========== DEFINITION ENDPOINTS ==========
+  @Post('definitions')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Create or update KPMR Likuiditas definition' })
+  async createOrUpdateDefinition(
+    @Body() createDto: CreateKPMRLikuiditasDefinitionDto,
+  ) {
+    return await this.kpmrLikuiditasService.createOrUpdateDefinition(createDto);
+  }
+
+  @Get('definitions')
+  @ApiOperation({ summary: 'Get all KPMR Likuiditas definitions' })
+  async getAllDefinitions() {
+    return await this.kpmrLikuiditasService.findAllDefinitions();
+  }
+
+  @Get('definitions/year/:year')
+  @ApiOperation({ summary: 'Get definitions by year' })
+  async getDefinitionsByYear(@Param('year', ParseIntPipe) year: number) {
+    return await this.kpmrLikuiditasService.findDefinitionsByYear(year);
+  }
+
+  @Get('definitions/:id')
+  @ApiOperation({ summary: 'Get definition by ID' })
+  async getDefinition(@Param('id', ParseIntPipe) id: number) {
+    return await this.kpmrLikuiditasService.findDefinitionById(id);
+  }
+
+  @Put('definitions/:id')
+  @ApiOperation({ summary: 'Update definition' })
+  async updateDefinition(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateDto: UpdateKPMRLikuiditasDefinitionDto,
+  ) {
+    return await this.kpmrLikuiditasService.updateDefinition(id, updateDto);
+  }
+
+  @Delete('definition/:definitionId/:year')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Permanently delete definition with scores' })
+  async deleteDefinitionPermanent(
+    @Param('definitionId', ParseIntPipe) definitionId: number,
     @Param('year', ParseIntPipe) year: number,
-    @Param('quarter') quarter: string,
   ) {
-    // Validasi quarter
-    if (!['Q1', 'Q2', 'Q3', 'Q4'].includes(quarter)) {
-      throw new BadRequestException('Quarter harus Q1, Q2, Q3, atau Q4');
-    }
-    return await this.kpmrLikuiditasService.findByPeriod(year, quarter);
+    console.log('🗑️ DELETE DEFINITION REQUEST:', { definitionId, year });
+    const result = await this.kpmrLikuiditasService.deleteDefinition(
+      definitionId,
+      year,
+    );
+    return result;
   }
 
-  @Get('export/:year/:quarter')
-  async exportData(
-    @Param('year', ParseIntPipe) year: number,
-    @Param('quarter') quarter: string,
+  // ========== SCORE ENDPOINTS ==========
+  @Post('scores')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Create or update KPMR Likuiditas score' })
+  async createOrUpdateScore(@Body() createDto: CreateKPMRLikuiditasScoreDto) {
+    return await this.kpmrLikuiditasService.createOrUpdateScore(createDto);
+  }
+
+  @Get('scores')
+  @ApiOperation({ summary: 'Get all scores' })
+  async getAllScores() {
+    return await this.kpmrLikuiditasService.findAllScores();
+  }
+
+  @Get('scores/period')
+  @ApiOperation({ summary: 'Get scores by period' })
+  @ApiQuery({ name: 'year', required: true })
+  @ApiQuery({ name: 'quarter', required: false })
+  async getScoresByPeriod(
+    @Query('year') year: string,
+    @Query('quarter') quarter?: string,
   ) {
-    // Validasi quarter
-    if (!['Q1', 'Q2', 'Q3', 'Q4'].includes(quarter)) {
-      throw new BadRequestException('Quarter harus Q1, Q2, Q3, atau Q4');
+    const yearNum = parseInt(year, 10);
+    if (isNaN(yearNum)) {
+      throw new BadRequestException('Year harus berupa angka yang valid');
     }
-    return await this.kpmrLikuiditasService.getExportData(year, quarter);
+    return await this.kpmrLikuiditasService.findScoresByPeriod(
+      yearNum,
+      quarter,
+    );
+  }
+
+  @Get('scores/definition/:definitionId')
+  @ApiOperation({ summary: 'Get scores by definition' })
+  async getScoresByDefinition(
+    @Param('definitionId', ParseIntPipe) definitionId: number,
+  ) {
+    return await this.kpmrLikuiditasService.findScoresByDefinition(
+      definitionId,
+    );
+  }
+
+  @Get('scores/:id')
+  @ApiOperation({ summary: 'Get score by ID' })
+  async getScore(@Param('id', ParseIntPipe) id: number) {
+    return await this.kpmrLikuiditasService.findScoreById(id);
+  }
+
+  @Put('scores/:id')
+  @ApiOperation({ summary: 'Update score' })
+  async updateScore(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateDto: UpdateKPMRLikuiditasScoreDto,
+  ) {
+    return await this.kpmrLikuiditasService.updateScore(id, updateDto);
+  }
+
+  @Delete('scores/:id')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Permanently delete score' })
+  async deleteScore(@Param('id', ParseIntPipe) id: number) {
+    return await this.kpmrLikuiditasService.deleteScore(id);
+  }
+
+  @Post('scores/target/delete')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Permanently delete score by target' })
+  async deleteScoreByTarget(
+    @Body() body: { definitionId: number; year: number; quarter: string },
+  ) {
+    return await this.kpmrLikuiditasService.deleteScoreByTarget(
+      body.definitionId,
+      body.year,
+      body.quarter,
+    );
+  }
+
+  // ========== COMPLEX QUERIES ==========
+  @Get('full-data/:year')
+  @ApiOperation({ summary: 'Get complete KPMR Likuiditas data with grouping' })
+  async getFullData(@Param('year', ParseIntPipe) year: number) {
+    return await this.kpmrLikuiditasService.getKPMRFullData(year);
+  }
+
+  @Get('search')
+  @ApiOperation({ summary: 'Search KPMR Likuiditas data' })
+  @ApiQuery({ name: 'year', required: false })
+  @ApiQuery({ name: 'query', required: false })
+  @ApiQuery({ name: 'aspekNo', required: false })
+  async searchKPMR(
+    @Query('year') year?: string,
+    @Query('query') query?: string,
+    @Query('aspekNo') aspekNo?: string,
+  ) {
+    const yearNum = year ? parseInt(year, 10) : undefined;
+    return await this.kpmrLikuiditasService.searchKPMR(yearNum, query, aspekNo);
+  }
+
+  @Get('years')
+  @ApiOperation({ summary: 'Get available years' })
+  async getAvailableYears() {
+    const years = await this.kpmrLikuiditasService.getAvailableYears();
+    return { success: true, data: years };
+  }
+
+  @Get('periods')
+  @ApiOperation({ summary: 'Get available periods' })
+  async getPeriods() {
+    const periods = await this.kpmrLikuiditasService.getPeriods();
+    return { success: true, data: periods };
   }
 }

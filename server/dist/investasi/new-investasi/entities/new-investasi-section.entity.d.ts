@@ -12,5 +12,7 @@ export declare class InvestasiSection {
     createdAt: Date;
     updatedAt: Date;
     isDeleted: boolean;
+    createdBy: string | null;
+    updatedBy: string | null;
     investasiIndicators: Investasi[];
 }

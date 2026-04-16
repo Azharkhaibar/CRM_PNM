@@ -1,36 +1,39 @@
-export declare enum LikuiditasKategoriModel {
+export declare enum KategoriModel {
     TANPA_MODEL = "tanpa_model",
-    STANDAR = "standar",
-    KOMPREHENSIF = "komprehensif"
+    OPEN_END = "open_end",
+    TERSTRUKTUR = "terstruktur"
 }
-export declare enum LikuiditasKategoriUnderlying {
-    KEWAJIBAN = "kewajiban",
-    ASET_LANCAR = "aset_lancar",
-    ARUS_KAS = "arus_kas",
-    RASIO = "rasio"
+export declare enum KategoriUnderlying {
+    INDEKS = "indeks",
+    EBA = "eba",
+    DINFRA = "dinfra",
+    OBLIGASI = "obligasi"
 }
-export declare enum LikuiditasKategoriPrinsip {
+export declare enum KategoriPrinsip {
     SYARIAH = "syariah",
     KONVENSIONAL = "konvensional"
 }
-export declare enum LikuiditasKategoriJenis {
-    JANGKA_PENDEK = "jangka_pendek",
-    JANGKA_MENENGAH = "jangka_menengah",
-    JANGKA_PANJANG = "jangka_panjang"
+export declare enum KategoriJenis {
+    PASAR_UANG = "pasar_uang",
+    PENDAPATAN_TETAP = "pendapatan_tetap",
+    CAMPURAN = "campuran",
+    SAHAM = "saham",
+    INDEKS = "indeks",
+    TERPROTEKSI = "terproteksi"
 }
-export declare enum LikuiditasJudulType {
+export declare enum JudulType {
     TANPA_FAKTOR = "Tanpa Faktor",
     SATU_FAKTOR = "Satu Faktor",
     DUA_FAKTOR = "Dua Faktor"
 }
-export declare class LikuiditasKategoriDto {
+export declare class KategoriDto {
     model?: string;
     prinsip?: string;
     jenis?: string;
     underlying?: string[];
 }
-export declare class LikuiditasJudulDto {
-    type?: LikuiditasJudulType;
+export declare class JudulDto {
+    type?: JudulType;
     text?: string;
     value?: string | number | null;
     pembilang?: string;
@@ -40,7 +43,7 @@ export declare class LikuiditasJudulDto {
     formula?: string;
     percent?: boolean;
 }
-export declare class LikuiditasRiskindikatorDto {
+export declare class RiskindikatorDto {
     low?: string;
     lowToModerate?: string;
     moderate?: string;
@@ -69,76 +72,76 @@ export declare class UpdateLikuiditasProdukInherentDto {
     notes?: string;
     updatedBy?: string;
 }
-export declare class CreateLikuiditasParameterDto {
+export declare class CreateParameterDto {
     nomor?: string;
     judul: string;
     bobot: number;
-    kategori?: LikuiditasKategoriDto;
+    kategori?: KategoriDto;
     orderIndex?: number;
 }
-export declare class UpdateLikuiditasParameterDto {
+export declare class UpdateParameterDto {
     nomor?: string;
     judul?: string;
     bobot?: number;
-    kategori?: LikuiditasKategoriDto;
+    kategori?: KategoriDto;
     orderIndex?: number;
 }
-export declare class CreateLikuiditasNilaiDto {
+export declare class CreateNilaiDto {
     nomor?: string;
-    judul: LikuiditasJudulDto;
+    judul: JudulDto;
     bobot: number;
     portofolio?: string;
     keterangan?: string;
-    riskindikator?: LikuiditasRiskindikatorDto;
+    riskindikator?: RiskindikatorDto;
     orderIndex?: number;
 }
-export declare class UpdateLikuiditasNilaiDto {
+export declare class UpdateNilaiDto {
     nomor?: string;
-    judul?: LikuiditasJudulDto;
+    judul?: JudulDto;
     bobot?: number;
     portofolio?: string;
     keterangan?: string;
-    riskindikator?: LikuiditasRiskindikatorDto;
+    riskindikator?: RiskindikatorDto;
     orderIndex?: number;
 }
-export declare class ReorderLikuiditasParametersDto {
+export declare class ReorderParametersDto {
     parameterIds: number[];
 }
-export declare class ReorderLikuiditasNilaiDto {
+export declare class ReorderNilaiDto {
     nilaiIds: number[];
 }
-export declare class UpdateLikuiditasSummaryDto {
+export declare class UpdateSummaryDto {
     totalWeighted?: number;
     summaryBg?: string;
     computedAt?: Date;
 }
-export declare class LikuiditasExportImportMetadataDto {
+export declare class ExportImportMetadataDto {
     year: number;
     quarter: number;
     exportedAt?: string;
     totalParameters?: number;
     totalNilai?: number;
 }
-export declare class LikuiditasExportParameterDto {
+export declare class ExportParameterDto {
     id?: number;
     nomor?: string;
     judul: string;
     bobot: number;
-    kategori?: LikuiditasKategoriDto;
+    kategori?: KategoriDto;
     orderIndex?: number;
-    nilaiList?: LikuiditasExportNilaiDto[];
+    nilaiList?: ExportNilaiDto[];
 }
-export declare class LikuiditasExportNilaiDto {
+export declare class ExportNilaiDto {
     id?: number;
     nomor?: string;
-    judul: LikuiditasJudulDto;
+    judul: JudulDto;
     bobot: number;
     portofolio?: string;
     keterangan?: string;
-    riskindikator?: LikuiditasRiskindikatorDto;
+    riskindikator?: RiskindikatorDto;
     orderIndex?: number;
 }
-export declare class LikuiditasImportExportDto {
-    metadata: LikuiditasExportImportMetadataDto;
-    parameters: LikuiditasExportParameterDto[];
+export declare class ImportExportDto {
+    metadata: ExportImportMetadataDto;
+    parameters: ExportParameterDto[];
 }

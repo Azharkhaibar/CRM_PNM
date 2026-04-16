@@ -1,4 +1,3 @@
-// src/entities/strategik/likuiditas.entity.ts
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -10,7 +9,8 @@ import {
   Index,
   Unique,
 } from 'typeorm';
-import { LikuiditasSection } from './section-likuiditas.entity';
+import { LikuiditasSection } from './likuiditas-section.entity';
+
 export enum CalculationMode {
   RASIO = 'RASIO',
   NILAI_TUNGGAL = 'NILAI_TUNGGAL',
@@ -24,11 +24,10 @@ export enum Quarter {
   Q4 = 'Q4',
 }
 
-@Entity('indikators_likuiditas')
+@Entity('indikators_likuiditas_holding')
 @Unique('UQ_LIKUIDITAS_PERIOD_SUBNO', ['year', 'quarter', 'subNo', 'sectionId'])
 @Index('IDX_LIKUIDITAS_PERIOD', ['year', 'quarter'])
 @Index('IDX_LIKUIDITAS_SECTION', ['sectionId'])
-@Index('IDX_LIKUIDITAS_YEAR_QUARTER', ['year', 'quarter'])
 export class Likuiditas {
   @PrimaryGeneratedColumn()
   id: number;
@@ -190,7 +189,7 @@ export class Likuiditas {
   @Column({
     type: 'decimal',
     precision: 15,
-    scale: 4,
+    scale: 6,
     nullable: true,
   })
   hasil: number | null;
@@ -209,14 +208,13 @@ export class Likuiditas {
   @Column({
     type: 'decimal',
     precision: 10,
-    scale: 2,
+    scale: 4,
   })
   weighted: number;
 
   @Column({ type: 'text', nullable: true })
   keterangan: string | null;
 
-  // ========== VALIDASI DATA ==========
   @Column({
     name: 'is_validated',
     type: 'boolean',
@@ -239,7 +237,6 @@ export class Likuiditas {
   })
   validatedBy: string | null;
 
-  // ========== AUDIT TRAIL ==========
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
@@ -284,7 +281,6 @@ export class Likuiditas {
   })
   deletedBy: string | null;
 
-  // ========== VERSIONING ==========
   @Column({
     type: 'int',
     default: 1,

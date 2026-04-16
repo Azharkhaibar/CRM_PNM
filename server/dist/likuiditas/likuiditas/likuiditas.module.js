@@ -11,14 +11,14 @@ const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
 const likuiditas_controller_1 = require("./likuiditas.controller");
 const likuiditas_service_1 = require("./likuiditas.service");
-const section_likuiditas_entity_1 = require("./entities/section-likuiditas.entity");
 const likuiditas_entity_1 = require("./entities/likuiditas.entity");
+const likuiditas_section_entity_1 = require("./entities/likuiditas-section.entity");
 let LikuiditasModule = class LikuiditasModule {
 };
 exports.LikuiditasModule = LikuiditasModule;
 exports.LikuiditasModule = LikuiditasModule = __decorate([
     (0, common_1.Module)({
-        imports: [typeorm_1.TypeOrmModule.forFeature([section_likuiditas_entity_1.LikuiditasSection, likuiditas_entity_1.Likuiditas])],
+        imports: [typeorm_1.TypeOrmModule.forFeature([likuiditas_entity_1.Likuiditas, likuiditas_section_entity_1.LikuiditasSection])],
         controllers: [likuiditas_controller_1.LikuiditasController],
         providers: [likuiditas_service_1.LikuiditasService],
         exports: [likuiditas_service_1.LikuiditasService],

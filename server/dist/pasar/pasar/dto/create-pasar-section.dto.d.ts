@@ -1,4 +1,4 @@
-import { Quarter } from '../entities/indikator.entity';
+import { Quarter } from '../entities/pasar.entity';
 export declare class CreatePasarSectionDto {
     no: string;
     parameter: string;

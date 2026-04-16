@@ -9,54 +9,57 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.LikuiditasImportExportDto = exports.LikuiditasExportNilaiDto = exports.LikuiditasExportParameterDto = exports.LikuiditasExportImportMetadataDto = exports.UpdateLikuiditasSummaryDto = exports.ReorderLikuiditasNilaiDto = exports.ReorderLikuiditasParametersDto = exports.UpdateLikuiditasNilaiDto = exports.CreateLikuiditasNilaiDto = exports.UpdateLikuiditasParameterDto = exports.CreateLikuiditasParameterDto = exports.UpdateLikuiditasProdukInherentDto = exports.CreateLikuiditasProdukInherentDto = exports.LikuiditasRiskindikatorDto = exports.LikuiditasJudulDto = exports.LikuiditasKategoriDto = exports.LikuiditasJudulType = exports.LikuiditasKategoriJenis = exports.LikuiditasKategoriPrinsip = exports.LikuiditasKategoriUnderlying = exports.LikuiditasKategoriModel = void 0;
+exports.ImportExportDto = exports.ExportNilaiDto = exports.ExportParameterDto = exports.ExportImportMetadataDto = exports.UpdateSummaryDto = exports.ReorderNilaiDto = exports.ReorderParametersDto = exports.UpdateNilaiDto = exports.CreateNilaiDto = exports.UpdateParameterDto = exports.CreateParameterDto = exports.UpdateLikuiditasProdukInherentDto = exports.CreateLikuiditasProdukInherentDto = exports.RiskindikatorDto = exports.JudulDto = exports.KategoriDto = exports.JudulType = exports.KategoriJenis = exports.KategoriPrinsip = exports.KategoriUnderlying = exports.KategoriModel = void 0;
 const class_validator_1 = require("class-validator");
 const class_transformer_1 = require("class-transformer");
-var LikuiditasKategoriModel;
-(function (LikuiditasKategoriModel) {
-    LikuiditasKategoriModel["TANPA_MODEL"] = "tanpa_model";
-    LikuiditasKategoriModel["STANDAR"] = "standar";
-    LikuiditasKategoriModel["KOMPREHENSIF"] = "komprehensif";
-})(LikuiditasKategoriModel || (exports.LikuiditasKategoriModel = LikuiditasKategoriModel = {}));
-var LikuiditasKategoriUnderlying;
-(function (LikuiditasKategoriUnderlying) {
-    LikuiditasKategoriUnderlying["KEWAJIBAN"] = "kewajiban";
-    LikuiditasKategoriUnderlying["ASET_LANCAR"] = "aset_lancar";
-    LikuiditasKategoriUnderlying["ARUS_KAS"] = "arus_kas";
-    LikuiditasKategoriUnderlying["RASIO"] = "rasio";
-})(LikuiditasKategoriUnderlying || (exports.LikuiditasKategoriUnderlying = LikuiditasKategoriUnderlying = {}));
-var LikuiditasKategoriPrinsip;
-(function (LikuiditasKategoriPrinsip) {
-    LikuiditasKategoriPrinsip["SYARIAH"] = "syariah";
-    LikuiditasKategoriPrinsip["KONVENSIONAL"] = "konvensional";
-})(LikuiditasKategoriPrinsip || (exports.LikuiditasKategoriPrinsip = LikuiditasKategoriPrinsip = {}));
-var LikuiditasKategoriJenis;
-(function (LikuiditasKategoriJenis) {
-    LikuiditasKategoriJenis["JANGKA_PENDEK"] = "jangka_pendek";
-    LikuiditasKategoriJenis["JANGKA_MENENGAH"] = "jangka_menengah";
-    LikuiditasKategoriJenis["JANGKA_PANJANG"] = "jangka_panjang";
-})(LikuiditasKategoriJenis || (exports.LikuiditasKategoriJenis = LikuiditasKategoriJenis = {}));
-var LikuiditasJudulType;
-(function (LikuiditasJudulType) {
-    LikuiditasJudulType["TANPA_FAKTOR"] = "Tanpa Faktor";
-    LikuiditasJudulType["SATU_FAKTOR"] = "Satu Faktor";
-    LikuiditasJudulType["DUA_FAKTOR"] = "Dua Faktor";
-})(LikuiditasJudulType || (exports.LikuiditasJudulType = LikuiditasJudulType = {}));
-class LikuiditasKategoriDto {
+var KategoriModel;
+(function (KategoriModel) {
+    KategoriModel["TANPA_MODEL"] = "tanpa_model";
+    KategoriModel["OPEN_END"] = "open_end";
+    KategoriModel["TERSTRUKTUR"] = "terstruktur";
+})(KategoriModel || (exports.KategoriModel = KategoriModel = {}));
+var KategoriUnderlying;
+(function (KategoriUnderlying) {
+    KategoriUnderlying["INDEKS"] = "indeks";
+    KategoriUnderlying["EBA"] = "eba";
+    KategoriUnderlying["DINFRA"] = "dinfra";
+    KategoriUnderlying["OBLIGASI"] = "obligasi";
+})(KategoriUnderlying || (exports.KategoriUnderlying = KategoriUnderlying = {}));
+var KategoriPrinsip;
+(function (KategoriPrinsip) {
+    KategoriPrinsip["SYARIAH"] = "syariah";
+    KategoriPrinsip["KONVENSIONAL"] = "konvensional";
+})(KategoriPrinsip || (exports.KategoriPrinsip = KategoriPrinsip = {}));
+var KategoriJenis;
+(function (KategoriJenis) {
+    KategoriJenis["PASAR_UANG"] = "pasar_uang";
+    KategoriJenis["PENDAPATAN_TETAP"] = "pendapatan_tetap";
+    KategoriJenis["CAMPURAN"] = "campuran";
+    KategoriJenis["SAHAM"] = "saham";
+    KategoriJenis["INDEKS"] = "indeks";
+    KategoriJenis["TERPROTEKSI"] = "terproteksi";
+})(KategoriJenis || (exports.KategoriJenis = KategoriJenis = {}));
+var JudulType;
+(function (JudulType) {
+    JudulType["TANPA_FAKTOR"] = "Tanpa Faktor";
+    JudulType["SATU_FAKTOR"] = "Satu Faktor";
+    JudulType["DUA_FAKTOR"] = "Dua Faktor";
+})(JudulType || (exports.JudulType = JudulType = {}));
+class KategoriDto {
     model;
     prinsip;
     jenis;
     underlying;
 }
-exports.LikuiditasKategoriDto = LikuiditasKategoriDto;
+exports.KategoriDto = KategoriDto;
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
-    (0, class_validator_1.IsIn)(['tanpa_model', 'standar', 'komprehensif'], {
-        message: 'Model harus salah satu dari: tanpa_model, standar, komprehensif',
+    (0, class_validator_1.IsIn)(['tanpa_model', 'open_end', 'terstruktur'], {
+        message: 'Model harus salah satu dari: tanpa_model, open_end, terstruktur',
     }),
     __metadata("design:type", String)
-], LikuiditasKategoriDto.prototype, "model", void 0);
+], KategoriDto.prototype, "model", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
@@ -64,23 +67,30 @@ __decorate([
         message: 'Prinsip harus salah satu dari: syariah, konvensional',
     }),
     __metadata("design:type", String)
-], LikuiditasKategoriDto.prototype, "prinsip", void 0);
+], KategoriDto.prototype, "prinsip", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
-    (0, class_validator_1.IsIn)(['jangka_pendek', 'jangka_menengah', 'jangka_panjang'], {
-        message: 'Jenis harus salah satu dari: jangka_pendek, jangka_menengah, jangka_panjang',
+    (0, class_validator_1.IsIn)([
+        'pasar_uang',
+        'pendapatan_tetap',
+        'campuran',
+        'saham',
+        'indeks',
+        'terproteksi',
+    ], {
+        message: 'Jenis harus salah satu dari: pasar_uang, pendapatan_tetap, campuran, saham, indeks, terproteksi',
     }),
     __metadata("design:type", String)
-], LikuiditasKategoriDto.prototype, "jenis", void 0);
+], KategoriDto.prototype, "jenis", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsArray)(),
     (0, class_validator_1.IsString)({ each: true }),
-    (0, class_validator_1.IsIn)(['kewajiban', 'aset_lancar', 'arus_kas', 'rasio'], { each: true }),
+    (0, class_validator_1.IsIn)(['indeks', 'eba', 'dinfra', 'obligasi'], { each: true }),
     __metadata("design:type", Array)
-], LikuiditasKategoriDto.prototype, "underlying", void 0);
-class LikuiditasJudulDto {
+], KategoriDto.prototype, "underlying", void 0);
+class JudulDto {
     type;
     text;
     value;
@@ -91,82 +101,82 @@ class LikuiditasJudulDto {
     formula;
     percent;
 }
-exports.LikuiditasJudulDto = LikuiditasJudulDto;
+exports.JudulDto = JudulDto;
 __decorate([
     (0, class_validator_1.IsOptional)(),
-    (0, class_validator_1.IsEnum)(LikuiditasJudulType),
+    (0, class_validator_1.IsEnum)(JudulType),
     __metadata("design:type", String)
-], LikuiditasJudulDto.prototype, "type", void 0);
+], JudulDto.prototype, "type", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
-], LikuiditasJudulDto.prototype, "text", void 0);
+], JudulDto.prototype, "text", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     __metadata("design:type", Object)
-], LikuiditasJudulDto.prototype, "value", void 0);
+], JudulDto.prototype, "value", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
-], LikuiditasJudulDto.prototype, "pembilang", void 0);
+], JudulDto.prototype, "pembilang", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     __metadata("design:type", Object)
-], LikuiditasJudulDto.prototype, "valuePembilang", void 0);
+], JudulDto.prototype, "valuePembilang", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
-], LikuiditasJudulDto.prototype, "penyebut", void 0);
+], JudulDto.prototype, "penyebut", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     __metadata("design:type", Object)
-], LikuiditasJudulDto.prototype, "valuePenyebut", void 0);
+], JudulDto.prototype, "valuePenyebut", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
-], LikuiditasJudulDto.prototype, "formula", void 0);
+], JudulDto.prototype, "formula", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsBoolean)(),
     __metadata("design:type", Boolean)
-], LikuiditasJudulDto.prototype, "percent", void 0);
-class LikuiditasRiskindikatorDto {
+], JudulDto.prototype, "percent", void 0);
+class RiskindikatorDto {
     low;
     lowToModerate;
     moderate;
     moderateToHigh;
     high;
 }
-exports.LikuiditasRiskindikatorDto = LikuiditasRiskindikatorDto;
+exports.RiskindikatorDto = RiskindikatorDto;
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
-], LikuiditasRiskindikatorDto.prototype, "low", void 0);
+], RiskindikatorDto.prototype, "low", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
-], LikuiditasRiskindikatorDto.prototype, "lowToModerate", void 0);
+], RiskindikatorDto.prototype, "lowToModerate", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
-], LikuiditasRiskindikatorDto.prototype, "moderate", void 0);
+], RiskindikatorDto.prototype, "moderate", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
-], LikuiditasRiskindikatorDto.prototype, "moderateToHigh", void 0);
+], RiskindikatorDto.prototype, "moderateToHigh", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
-], LikuiditasRiskindikatorDto.prototype, "high", void 0);
+], RiskindikatorDto.prototype, "high", void 0);
 class CreateLikuiditasProdukInherentDto {
     year;
     quarter;
@@ -260,79 +270,79 @@ __decorate([
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], UpdateLikuiditasProdukInherentDto.prototype, "updatedBy", void 0);
-class CreateLikuiditasParameterDto {
+class CreateParameterDto {
     nomor;
     judul;
     bobot;
     kategori;
     orderIndex;
 }
-exports.CreateLikuiditasParameterDto = CreateLikuiditasParameterDto;
+exports.CreateParameterDto = CreateParameterDto;
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
-], CreateLikuiditasParameterDto.prototype, "nomor", void 0);
+], CreateParameterDto.prototype, "nomor", void 0);
 __decorate([
     (0, class_validator_1.IsString)(),
     (0, class_validator_1.IsNotEmpty)(),
     __metadata("design:type", String)
-], CreateLikuiditasParameterDto.prototype, "judul", void 0);
+], CreateParameterDto.prototype, "judul", void 0);
 __decorate([
     (0, class_validator_1.IsNumber)(),
     (0, class_validator_1.Min)(0),
     (0, class_validator_1.Max)(100),
     __metadata("design:type", Number)
-], CreateLikuiditasParameterDto.prototype, "bobot", void 0);
+], CreateParameterDto.prototype, "bobot", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.ValidateNested)(),
-    (0, class_transformer_1.Type)(() => LikuiditasKategoriDto),
-    __metadata("design:type", LikuiditasKategoriDto)
-], CreateLikuiditasParameterDto.prototype, "kategori", void 0);
+    (0, class_transformer_1.Type)(() => KategoriDto),
+    __metadata("design:type", KategoriDto)
+], CreateParameterDto.prototype, "kategori", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsInt)(),
     __metadata("design:type", Number)
-], CreateLikuiditasParameterDto.prototype, "orderIndex", void 0);
-class UpdateLikuiditasParameterDto {
+], CreateParameterDto.prototype, "orderIndex", void 0);
+class UpdateParameterDto {
     nomor;
     judul;
     bobot;
     kategori;
     orderIndex;
 }
-exports.UpdateLikuiditasParameterDto = UpdateLikuiditasParameterDto;
+exports.UpdateParameterDto = UpdateParameterDto;
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
-], UpdateLikuiditasParameterDto.prototype, "nomor", void 0);
+], UpdateParameterDto.prototype, "nomor", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
     (0, class_validator_1.IsNotEmpty)(),
     __metadata("design:type", String)
-], UpdateLikuiditasParameterDto.prototype, "judul", void 0);
+], UpdateParameterDto.prototype, "judul", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsNumber)(),
     (0, class_validator_1.Min)(0),
     (0, class_validator_1.Max)(100),
     __metadata("design:type", Number)
-], UpdateLikuiditasParameterDto.prototype, "bobot", void 0);
+], UpdateParameterDto.prototype, "bobot", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.ValidateNested)(),
-    (0, class_transformer_1.Type)(() => LikuiditasKategoriDto),
-    __metadata("design:type", LikuiditasKategoriDto)
-], UpdateLikuiditasParameterDto.prototype, "kategori", void 0);
+    (0, class_transformer_1.Type)(() => KategoriDto),
+    __metadata("design:type", KategoriDto)
+], UpdateParameterDto.prototype, "kategori", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsInt)(),
     __metadata("design:type", Number)
-], UpdateLikuiditasParameterDto.prototype, "orderIndex", void 0);
-class CreateLikuiditasNilaiDto {
+], UpdateParameterDto.prototype, "orderIndex", void 0);
+class CreateNilaiDto {
     nomor;
     judul;
     bobot;
@@ -341,46 +351,46 @@ class CreateLikuiditasNilaiDto {
     riskindikator;
     orderIndex;
 }
-exports.CreateLikuiditasNilaiDto = CreateLikuiditasNilaiDto;
+exports.CreateNilaiDto = CreateNilaiDto;
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
-], CreateLikuiditasNilaiDto.prototype, "nomor", void 0);
+], CreateNilaiDto.prototype, "nomor", void 0);
 __decorate([
     (0, class_validator_1.IsObject)(),
     (0, class_validator_1.ValidateNested)(),
-    (0, class_transformer_1.Type)(() => LikuiditasJudulDto),
-    __metadata("design:type", LikuiditasJudulDto)
-], CreateLikuiditasNilaiDto.prototype, "judul", void 0);
+    (0, class_transformer_1.Type)(() => JudulDto),
+    __metadata("design:type", JudulDto)
+], CreateNilaiDto.prototype, "judul", void 0);
 __decorate([
     (0, class_validator_1.IsNumber)(),
     (0, class_validator_1.Min)(0),
     (0, class_validator_1.Max)(100),
     __metadata("design:type", Number)
-], CreateLikuiditasNilaiDto.prototype, "bobot", void 0);
+], CreateNilaiDto.prototype, "bobot", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
-], CreateLikuiditasNilaiDto.prototype, "portofolio", void 0);
+], CreateNilaiDto.prototype, "portofolio", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
-], CreateLikuiditasNilaiDto.prototype, "keterangan", void 0);
+], CreateNilaiDto.prototype, "keterangan", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.ValidateNested)(),
-    (0, class_transformer_1.Type)(() => LikuiditasRiskindikatorDto),
-    __metadata("design:type", LikuiditasRiskindikatorDto)
-], CreateLikuiditasNilaiDto.prototype, "riskindikator", void 0);
+    (0, class_transformer_1.Type)(() => RiskindikatorDto),
+    __metadata("design:type", RiskindikatorDto)
+], CreateNilaiDto.prototype, "riskindikator", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsInt)(),
     __metadata("design:type", Number)
-], CreateLikuiditasNilaiDto.prototype, "orderIndex", void 0);
-class UpdateLikuiditasNilaiDto {
+], CreateNilaiDto.prototype, "orderIndex", void 0);
+class UpdateNilaiDto {
     nomor;
     judul;
     bobot;
@@ -389,121 +399,121 @@ class UpdateLikuiditasNilaiDto {
     riskindikator;
     orderIndex;
 }
-exports.UpdateLikuiditasNilaiDto = UpdateLikuiditasNilaiDto;
+exports.UpdateNilaiDto = UpdateNilaiDto;
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
-], UpdateLikuiditasNilaiDto.prototype, "nomor", void 0);
+], UpdateNilaiDto.prototype, "nomor", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.ValidateNested)(),
-    (0, class_transformer_1.Type)(() => LikuiditasJudulDto),
-    __metadata("design:type", LikuiditasJudulDto)
-], UpdateLikuiditasNilaiDto.prototype, "judul", void 0);
+    (0, class_transformer_1.Type)(() => JudulDto),
+    __metadata("design:type", JudulDto)
+], UpdateNilaiDto.prototype, "judul", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsNumber)(),
     (0, class_validator_1.Min)(0),
     (0, class_validator_1.Max)(100),
     __metadata("design:type", Number)
-], UpdateLikuiditasNilaiDto.prototype, "bobot", void 0);
+], UpdateNilaiDto.prototype, "bobot", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
-], UpdateLikuiditasNilaiDto.prototype, "portofolio", void 0);
+], UpdateNilaiDto.prototype, "portofolio", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
-], UpdateLikuiditasNilaiDto.prototype, "keterangan", void 0);
+], UpdateNilaiDto.prototype, "keterangan", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.ValidateNested)(),
-    (0, class_transformer_1.Type)(() => LikuiditasRiskindikatorDto),
-    __metadata("design:type", LikuiditasRiskindikatorDto)
-], UpdateLikuiditasNilaiDto.prototype, "riskindikator", void 0);
+    (0, class_transformer_1.Type)(() => RiskindikatorDto),
+    __metadata("design:type", RiskindikatorDto)
+], UpdateNilaiDto.prototype, "riskindikator", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsInt)(),
     __metadata("design:type", Number)
-], UpdateLikuiditasNilaiDto.prototype, "orderIndex", void 0);
-class ReorderLikuiditasParametersDto {
+], UpdateNilaiDto.prototype, "orderIndex", void 0);
+class ReorderParametersDto {
     parameterIds;
 }
-exports.ReorderLikuiditasParametersDto = ReorderLikuiditasParametersDto;
+exports.ReorderParametersDto = ReorderParametersDto;
 __decorate([
     (0, class_validator_1.IsArray)(),
     (0, class_validator_1.IsInt)({ each: true }),
     __metadata("design:type", Array)
-], ReorderLikuiditasParametersDto.prototype, "parameterIds", void 0);
-class ReorderLikuiditasNilaiDto {
+], ReorderParametersDto.prototype, "parameterIds", void 0);
+class ReorderNilaiDto {
     nilaiIds;
 }
-exports.ReorderLikuiditasNilaiDto = ReorderLikuiditasNilaiDto;
+exports.ReorderNilaiDto = ReorderNilaiDto;
 __decorate([
     (0, class_validator_1.IsArray)(),
     (0, class_validator_1.IsInt)({ each: true }),
     __metadata("design:type", Array)
-], ReorderLikuiditasNilaiDto.prototype, "nilaiIds", void 0);
-class UpdateLikuiditasSummaryDto {
+], ReorderNilaiDto.prototype, "nilaiIds", void 0);
+class UpdateSummaryDto {
     totalWeighted;
     summaryBg;
     computedAt;
 }
-exports.UpdateLikuiditasSummaryDto = UpdateLikuiditasSummaryDto;
+exports.UpdateSummaryDto = UpdateSummaryDto;
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsNumber)(),
     __metadata("design:type", Number)
-], UpdateLikuiditasSummaryDto.prototype, "totalWeighted", void 0);
+], UpdateSummaryDto.prototype, "totalWeighted", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
-], UpdateLikuiditasSummaryDto.prototype, "summaryBg", void 0);
+], UpdateSummaryDto.prototype, "summaryBg", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     __metadata("design:type", Date)
-], UpdateLikuiditasSummaryDto.prototype, "computedAt", void 0);
-class LikuiditasExportImportMetadataDto {
+], UpdateSummaryDto.prototype, "computedAt", void 0);
+class ExportImportMetadataDto {
     year;
     quarter;
     exportedAt;
     totalParameters;
     totalNilai;
 }
-exports.LikuiditasExportImportMetadataDto = LikuiditasExportImportMetadataDto;
+exports.ExportImportMetadataDto = ExportImportMetadataDto;
 __decorate([
     (0, class_validator_1.IsInt)(),
     (0, class_validator_1.Min)(2000),
     __metadata("design:type", Number)
-], LikuiditasExportImportMetadataDto.prototype, "year", void 0);
+], ExportImportMetadataDto.prototype, "year", void 0);
 __decorate([
     (0, class_validator_1.IsInt)(),
     (0, class_validator_1.Min)(1),
     (0, class_validator_1.Max)(4),
     __metadata("design:type", Number)
-], LikuiditasExportImportMetadataDto.prototype, "quarter", void 0);
+], ExportImportMetadataDto.prototype, "quarter", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
-], LikuiditasExportImportMetadataDto.prototype, "exportedAt", void 0);
+], ExportImportMetadataDto.prototype, "exportedAt", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsInt)(),
     (0, class_validator_1.Min)(0),
     __metadata("design:type", Number)
-], LikuiditasExportImportMetadataDto.prototype, "totalParameters", void 0);
+], ExportImportMetadataDto.prototype, "totalParameters", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsInt)(),
     (0, class_validator_1.Min)(0),
     __metadata("design:type", Number)
-], LikuiditasExportImportMetadataDto.prototype, "totalNilai", void 0);
-class LikuiditasExportParameterDto {
+], ExportImportMetadataDto.prototype, "totalNilai", void 0);
+class ExportParameterDto {
     id;
     nomor;
     judul;
@@ -512,46 +522,46 @@ class LikuiditasExportParameterDto {
     orderIndex;
     nilaiList;
 }
-exports.LikuiditasExportParameterDto = LikuiditasExportParameterDto;
+exports.ExportParameterDto = ExportParameterDto;
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsInt)(),
     __metadata("design:type", Number)
-], LikuiditasExportParameterDto.prototype, "id", void 0);
+], ExportParameterDto.prototype, "id", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
-], LikuiditasExportParameterDto.prototype, "nomor", void 0);
+], ExportParameterDto.prototype, "nomor", void 0);
 __decorate([
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
-], LikuiditasExportParameterDto.prototype, "judul", void 0);
+], ExportParameterDto.prototype, "judul", void 0);
 __decorate([
     (0, class_validator_1.IsNumber)(),
     (0, class_validator_1.Min)(0),
     (0, class_validator_1.Max)(100),
     __metadata("design:type", Number)
-], LikuiditasExportParameterDto.prototype, "bobot", void 0);
+], ExportParameterDto.prototype, "bobot", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.ValidateNested)(),
-    (0, class_transformer_1.Type)(() => LikuiditasKategoriDto),
-    __metadata("design:type", LikuiditasKategoriDto)
-], LikuiditasExportParameterDto.prototype, "kategori", void 0);
+    (0, class_transformer_1.Type)(() => KategoriDto),
+    __metadata("design:type", KategoriDto)
+], ExportParameterDto.prototype, "kategori", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsInt)(),
     __metadata("design:type", Number)
-], LikuiditasExportParameterDto.prototype, "orderIndex", void 0);
+], ExportParameterDto.prototype, "orderIndex", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsArray)(),
     (0, class_validator_1.ValidateNested)({ each: true }),
-    (0, class_transformer_1.Type)(() => LikuiditasExportNilaiDto),
+    (0, class_transformer_1.Type)(() => ExportNilaiDto),
     __metadata("design:type", Array)
-], LikuiditasExportParameterDto.prototype, "nilaiList", void 0);
-class LikuiditasExportNilaiDto {
+], ExportParameterDto.prototype, "nilaiList", void 0);
+class ExportNilaiDto {
     id;
     nomor;
     judul;
@@ -561,64 +571,64 @@ class LikuiditasExportNilaiDto {
     riskindikator;
     orderIndex;
 }
-exports.LikuiditasExportNilaiDto = LikuiditasExportNilaiDto;
+exports.ExportNilaiDto = ExportNilaiDto;
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsInt)(),
     __metadata("design:type", Number)
-], LikuiditasExportNilaiDto.prototype, "id", void 0);
+], ExportNilaiDto.prototype, "id", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
-], LikuiditasExportNilaiDto.prototype, "nomor", void 0);
+], ExportNilaiDto.prototype, "nomor", void 0);
 __decorate([
     (0, class_validator_1.IsObject)(),
     (0, class_validator_1.ValidateNested)(),
-    (0, class_transformer_1.Type)(() => LikuiditasJudulDto),
-    __metadata("design:type", LikuiditasJudulDto)
-], LikuiditasExportNilaiDto.prototype, "judul", void 0);
+    (0, class_transformer_1.Type)(() => JudulDto),
+    __metadata("design:type", JudulDto)
+], ExportNilaiDto.prototype, "judul", void 0);
 __decorate([
     (0, class_validator_1.IsNumber)(),
     (0, class_validator_1.Min)(0),
     (0, class_validator_1.Max)(100),
     __metadata("design:type", Number)
-], LikuiditasExportNilaiDto.prototype, "bobot", void 0);
+], ExportNilaiDto.prototype, "bobot", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
-], LikuiditasExportNilaiDto.prototype, "portofolio", void 0);
+], ExportNilaiDto.prototype, "portofolio", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
-], LikuiditasExportNilaiDto.prototype, "keterangan", void 0);
+], ExportNilaiDto.prototype, "keterangan", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.ValidateNested)(),
-    (0, class_transformer_1.Type)(() => LikuiditasRiskindikatorDto),
-    __metadata("design:type", LikuiditasRiskindikatorDto)
-], LikuiditasExportNilaiDto.prototype, "riskindikator", void 0);
+    (0, class_transformer_1.Type)(() => RiskindikatorDto),
+    __metadata("design:type", RiskindikatorDto)
+], ExportNilaiDto.prototype, "riskindikator", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsInt)(),
     __metadata("design:type", Number)
-], LikuiditasExportNilaiDto.prototype, "orderIndex", void 0);
-class LikuiditasImportExportDto {
+], ExportNilaiDto.prototype, "orderIndex", void 0);
+class ImportExportDto {
     metadata;
     parameters;
 }
-exports.LikuiditasImportExportDto = LikuiditasImportExportDto;
+exports.ImportExportDto = ImportExportDto;
 __decorate([
     (0, class_validator_1.ValidateNested)(),
-    (0, class_transformer_1.Type)(() => LikuiditasExportImportMetadataDto),
-    __metadata("design:type", LikuiditasExportImportMetadataDto)
-], LikuiditasImportExportDto.prototype, "metadata", void 0);
+    (0, class_transformer_1.Type)(() => ExportImportMetadataDto),
+    __metadata("design:type", ExportImportMetadataDto)
+], ImportExportDto.prototype, "metadata", void 0);
 __decorate([
     (0, class_validator_1.IsArray)(),
     (0, class_validator_1.ValidateNested)({ each: true }),
-    (0, class_transformer_1.Type)(() => LikuiditasExportParameterDto),
+    (0, class_transformer_1.Type)(() => ExportParameterDto),
     __metadata("design:type", Array)
-], LikuiditasImportExportDto.prototype, "parameters", void 0);
+], ImportExportDto.prototype, "parameters", void 0);
 //# sourceMappingURL=likuditas-produk-inherent.dto.js.map

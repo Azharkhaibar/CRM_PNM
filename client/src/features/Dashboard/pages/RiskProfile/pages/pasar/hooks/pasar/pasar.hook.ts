@@ -1,23 +1,5 @@
 // src/features/Dashboard/pages/RiskProfile/pages/Pasar/hooks/usePasar.ts
 import { useCallback, useEffect, useState } from 'react';
-// import {
-//   Quarter,
-//   computeHasil,
-//   computeWeightedAuto,
-//   CreatePasarData,
-//   CreatePasarSectionData,
-//   Period,
-//   PasarIndikator,
-//   PasarSection,
-//   transformIndicatorToBackend,
-//   UpdatePasarData,
-//   UpdatePasarSectionData,
-//   transformSectionToBackend,
-//   transformIndicatorToFrontend,
-//   pasarApiService,
-//   SectionsWithIndicatorsResponse,
-// } from '../services/pasar.service';
-
 import {
   Quarter,
   computeHasil,
@@ -27,16 +9,17 @@ import {
   Period,
   PasarIndikator,
   PasarSection,
-  transformIndicatorToBackend,
-  transformSectionToBackend,
-  transformIndicatorToFrontend,
   pasarApiService,
-  SectionsWithIndicatorsResponse,
+  transformIndicatorToBackend,
+  transformIndicatorToFrontend,
+  transformSectionToBackend,
   UpdatePasarData,
   UpdatePasarSectionData,
-} from '../../../pasar/service/pasar/pasar.service';
+  SectionsWithIndicatorsResponse,
+  DeleteResponse,
+} from '../../service/pasar/pasar.service';
 
-// EMPTY TEMPLATES - TAMBAHKAN YEAR DAN QUARTER
+// EMPTY TEMPLATES
 export const emptyIndicator = {
   id: null,
   subNo: '',
@@ -86,21 +69,10 @@ interface UsePasarOptions {
 
 interface UsePasarReturn {
   // ========== STATE ==========
-  // Data
   sections: PasarSection[];
   indikators: PasarIndikator[];
-  sectionsWithIndicators: Array<
-    PasarSection & {
-      indicators: PasarIndikator[];
-      totalWeighted?: number;
-      indicatorCount: number;
-      hasIndicators: boolean;
-    }
-  >;
+  sectionsWithIndicators: Array<PasarSection & { indicators: PasarIndikator[]; totalWeighted: number; indicatorCount: number }>;
   periods: Period[];
-  allSections: PasarSection[];
-
-  // UI State
   viewYear: number;
   viewQuarter: Quarter;
   query: string;
@@ -108,56 +80,48 @@ interface UsePasarReturn {
   error: string | null;
   totalWeighted: number;
 
-  // ========== ACTIONS ==========
-  // State setters
+  // ========== STATE SETTERS ==========
   setViewYear: (year: number) => void;
   setViewQuarter: (quarter: Quarter) => void;
   setQuery: (query: string) => void;
   clearError: () => void;
 
   // ========== DATA OPERATIONS ==========
-  // Load data
-  getSections: (isActive?: boolean) => Promise<void>;
-  getAllIndikators: () => Promise<void>;
+  getSections: (isActive?: boolean) => Promise<PasarSection[]>;
+  getAllIndikators: () => Promise<PasarIndikator[]>;
   getIndikatorsByPeriod: (year: number, quarter: Quarter) => Promise<PasarIndikator[]>;
-  getSectionsWithIndicatorsByPeriod: (year: number, quarter: Quarter) => Promise<Array<PasarSection & { indicators: PasarIndikator[] }>>;
-  getPeriods: () => Promise<void>;
+  getSectionsWithIndicatorsByPeriod: (year: number, quarter: Quarter) => Promise<Array<PasarSection & { indicators: PasarIndikator[]; totalWeighted: number; indicatorCount: number }>>;
+  getPeriods: () => Promise<Period[]>;
   searchIndikators: (query?: string, year?: number, quarter?: Quarter) => Promise<PasarIndikator[]>;
   getAllSections: (isActive?: boolean) => Promise<PasarSection[]>;
 
   // ========== CRUD OPERATIONS ==========
-  // Section CRUD
   createSection: (data: CreatePasarSectionData) => Promise<PasarSection>;
   getSectionById: (id: number) => Promise<PasarSection>;
   updateSection: (id: number, data: UpdatePasarSectionData) => Promise<PasarSection>;
-  deleteSection: (id: number) => Promise<void>;
-
-  // Indikator CRUD
+  deleteSection: (id: number) => Promise<DeleteResponse>;
   createIndikator: (data: CreatePasarData) => Promise<PasarIndikator>;
   getIndikatorById: (id: number) => Promise<PasarIndikator>;
   updateIndikator: (id: number, data: UpdatePasarData) => Promise<PasarIndikator>;
-  deleteIndikator: (id: number) => Promise<void>;
+  deleteIndikator: (id: number) => Promise<DeleteResponse>;
 
   // ========== HELPER OPERATIONS ==========
-  // Calculations
   getTotalWeightedByPeriod: (year: number, quarter: Quarter) => Promise<number>;
   calculateTotalWeighted: () => Promise<void>;
   duplicateIndikator: (sourceId: number, targetYear: number, targetQuarter: Quarter) => Promise<PasarIndikator>;
+  getIndikatorCount: (year: number, quarter: Quarter) => Promise<number>;
+  getPeriodsWithCounts: () => Promise<(Period & { indicatorCount: number })[]>;
 
-  // Transformations
+  // ========== TRANSFORMATIONS ==========
   transformToBackend: typeof transformIndicatorToBackend;
   transformToFrontend: typeof transformIndicatorToFrontend;
   transformSectionToBackend: typeof transformSectionToBackend;
   computeHasil: typeof computeHasil;
   computeWeightedAuto: typeof computeWeightedAuto;
 
-  // Templates
+  // ========== TEMPLATES ==========
   emptyIndicator: typeof emptyIndicator;
   emptySection: typeof emptySection;
-
-  // Additional states
-  loadingAllSections: boolean;
-  getSectionsByPeriod: (year: number, quarter: Quarter) => Promise<PasarSection[]>;
 }
 
 export const usePasar = (options?: UsePasarOptions): UsePasarReturn => {
@@ -170,22 +134,11 @@ export const usePasar = (options?: UsePasarOptions): UsePasarReturn => {
 
   const [sections, setSections] = useState<PasarSection[]>([]);
   const [indikators, setIndikators] = useState<PasarIndikator[]>([]);
-  const [sectionsWithIndicators, setSectionsWithIndicators] = useState<
-    Array<
-      PasarSection & {
-        indicators: PasarIndikator[];
-        totalWeighted?: number;
-        indicatorCount: number;
-        hasIndicators: boolean;
-      }
-    >
-  >([]);
+  const [sectionsWithIndicators, setSectionsWithIndicators] = useState<Array<PasarSection & { indicators: PasarIndikator[]; totalWeighted: number; indicatorCount: number }>>([]);
   const [periods, setPeriods] = useState<Period[]>([]);
-  const [allSections, setAllSections] = useState<PasarSection[]>([]);
   const [totalWeighted, setTotalWeighted] = useState<number>(0);
 
   const [loading, setLoading] = useState<boolean>(false);
-  const [loadingAllSections, setLoadingAllSections] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
   // ========== EFFECTS ==========
@@ -207,282 +160,224 @@ export const usePasar = (options?: UsePasarOptions): UsePasarReturn => {
   }, []);
 
   const handleError = useCallback((err: any, operation: string) => {
-    console.error(`[PASAR HOOK] Error during ${operation}:`, err);
-    const errorMessage = err.message || `Gagal melakukan ${operation}`;
+    console.error(`❌ Error during ${operation}:`, err);
+
+    let errorMessage = 'Terjadi kesalahan';
+    if (err instanceof Error) {
+      errorMessage = err.message;
+    } else if (typeof err === 'string') {
+      errorMessage = err;
+    }
+
     setError(errorMessage);
     throw err;
+  }, []);
+
+  const withLoading = useCallback(async <T>(fn: () => Promise<T>): Promise<T> => {
+    try {
+      setLoading(true);
+      return await fn();
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   // ========== DATA LOADING ==========
   const loadInitialData = useCallback(async () => {
     try {
-      setLoading(true);
-      await Promise.all([getSections(), getPeriods(), loadDataByPeriod()]);
+      await withLoading(async () => {
+        await Promise.all([getSections(), getPeriods(), getSectionsWithIndicatorsByPeriod(viewYear, viewQuarter)]);
+      });
     } catch (err) {
       handleError(err, 'memuat data awal');
-    } finally {
-      setLoading(false);
     }
   }, [viewYear, viewQuarter]);
 
   const loadDataByPeriod = useCallback(async () => {
     try {
-      setLoading(true);
-      await getSectionsWithIndicatorsByPeriod(viewYear, viewQuarter);
-      await calculateTotalWeighted();
+      await withLoading(async () => {
+        await getSectionsWithIndicatorsByPeriod(viewYear, viewQuarter);
+        await calculateTotalWeighted();
+      });
     } catch (err) {
-      handleError(err, 'memuat data periode');
-    } finally {
-      setLoading(false);
+      handleError(err, `memuat data periode ${viewYear}-${viewQuarter}`);
     }
   }, [viewYear, viewQuarter]);
 
   // ========== SECTION OPERATIONS ==========
-  const getSections = useCallback(
-    async (isActive?: boolean) => {
-      try {
-        setLoading(true);
-        const data = await pasarApiService.getAllSections(isActive);
-        setSections(data);
-        return data;
-      } catch (err) {
-        throw handleError(err, 'mengambil sections');
-      } finally {
-        setLoading(false);
-      }
-    },
-    [handleError]
-  );
+  const getSections = useCallback(async (isActive?: boolean): Promise<PasarSection[]> => {
+    return withLoading(async () => {
+      const data = await pasarApiService.getAllSections(isActive);
+      setSections(data);
+      return data;
+    });
+  }, []);
 
-  const getSectionsByPeriod = useCallback(
-    async (year: number, quarter: Quarter): Promise<PasarSection[]> => {
-      try {
-        setLoading(true);
-        const data = await pasarApiService.getSectionsByPeriod(year, quarter);
-        return data;
-      } catch (err) {
-        throw handleError(err, `mengambil sections periode ${year}-${quarter}`);
-      } finally {
-        setLoading(false);
-      }
-    },
-    [handleError]
-  );
+  const getAllSections = useCallback(async (isActive?: boolean): Promise<PasarSection[]> => {
+    return withLoading(async () => {
+      const data = await pasarApiService.getAllSections(isActive);
+      return data;
+    });
+  }, []);
 
-  const getAllSections = useCallback(
-    async (isActive?: boolean): Promise<PasarSection[]> => {
-      try {
-        setLoadingAllSections(true);
-        const data = await pasarApiService.getAllSections(isActive);
-        setAllSections(data);
-        return data;
-      } catch (err) {
-        throw handleError(err, 'mengambil semua sections');
-      } finally {
-        setLoadingAllSections(false);
-      }
-    },
-    [handleError]
-  );
+  const getSectionById = useCallback(async (id: number): Promise<PasarSection> => {
+    return withLoading(async () => {
+      const data = await pasarApiService.getSectionById(id);
+      return data;
+    });
+  }, []);
 
-  const getSectionById = useCallback(
-    async (id: number): Promise<PasarSection> => {
-      try {
-        setLoading(true);
-        const data = await pasarApiService.getSectionById(id);
-        return data;
-      } catch (err) {
-        throw handleError(err, `mengambil section dengan ID ${id}`);
-      } finally {
-        setLoading(false);
-      }
-    },
-    [handleError]
-  );
+  const createSection = useCallback(async (data: CreatePasarSectionData): Promise<PasarSection> => {
+    return withLoading(async () => {
+      const newSection = await pasarApiService.createSection(data);
+      setSections((prev) => [...prev, newSection]);
+      return newSection;
+    });
+  }, []);
 
-  const createSection = useCallback(
-    async (data: CreatePasarSectionData): Promise<PasarSection> => {
-      try {
-        setLoading(true);
-        console.log('[PASAR HOOK] Creating section with data:', data);
-        const newSection = await pasarApiService.createSection(data);
+  const updateSection = useCallback(async (id: number, data: UpdatePasarSectionData): Promise<PasarSection> => {
+    return withLoading(async () => {
+      const updatedSection = await pasarApiService.updateSection(id, data);
+      setSections((prev) => prev.map((section) => (section.id === id ? updatedSection : section)));
+      return updatedSection;
+    });
+  }, []);
 
-        // Update sections state
-        setSections((prev) => [...prev, newSection]);
-        setAllSections((prev) => [...prev, newSection]);
+  const deleteSection = useCallback(async (id: number): Promise<DeleteResponse> => {
+    return withLoading(async () => {
+      const result = await pasarApiService.deleteSection(id);
 
-        return newSection;
-      } catch (err) {
-        throw handleError(err, 'membuat section');
-      } finally {
-        setLoading(false);
-      }
-    },
-    [handleError]
-  );
-
-  const updateSection = useCallback(
-    async (id: number, data: UpdatePasarSectionData): Promise<PasarSection> => {
-      try {
-        setLoading(true);
-        const updatedSection = await pasarApiService.updateSection(id, data);
-
-        // Update sections state
-        setSections((prev) => prev.map((section) => (section.id === id ? updatedSection : section)));
-        setAllSections((prev) => prev.map((section) => (section.id === id ? updatedSection : section)));
-
-        // Update sections with indicators
-        setSectionsWithIndicators((prev) =>
-          prev.map((section) =>
-            section.id === id
-              ? {
-                  ...section,
-                  no: updatedSection.no,
-                  parameter: updatedSection.parameter,
-                  bobotSection: updatedSection.bobotSection,
-                }
-              : section
-          )
-        );
-
-        return updatedSection;
-      } catch (err) {
-        throw handleError(err, `mengupdate section dengan ID ${id}`);
-      } finally {
-        setLoading(false);
-      }
-    },
-    [handleError]
-  );
-
-  const deleteSection = useCallback(
-    async (id: number): Promise<void> => {
-      try {
-        setLoading(true);
-        await pasarApiService.deleteSection(id);
-
-        // Update sections state
+      if (result.success) {
         setSections((prev) => prev.filter((section) => section.id !== id));
-        setAllSections((prev) => prev.filter((section) => section.id !== id));
-
-        // Remove from sections with indicators
         setSectionsWithIndicators((prev) => prev.filter((section) => section.id !== id));
-      } catch (err) {
-        throw handleError(err, `menghapus section dengan ID ${id}`);
-      } finally {
-        setLoading(false);
       }
-    },
-    [handleError]
-  );
+
+      return result;
+    });
+  }, []);
 
   // ========== INDIKATOR OPERATIONS ==========
-  const getAllIndikators = useCallback(async () => {
-    try {
-      setLoading(true);
+  const getAllIndikators = useCallback(async (): Promise<PasarIndikator[]> => {
+    return withLoading(async () => {
       const data = await pasarApiService.getAllIndikators();
       setIndikators(data);
       return data;
-    } catch (err) {
-      throw handleError(err, 'mengambil semua indikator');
-    } finally {
-      setLoading(false);
-    }
-  }, [handleError]);
+    });
+  }, []);
 
-  const getIndikatorsByPeriod = useCallback(
-    async (year: number, quarter: Quarter): Promise<PasarIndikator[]> => {
-      try {
-        setLoading(true);
-        const data = await pasarApiService.getIndikatorsByPeriod(year, quarter);
-        setIndikators(data);
-        return data;
-      } catch (err) {
-        throw handleError(err, `mengambil indikator periode ${year}-${quarter}`);
-      } finally {
-        setLoading(false);
-      }
-    },
-    [handleError]
-  );
+  const getIndikatorsByPeriod = useCallback(async (year: number, quarter: Quarter): Promise<PasarIndikator[]> => {
+    return withLoading(async () => {
+      const data = await pasarApiService.getIndikatorsByPeriod(year, quarter);
+      setIndikators(data);
+      return data;
+    });
+  }, []);
 
   const getSectionsWithIndicatorsByPeriod = useCallback(
-    async (year: number, quarter: Quarter) => {
-      try {
-        setLoading(true);
-        const response: SectionsWithIndicatorsResponse = await pasarApiService.getSectionsWithIndicatorsByPeriod(year, quarter);
+    async (year: number, quarter: Quarter): Promise<any> => {
+      return withLoading(async () => {
+        const targetYear = Number(year);
+        const targetQuarter = String(quarter) as Quarter;
 
-        console.log('[PASAR HOOK] Sections with indicators response:', response);
+        console.log(`📡 Hook: Calling getSectionsWithIndicatorsByPeriod for ${targetYear}-${targetQuarter}`);
 
-        // Extract sections from response
+        const response = await pasarApiService.getSectionsWithIndicatorsByPeriod(targetYear, targetQuarter);
+
+        console.log('📦 Raw response:', response);
+
         let sectionsData = [];
-        if (response && response.sections) {
+
+        if (Array.isArray(response)) {
+          sectionsData = response;
+        } else if (response?.sections && Array.isArray(response.sections)) {
           sectionsData = response.sections;
-        } else if (response && response.sectionsWithIndicators) {
-          sectionsData = response.sectionsWithIndicators;
+        } else if (response?.data && Array.isArray(response.data)) {
+          sectionsData = response.data;
         }
 
+        console.log('📊 Extracted sectionsData:', sectionsData);
+
+        sectionsData = sectionsData.map((section) => ({
+          ...section,
+          indicators: (section.indicators || []).map((ind) => ({
+            id: ind.id,
+            subNo: ind.subNo || '',
+            indikator: ind.indikator || '',
+            bobotIndikator: ind.bobotIndikator || 0,
+            sumberRisiko: ind.sumberRisiko || '',
+            dampak: ind.dampak || '',
+            pembilangLabel: ind.pembilangLabel || '',
+            pembilangValue: ind.pembilangValue !== null && ind.pembilangValue !== undefined ? ind.pembilangValue.toString() : '',
+            penyebutLabel: ind.penyebutLabel || '',
+            penyebutValue: ind.penyebutValue !== null && ind.penyebutValue !== undefined ? ind.penyebutValue.toString() : '',
+            low: ind.low || '',
+            lowToModerate: ind.lowToModerate || '',
+            moderate: ind.moderate || '',
+            moderateToHigh: ind.moderateToHigh || '',
+            high: ind.high || '',
+            mode: ind.mode || 'RASIO',
+            formula: ind.formula || '',
+            isPercent: Boolean(ind.isPercent),
+            hasil: ind.hasil !== null ? ind.hasil.toString() : '',
+            hasilText: ind.hasilText || '',
+            peringkat: ind.peringkat || 1,
+            weighted: ind.weighted || '',
+            keterangan: ind.keterangan || '',
+            sectionId: ind.sectionId || section.id,
+            no: section.no,
+            sectionLabel: section.parameter,
+            bobotSection: section.bobotSection,
+            year: section.year || targetYear,
+            quarter: section.quarter || targetQuarter,
+            isValidated: ind.isValidated || false,
+            numeratorLabel: ind.pembilangLabel || '',
+            numeratorValue: ind.pembilangValue !== null && ind.pembilangValue !== undefined ? ind.pembilangValue.toString() : '',
+            denominatorLabel: ind.penyebutLabel || '',
+            denominatorValue: ind.penyebutValue !== null && ind.penyebutValue !== undefined ? ind.penyebutValue.toString() : '',
+          })),
+          totalWeighted: section.totalWeighted || 0,
+          indicatorCount: section.indicatorCount || 0,
+        }));
+
+        console.log('📊 Data sections setelah mapping:', sectionsData);
+
         setSectionsWithIndicators(sectionsData);
-        setTotalWeighted(response.overallTotalWeighted || 0);
-
         return sectionsData;
-      } catch (err) {
-        throw handleError(err, `mengambil sections dengan indikator periode ${year}-${quarter}`);
-      } finally {
-        setLoading(false);
-      }
+      });
     },
-    [handleError]
+    [withLoading],
   );
 
-  const searchIndikators = useCallback(
-    async (searchQuery?: string, year?: number, quarter?: Quarter): Promise<PasarIndikator[]> => {
-      try {
-        setLoading(true);
-        const data = await pasarApiService.searchIndikators(searchQuery, year, quarter);
-        return data;
-      } catch (err) {
-        throw handleError(err, 'mencari indikator');
-      } finally {
-        setLoading(false);
-      }
-    },
-    [handleError]
-  );
+  const searchIndikators = useCallback(async (searchQuery?: string, year?: number, quarter?: Quarter): Promise<PasarIndikator[]> => {
+    return withLoading(async () => {
+      const data = await pasarApiService.searchIndikators(searchQuery, year, quarter);
+      return data;
+    });
+  }, []);
 
-  const getIndikatorById = useCallback(
-    async (id: number): Promise<PasarIndikator> => {
-      try {
-        setLoading(true);
-        const data = await pasarApiService.getIndikatorById(id);
-        return data;
-      } catch (err) {
-        throw handleError(err, `mengambil indikator dengan ID ${id}`);
-      } finally {
-        setLoading(false);
-      }
-    },
-    [handleError]
-  );
+  const getIndikatorById = useCallback(async (id: number): Promise<PasarIndikator> => {
+    return withLoading(async () => {
+      const data = await pasarApiService.getIndikatorById(id);
+      return data;
+    });
+  }, []);
 
   const createIndikator = useCallback(async (data: CreatePasarData): Promise<PasarIndikator> => {
-    try {
-      setLoading(true);
-      console.log('[PASAR HOOK] Creating indikator with data:', data);
+    return withLoading(async () => {
       const newIndikator = await pasarApiService.createIndikator(data);
 
-      // Update indikators list
       setIndikators((prev) => [...prev, newIndikator]);
 
-      // Update sections with indicators
       setSectionsWithIndicators((prev) => {
         const sectionIndex = prev.findIndex((s) => s.id === data.sectionId);
         if (sectionIndex !== -1) {
           const updated = [...prev];
+          const section = updated[sectionIndex];
           updated[sectionIndex] = {
-            ...updated[sectionIndex],
-            indicators: [...updated[sectionIndex].indicators, newIndikator],
-            indicatorCount: updated[sectionIndex].indicatorCount + 1,
+            ...section,
+            indicators: [...section.indicators, newIndikator],
+            indicatorCount: section.indicatorCount + 1,
+            totalWeighted: section.totalWeighted + (newIndikator.weighted || 0),
           };
           return updated;
         }
@@ -490,113 +385,126 @@ export const usePasar = (options?: UsePasarOptions): UsePasarReturn => {
       });
 
       return newIndikator;
-    } catch (err) {
-      throw handleError(err, 'membuat indikator');
-    } finally {
-      setLoading(false);
-    }
+    });
   }, []);
 
-  const updateIndikator = useCallback(async (id: number, data: UpdatePasarData): Promise<PasarIndikator> => {
-    try {
-      setLoading(true);
-      const updatedIndikator = await pasarApiService.updateIndikator(id, data);
+  const updateIndikator = useCallback(
+    async (id: number, data: UpdatePasarData): Promise<PasarIndikator> => {
+      return withLoading(async () => {
+        if (data.mode === 'RASIO' && data.penyebutValue === 0) {
+          throw new Error('Untuk mode RASIO, nilai penyebut harus lebih besar dari 0');
+        }
 
-      // Update indikators list
-      setIndikators((prev) => prev.map((indikator) => (indikator.id === id ? updatedIndikator : indikator)));
+        const updatedIndikator = await pasarApiService.updateIndikator(id, data);
 
-      // Update sections with indicators
-      setSectionsWithIndicators((prev) =>
-        prev.map((section) => {
-          const updatedIndicators = section.indicators.map((indikator) => (indikator.id === id ? updatedIndikator : indikator));
-          return { ...section, indicators: updatedIndicators };
-        })
-      );
+        const oldIndikator = indikators.find((i) => i.id === id);
 
-      return updatedIndikator;
-    } catch (err) {
-      throw handleError(err, `mengupdate indikator dengan ID ${id}`);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+        setIndikators((prev) => prev.map((indikator) => (indikator.id === id ? updatedIndikator : indikator)));
 
-  const deleteIndikator = useCallback(async (id: number): Promise<void> => {
-    try {
-      setLoading(true);
-      await pasarApiService.deleteIndikator(id);
+        setSectionsWithIndicators((prev) =>
+          prev.map((section) => {
+            const indicatorIndex = section.indicators.findIndex((i) => i.id === id);
+            if (indicatorIndex !== -1) {
+              const newIndicators = [...section.indicators];
+              newIndicators[indicatorIndex] = updatedIndikator;
 
-      // Update indikators list
-      setIndikators((prev) => prev.filter((indikator) => indikator.id !== id));
+              const newTotalWeighted = newIndicators.reduce((sum, ind) => sum + (ind.weighted || 0), 0);
 
-      // Update sections with indicators
-      setSectionsWithIndicators((prev) =>
-        prev.map((section) => ({
-          ...section,
-          indicators: section.indicators.filter((indikator: { id: number }) => indikator.id !== id),
-          indicatorCount: section.indicators.filter((indikator: { id: number }) => indikator.id !== id).length,
-        }))
-      );
-    } catch (err) {
-      throw handleError(err, `menghapus indikator dengan ID ${id}`);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+              return {
+                ...section,
+                indicators: newIndicators,
+                totalWeighted: newTotalWeighted,
+              };
+            }
+            return section;
+          }),
+        );
+
+        return updatedIndikator;
+      });
+    },
+    [indikators],
+  );
+
+  const deleteIndikator = useCallback(
+    async (id: number): Promise<DeleteResponse> => {
+      return withLoading(async () => {
+        const result = await pasarApiService.deleteIndikator(id);
+
+        if (result.success) {
+          const deletedIndikator = indikators.find((i) => i.id === id);
+
+          setIndikators((prev) => prev.filter((indikator) => indikator.id !== id));
+
+          setSectionsWithIndicators((prev) =>
+            prev.map((section) => {
+              const newIndicators = section.indicators.filter((i) => i.id !== id);
+              const newTotalWeighted = newIndicators.reduce((sum, ind) => sum + (ind.weighted || 0), 0);
+
+              return {
+                ...section,
+                indicators: newIndicators,
+                indicatorCount: newIndicators.length,
+                totalWeighted: newTotalWeighted,
+              };
+            }),
+          );
+        }
+
+        return result;
+      });
+    },
+    [indikators],
+  );
 
   // ========== HELPER OPERATIONS ==========
-  const getTotalWeightedByPeriod = useCallback(
-    async (year: number, quarter: Quarter): Promise<number> => {
-      try {
-        setLoading(true);
-        const total = await pasarApiService.getTotalWeightedByPeriod(year, quarter);
-        return total;
-      } catch (err) {
-        throw handleError(err, `menghitung total weighted periode ${year}-${quarter}`);
-      } finally {
-        setLoading(false);
-      }
-    },
-    [handleError]
-  );
+  const getTotalWeightedByPeriod = useCallback(async (year: number, quarter: Quarter): Promise<number> => {
+    return withLoading(async () => {
+      const total = await pasarApiService.getTotalWeightedByPeriod(year, quarter);
+      return total;
+    });
+  }, []);
 
   const calculateTotalWeighted = useCallback(async () => {
     try {
-      const total = await getTotalWeightedByPeriod(viewYear, viewQuarter);
+      const total = await pasarApiService.getTotalWeightedByPeriod(viewYear, viewQuarter);
       setTotalWeighted(total);
     } catch (err) {
       setTotalWeighted(0);
       handleError(err, `menghitung total weighted periode ${viewYear}-${viewQuarter}`);
     }
-  }, [viewYear, viewQuarter, getTotalWeightedByPeriod, handleError]);
+  }, [viewYear, viewQuarter]);
 
-  const getPeriods = useCallback(async () => {
-    try {
-      setLoading(true);
+  const getPeriods = useCallback(async (): Promise<Period[]> => {
+    return withLoading(async () => {
       const data = await pasarApiService.getAvailablePeriods();
       setPeriods(data);
       return data;
-    } catch (err) {
-      throw handleError(err, 'mengambil periode tersedia');
-    } finally {
-      setLoading(false);
-    }
-  }, [handleError]);
+    });
+  }, []);
+
+  const getPeriodsWithCounts = useCallback(async (): Promise<(Period & { indicatorCount: number })[]> => {
+    return withLoading(async () => {
+      const data = await pasarApiService.getPeriodsWithCounts();
+      return data;
+    });
+  }, []);
+
+  const getIndikatorCount = useCallback(async (year: number, quarter: Quarter): Promise<number> => {
+    return withLoading(async () => {
+      const count = await pasarApiService.getIndikatorCount(year, quarter);
+      return count;
+    });
+  }, []);
 
   const duplicateIndikator = useCallback(async (sourceId: number, targetYear: number, targetQuarter: Quarter): Promise<PasarIndikator> => {
-    try {
-      setLoading(true);
+    return withLoading(async () => {
       const newIndikator = await pasarApiService.duplicateIndikator(sourceId, targetYear, targetQuarter);
 
-      // Add to indikators list
       setIndikators((prev) => [...prev, newIndikator]);
 
       return newIndikator;
-    } catch (err) {
-      throw handleError(err, 'menduplikasi indikator');
-    } finally {
-      setLoading(false);
-    }
+    });
   }, []);
 
   // ========== RETURN ==========
@@ -606,16 +514,14 @@ export const usePasar = (options?: UsePasarOptions): UsePasarReturn => {
     indikators,
     sectionsWithIndicators,
     periods,
-    allSections,
     viewYear,
     viewQuarter,
     query,
     loading,
-    loadingAllSections,
     error,
     totalWeighted,
 
-    // Actions
+    // State setters
     setViewYear,
     setViewQuarter,
     setQuery,
@@ -629,7 +535,6 @@ export const usePasar = (options?: UsePasarOptions): UsePasarReturn => {
     getPeriods,
     searchIndikators,
     getAllSections,
-    getSectionsByPeriod,
 
     // CRUD operations
     createSection,
@@ -645,6 +550,8 @@ export const usePasar = (options?: UsePasarOptions): UsePasarReturn => {
     getTotalWeightedByPeriod,
     calculateTotalWeighted,
     duplicateIndikator,
+    getIndikatorCount,
+    getPeriodsWithCounts,
 
     // Transformations
     transformToBackend: transformIndicatorToBackend,

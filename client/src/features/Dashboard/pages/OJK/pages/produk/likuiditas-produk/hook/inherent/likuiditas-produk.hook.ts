@@ -1,8 +1,6 @@
-// hooks/likuiditas-produk/useLikuiditasProdukIntegration.ts
+// src/ojk/likuiditas-produk/hook/inherent/likuiditas-produk.hook.ts
 import { useState, useCallback, useRef, useEffect } from 'react';
-// import likuiditasProdukService, { CreateLikuiditasNilaiDto, CreateLikuiditasParameterDto, LikuiditasProdukOjkEntity, UpdateLikuiditasNilaiDto, UpdateLikuiditasParameterDto } from '../../service/likuiditas-produk/likuiditas-produk.service';
-
-import likuiditasProdukService, { LikuiditasProdukOjkEntity, UpdateLikuiditasNilaiDto, UpdateLikuiditasParameterDto, CreateLikuiditasNilaiDto, CreateLikuiditasParameterDto } from '../../service/inherent/likuiditas-produk.service';
+import likuiditasProdukService, { CreateNilaiDto, CreateParameterDto, LikuiditasProdukOjkEntity, UpdateNilaiDto, UpdateParameterDto } from '../../service/inherent/likuiditas-produk.service';
 
 export const useLikuiditasProdukIntegration = (initialYear?: number, initialQuarter?: number) => {
   // State untuk data yang sedang aktif
@@ -179,14 +177,14 @@ export const useLikuiditasProdukIntegration = (initialYear?: number, initialQuar
 
     const { model, prinsip, jenis, underlying } = kategori;
 
-    const validModels = ['tanpa_model', 'standar', 'komprehensif'];
+    const validModels = ['tanpa_model', 'open_end', 'terstruktur'];
     if (!model || !validModels.includes(model)) {
       return { isValid: false, error: `Model harus salah satu dari: ${validModels.join(', ')}` };
     }
 
     if (model === 'tanpa_model') {
       if (prinsip || jenis || (Array.isArray(underlying) && underlying.length > 0)) {
-        return { isValid: false, error: 'Untuk model "tanpa_model", prinsip, jenis, dan underlying harus kosong' };
+        return { isValid: false, error: 'Untuk model "tanpa_model", prinsip, jenis, dan aset dasar harus kosong' };
       }
       return { isValid: true };
     }
@@ -196,25 +194,25 @@ export const useLikuiditasProdukIntegration = (initialYear?: number, initialQuar
       return { isValid: false, error: `Prinsip harus salah satu dari: ${validPrinsip.join(', ')}` };
     }
 
-    if (model === 'standar') {
-      const validJenis = ['jangka_pendek', 'jangka_menengah', 'jangka_panjang'];
+    if (model === 'open_end') {
+      const validJenis = ['pasar_uang', 'pendapatan_tetap', 'campuran', 'saham', 'indeks', 'terproteksi'];
       if (!jenis || !validJenis.includes(jenis)) {
         return { isValid: false, error: `Jenis harus salah satu dari: ${validJenis.join(', ')}` };
       }
       if (Array.isArray(underlying) && underlying.length > 0) {
-        return { isValid: false, error: 'Untuk model "standar", underlying harus kosong' };
+        return { isValid: false, error: 'Untuk model "open_end", aset dasar harus kosong' };
       }
     }
 
-    if (model === 'komprehensif') {
+    if (model === 'terstruktur') {
       if (jenis) {
-        return { isValid: false, error: 'Untuk model "komprehensif", jenis harus kosong' };
+        return { isValid: false, error: 'Untuk model "terstruktur", jenis harus kosong' };
       }
       if (Array.isArray(underlying)) {
-        const validUnderlying = ['kewajiban', 'aset_lancar', 'arus_kas', 'rasio'];
+        const validUnderlying = ['indeks', 'eba', 'dinfra', 'obligasi'];
         const invalidValues = underlying.filter((v: string) => !validUnderlying.includes(v));
         if (invalidValues.length > 0) {
-          return { isValid: false, error: `Underlying tidak valid: ${invalidValues.join(', ')}` };
+          return { isValid: false, error: `Aset dasar tidak valid: ${invalidValues.join(', ')}` };
         }
       }
     }
@@ -255,7 +253,7 @@ export const useLikuiditasProdukIntegration = (initialYear?: number, initialQuar
     [validateParameterJudul],
   );
 
-  const formatNilaiJudul = useCallback((judul: any): CreateLikuiditasNilaiDto['judul'] => {
+  const formatNilaiJudul = useCallback((judul: any): CreateNilaiDto['judul'] => {
     return likuiditasProdukService.formatNilaiJudul(judul);
   }, []);
 
@@ -539,7 +537,7 @@ export const useLikuiditasProdukIntegration = (initialYear?: number, initialQuar
   ======================= */
 
   const handleAddParameter = useCallback(
-    async (dto: Partial<CreateLikuiditasParameterDto>) => {
+    async (dto: Partial<CreateParameterDto>) => {
       const context = validateAndGetCurrentContext();
       console.log('[Hook] handleAddParameter called:', context);
 
@@ -547,7 +545,7 @@ export const useLikuiditasProdukIntegration = (initialYear?: number, initialQuar
       safeSet(setError, null);
 
       try {
-        const cleanPayload: CreateLikuiditasParameterDto = {
+        const cleanPayload: CreateParameterDto = {
           nomor: dto.nomor?.toString().trim() || '',
           judul: dto.judul?.toString().trim() || '',
           bobot: formatBobot(dto.bobot),
@@ -582,14 +580,14 @@ export const useLikuiditasProdukIntegration = (initialYear?: number, initialQuar
           cleanKategori.jenis = null;
         } else {
           cleanKategori.prinsip = prinsip || null;
-          if (model === 'standar') {
+          if (model === 'open_end') {
             cleanKategori.jenis = jenis || null;
-          } else if (model === 'komprehensif') {
+          } else if (model === 'terstruktur') {
             cleanKategori.jenis = null;
           }
         }
 
-        const finalPayload: CreateLikuiditasParameterDto = {
+        const finalPayload: CreateParameterDto = {
           ...cleanPayload,
           kategori: cleanKategori,
         };
@@ -645,7 +643,7 @@ export const useLikuiditasProdukIntegration = (initialYear?: number, initialQuar
   // =======================
 
   const handleUpdateParameter = useCallback(
-    async (parameterId: string, dto: UpdateLikuiditasParameterDto) => {
+    async (parameterId: string, dto: UpdateParameterDto) => {
       const context = validateAndGetCurrentContext();
       console.log('[Hook] handleUpdateParameter called:', { context, parameterId });
 
@@ -653,7 +651,7 @@ export const useLikuiditasProdukIntegration = (initialYear?: number, initialQuar
       safeSet(setError, null);
 
       try {
-        const payload: UpdateLikuiditasParameterDto = {};
+        const payload: UpdateParameterDto = {};
 
         if (dto.nomor !== undefined) payload.nomor = dto.nomor;
         if (dto.judul !== undefined) {
@@ -680,8 +678,8 @@ export const useLikuiditasProdukIntegration = (initialYear?: number, initialQuar
           const formattedKategori = {
             model: cleanKategori.model,
             prinsip: cleanKategori.model !== 'tanpa_model' ? cleanKategori.prinsip : undefined,
-            jenis: cleanKategori.model === 'standar' ? cleanKategori.jenis : undefined,
-            underlying: cleanKategori.model === 'komprehensif' ? (Array.isArray(cleanKategori.underlying) ? cleanKategori.underlying : []) : [],
+            jenis: cleanKategori.model === 'open_end' ? cleanKategori.jenis : undefined,
+            underlying: cleanKategori.model === 'terstruktur' ? (Array.isArray(cleanKategori.underlying) ? cleanKategori.underlying : []) : [],
           };
 
           payload.kategori = formattedKategori;
@@ -813,7 +811,7 @@ export const useLikuiditasProdukIntegration = (initialYear?: number, initialQuar
   // =======================
 
   const handleAddNilai = useCallback(
-    async (parameterId: string, dto: CreateLikuiditasNilaiDto) => {
+    async (parameterId: string, dto: CreateNilaiDto) => {
       const context = validateAndGetCurrentContext();
       console.log(`[Hook] handleAddNilai called:`, { context, parameterId });
 
@@ -835,7 +833,7 @@ export const useLikuiditasProdukIntegration = (initialYear?: number, initialQuar
           throw new Error(bobotValidation.error || 'Bobot tidak valid');
         }
 
-        const payload: CreateLikuiditasNilaiDto = {
+        const payload: CreateNilaiDto = {
           ...dto,
           bobot: bobotValidation.value,
           judul: formatNilaiJudul(dto.judul),
@@ -872,7 +870,7 @@ export const useLikuiditasProdukIntegration = (initialYear?: number, initialQuar
   // =======================
 
   const handleUpdateNilai = useCallback(
-    async (parameterId: string, nilaiId: string, dto: UpdateLikuiditasNilaiDto) => {
+    async (parameterId: string, nilaiId: string, dto: UpdateNilaiDto) => {
       const context = validateAndGetCurrentContext();
       console.log(`[Hook] handleUpdateNilai called:`, { context, parameterId, nilaiId });
 
@@ -887,7 +885,7 @@ export const useLikuiditasProdukIntegration = (initialYear?: number, initialQuar
           throw new Error(`ID tidak valid: parameterId=${parameterId}, nilaiId=${nilaiId}`);
         }
 
-        const payload: UpdateLikuiditasNilaiDto = { ...dto };
+        const payload: UpdateNilaiDto = { ...dto };
 
         if (dto.judul !== undefined) {
           payload.judul = formatNilaiJudul(dto.judul);

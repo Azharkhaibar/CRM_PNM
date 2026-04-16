@@ -1,9 +1,23 @@
 import { Module } from '@nestjs/common';
-import { KepatuhanKpmrOjkService } from './kepatuhan-kpmr-ojk.service';
-import { KepatuhanKpmrOjkController } from './kepatuhan-kpmr-ojk.controller';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { KpmrKepatuhanService } from './kepatuhan-kpmr-ojk.service';
+import { KpmrKepatuhanController } from './kepatuhan-kpmr-ojk.controller';
+import { KpmrAspekKepatuhan } from './entities/kepatuhan-kpmr-aspek.entity';
+import { KpmrPertanyaanKepatuhan } from './entities/kepatuhan-kpmr-pertanyaan.entity';
+import { KpmrKepatuhanOjk } from './entities/kepatuhan-kpmr-ojk.entity';
+
 
 @Module({
-  controllers: [KepatuhanKpmrOjkController],
-  providers: [KepatuhanKpmrOjkService],
+  imports: [
+    TypeOrmModule.forFeature([
+      KpmrAspekKepatuhan,
+      KpmrPertanyaanKepatuhan,
+      KpmrKepatuhanOjk,
+    ]),
+    // KepatuhanProdukOjkModule, // Uncomment jika diperlukan
+  ],
+  controllers: [KpmrKepatuhanController],
+  providers: [KpmrKepatuhanService],
+  exports: [KpmrKepatuhanService],
 })
-export class KepatuhanKpmrOjkModule {}
+export class KepatuhanProdukKpmrModule {}

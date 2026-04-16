@@ -3,37 +3,37 @@ import { KreditProdukOjk } from './entities/kredit-produk-ojk.entity';
 import { KreditParameter } from './entities/kredit-produk-parameter.entity';
 import { KreditNilai } from './entities/kredit-produk-nilai.entity';
 import { InherentReferenceKredit } from './entities/kredit-inherent-references.entity';
-import { CreateKreditProdukDto, UpdateKreditProdukDto, CreateParameterDto, UpdateParameterDto, CreateNilaiDto, UpdateNilaiDto, ReorderNilaiDto, ReorderParametersDto, UpdateSummaryDto, JudulType } from './dto/kredit-produk-inherent.dto';
+import { CreateKreditProdukInherentDto, UpdateKreditProdukInherentDto, CreateParameterDto, UpdateParameterDto, CreateNilaiDto, UpdateNilaiDto, ReorderParametersDto, ReorderNilaiDto, UpdateSummaryDto, JudulType } from './dto/kredit-produk-inherent.dto';
 export declare class KreditProdukOjkService {
-    private kreditRepository;
+    private inherentRepository;
     private parameterRepository;
     private nilaiRepository;
     private referenceRepository;
     private dataSource;
     private readonly logger;
-    constructor(kreditRepository: Repository<KreditProdukOjk>, parameterRepository: Repository<KreditParameter>, nilaiRepository: Repository<KreditNilai>, referenceRepository: Repository<InherentReferenceKredit>, dataSource: DataSource);
-    create(createDto: CreateKreditProdukDto, userId: string): Promise<KreditProdukOjk>;
+    constructor(inherentRepository: Repository<KreditProdukOjk>, parameterRepository: Repository<KreditParameter>, nilaiRepository: Repository<KreditNilai>, referenceRepository: Repository<InherentReferenceKredit>, dataSource: DataSource);
+    create(createDto: CreateKreditProdukInherentDto, userId: string): Promise<KreditProdukOjk>;
     findActive(): Promise<KreditProdukOjk | null>;
     findByYearQuarter(year: number, quarter: number): Promise<KreditProdukOjk | null>;
     getAll(): Promise<KreditProdukOjk[]>;
-    update(id: number, updateDto: UpdateKreditProdukDto, userId: string): Promise<KreditProdukOjk>;
+    update(id: number, updateDto: UpdateKreditProdukInherentDto, userId: string): Promise<KreditProdukOjk>;
     updateSummary(id: number, summaryDto: UpdateSummaryDto, userId: string): Promise<KreditProdukOjk>;
     updateActiveStatus(id: number, isActive: boolean, userId: string): Promise<KreditProdukOjk>;
     remove(id: number): Promise<{
         message: string;
         id: number;
     }>;
-    addParameter(kreditId: number, createParamDto: CreateParameterDto, userId: string): Promise<KreditParameter>;
-    updateParameter(kreditId: number, parameterId: number, updateParamDto: UpdateParameterDto, userId: string): Promise<KreditParameter>;
-    reorderParameters(kreditId: number, reorderDto: ReorderParametersDto): Promise<{
+    addParameter(inherentId: number, createParamDto: CreateParameterDto, userId: string): Promise<KreditParameter>;
+    updateParameter(inherentId: number, parameterId: number, updateParamDto: UpdateParameterDto, userId: string): Promise<KreditParameter>;
+    reorderParameters(inherentId: number, reorderDto: ReorderParametersDto): Promise<{
         message: string;
     }>;
-    copyParameter(kreditId: number, parameterId: number, userId: string): Promise<KreditParameter>;
-    removeParameter(kreditId: number, parameterId: number, userId: string): Promise<{
+    copyParameter(inherentId: number, parameterId: number, userId: string): Promise<KreditParameter>;
+    removeParameter(inherentId: number, parameterId: number, userId: string): Promise<{
         message: string;
         parameterId: number;
     }>;
-    addNilai(kreditId: number, parameterId: number, createNilaiDto: CreateNilaiDto, userId: string): Promise<{
+    addNilai(inherentId: number, parameterId: number, createNilaiDto: CreateNilaiDto, userId: string): Promise<{
         nomor: string;
         judul: {
             type: JudulType;
@@ -53,11 +53,11 @@ export declare class KreditProdukOjkService {
         parameterId: number;
         orderIndex: number;
     } & KreditNilai>;
-    updateNilai(kreditId: number, parameterId: number, nilaiId: number, updateNilaiDto: UpdateNilaiDto, userId: string): Promise<KreditNilai>;
+    updateNilai(inherentId: number, parameterId: number, nilaiId: number, updateNilaiDto: UpdateNilaiDto, userId: string): Promise<KreditNilai>;
     reorderNilai(parameterId: number, reorderDto: ReorderNilaiDto): Promise<{
         message: string;
     }>;
-    copyNilai(kreditId: number, parameterId: number, nilaiId: number, userId: string): Promise<{
+    copyNilai(inherentId: number, parameterId: number, nilaiId: number, userId: string): Promise<{
         nomor: string | undefined;
         judul: {
             text: string;
@@ -83,17 +83,17 @@ export declare class KreditProdukOjkService {
         parameterId: number;
         orderIndex: number;
     } & KreditNilai>;
-    removeNilai(kreditId: number, parameterId: number, nilaiId: number, userId: string): Promise<{
+    removeNilai(inherentId: number, parameterId: number, nilaiId: number, userId: string): Promise<{
         message: string;
         nilaiId: number;
     }>;
     getReferences(type?: string): Promise<InherentReferenceKredit[]>;
-    validateModelKredit(kreditId: number): Promise<{
+    validateModelTerstruktur(inherentId: number): Promise<{
         isValid: boolean;
         warnings: string[];
         errors: string[];
     }>;
-    exportToExcel(kreditId: number): Promise<{
+    exportToExcel(inherentId: number): Promise<{
         metadata: {
             year: number;
             quarter: number;

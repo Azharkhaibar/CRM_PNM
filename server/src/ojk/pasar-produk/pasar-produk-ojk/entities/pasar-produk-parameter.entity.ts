@@ -1,3 +1,5 @@
+// pasar-produk-parameter.entity.ts
+
 import {
   Entity,
   PrimaryGeneratedColumn,

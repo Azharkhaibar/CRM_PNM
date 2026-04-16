@@ -1,11 +1,29 @@
-// src/features/Dashboard/pages/RiskProfile/pages/Investasi/tabs/investasitab.jsx
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { Download, Trash2, Edit3, Search, Plus, ChevronDown, RefreshCw, CheckCircle, XCircle } from 'lucide-react';
+// src/features/Dashboard/pages/RiskProfile/pages/Investasi/components/InvestasiInherent.jsx
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { Download, Trash2, Edit3, Search, Plus, ChevronDown } from 'lucide-react';
+import { calculatePeringkat, calculatePeringkatFromText, isNumericRiskLevels } from './utils/investasi/riskcalculator';
 
-// Import components
-import { YearInput, QuarterSelect } from '../pasar/components/Inputs.jsx';
-import { useInvestasi } from './hooks/investasi/new-investasi.hook.js';
-import { exportInvestasiToExcel } from './components/investasi/exportinvestasitoexcel.jsx';
+// ==== Komponen & Utils ====
+import DataTable from './components/investasi/datatable-investasi';
+import { RiskField, YearInput, QuarterSelect } from './components/investasi/input-investasi';
+import { getCurrentQuarter, getCurrentYear } from './utils/investasi/time';
+import { computeWeighted, makeEmptyRow } from './utils/investasi/calc';
+import { exportInvestasiToExcel } from './utils/investasi/exportExcel';
+import ToastNotification from './components/kpmr-investasi/ToastNotification';
+// ==== Hooks & Services ====
+import { useInvestasi } from './hooks/investasi/new-investasi.hook';
+
+// ==== Section Inheritance Utils ====
+import {
+  getSectionsForPeriod,
+  addSectionToPeriod,
+  updateSectionInPeriod,
+  deleteSectionFromPeriod,
+  autoCloneSectionsIfNeeded,
+  hasDirectSectionsInPeriod,
+  getImmediatePreviousQuarter,
+  isInheritedSection,
+} from './utils/investasi/sectioninheritance';
 
 // ===================== Brand =====================
 const PNM_BRAND = {
@@ -14,1771 +32,1334 @@ const PNM_BRAND = {
   gradient: 'bg-gradient-to-r from-[#0076C6]/90 via-[#00A3DA]/90 to-[#33C2B5]/90',
 };
 
-// ===================== Calculation Mode =====================
-const CalculationMode = {
-  RASIO: 'RASIO',
-  NILAI_TUNGGAL: 'NILAI_TUNGGAL',
-  TEKS: 'TEKS',
-};
-
-// ===================== RiskBox Component =====================
-const RiskBox = ({ label, value, onChange, color, textColor = '#111827', placeholder, className = '' }) => {
-  const handleChange = (e) => {
-    onChange && onChange(e.target.value);
-  };
-
-  const handleInput = (e) => {
-    e.target.style.height = 'auto';
-    e.target.style.height = `${e.target.scrollHeight}px`;
-  };
-
-  return (
-    <div className={className}>
-      <div
-        style={{
-          border: '2px solid #0f1a0f',
-          borderRadius: 14,
-          overflow: 'hidden',
-          background: '#E9F7E6',
-          boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.06)',
-          display: 'flex',
-          flexDirection: 'column',
-          minHeight: 44 + 4 + 44,
-        }}
-      >
-        {/* Header */}
-        <div
-          style={{
-            background: color || '#93D24D',
-            color: textColor === '#111827' ? '#111' : textColor,
-            height: 44,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontWeight: 700,
-            fontSize: 16,
-            padding: '0 12px',
-            textAlign: 'center',
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-          }}
-          title={label}
-        >
-          {label}
-        </div>
-
-        {/* Garis pemisah */}
-        <div style={{ height: 4, background: '#0f1a0f', flex: '0 0 auto' }} />
-
-        {/* Area isi */}
-        <div style={{ padding: 8, flex: '1 0 auto' }}>
-          <textarea
-            value={value}
-            onChange={handleChange}
-            onInput={handleInput}
-            placeholder={placeholder}
-            rows={2}
-            style={{
-              width: '100%',
-              minHeight: 44,
-              textAlign: 'center',
-              fontWeight: 700,
-              fontSize: 16,
-              color: '#0f1a0f',
-              background: '#E9F7E6',
-              border: 'none',
-              outline: 'none',
-              borderRadius: 10,
-              resize: 'none',
-              overflow: 'hidden',
-              whiteSpace: 'pre-wrap',
-            }}
-          />
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// ===================== Helper Functions =====================
-const fmtNumber = (v) => {
-  if (v === '' || v == null) return '';
-  const n = Number(v);
-  if (isNaN(n)) return String(v);
-  return new Intl.NumberFormat('en-US').format(n);
-};
-
-const parseNum = (v) => {
-  if (v == null || v === '' || v === undefined) return 0;
-
-  if (typeof v === 'string') {
-    const cleaned = v.replace(/[^\d.-]/g, '');
-    const n = Number(cleaned);
-    return isNaN(n) ? 0 : n;
-  }
-
-  const n = Number(v);
-  return isNaN(n) ? 0 : n;
-};
-
-// Empty indicator template
-const emptyIndicator = {
-  id: null,
+// ===================== Investasi: fallback empty row =====================
+const invFallbackEmpty = (year, quarter) => ({
+  year,
+  quarter,
+  no: '',
   subNo: '',
+  sectionLabel: '',
   indikator: '',
-  mode: CalculationMode.RASIO,
-  formula: '',
-  isPercent: false,
+  bobotSection: 0,
   bobotIndikator: 0,
   sumberRisiko: '',
   dampak: '',
-  pembilangLabel: '',
-  pembilangValue: '',
-  penyebutLabel: '',
-  penyebutValue: '',
-  peringkat: 1,
-  weighted: '',
+  low: 'x ≤ 1%',
+  lowToModerate: '1% < x ≤ 2%',
+  moderate: '2% < x ≤ 3%',
+  moderateToHigh: '3% < x ≤ 4%',
+  high: 'x > 4%',
+  numeratorLabel: '',
+  numeratorValue: '',
+  denominatorLabel: '',
+  denominatorValue: '',
+  mode: 'RASIO',
+  formula: '',
+  isPercent: false,
   hasil: '',
   hasilText: '',
-  low: '',
-  lowToModerate: '',
-  moderate: '',
-  moderateToHigh: '',
-  high: '',
+  peringkat: 1,
+  weighted: '',
   keterangan: '',
-  sectionId: null,
-  year: new Date().getFullYear(),
-  quarter: 'Q1',
+});
+
+// ===== Helper Functions =====
+const isNegativePattern = (s) => {
+  if (!s) return false;
+  const trimmed = String(s).trim();
+  return trimmed.startsWith('-') || trimmed.endsWith('-');
 };
 
-// Transform functions untuk investasi
-const transformIndicatorToBackend = (indicatorData, year, quarter, sectionId, sectionData) => {
-  const hasil = computeHasil(indicatorData);
-  const weighted = computeWeightedAuto(indicatorData, sectionData?.bobotSection || 100);
+const parseNum = (v) => {
+  if (v == null || v === '') return undefined;
 
-  return {
-    year: Number(year),
-    quarter: quarter,
-    sectionId: Number(sectionId),
-    no: sectionData?.no || '',
-    sectionLabel: sectionData?.parameter || '',
-    bobotSection: Number(sectionData?.bobotSection || 0),
-    subNo: indicatorData.subNo?.toString().trim() || '',
-    indikator: indicatorData.indikator?.toString().trim() || '',
-    bobotIndikator: Number(indicatorData.bobotIndikator) || 0,
-    sumberRisiko: indicatorData.sumberRisiko?.trim() || undefined,
-    dampak: indicatorData.dampak?.trim() || undefined,
-    low: indicatorData.low?.trim() || undefined,
-    lowToModerate: indicatorData.lowToModerate?.trim() || undefined,
-    moderate: indicatorData.moderate?.trim() || undefined,
-    moderateToHigh: indicatorData.moderateToHigh?.trim() || undefined,
-    high: indicatorData.high?.trim() || undefined,
-    mode: indicatorData.mode || CalculationMode.RASIO,
-    formula: indicatorData.formula?.trim() || undefined,
-    isPercent: Boolean(indicatorData.isPercent || false),
-    pembilangLabel: indicatorData.pembilangLabel?.trim() || undefined,
-    pembilangValue: indicatorData.pembilangValue !== undefined && indicatorData.pembilangValue !== '' ? Number(indicatorData.pembilangValue) : undefined,
-    penyebutLabel: indicatorData.penyebutLabel?.trim() || undefined,
-    penyebutValue: indicatorData.penyebutValue !== undefined && indicatorData.penyebutValue !== '' ? Number(indicatorData.penyebutValue) : undefined,
-    hasil: hasil !== null && hasil !== '' ? Number(hasil) : undefined,
-    hasilText: indicatorData.mode === CalculationMode.TEKS ? indicatorData.hasilText?.trim() || undefined : undefined,
-    peringkat: Number(indicatorData.peringkat || 1),
-    weighted: weighted,
-    keterangan: indicatorData.keterangan?.trim() || undefined,
-    createdBy: 'admin',
-  };
+  let s = String(v).trim();
+
+  let isNegative = false;
+  if (s.startsWith('-')) {
+    isNegative = true;
+    s = s.substring(1);
+  } else if (s.endsWith('-')) {
+    isNegative = true;
+    s = s.slice(0, -1);
+  }
+
+  const isPercent = s.includes('%');
+  if (isPercent) {
+    s = s.replace(/%/g, '');
+  }
+
+  s = s.trim();
+  if (s === '') return undefined;
+
+  const lastComma = s.lastIndexOf(',');
+  const lastDot = s.lastIndexOf('.');
+
+  let num;
+  if (lastComma > lastDot && lastComma !== -1) {
+    const cleaned = s.replace(/\./g, '').replace(',', '.');
+    num = parseFloat(cleaned);
+  } else if (lastDot > lastComma && lastDot !== -1) {
+    const cleaned = s.replace(/,/g, '');
+    num = parseFloat(cleaned);
+  } else {
+    const cleaned = s.replace(/[.,]/g, '');
+    num = parseFloat(cleaned);
+  }
+
+  if (isNaN(num)) return undefined;
+
+  if (isNegative) num = -Math.abs(num);
+  if (isPercent) num = num / 100;
+
+  return num;
 };
 
-const transformIndicatorToFrontend = (indikator) => {
-  return {
-    id: indikator.id,
-    subNo: indikator.subNo || '',
-    indikator: indikator.indikator || '',
-    bobotIndikator: indikator.bobotIndikator || 0,
-    sumberRisiko: indikator.sumberRisiko || '',
-    dampak: indikator.dampak || '',
-    pembilangLabel: indikator.pembilangLabel || '',
-    pembilangValue: indikator.pembilangValue !== null ? indikator.pembilangValue.toString() : '',
-    penyebutLabel: indikator.penyebutLabel || '',
-    penyebutValue: indikator.penyebutValue !== null ? indikator.penyebutValue.toString() : '',
-    peringkat: indikator.peringkat || 1,
-    weighted: indikator.weighted || '',
-    hasil: indikator.hasil !== null ? indikator.hasil.toString() : '',
-    hasilText: indikator.hasilText || '',
-    keterangan: indikator.keterangan || '',
-    isPercent: Boolean(indikator.isPercent),
-    mode: indikator.mode || CalculationMode.RASIO,
-    formula: indikator.formula || '',
-    low: indikator.low || '',
-    lowToModerate: indikator.lowToModerate || '',
-    moderate: indikator.moderate || '',
-    moderateToHigh: indikator.moderateToHigh || '',
-    high: indikator.high || '',
-    sectionId: indikator.sectionId,
-    year: indikator.year,
-    quarter: indikator.quarter,
-  };
+const fmtNumber = (v) => {
+  if (v === '' || v == null) return '';
+
+  const s = String(v).trim();
+
+  if (s.includes('%')) {
+    const numPart = s.replace(/%/g, '').trim();
+    const num = parseNum(numPart);
+    if (isNaN(num)) return s;
+    const formatted = new Intl.NumberFormat('id-ID', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 10,
+    }).format(num);
+    return formatted + '%';
+  }
+
+  const num = parseNum(s);
+  if (isNaN(num)) return '';
+
+  return new Intl.NumberFormat('id-ID', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 10,
+  }).format(num);
 };
 
-// Transform functions untuk section
-const transformSectionToBackendInvestasi = (sectionData, year, quarter) => {
-  return {
-    no: sectionData.no,
-    parameter: sectionData.parameter,
-    bobotSection: Number(sectionData.bobotSection || 0),
-    description: sectionData.description || '',
-    sortOrder: sectionData.sortOrder || 0,
-    isActive: sectionData.isActive !== undefined ? sectionData.isActive : true,
-    year: Number(year),
-    quarter: quarter,
-  };
+const formatIntWithDots = (intVal) => {
+  const isNeg = intVal < 0;
+  const s = String(Math.abs(Math.trunc(intVal)));
+  let result = '';
+  for (let i = 0; i < s.length; i++) {
+    if (i > 0 && (s.length - i) % 3 === 0) result += '.';
+    result += s[i];
+  }
+  return (isNeg ? '-' : '') + result;
 };
 
-// ===================== Calculation Functions =====================
-const computeHasil = (ind) => {
-  const mode = ind?.mode || CalculationMode.RASIO;
-  if (mode === CalculationMode.TEKS) return null;
+const fmtNumberSmart = (rawStr) => {
+  if (!rawStr || !rawStr.trim()) return '';
 
-  const pemb = parseNum(ind.pembilangValue);
-  const peny = parseNum(ind.penyebutValue);
+  const s = rawStr.trim();
 
-  const formula = ind.formula || '';
-  if (formula.trim() !== '') {
+  if (s === '-' || s === ',' || s === '.') return s;
+
+  if (s.includes('%')) {
+    const withoutPct = s.replace('%', '').trim();
+    const isNegPct = withoutPct.startsWith('-') || withoutPct.endsWith('-');
+    const cleanPct = withoutPct.replace(/-/g, '').trim();
+
+    const lastC = cleanPct.lastIndexOf(',');
+    const lastD = cleanPct.lastIndexOf('.');
+
+    let intRaw, decStr;
+    if (lastC > lastD && lastC !== -1) {
+      intRaw = cleanPct.slice(0, lastC).replace(/[.,]/g, '');
+      decStr = cleanPct.slice(lastC + 1);
+    } else if (lastD > lastC && lastD !== -1) {
+      intRaw = cleanPct.slice(0, lastD).replace(/[.,]/g, '');
+      decStr = cleanPct.slice(lastD + 1);
+    } else {
+      intRaw = cleanPct.replace(/[.,]/g, '');
+      decStr = null;
+    }
+
+    const intNum = parseInt(intRaw || '0', 10);
+    const intFormatted = formatIntWithDots(isNegPct ? -intNum : intNum);
+    return decStr !== null ? `${intFormatted},${decStr}%` : `${intFormatted}%`;
+  }
+
+  if (s.endsWith(',') || s.endsWith('.')) {
+    const numPart = s.slice(0, -1);
+    if (!numPart || numPart === '-') return s;
+    const num = parseNum(numPart);
+    if (!isFinite(num)) return s;
+    return formatIntWithDots(Math.trunc(num)) + ',';
+  }
+
+  const lastCommaIdx = s.lastIndexOf(',');
+  const lastDotIdx = s.lastIndexOf('.');
+
+  let decimalStr = null;
+  if (lastCommaIdx > lastDotIdx && lastCommaIdx > 0) {
+    decimalStr = s.slice(lastCommaIdx + 1);
+  } else if (lastDotIdx > lastCommaIdx && lastDotIdx > 0) {
+    decimalStr = s.slice(lastDotIdx + 1);
+  }
+
+  const num = parseNum(s);
+  if (!isFinite(num)) return s;
+
+  const intPart = Math.trunc(num);
+  const intFormatted = formatIntWithDots(intPart);
+
+  return decimalStr !== null ? `${intFormatted},${decimalStr}` : intFormatted;
+};
+
+const computeInvestasiHasil = (row) => {
+  const mode = row.mode || 'RASIO';
+
+  if (mode === 'TEKS') {
+    return '';
+  }
+
+  const pemb = parseNum(row.numeratorValue);
+  const peny = parseNum(row.denominatorValue);
+
+  if (row.formula && row.formula.trim() !== '') {
     try {
-      const expr = formula.replace(/\bpemb\b/g, 'pemb').replace(/\bpeny\b/g, 'peny');
+      const expr = row.formula.replace(/\bpemb\b/g, 'pemb').replace(/\bpeny\b/g, 'peny');
       const fn = new Function('pemb', 'peny', `return (${expr});`);
       const res = fn(pemb, peny);
-      if (!isFinite(res) || isNaN(res)) return null;
+      if (!isFinite(res) || isNaN(res)) return '';
       return Number(res);
     } catch (e) {
-      console.warn('Invalid formula (Investasi):', formula, e);
-      return null;
+      console.warn('Invalid formula:', row.formula, e);
+      return '';
     }
   }
 
-  if (mode === CalculationMode.NILAI_TUNGGAL) {
-    if (ind.penyebutValue === '' || ind.penyebutValue == null) return null;
-    return Number(peny);
+  if (mode === 'NILAI_TUNGGAL') {
+    const raw = row.denominatorValue;
+    if (raw === '' || raw == null) return '';
+    const val = parseNum(raw);
+    if (!isFinite(val) || isNaN(val)) return '';
+    return Number(val);
   }
 
-  if (peny === 0) return null;
+  if (peny === 0) return '';
   const result = pemb / peny;
-  if (!isFinite(result) || isNaN(result)) return null;
+  if (!isFinite(result) || isNaN(result)) return '';
   return Number(result);
 };
 
-const computeWeightedAuto = (ind, sectionBobot) => {
-  const sectionB = Number(sectionBobot || 0);
-  const bobotInd = Number(ind.bobotIndikator || 0);
-  const peringkat = Number(ind.peringkat || 0);
-  const res = (sectionB * bobotInd * peringkat) / 10000;
+const computeWeightedLocal = (bobotSection, bobotIndikator, peringkat) => {
+  const s = Number(bobotSection || 0);
+  const b = Number(bobotIndikator || 0);
+  const p = Number(peringkat || 0);
+  const res = (s * b * p) / 10000;
   if (!isFinite(res) || isNaN(res)) return 0;
   return res;
 };
 
-// Total baris per indikator
-const rowsPerIndicator = (ind) => {
-  return 1 + (ind.mode === CalculationMode.RASIO ? 2 : 1);
-};
+export default function InvestasiInherent({ viewYear, viewQuarter, onViewYearChange, onViewQuarterChange, query, onQueryChange }) {
+  const [showInvestasiForm, setShowInvestasiForm] = useState(false);
 
-// ===================== MAIN COMPONENT =====================
-export default function InvestasiTab() {
-  // ====== STATES UTAMA ======
-  const [viewYear, setViewYear] = useState(new Date().getFullYear());
-  const [viewQuarter, setViewQuarter] = useState('Q1');
-  const [query, setQuery] = useState('');
+  // ========== TOAST NOTIFICATION STATE ==========
+  const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
+
+  const showToast = (message, type = 'success') => {
+    setToast({ show: true, message, type });
+    setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 3000);
+  };
+
+  const clearToast = () => setToast({ show: false, message: '', type: 'success' });
 
   // ====== HOOK INVESTASI ======
-  const { sectionsWithIndicators, loading, error, totalWeighted, clearError, getSectionsWithIndicatorsByPeriod, createSection, updateSection, deleteSection, createIndikator, updateIndikator, deleteIndikator, getAllSections } = useInvestasi(
-    {
-      initialYear: viewYear,
-      initialQuarter: viewQuarter,
-      autoLoad: true,
-    }
-  );
-
-  // ====== States Lain ======
-  const [sections, setSections] = useState([]);
-  const [loadingData, setLoadingData] = useState(false);
-  const [localError, setLocalError] = useState(null);
-  const [allSections, setAllSections] = useState([]);
-  const [notification, setNotification] = useState({
-    type: '',
-    message: '',
-    show: false,
+  const {
+    sections,
+    sectionsWithIndicators,
+    loading,
+    error,
+    setViewYear: setHookYear,
+    setViewQuarter: setHookQuarter,
+    clearError,
+    createSection,
+    updateSection,
+    deleteSection,
+    createIndikator,
+    updateIndikator,
+    deleteIndikator,
+    transformToBackend,
+  } = useInvestasi({
+    initialYear: Number(viewYear),
+    initialQuarter: viewQuarter,
+    autoLoad: true,
   });
-  const [loadingAllSections, setLoadingAllSections] = useState(false);
 
-  // State section form
-  const [sectionForm, setSectionForm] = useState({
-    id: null,
+  // Sync hook dengan props
+  useEffect(() => {
+    setHookYear(viewYear);
+  }, [viewYear, setHookYear]);
+
+  useEffect(() => {
+    setHookQuarter(viewQuarter);
+  }, [viewQuarter, setHookQuarter]);
+
+  useEffect(() => {
+    const checkAndCloneSections = async () => {
+      try {
+        const needsClone = !hasDirectSectionsInPeriod(viewYear, viewQuarter, sections || []);
+
+        if (needsClone) {
+          const prevPeriod = getImmediatePreviousQuarter(viewYear, viewQuarter);
+          const prevHasSections = hasDirectSectionsInPeriod(prevPeriod.year, prevPeriod.quarter, sections || []);
+
+          if (prevHasSections) {
+            const prevSections = sections.filter((s) => s.year === prevPeriod.year && s.quarter === prevPeriod.quarter && !s.isVirtual);
+
+            for (const section of prevSections) {
+              const sectionData = {
+                no: section.no,
+                bobotSection: section.bobotSection,
+                parameter: section.parameter,
+                year: viewYear,
+                quarter: viewQuarter,
+                isActive: true,
+              };
+
+              await createSection(sectionData);
+            }
+
+            setInheritInfo({
+              from: `${prevPeriod.year}-${prevPeriod.quarter}`,
+              count: prevSections.length,
+            });
+            showToast(`${prevSections.length} section berhasil di-clone dari periode ${prevPeriod.year}-${prevPeriod.quarter}`, 'info');
+          }
+        }
+      } catch (err) {
+        console.error('Error auto-cloning sections:', err);
+        showToast('Gagal melakukan auto-clone sections', 'error');
+      }
+    };
+
+    checkAndCloneSections();
+  }, [viewYear, viewQuarter]);
+
+  // ----- SECTION LIST -----
+  const [INVESTASI_sectionForm, setINVESTASI_sectionForm] = useState({
+    id: 0,
     no: '',
-    bobotSection: 100,
-    parameter: '',
-    description: '',
-    year: viewYear,
-    quarter: viewQuarter,
-    isActive: true,
-    sortOrder: 0,
+    bobotSection: 0,
+    sectionLabel: '',
   });
 
-  const [indicatorForm, setIndicatorForm] = useState({
-    ...emptyIndicator,
-    sectionId: null,
-    year: viewYear,
-    quarter: viewQuarter,
-  });
-
+  const [isAddingNewSection, setIsAddingNewSection] = useState(false);
   const [isEditingSection, setIsEditingSection] = useState(false);
-  const [isEditingIndicator, setIsEditingIndicator] = useState(false);
-  const [isCreating, setIsCreating] = useState(false);
-  const [isUpdating, setIsUpdating] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
+  const [newlyAddedSections, setNewlyAddedSections] = useState(new Set());
+  const [inheritInfo, setInheritInfo] = useState(null);
 
-  // ====== Fungsi untuk menampilkan notifikasi ======
-  const showNotification = useCallback((type, message) => {
-    setNotification({ type, message, show: true });
-
-    setTimeout(() => {
-      hideNotification();
-    }, 4000);
-  }, []);
-
-  const hideNotification = useCallback(() => {
-    setNotification({ type: '', message: '', show: false });
-  }, []);
-
-  // Fungsi untuk handle perubahan tahun
-  const handleYearChange = (year) => {
-    const newYear = Number(year);
-    setViewYear(newYear);
-
-    if (sectionForm.id) {
-      resetSectionForm();
-    }
-
-    setIndicatorForm((prev) => ({
-      ...emptyIndicator,
-      year: newYear,
-      quarter: viewQuarter,
-      sectionId: sectionForm.id,
-    }));
-  };
-
-  // Fungsi untuk handle perubahan quarter
-  const handleQuarterChange = (quarter) => {
-    setViewQuarter(quarter);
-
-    if (sectionForm.id) {
-      resetSectionForm();
-    }
-
-    setIndicatorForm((prev) => ({
-      ...emptyIndicator,
-      year: viewYear,
-      quarter: quarter,
-      sectionId: sectionForm.id,
-    }));
-  };
-
-  // ====== Fungsi untuk load data ======
-  const loadData = useCallback(async () => {
-    console.log('🔄 Loading data for:', viewYear, viewQuarter);
-
-    setLoadingData(true);
-    setLocalError(null);
-
-    try {
-      if (!viewYear || !viewQuarter) {
-        throw new Error('Tahun dan quarter harus diisi');
-      }
-
-      const quarterUpper = String(viewQuarter).toUpperCase();
-      if (!['Q1', 'Q2', 'Q3', 'Q4'].includes(quarterUpper)) {
-        throw new Error(`Quarter tidak valid: ${viewQuarter}`);
-      }
-
-      const data = await getSectionsWithIndicatorsByPeriod(viewYear, quarterUpper);
-
-      console.log('📥 Data loaded:', data);
-
-      if (!data || !Array.isArray(data)) {
-        console.warn('Data tidak valid:', data);
-        setSections([]);
-      } else {
-        setSections(data);
-      }
-    } catch (err) {
-      console.error('❌ Error loading data:', err);
-      setLocalError(err.message || 'Gagal memuat data investasi');
-      showNotification('error', err.message || 'Gagal memuat data investasi');
-      setSections([]);
-    } finally {
-      setLoadingData(false);
-    }
-  }, [viewYear, viewQuarter, getSectionsWithIndicatorsByPeriod, showNotification]);
-
-  // Load semua section dari database
-  const loadAllSections = useCallback(async () => {
-    setLoadingAllSections(true);
-    try {
-      console.log('🔄 [INVESTASI] Loading all sections...');
-
-      const allSectionsData = await getAllSections(true);
-
-      const transformedSections = allSectionsData.map((s) => ({
-        id: s.id,
-        no: s.no,
-        parameter: s.parameter,
-        bobotSection: s.bobotSection,
-        description: s.description || '',
-        year: s.year || viewYear,
-        quarter: s.quarter || viewQuarter,
-        isActive: s.isActive,
-        sortOrder: s.sortOrder,
-      }));
-
-      setAllSections(transformedSections);
-      console.log('✅ [INVESTASI] All sections loaded:', transformedSections.length);
-    } catch (err) {
-      console.error('❌ [INVESTASI] Error loading all sections:', err);
-      showNotification('error', 'Gagal memuat daftar section');
-    } finally {
-      setLoadingAllSections(false);
-    }
-  }, [getAllSections, viewYear, viewQuarter, showNotification]);
-
-  // ====== Effects ======
-  useEffect(() => {
-    if (viewYear && viewQuarter) {
-      loadData();
-    }
-  }, [viewYear, viewQuarter]);
-
-  useEffect(() => {
-    if (error) {
-      showNotification('error', error);
-      clearError();
-    }
-  }, [error, clearError, showNotification]);
-
-  useEffect(() => {
-    setIndicatorForm((prev) => ({
-      ...prev,
-      year: viewYear,
-      quarter: viewQuarter,
-    }));
-  }, [viewYear, viewQuarter]);
-
-  useEffect(() => {
-    if (sectionForm.id) {
-      const hasil = computeHasil(indicatorForm);
-      const weighted = computeWeightedAuto(indicatorForm, sectionForm.bobotSection);
-
-      setIndicatorForm((prev) => ({
-        ...prev,
-        hasil: hasil !== null ? hasil.toString() : '',
-        weighted: weighted,
-      }));
-    }
-  }, [indicatorForm.pembilangValue, indicatorForm.penyebutValue, indicatorForm.mode, indicatorForm.formula, indicatorForm.peringkat, indicatorForm.bobotIndikator, sectionForm.bobotSection]);
-
-  // ====== Helper Functions untuk Sections ======
-  const getUniqueSections = useMemo(() => {
-    const sectionsForCurrentPeriod = sections.filter((section) => {
-      return section.year === viewYear && section.quarter === viewQuarter;
-    });
-
-    console.log('📊 Sections for current period:', sectionsForCurrentPeriod.length);
-
-    const uniqueMap = new Map();
-
-    sectionsForCurrentPeriod.forEach((section) => {
-      const key = `${section.no}-${section.parameter}`;
-      if (!uniqueMap.has(key)) {
-        uniqueMap.set(key, {
-          id: section.id,
-          no: section.no,
-          name: section.parameter,
-          bobotSection: section.bobotSection,
-          description: section.description,
-          year: section.year,
-          quarter: section.quarter,
-        });
-      }
-    });
-
-    const result = Array.from(uniqueMap.values()).sort((a, b) => {
-      const numA = parseInt(a.no) || 0;
-      const numB = parseInt(b.no) || 0;
-      return numA - numB;
-    });
-
-    return result;
+  const currentPeriodSections = useMemo(() => {
+    if (!sections) return [];
+    return getSectionsForPeriod(viewYear, viewQuarter, sections);
   }, [sections, viewYear, viewQuarter]);
 
-  // ====== Helper Functions ======
-  const setIndicatorField = (field, value) => {
-    setIndicatorForm((prev) => ({
-      ...prev,
-      [field]: value === null ? '' : value,
-    }));
-  };
+  function INVESTASI_selectSection(id) {
+    const s = currentPeriodSections.find((x) => x.id === id);
+    if (s) {
+      setINVESTASI_sectionForm({
+        id: s.id,
+        no: s.no,
+        bobotSection: s.bobotSection,
+        sectionLabel: s.parameter,
+      });
+      setIsAddingNewSection(false);
+      setIsEditingSection(false);
+    }
+  }
 
-  const selectSection = (sectionId) => {
-    console.log('📝 [SELECT SECTION] Selecting section ID:', sectionId);
-
-    if (sectionId === 'new') {
-      resetSectionForm();
+  async function INVESTASI_addSection() {
+    if (!INVESTASI_sectionForm.no || !INVESTASI_sectionForm.sectionLabel) {
+      showToast('No Section dan Section Label harus diisi!', 'error');
       return;
     }
 
-    const section = sections.find((s) => s.id === sectionId);
-    if (!section) {
-      console.log('❌ [SELECT SECTION] Section not found in current period, checking all sections...');
-
-      const sectionFromAll = allSections.find((s) => s.id === sectionId);
-      if (sectionFromAll) {
-        console.log('✅ [SELECT SECTION] Found in allSections:', sectionFromAll);
-        setSectionForm({
-          id: sectionFromAll.id,
-          no: sectionFromAll.no,
-          bobotSection: sectionFromAll.bobotSection,
-          parameter: sectionFromAll.parameter,
-          description: sectionFromAll.description || '',
-          year: sectionFromAll.year || viewYear,
-          quarter: sectionFromAll.quarter || viewQuarter,
-          isActive: sectionFromAll.isActive,
-          sortOrder: sectionFromAll.sortOrder,
-        });
-        setIsEditingSection(true);
-        setIndicatorForm((prev) => ({
-          ...prev,
-          sectionId: sectionFromAll.id,
-        }));
-      } else {
-        console.log('❌ [SELECT SECTION] Section not found anywhere');
-        showNotification('error', 'Section tidak ditemukan');
-      }
-      return;
-    }
-
-    console.log('✅ [SELECT SECTION] Section found:', section);
-
-    setSectionForm({
-      id: section.id,
-      no: section.no,
-      bobotSection: section.bobotSection,
-      parameter: section.parameter,
-      description: section.description || '',
-      year: section.year || viewYear,
-      quarter: section.quarter || viewQuarter,
-      isActive: section.isActive !== undefined ? section.isActive : true,
-      sortOrder: section.sortOrder || 0,
-    });
-
-    setIsEditingSection(true);
-    setIndicatorForm((prev) => ({
-      ...prev,
-      sectionId: section.id,
-    }));
-
-    console.log('✅ [SELECT SECTION] Section form set:', section.parameter);
-  };
-
-  const resetSectionForm = () => {
-    setSectionForm({
-      id: null,
-      no: '',
-      bobotSection: 100,
-      parameter: '',
-      description: '',
+    const sectionData = {
+      no: INVESTASI_sectionForm.no,
+      bobotSection: Number(INVESTASI_sectionForm.bobotSection || 0),
+      parameter: INVESTASI_sectionForm.sectionLabel,
       year: viewYear,
       quarter: viewQuarter,
       isActive: true,
-      sortOrder: 0,
-    });
-    setIsEditingSection(false);
-    setIndicatorForm((prev) => ({ ...prev, sectionId: null }));
-  };
-
-  const resetIndicatorForm = () => {
-    setIndicatorForm({
-      ...emptyIndicator,
-      sectionId: sectionForm.id,
-      year: viewYear,
-      quarter: viewQuarter,
-    });
-    setIsEditingIndicator(false);
-    setLocalError(null);
-  };
-
-  const handleEditIndicator = (indikator) => {
-    console.log('📝 Editing indicator:', indikator);
-
-    const formData = {
-      id: indikator.id,
-      subNo: indikator.subNo || '',
-      indikator: indikator.indikator || '',
-      bobotIndikator: indikator.bobotIndikator || 0,
-      sumberRisiko: indikator.sumberRisiko || '',
-      dampak: indikator.dampak || '',
-      pembilangLabel: indikator.pembilangLabel || '',
-      pembilangValue: indikator.pembilangValue || '',
-      penyebutLabel: indikator.penyebutLabel || '',
-      penyebutValue: indikator.penyebutValue || '',
-      peringkat: indikator.peringkat || 1,
-      weighted: indikator.weighted || '',
-      hasil: indikator.hasil || '',
-      hasilText: indikator.hasilText || '',
-      low: indikator.low || '',
-      lowToModerate: indikator.lowToModerate || '',
-      moderate: indikator.moderate || '',
-      moderateToHigh: indikator.moderateToHigh || '',
-      high: indikator.high || '',
-      keterangan: indikator.keterangan || '',
-      isPercent: Boolean(indikator.isPercent),
-      mode: indikator.mode || CalculationMode.RASIO,
-      formula: indikator.formula || '',
-      sectionId: sectionForm.id,
     };
 
-    setIndicatorForm(formData);
-    setIsEditingIndicator(true);
-    console.log('✅ Form set for editing:', formData.indikator);
-  };
-
-  // ====== Validation Functions ======
-  const validateSectionForm = () => {
-    if (!sectionForm.no?.trim()) {
-      setLocalError('No Section harus diisi');
-      showNotification('error', 'No Section harus diisi');
-      return false;
-    }
-
-    if (!sectionForm.parameter?.trim()) {
-      setLocalError('Nama Section harus diisi');
-      showNotification('error', 'Nama Section harus diisi');
-      return false;
-    }
-
-    const bobot = Number(sectionForm.bobotSection);
-    if (isNaN(bobot) || bobot <= 0 || bobot > 100) {
-      setLocalError('Bobot Section harus antara 1-100');
-      showNotification('error', 'Bobot Section harus antara 1-100');
-      return false;
-    }
-
-    return true;
-  };
-
-  const validateIndicatorForm = () => {
-    if (!sectionForm.id) {
-      setLocalError('Pilih section terlebih dahulu');
-      showNotification('error', 'Pilih section terlebih dahulu');
-      return false;
-    }
-
-    if (!indicatorForm.subNo?.trim()) {
-      setLocalError('Sub No harus diisi');
-      showNotification('error', 'Sub No harus diisi');
-      return false;
-    }
-
-    if (!indicatorForm.indikator?.trim()) {
-      setLocalError('Nama Indikator harus diisi');
-      showNotification('error', 'Nama Indikator harus diisi');
-      return false;
-    }
-
-    const bobotIndikator = Number(indicatorForm.bobotIndikator);
-    if (isNaN(bobotIndikator) || bobotIndikator <= 0 || bobotIndikator > 100) {
-      setLocalError('Bobot Indikator harus antara 1-100');
-      showNotification('error', 'Bobot Indikator harus antara 1-100');
-      return false;
-    }
-
-    if (indicatorForm.mode === CalculationMode.RASIO) {
-      if (indicatorForm.penyebutValue === '' || indicatorForm.penyebutValue == null) {
-        setLocalError('Nilai penyebut harus diisi untuk mode RASIO');
-        showNotification('error', 'Nilai penyebut harus diisi untuk mode RASIO');
-        return false;
-      }
-    }
-
-    if (indicatorForm.mode === CalculationMode.NILAI_TUNGGAL) {
-      if (indicatorForm.penyebutValue === '' || indicatorForm.penyebutValue == null) {
-        setLocalError('Nilai penyebut harus diisi untuk mode NILAI_TUNGGAL');
-        showNotification('error', 'Nilai penyebut harus diisi untuk mode NILAI_TUNGGAL');
-        return false;
-      }
-    }
-
-    if (indicatorForm.mode === CalculationMode.TEKS) {
-      if (!indicatorForm.hasilText?.trim()) {
-        setLocalError('Hasil teks harus diisi untuk mode TEKS');
-        showNotification('error', 'Hasil teks harus diisi untuk mode TEKS');
-        return false;
-      }
-    }
-
-    return true;
-  };
-
-  // ====== CRUD Operations dengan Notification ======
-  const handleCreateSection = async () => {
-    setLocalError(null);
-
-    if (!validateSectionForm()) return;
-
-    setIsCreating(true);
     try {
-      const sectionData = transformSectionToBackendInvestasi(sectionForm, viewYear, viewQuarter);
+      const newSection = await createSection(sectionData);
+      setNewlyAddedSections((prev) => new Set([...prev, newSection.id]));
 
-      console.log('📤 Creating section with data:', sectionData);
+      setINVESTASI_sectionForm({
+        id: newSection.id,
+        no: newSection.no,
+        bobotSection: newSection.bobotSection,
+        sectionLabel: newSection.parameter,
+      });
 
-      await createSection(sectionData);
-      showNotification('success', `✅ Section "${sectionForm.parameter}" berhasil dibuat/diaktifkan kembali`);
-
-      resetSectionForm();
-      await loadData();
-      await loadAllSections();
+      setIsAddingNewSection(false);
+      setIsEditingSection(false);
+      showToast(`Section "${newSection.parameter}" berhasil ditambahkan`, 'success');
     } catch (err) {
-      console.error('❌ Error creating section:', err);
-      const errorMessage = err.response?.data?.message || err.message || 'Terjadi kesalahan';
-
-      if (err.response?.status === 409) {
-        setLocalError(`Section "${sectionForm.no} - ${sectionForm.parameter}" sudah ada di periode ini.`);
-        showNotification('error', `Section sudah aktif di periode ${viewYear}-${viewQuarter}`);
-      } else {
-        setLocalError(`Gagal membuat section: ${errorMessage}`);
-        showNotification('error', `❌ Gagal: ${errorMessage}`);
-      }
-    } finally {
-      setIsCreating(false);
+      console.error('Failed to add section:', err);
+      const errorMessage = err?.response?.data?.message || err?.message || 'Gagal menambahkan section';
+      showToast(errorMessage, 'error');
     }
-  };
+  }
 
-  const handleUpdateSection = async () => {
-    setLocalError(null);
-    if (!sectionForm.id) return;
+  async function INVESTASI_saveSection() {
+    if (!INVESTASI_sectionForm.id) return;
 
-    if (!validateSectionForm()) return;
+    const sectionData = {
+      no: INVESTASI_sectionForm.no,
+      bobotSection: Number(INVESTASI_sectionForm.bobotSection || 0),
+      parameter: INVESTASI_sectionForm.sectionLabel,
+    };
 
-    setIsUpdating(true);
     try {
-      const updateData = transformSectionToBackendInvestasi(sectionForm, viewYear, viewQuarter);
-
-      console.log('📤 Updating section with data:', updateData);
-
-      await updateSection(sectionForm.id, updateData);
-      showNotification('success', `✅ Section "${sectionForm.parameter}" berhasil diperbarui`);
-
-      resetSectionForm();
-      await loadData();
-      await loadAllSections();
+      await updateSection(INVESTASI_sectionForm.id, sectionData);
+      setIsAddingNewSection(false);
+      setIsEditingSection(false);
+      showToast(`Section "${sectionData.parameter}" berhasil diupdate`, 'success');
     } catch (err) {
-      console.error('❌ Error updating section:', err);
-      const errorMessage = err.response?.data?.message || err.message || 'Terjadi kesalahan';
-      setLocalError(`Gagal update section: ${errorMessage}`);
-      showNotification('error', `❌ Gagal update section: ${errorMessage}`);
-    } finally {
-      setIsUpdating(false);
+      console.error('Failed to update section:', err);
+      const errorMessage = err?.response?.data?.message || err?.message || 'Gagal mengupdate section';
+      showToast(errorMessage, 'error');
     }
-  };
+  }
 
-  const handleDeleteSection = async (sectionId) => {
-    if (!confirm('Apakah Anda yakin ingin menghapus section ini? Semua indikator dalam section ini juga akan dihapus.')) return;
+  async function INVESTASI_removeSection(id) {
+    const sectionToDelete = currentPeriodSections.find((s) => s.id === id);
 
-    setIsDeleting(true);
-    try {
-      await deleteSection(sectionId);
-      showNotification('success', '✅ Section berhasil dihapus');
-
-      if (sectionForm.id === sectionId) {
-        resetSectionForm();
-      }
-
-      await loadData();
-      await loadAllSections();
-    } catch (err) {
-      console.error('❌ Error deleting section:', err);
-      const errorMessage = err.response?.data?.message || err.message || 'Terjadi kesalahan';
-      setLocalError(`Gagal menghapus section: ${errorMessage}`);
-      showNotification('error', `❌ Gagal menghapus section: ${errorMessage}`);
-    } finally {
-      setIsDeleting(false);
-    }
-  };
-
-  const handleCreateIndicator = async () => {
-    setLocalError(null);
-
-    if (!validateIndicatorForm()) return;
-
-    setIsCreating(true);
-    try {
-      const indicatorData = transformIndicatorToBackend(indicatorForm, viewYear, viewQuarter, sectionForm.id, sectionForm);
-
-      console.log('📤 Creating indicator with data:', indicatorData);
-
-      await createIndikator(indicatorData);
-      showNotification('success', `✅ Indikator "${indicatorForm.indikator}" berhasil dibuat/diaktifkan kembali`);
-
-      resetIndicatorForm();
-      await loadData();
-    } catch (err) {
-      console.error('❌ Error creating indicator:', err);
-      const errorMessage = err.response?.data?.message || err.message || 'Terjadi kesalahan';
-
-      if (err.response?.status === 409) {
-        setLocalError(`Indikator dengan nomor "${indicatorForm.subNo}" sudah ada di section ini.`);
-        showNotification('error', `Indikator sudah aktif di section ini`);
-      } else {
-        setLocalError(`Gagal membuat indikator: ${errorMessage}`);
-        showNotification('error', `❌ Gagal: ${errorMessage}`);
-      }
-    } finally {
-      setIsCreating(false);
-    }
-  };
-
-  const handleUpdateIndicator = async () => {
-    if (!indicatorForm.id) {
-      setLocalError('ID indikator tidak ditemukan');
-      showNotification('error', 'ID indikator tidak ditemukan');
+    if (!sectionToDelete) {
+      console.warn('[INVESTASI_removeSection] Section not found:', id);
+      showToast('Section tidak ditemukan', 'error');
       return;
     }
 
-    setIsUpdating(true);
-    try {
-      const updateData = {
-        subNo: indicatorForm.subNo,
-        indikator: indicatorForm.indikator,
-        bobotIndikator: Number(indicatorForm.bobotIndikator),
-        sumberRisiko: indicatorForm.sumberRisiko || undefined,
-        dampak: indicatorForm.dampak || undefined,
-        low: indicatorForm.low || undefined,
-        lowToModerate: indicatorForm.lowToModerate || undefined,
-        moderate: indicatorForm.moderate || undefined,
-        moderateToHigh: indicatorForm.moderateToHigh || undefined,
-        high: indicatorForm.high || undefined,
-        mode: indicatorForm.mode,
-        formula: indicatorForm.formula || undefined,
-        isPercent: indicatorForm.isPercent || false,
-        pembilangLabel: indicatorForm.pembilangLabel || undefined,
-        pembilangValue: indicatorForm.pembilangValue ? Number(indicatorForm.pembilangValue) : undefined,
-        penyebutLabel: indicatorForm.penyebutLabel || undefined,
-        penyebutValue: indicatorForm.penyebutValue ? Number(indicatorForm.penyebutValue) : undefined,
-        hasil: indicatorForm.hasil ? Number(indicatorForm.hasil) : undefined,
-        hasilText: indicatorForm.hasilText || undefined,
-        peringkat: Number(indicatorForm.peringkat),
-        weighted: computeWeightedAuto(indicatorForm, sectionForm.bobotSection),
-        keterangan: indicatorForm.keterangan || undefined,
-      };
-
-      console.log('📤 Updating indicator with data:', updateData);
-
-      await updateIndikator(indicatorForm.id, updateData);
-      showNotification('success', `✅ Indikator "${indicatorForm.indikator}" berhasil diperbarui`);
-
-      resetIndicatorForm();
-      await loadData();
-    } catch (err) {
-      console.error('❌ Error updating indicator:', err);
-      const errorMessage = err.response?.data?.message || err.message || 'Terjadi kesalahan';
-      setLocalError(`Gagal update indikator: ${errorMessage}`);
-      showNotification('error', `❌ Gagal update indikator: ${errorMessage}`);
-    } finally {
-      setIsUpdating(false);
+    if (!confirm(`Apakah Anda yakin ingin menghapus section "${sectionToDelete.parameter}"? Semua indikator dalam section ini akan ikut terhapus.`)) {
+      return;
     }
-  };
 
-  const handleDeleteIndicator = async (indikatorId) => {
-    if (!confirm('Apakah Anda yakin ingin menghapus indikator ini?')) return;
-
-    setIsDeleting(true);
     try {
-      await deleteIndikator(indikatorId);
-      showNotification('success', `✅ Indikator berhasil dihapus`);
+      await deleteSection(id);
 
-      await loadData();
+      setNewlyAddedSections((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(sectionToDelete.id);
+        return newSet;
+      });
+
+      setINVESTASI_sectionForm({
+        id: 0,
+        no: '',
+        bobotSection: 0,
+        sectionLabel: '',
+      });
+
+      setIsAddingNewSection(false);
+      setIsEditingSection(false);
+      showToast(`Section "${sectionToDelete.parameter}" berhasil dihapus`, 'success');
     } catch (err) {
-      console.error('❌ Error deleting indicator:', err);
+      console.error('Failed to delete section:', err);
+      const errorMessage = err?.response?.data?.message || err?.message || 'Gagal menghapus section';
+      showToast(errorMessage, 'error');
+    }
+  }
 
-      let errorMessage = 'Terjadi kesalahan';
-      if (err.response?.data?.message) {
-        errorMessage = err.response.data.message;
-      } else if (err.message) {
-        errorMessage = err.message;
+  const handleUndoClone = async () => {
+    if (!inheritInfo) return;
+
+    try {
+      const clonedSections = sections.filter((s) => s.year === viewYear && s.quarter === viewQuarter && s.inheritedFrom);
+
+      for (const section of clonedSections) {
+        await deleteSection(section.id);
       }
 
-      setLocalError(`Gagal menghapus indikator: ${errorMessage}`);
-      showNotification('error', `❌ Gagal menghapus indikator: ${errorMessage}`);
-    } finally {
-      setIsDeleting(false);
+      setInheritInfo(null);
+      showToast('Clone berhasil dibatalkan', 'success');
+    } catch (err) {
+      console.error('Error undoing clone:', err);
+      showToast('Gagal membatalkan clone', 'error');
     }
   };
 
-  // ====== Export Function ======
-  const handleExportInvestasi = () => {
-    exportInvestasiToExcel({
-      year: viewYear,
-      quarter: viewQuarter,
-      sections: sections,
-      filename: `Investasi_${viewYear}_${viewQuarter}`,
+  // ----- ROW & FORM -----
+  const invMakeRow = () =>
+    typeof makeEmptyRow === 'function'
+      ? {
+          ...makeEmptyRow(),
+          year: viewYear,
+          quarter: viewQuarter,
+          mode: 'RASIO',
+          formula: '',
+          isPercent: false,
+          low: 'x ≤ 1%',
+          lowToModerate: '1% < x ≤ 2%',
+          moderate: '2% < x ≤ 3%',
+          moderateToHigh: '3% < x ≤ 4%',
+          high: 'x > 4%',
+        }
+      : invFallbackEmpty(viewYear, viewQuarter);
+
+  const [INVESTASI_form, setINVESTASI_form] = useState(invMakeRow());
+  const [INVESTASI_editingRow, setINVESTASI_editingRow] = useState(null);
+  const [rawNumeratorInput, setRawNumeratorInput] = useState('');
+  const [rawDenominatorInput, setRawDenominatorInput] = useState('');
+
+  // Auto-calculate peringkat
+  useEffect(() => {
+    if (INVESTASI_form?.mode === 'TEKS') return;
+    if (!INVESTASI_form || !INVESTASI_sectionForm) return;
+
+    try {
+      const baseRow = {
+        ...INVESTASI_form,
+        no: INVESTASI_sectionForm.no || '',
+        sectionLabel: INVESTASI_sectionForm.sectionLabel || '',
+        bobotSection: INVESTASI_sectionForm.bobotSection || 0,
+      };
+
+      const hasilNum = computeInvestasiHasil(baseRow);
+
+      if (hasilNum !== '' && hasilNum != null) {
+        const newPeringkat = calculatePeringkat(
+          hasilNum,
+          {
+            low: INVESTASI_form.low || '',
+            lowToModerate: INVESTASI_form.lowToModerate || '',
+            moderate: INVESTASI_form.moderate || '',
+            moderateToHigh: INVESTASI_form.moderateToHigh || '',
+            high: INVESTASI_form.high || '',
+          },
+          INVESTASI_form.isPercent || false,
+        );
+        if (INVESTASI_form.peringkat !== newPeringkat) {
+          setINVESTASI_form((prev) => ({ ...prev, peringkat: newPeringkat }));
+        }
+      }
+    } catch (err) {
+      console.warn('[INVESTASI] Peringkat calculation failed:', err);
+    }
+  }, [
+    INVESTASI_form?.low,
+    INVESTASI_form?.lowToModerate,
+    INVESTASI_form?.moderate,
+    INVESTASI_form?.moderateToHigh,
+    INVESTASI_form?.numeratorValue,
+    INVESTASI_form?.denominatorValue,
+    INVESTASI_form?.formula,
+    INVESTASI_form?.isPercent,
+    INVESTASI_form?.mode,
+    INVESTASI_sectionForm?.bobotSection,
+  ]);
+
+  // Auto-calculate untuk TEKS mode
+  useEffect(() => {
+    if (INVESTASI_form?.mode !== 'TEKS') return;
+    if (!INVESTASI_form) return;
+
+    try {
+      const riskLevels = {
+        low: INVESTASI_form.low || '',
+        lowToModerate: INVESTASI_form.lowToModerate || '',
+        moderate: INVESTASI_form.moderate || '',
+        moderateToHigh: INVESTASI_form.moderateToHigh || '',
+        high: INVESTASI_form.high || '',
+      };
+
+      let newPeringkat = 0;
+
+      if (isNumericRiskLevels(riskLevels)) {
+        const hasilNum = parseFloat(INVESTASI_form.hasilText);
+        if (!isNaN(hasilNum)) {
+          newPeringkat = calculatePeringkat(hasilNum, riskLevels, true);
+        }
+      } else {
+        newPeringkat = calculatePeringkatFromText(INVESTASI_form.hasilText || '', riskLevels);
+      }
+
+      if (INVESTASI_form.peringkat !== newPeringkat) {
+        setINVESTASI_form((prev) => ({ ...prev, peringkat: newPeringkat }));
+      }
+    } catch (err) {
+      console.warn('[INVESTASI] TEKS peringkat calculation failed:', err);
+    }
+  }, [INVESTASI_form?.mode, INVESTASI_form?.hasilText, INVESTASI_form?.low, INVESTASI_form?.lowToModerate, INVESTASI_form?.moderate, INVESTASI_form?.moderateToHigh, INVESTASI_form?.high]);
+
+  const sectionsInCurrentQuarter = useMemo(() => {
+    return currentPeriodSections.map((section) => ({
+      no: section.no,
+      label: section.parameter,
+    }));
+  }, [currentPeriodSections]);
+
+  const INVESTASI_filtered = useMemo(() => {
+    if (!sectionsWithIndicators || !sectionsWithIndicators.length) {
+      return [];
+    }
+
+    const allIndicators = sectionsWithIndicators.flatMap((section) => {
+      if (!section.indicators || !section.indicators.length) {
+        return [];
+      }
+
+      return section.indicators.map((ind) => ({
+        id: ind.id,
+        subNo: ind.subNo,
+        indikator: ind.indikator,
+        bobotIndikator: ind.bobotIndikator,
+        sumberRisiko: ind.sumberRisiko,
+        dampak: ind.dampak,
+        pembilangLabel: ind.pembilangLabel,
+        pembilangValue: ind.pembilangValue,
+        penyebutLabel: ind.penyebutLabel,
+        penyebutValue: ind.penyebutValue,
+        low: ind.low,
+        lowToModerate: ind.lowToModerate,
+        moderate: ind.moderate,
+        moderateToHigh: ind.moderateToHigh,
+        high: ind.high,
+        mode: ind.mode,
+        formula: ind.formula,
+        isPercent: ind.isPercent,
+        hasil: ind.hasil,
+        hasilText: ind.hasilText,
+        peringkat: ind.peringkat,
+        weighted: ind.weighted,
+        keterangan: ind.keterangan,
+        no: section.no,
+        sectionLabel: section.parameter,
+        bobotSection: section.bobotSection,
+        year: section.year || viewYear,
+        quarter: section.quarter || viewQuarter,
+        sectionId: ind.sectionId || section.id,
+        numeratorLabel: ind.pembilangLabel,
+        numeratorValue: ind.pembilangValue,
+        denominatorLabel: ind.penyebutLabel,
+        denominatorValue: ind.penyebutValue,
+      }));
+    });
+
+    const filtered = allIndicators
+      .filter((r) => {
+        const matchYear = (r.year || viewYear) === viewYear;
+        const matchQuarter = (r.quarter || viewQuarter) === viewQuarter;
+        return matchYear && matchQuarter;
+      })
+      .filter((r) => {
+        const searchText = `${r.no} ${r.subNo} ${r.sectionLabel} ${r.indikator} ${r.keterangan || ''} ${r.sumberRisiko || ''} ${r.dampak || ''}`.toLowerCase();
+        return searchText.includes(query.toLowerCase());
+      })
+      .sort((a, b) => `${a.subNo}`.localeCompare(`${b.subNo}`, undefined, { numeric: true }));
+
+    return filtered;
+  }, [sectionsWithIndicators, viewYear, viewQuarter, query]);
+
+  const INVESTASI_totalWeighted = useMemo(() => INVESTASI_filtered.reduce((sum, r) => sum + (Number(r.weighted || 0) || 0), 0), [INVESTASI_filtered]);
+
+  const INVESTASI_resetForm = () => {
+    setINVESTASI_form(invMakeRow());
+    setINVESTASI_editingRow(null);
+    setRawNumeratorInput('');
+    setRawDenominatorInput('');
+  };
+
+  const buildBaseRow = () => {
+    const peringkatNum = INVESTASI_form.peringkat === '' || INVESTASI_form.peringkat == null ? 0 : Number(INVESTASI_form.peringkat);
+
+    return {
+      ...INVESTASI_form,
+      no: INVESTASI_sectionForm.no,
+      sectionLabel: INVESTASI_sectionForm.sectionLabel,
+      bobotSection: INVESTASI_sectionForm.bobotSection,
+      peringkat: peringkatNum,
+      numeratorLabel: INVESTASI_form.mode === 'NILAI_TUNGGAL' || INVESTASI_form.mode === 'TEKS' ? '' : INVESTASI_form.numeratorLabel,
+      numeratorValue: INVESTASI_form.mode === 'NILAI_TUNGGAL' || INVESTASI_form.mode === 'TEKS' ? '' : INVESTASI_form.numeratorValue,
+    };
+  };
+
+  const INVESTASI_addRow = async () => {
+    if (!INVESTASI_sectionForm.id) {
+      showToast('Pilih section terlebih dahulu!', 'error');
+      return;
+    }
+
+    const baseRow = buildBaseRow();
+    const rawHasil = computeInvestasiHasil(baseRow);
+    const section = currentPeriodSections.find((s) => s.id === INVESTASI_sectionForm.id);
+
+    if (!section) return;
+
+    const weightedAuto = computeWeightedLocal(baseRow.bobotSection, baseRow.bobotIndikator, baseRow.peringkat);
+    const backendData = transformToBackend(baseRow, viewYear, viewQuarter, INVESTASI_sectionForm.id, section);
+
+    try {
+      await createIndikator(backendData);
+      INVESTASI_resetForm();
+      setShowInvestasiForm(false);
+      showToast('Indikator berhasil ditambahkan!', 'success');
+    } catch (err) {
+      console.error('Failed to add indicator:', err);
+      const errorMessage = err?.response?.data?.message || err?.message || 'Gagal menambahkan indikator';
+      showToast(errorMessage, 'error');
+    }
+  };
+
+  const INVESTASI_startEdit = (row) => {
+    if (!row) return;
+    setShowInvestasiForm(true);
+
+    setINVESTASI_editingRow(row);
+
+    setINVESTASI_form({
+      ...row,
+      mode: row.mode || 'RASIO',
+      formula: row.formula || '',
+      isPercent: !!row.isPercent,
+      numeratorLabel: row.pembilangLabel || row.numeratorLabel || '',
+      numeratorValue: row.pembilangValue || row.numeratorValue || '',
+      denominatorLabel: row.penyebutLabel || row.denominatorLabel || '',
+      denominatorValue: row.penyebutValue || row.denominatorValue || '',
+    });
+
+    setRawNumeratorInput(row.pembilangValue || row.numeratorValue || '');
+    setRawDenominatorInput(row.penyebutValue || row.denominatorValue || '');
+
+    setINVESTASI_sectionForm({
+      id: row.sectionId,
+      no: row.no || '',
+      bobotSection: row.bobotSection ?? 0,
+      sectionLabel: row.sectionLabel || '',
     });
   };
 
-  // ====== Memoized Values ======
-  const filteredSections = useMemo(() => {
-    const searchQuery = query || '';
-    if (!searchQuery.trim()) return sections;
+  const INVESTASI_saveEdit = async () => {
+    if (!INVESTASI_editingRow) return;
 
-    const q = searchQuery.toLowerCase();
+    const baseRow = buildBaseRow();
+    const pembilangValue = baseRow.mode === 'RASIO' ? parseNum(baseRow.numeratorValue) : undefined;
+    const penyebutValue = baseRow.mode !== 'TEKS' ? parseNum(baseRow.denominatorValue) : undefined;
 
-    return sections
-      .map((s) => {
-        const inds = s.indicators || [];
-        const matchedIndicators = inds.filter((it) => {
-          const indikatorText = it.indikator || '';
-          const subNo = it.subNo || '';
-          const pembilangLabel = it.pembilangLabel || '';
-          const penyebutLabel = it.penyebutLabel || '';
-          const sumberRisiko = it.sumberRisiko || '';
-          const dampak = it.dampak || '';
-          const keterangan = it.keterangan || '';
-          const hasilText = it.hasilText || '';
-
-          return `${subNo} ${indikatorText} ${pembilangLabel} ${penyebutLabel} ${sumberRisiko} ${dampak} ${keterangan} ${hasilText}`.toLowerCase().includes(q);
-        });
-
-        const sectionName = s.parameter || '';
-        if (sectionName.toLowerCase().includes(q) || matchedIndicators.length > 0) {
-          return { ...s, indicators: matchedIndicators.length ? matchedIndicators : inds };
-        }
-        return null;
-      })
-      .filter(Boolean);
-  }, [sections, query]);
-
-  const totalWeightedCalc = useMemo(() => {
-    return sections.reduce((sum, section) => {
-      const inds = section.indicators || [];
-      const sectionTotal = inds.reduce((sectionSum, indikator) => {
-        const weighted = Number(indikator.weighted);
-        return sectionSum + (isNaN(weighted) ? 0 : weighted);
-      }, 0);
-      return sum + sectionTotal;
-    }, 0);
-  }, [sections]);
-
-  const hasilPreview = useMemo(() => {
-    if (indicatorForm.mode === CalculationMode.TEKS) {
-      return indicatorForm.hasilText || '';
+    if (baseRow.mode === 'RASIO') {
+      if (penyebutValue === 0) {
+        showToast('Untuk mode RASIO, nilai penyebut harus lebih besar dari 0', 'error');
+        return;
+      }
+      if (penyebutValue < 0) {
+        showToast('Untuk mode RASIO, nilai penyebut tidak boleh negatif', 'error');
+        return;
+      }
     }
 
-    const raw = computeHasil(indicatorForm);
-    if (raw === null || raw === '') return '';
-
-    if (indicatorForm.isPercent) {
-      const pct = Number(raw) * 100;
-      if (!isFinite(pct) || isNaN(pct)) return '';
-      return `${pct.toFixed(2)}%`;
+    if (baseRow.mode === 'NILAI_TUNGGAL' && penyebutValue < 0) {
+      showToast('Untuk mode NILAI_TUNGGAL, nilai penyebut tidak boleh negatif', 'error');
+      return;
     }
 
-    if (indicatorForm.mode === CalculationMode.NILAI_TUNGGAL) {
-      return fmtNumber(raw);
+    const rawHasil = computeInvestasiHasil(baseRow);
+    const newPeringkat = calculatePeringkat(
+      rawHasil,
+      {
+        low: baseRow.low || '',
+        lowToModerate: baseRow.lowToModerate || '',
+        moderate: baseRow.moderate || '',
+        moderateToHigh: baseRow.moderateToHigh || '',
+        high: baseRow.high || '',
+      },
+      baseRow.isPercent || false,
+    );
+
+    const weightedAuto = computeWeightedLocal(baseRow.bobotSection, baseRow.bobotIndikator, newPeringkat);
+    const hasilValue = baseRow.mode === 'TEKS' ? undefined : rawHasil === '' || rawHasil == null ? 0 : rawHasil;
+
+    const updateData = {
+      year: viewYear,
+      quarter: viewQuarter,
+      sectionId: INVESTASI_sectionForm.id,
+      subNo: baseRow.subNo,
+      indikator: baseRow.indikator,
+      bobotIndikator: Number(baseRow.bobotIndikator) || 0,
+      sumberRisiko: baseRow.sumberRisiko || undefined,
+      dampak: baseRow.dampak || undefined,
+      low: baseRow.low || undefined,
+      lowToModerate: baseRow.lowToModerate || undefined,
+      moderate: baseRow.moderate || undefined,
+      moderateToHigh: baseRow.moderateToHigh || undefined,
+      high: baseRow.high || undefined,
+      mode: baseRow.mode,
+      formula: baseRow.formula || undefined,
+      isPercent: baseRow.isPercent || false,
+      pembilangLabel: baseRow.mode === 'RASIO' ? baseRow.numeratorLabel : undefined,
+      penyebutLabel: baseRow.mode !== 'TEKS' ? baseRow.denominatorLabel : undefined,
+      pembilangValue: pembilangValue,
+      penyebutValue: penyebutValue,
+      hasil: hasilValue,
+      hasilText: baseRow.mode === 'TEKS' ? baseRow.hasilText || '' : undefined,
+      peringkat: newPeringkat,
+      weighted: weightedAuto,
+      keterangan: baseRow.keterangan || undefined,
+    };
+
+    Object.keys(updateData).forEach((key) => updateData[key] === undefined && delete updateData[key]);
+
+    try {
+      await updateIndikator(INVESTASI_editingRow.id, updateData);
+      INVESTASI_resetForm();
+      setShowInvestasiForm(false);
+      showToast('Indikator berhasil diupdate!', 'success');
+    } catch (err) {
+      console.error('Failed to update indicator:', err);
+      const errorMessage = err?.response?.data?.message || err?.message || 'Gagal mengupdate indikator';
+      showToast(errorMessage, 'error');
+    }
+  };
+
+  const INVESTASI_removeRow = async (row) => {
+    if (!row) return;
+
+    if (!confirm(`Apakah Anda yakin ingin menghapus indikator "${row.indikator}"?`)) {
+      return;
     }
 
-    return Number(raw).toFixed(4);
-  }, [indicatorForm]);
+    try {
+      await deleteIndikator(row.id);
+      if (INVESTASI_editingRow?.id === row.id) INVESTASI_resetForm();
+      showToast(`Indikator "${row.indikator}" berhasil dihapus`, 'success');
+    } catch (err) {
+      console.error('Failed to delete indicator:', err);
+      const errorMessage = err?.response?.data?.message || err?.message || 'Gagal menghapus indikator';
+      showToast(errorMessage, 'error');
+    }
+  };
 
-  const weightedPreview = useMemo(() => {
-    if (!sectionForm.id) return 0;
-    const weighted = computeWeightedAuto(indicatorForm, sectionForm.bobotSection);
-    return weighted;
-  }, [sectionForm.id, indicatorForm, sectionForm.bobotSection]);
+  const INVESTASI_exportExcel = () => {
+    try {
+      exportInvestasiToExcel(INVESTASI_filtered, viewYear, viewQuarter);
+      showToast(`Data Investasi tahun ${viewYear} triwulan ${viewQuarter} berhasil diexport`, 'success');
+    } catch (err) {
+      showToast('Gagal mengexport data', 'error');
+    }
+  };
 
-  // ====== Render ======
   return (
-    <div className="space-y-6">
-      <div className="bg-white rounded-2xl">
-        {/* NOTIFICATION AREA */}
-        {notification.show && (
-          <div className={`mb-4 rounded-lg shadow-md border animate-slideIn ${notification.type === 'success' ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
-            <div className="p-4 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${notification.type === 'success' ? 'bg-green-500' : 'bg-red-500'}`}>
-                  {notification.type === 'success' ? <CheckCircle className="w-5 h-5 text-white" /> : <XCircle className="w-5 h-5 text-white" />}
-                </div>
-                <span className={`font-medium ${notification.type === 'success' ? 'text-green-800' : 'text-red-800'}`}>{notification.message}</span>
-              </div>
-              <button onClick={hideNotification} className="text-gray-400 hover:text-gray-600 transition-colors">
-                ✕
-              </button>
+    <>
+      {/* Toast Notification */}
+      {toast.show && <ToastNotification message={toast.message} type={toast.type} onClose={clearToast} />}
+
+      {/* Loading & Error States */}
+      {loading && (
+        <div className="mb-4 p-3 bg-blue-100 border border-blue-400 text-blue-700 rounded flex items-center gap-2">
+          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+          Memuat data...
+        </div>
+      )}
+
+      {error && (
+        <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded flex items-center justify-between">
+          <span>{error}</span>
+          <button onClick={clearError} className="text-red-700 hover:text-red-900">
+            ✕
+          </button>
+        </div>
+      )}
+
+      <header className="px-4 py-4 flex items-center justify-between gap-3">
+        <h2 className="text-xl sm:text-2xl font-semibold">Form – Investasi</h2>
+        <div className="flex items-end gap-4">
+          <div className="hidden md:flex items-end gap-4">
+            <div className="flex flex-col gap-1">
+              <YearInput
+                value={viewYear}
+                onChange={(v) => {
+                  onViewYearChange(v);
+                  setINVESTASI_form((f) => ({ ...f, year: v }));
+                }}
+              />
             </div>
-            {/* Progress bar */}
-            <div className={`h-1 w-full ${notification.type === 'success' ? 'bg-green-200' : 'bg-red-200'}`}>
-              <div
-                className={`h-full ${notification.type === 'success' ? 'bg-green-500' : 'bg-red-500'}`}
-                style={{
-                  width: '100%',
-                  animation: 'shrink 4s linear forwards',
+            <div className="flex flex-col gap-1">
+              <QuarterSelect
+                value={viewQuarter}
+                onChange={(v) => {
+                  onViewQuarterChange(v);
+                  setINVESTASI_form((f) => ({ ...f, quarter: v }));
                 }}
               />
             </div>
           </div>
-        )}
 
-        <header className="flex items-center justify-between gap-3 px-4 py-4">
-          <h2 className="text-xl sm:text-2xl font-semibold">Form – Risiko Investasi</h2>
-          <div className="flex items-end gap-4">
-            {/* tahun + triwulan */}
-            <div className="flex items-end gap-4">
-              <div className="flex flex-col gap-1">
-                <label className="text-xs text-gray-600 font-medium mb-1">Tahun</label>
-                <YearInput value={viewYear} onChange={handleYearChange} />
-              </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-xs text-gray-600 font-medium mb-1">Triwulan</label>
-                <QuarterSelect value={viewQuarter} onChange={handleQuarterChange} />
-              </div>
-            </div>
+          <div className="flex items-end gap-2">
+            <button onClick={() => setShowInvestasiForm(true)} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 font-semibold">
+              + Tambah Data
+            </button>
 
-            {/* search + export */}
-            <div className="flex items-end gap-2">
-              <div className="relative">
-                <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Cari no/sub/indikator/keterangan…" className="pl-9 pr-3 py-2 rounded-xl border w-64" />
-                <Search size={16} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
-              </div>
-
-              {/* Backend Actions */}
-              <button
-                onClick={() => {
-                  loadData();
-                  loadAllSections();
-                }}
-                disabled={loadingData || loading}
-                className="inline-flex items-center gap-2 rounded-xl px-4 py-2 border bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
-              >
-                <RefreshCw size={18} /> {loadingData ? 'Loading...' : 'Refresh Data'}
-              </button>
-
-              <button onClick={handleExportInvestasi} disabled={loadingData || sections.length === 0} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 border bg-gray-900 text-white hover:bg-black disabled:opacity-50">
-                <Download size={18} />
-                {loadingData ? 'Loading...' : `Export ${viewYear}-${viewQuarter}`}
-              </button>
-            </div>
-          </div>
-        </header>
-
-        {/* Error Display */}
-        {(localError || error) && (
-          <div className="mx-4 mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <XCircle className="w-5 h-5" />
-              <span>{localError || error}</span>
-            </div>
-            <button
-              onClick={() => {
-                setLocalError(null);
-                clearError();
-              }}
-              className="text-red-700 hover:text-red-900"
-            >
-              ✕
+            <button onClick={INVESTASI_exportExcel} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 border bg-gray-900 text-white hover:bg-black">
+              <Download size={18} /> Export {viewYear}-{viewQuarter}
             </button>
           </div>
-        )}
+        </div>
+      </header>
 
-        {/* Loading Indicator */}
-        {(loadingData || loading || isCreating || isUpdating || isDeleting || loadingAllSections) && (
-          <div className="mx-4 mb-4 p-3 bg-blue-100 border border-blue-400 text-blue-700 rounded flex items-center gap-2">
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-            {loadingAllSections ? 'Memuat daftar section...' : 'Memuat data...'}
+      {inheritInfo && (
+        <div className="mb-4 rounded-lg bg-yellow-50 border border-yellow-300 px-4 py-3 text-sm flex justify-between items-start gap-4">
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="inline-block w-2 h-2 rounded-full bg-yellow-500"></span>
+              <strong>Auto-Clone Berhasil!</strong>
+            </div>
+            <p className="text-gray-700">
+              Section untuk{' '}
+              <strong>
+                {viewYear}-{viewQuarter}
+              </strong>{' '}
+              telah di-clone otomatis dari <strong>{inheritInfo.from}</strong> ({inheritInfo.count} section).
+            </p>
+            <p className="text-xs text-gray-500 mt-1">💡 Anda dapat mengedit atau menghapus section sesuai kebutuhan.</p>
           </div>
-        )}
+          <button onClick={handleUndoClone} className="px-3 py-1.5 rounded border bg-white hover:bg-gray-50 text-sm font-medium whitespace-nowrap">
+            Undo Clone
+          </button>
+        </div>
+      )}
 
-        {/* ===== FORM SECTION + INDIKATOR ===== */}
+      {/* FORM SECTION + INDIKATOR - Sama seperti sebelumnya */}
+      {showInvestasiForm && (
         <div className="relative rounded-2xl overflow-hidden mb-6 shadow-sm bg-gradient-to-r from-[#0076C6]/90 via-[#00A3DA]/90 to-[#33C2B5]/90">
           {/* SECTION HEADER */}
           <div className="rounded-2xl border-2 border-gray-300 p-4 shadow-sm mb-6">
-            <h2 className="text-white font-semibold text-lg sm:text-xl mb-6">Form Section – Investasi</h2>
-
-            {/* Row untuk memilih section yang sudah ada */}
-            <div className="mb-4">
-              <label className="text-xs text-white font-medium mb-1 block">Pilih Section yang Sudah Ada</label>
-              <div className="relative">
-                <select
-                  className="w-full px-4 py-3 rounded-lg border-2 border-gray-300 font-medium appearance-none bg-white cursor-pointer pr-10"
-                  value={sectionForm.id || ''}
-                  onChange={(e) => {
-                    const selectedId = e.target.value;
-                    if (selectedId === 'new') {
-                      resetSectionForm();
-                    } else if (selectedId === '') {
-                      resetSectionForm();
-                    } else {
-                      selectSection(Number(selectedId));
-                    }
-                  }}
-                  disabled={loadingAllSections}
-                >
-                  <option value="">-- Pilih Section yang sudah ada --</option>
-
-                  {/* Sections dari periode saat ini */}
-                  {sections.length > 0 ? (
-                    sections.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.no} - {s.parameter} ({s.bobotSection}%)
-                      </option>
-                    ))
-                  ) : (
-                    <option value="" disabled>
-                      Tidak ada section untuk periode {viewYear}-{viewQuarter}
-                    </option>
-                  )}
-
-                  {/* Sections dari database yang belum ada di periode ini */}
-                  {allSections.length > 0 && sections.length > 0 && (
-                    <optgroup label="Section dari database">
-                      {allSections
-                        .filter((section) => !sections.some((s) => s.id === section.id))
-                        .map((section) => (
-                          <option key={section.id} value={section.id}>
-                            {section.no} - {section.parameter} ({section.bobotSection}%)
-                          </option>
-                        ))}
-                    </optgroup>
-                  )}
-
-                  <option value="new">+ Buat Section Baru</option>
-                </select>
-                <ChevronDown className="absolute right-4 top-9 pointer-events-none text-gray-400" size={20} />
-              </div>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-white font-semibold text-lg sm:text-xl">Form Section – Investasi</h2>
+              <button onClick={() => setShowInvestasiForm(false)} className="w-9 h-9 flex items-center justify-center rounded-lg bg-white/20 hover:bg-white/30 text-white font-bold" title="Tutup Form">
+                ✕
+              </button>
             </div>
 
-            {/* Form input untuk edit section */}
             <div className="flex items-end gap-4 mb-4">
-              {/* No Sec */}
               <div className="flex flex-col">
                 <label className="text-xs text-white font-medium mb-1">No Sec</label>
                 <input
-                  className="w-20 h-10 px-3 rounded-lg border-2 border-gray-300 text-center font-medium bg-white"
-                  value={sectionForm.no}
-                  onChange={(e) => setSectionForm((f) => ({ ...f, no: e.target.value }))}
-                  placeholder="6.1"
-                  list="section-no-suggestions"
+                  className={`w-20 h-10 px-3 rounded-lg border-2 border-gray-300 text-center font-medium ${isAddingNewSection || isEditingSection ? 'bg-white' : 'bg-gray-100'}`}
+                  style={!isAddingNewSection && !isEditingSection ? { backgroundColor: '#f3f4f6', cursor: 'not-allowed' } : {}}
+                  disabled={!isAddingNewSection && !isEditingSection}
+                  value={INVESTASI_sectionForm.no}
+                  onChange={(e) => setINVESTASI_sectionForm((f) => ({ ...f, no: e.target.value }))}
                 />
-                <datalist id="section-no-suggestions">
-                  {getUniqueSections.map((section) => (
-                    <option key={`no-${section.no}`} value={section.no} />
-                  ))}
-                </datalist>
               </div>
 
-              {/* Bobot Sec */}
               <div className="flex flex-col">
-                <label className="text-xs text-white font-medium mb-1">Bobot Sec (%)</label>
+                <label className="text-xs text-white font-medium mb-1">Bobot Sec</label>
                 <input
                   type="number"
-                  className="w-28 h-10 px-3 rounded-lg border-2 border-gray-300 text-center font-medium bg-white"
-                  value={sectionForm.bobotSection}
-                  onChange={(e) => setSectionForm((f) => ({ ...f, bobotSection: e.target.value }))}
-                  min="0"
-                  max="100"
-                  step="0.01"
+                  className={`w-28 h-10 px-3 rounded-lg border-2 border-gray-300 text-center font-medium ${isAddingNewSection || isEditingSection ? 'bg-white' : 'bg-gray-100'}`}
+                  style={!isAddingNewSection && !isEditingSection ? { backgroundColor: '#f3f4f6', cursor: 'not-allowed' } : {}}
+                  disabled={!isAddingNewSection && !isEditingSection}
+                  value={INVESTASI_sectionForm.bobotSection ?? ''}
+                  onChange={(e) => setINVESTASI_sectionForm((f) => ({ ...f, bobotSection: e.target.value }))}
                 />
               </div>
 
-              {/* Section */}
               <div className="flex-1 flex flex-col">
-                <label className="text-xs text-white font-medium mb-1">Nama Section</label>
+                <label className="text-xs text-white font-medium mb-1">Section</label>
                 <input
-                  className="w-full h-10 px-4 rounded-lg border-2 border-gray-300 font-medium bg-white"
-                  value={sectionForm.parameter}
-                  onChange={(e) => setSectionForm((f) => ({ ...f, parameter: e.target.value }))}
+                  className={`w-full h-10 px-4 rounded-lg border-2 border-gray-300 font-medium ${isAddingNewSection || isEditingSection ? 'bg-white' : 'bg-gray-100'}`}
+                  style={!isAddingNewSection && !isEditingSection ? { backgroundColor: '#f3f4f6', cursor: 'not-allowed' } : {}}
+                  disabled={!isAddingNewSection && !isEditingSection}
+                  value={INVESTASI_sectionForm.sectionLabel}
+                  onChange={(e) => setINVESTASI_sectionForm((f) => ({ ...f, sectionLabel: e.target.value }))}
                   placeholder="Uraian section risiko investasi"
-                  list="section-name-suggestions"
                 />
-                <datalist id="section-name-suggestions">
-                  {getUniqueSections.map((section) => (
-                    <option key={`name-${section.no}`} value={section.name} />
-                  ))}
-                </datalist>
               </div>
 
-              {/* Buttons */}
               <div className="flex gap-2 self-end">
-                {!isEditingSection ? (
-                  <button
-                    className="w-10 h-10 rounded-lg bg-green-500 hover:bg-green-600 text-white flex items-center justify-center disabled:bg-gray-400"
-                    onClick={handleCreateSection}
-                    disabled={isCreating || !sectionForm.no || !sectionForm.parameter}
-                    title="Tambah Section"
-                  >
-                    {isCreating ? '...' : <Plus size={20} />}
-                  </button>
-                ) : (
+                {!isAddingNewSection && !isEditingSection && (
                   <>
-                    <button className="w-10 h-10 rounded-lg bg-yellow-400 hover:bg-yellow-500 text-white flex items-center justify-center disabled:bg-gray-400" onClick={handleUpdateSection} disabled={isUpdating} title="Update Section">
-                      {isUpdating ? '...' : <Edit3 size={20} />}
+                    <button className="w-10 h-10 rounded-lg bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center" onClick={() => setIsEditingSection(true)} title="Edit Section">
+                      <Edit3 size={20} />
                     </button>
-                    <button className="w-10 h-10 rounded-lg bg-gray-500 hover:bg-gray-600 text-white flex items-center justify-center" onClick={resetSectionForm} title="Batal">
-                      ✕
+                    <button className="w-10 h-10 rounded-lg bg-red-500 hover:bg-red-600 text-white flex items-center justify-center" onClick={() => INVESTASI_removeSection(INVESTASI_sectionForm.id)} title="Hapus Section">
+                      <Trash2 size={20} />
                     </button>
                   </>
                 )}
-                {isEditingSection && sectionForm.id && (
-                  <button
-                    className="w-10 h-10 rounded-lg bg-red-500 hover:bg-red-600 text-white flex items-center justify-center disabled:bg-gray-400"
-                    onClick={() => {
-                      handleDeleteSection(sectionForm.id);
-                    }}
-                    disabled={isDeleting}
-                    title="Hapus Section"
-                  >
-                    {isDeleting ? '...' : <Trash2 size={20} />}
-                  </button>
+
+                {(isAddingNewSection || isEditingSection) && (
+                  <>
+                    <button
+                      className="px-4 h-10 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold flex items-center justify-center gap-1"
+                      onClick={isAddingNewSection ? INVESTASI_addSection : INVESTASI_saveSection}
+                      title="Simpan Section"
+                    >
+                      <span>{isAddingNewSection ? '+' : '✓'}</span>
+                      <span>{isAddingNewSection ? 'Tambah' : 'Simpan'}</span>
+                    </button>
+                    <button
+                      className="px-4 h-10 rounded-lg border-2 border-gray-300 hover:bg-gray-50 font-semibold flex items-center justify-center"
+                      onClick={() => {
+                        setIsAddingNewSection(false);
+                        setIsEditingSection(false);
+                        if (INVESTASI_sectionForm.id) {
+                          INVESTASI_selectSection(INVESTASI_sectionForm.id);
+                        }
+                      }}
+                      title="Batal"
+                    >
+                      ✗ Batal
+                    </button>
+                  </>
                 )}
               </div>
             </div>
 
-            {/* Info Section yang dipilih */}
-            {sectionForm.id && (
-              <div className="mt-3 p-2 bg-blue-50 border border-blue-200 rounded">
-                <div className="text-sm text-blue-800">
-                  <span className="font-medium">Section dipilih:</span> {sectionForm.no} - {sectionForm.parameter}
+            <div className="relative">
+              <label className="text-xs text-white font-medium mb-1 block">Section</label>
+              <select
+                className="w-full px-4 py-3 rounded-lg border-2 border-gray-300 font-medium appearance-none bg-white cursor-pointer pr-10"
+                value={isAddingNewSection ? 'ADD_NEW_SECTION' : INVESTASI_sectionForm.id || ''}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === 'ADD_NEW_SECTION') {
+                    setIsAddingNewSection(true);
+                    setIsEditingSection(true);
+                    setINVESTASI_sectionForm({ id: 0, no: '', bobotSection: 0, sectionLabel: '' });
+                    return;
+                  }
+                  if (val) {
+                    setIsAddingNewSection(false);
+                    setIsEditingSection(false);
+                    INVESTASI_selectSection(Number(val));
+                  }
+                }}
+              >
+                <option value="">-- Pilih Section --</option>
+                {sectionsInCurrentQuarter.map((s, idx) => (
+                  <option key={`section-${idx}`} value={currentPeriodSections[idx]?.id}>
+                    {s.no} - {s.label}
+                  </option>
+                ))}
+                <option value="ADD_NEW_SECTION" style={{ fontWeight: '600', color: '#0068B3' }}>
+                  + Tambah Section Baru
+                </option>
+              </select>
+              <ChevronDown className="absolute right-4 top-9 pointer-events-none text-gray-400" size={20} />
+            </div>
+          </div>
+
+          {/* FORM INDIKATOR - Sama seperti sebelumnya */}
+          <div className="rounded-xl border-2 border-gray-300 shadow-sm p-6 mb-6">
+            <div className="grid grid-cols-12 gap-4 mb-4">
+              <div className="col-span-2">
+                <label className="text-sm font-medium mb-2 block text-white">Sub No</label>
+                <input className="w-full rounded-lg border-2 border-gray-300 px-3 py-3 text-sm bg-white" value={INVESTASI_form.subNo} onChange={(e) => setINVESTASI_form((f) => ({ ...f, subNo: e.target.value }))} placeholder="1.1" />
+              </div>
+              <div className="col-span-7">
+                <label className="text-sm font-medium mb-2 block text-white">Indikator</label>
+                <input
+                  className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-sm bg-white"
+                  value={INVESTASI_form.indikator}
+                  onChange={(e) => setINVESTASI_form((f) => ({ ...f, indikator: e.target.value }))}
+                  placeholder="Nama indikator investasi…"
+                />
+              </div>
+              <div className="col-span-3">
+                <label className="text-sm font-medium mb-2 block text-white">Bobot Indikator (%)</label>
+                <input
+                  type="number"
+                  className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-sm text-right bg-white"
+                  value={INVESTASI_form.bobotIndikator ?? ''}
+                  onChange={(e) => setINVESTASI_form((f) => ({ ...f, bobotIndikator: e.target.value }))}
+                  placeholder="50"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-12 gap-4 mb-4">
+              <div className="col-span-4">
+                <label className="text-sm font-medium mb-2 block text-white">Metode Perhitungan</label>
+                <select
+                  className="w-full rounded-lg border-2 border-gray-300 px-3 py-3 text-sm bg-white"
+                  value={INVESTASI_form.mode || 'RASIO'}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setINVESTASI_form((f) => ({
+                      ...f,
+                      mode: v,
+                      ...(v === 'NILAI_TUNGGAL' || v === 'TEKS' ? { numeratorLabel: '', numeratorValue: '' } : {}),
+                      ...(v === 'TEKS' ? { denominatorLabel: '', denominatorValue: '', formula: '', isPercent: false, hasil: '' } : {}),
+                    }));
+                  }}
+                >
+                  <option value="RASIO">Rasio (Pembilang / Penyebut)</option>
+                  <option value="NILAI_TUNGGAL">Nilai tunggal (hanya penyebut)</option>
+                  <option value="TEKS">Kualitatif (hasil berupa teks)</option>
+                </select>
+              </div>
+
+              <div className="col-span-8">
+                {INVESTASI_form.mode === 'TEKS' ? (
+                  <>
+                    <label className="text-sm font-medium mb-2 block text-white">Hasil (Teks) – akan muncul di kolom "Hasil"</label>
+                    <input
+                      className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-sm bg-white"
+                      value={INVESTASI_form.hasilText || ''}
+                      onChange={(e) => setINVESTASI_form((f) => ({ ...f, hasilText: e.target.value }))}
+                      placeholder="Contoh: sedang, 100, baik, 50, dll (bisa teks atau angka)"
+                    />
+                  </>
+                ) : (
+                  <>
+                    <label className="text-sm font-medium mb-2 block text-white">Rumus perhitungan (opsional — kosong = pakai default)</label>
+                    <div className="flex items-center gap-4">
+                      <input
+                        type="text"
+                        className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-sm bg-white"
+                        placeholder={INVESTASI_form.mode === 'RASIO' ? 'Contoh default: pemb / peny — atau rumus custom (pemb, peny)' : 'Contoh default: peny — atau rumus custom (peny / 1000)'}
+                        value={INVESTASI_form.formula || ''}
+                        onChange={(e) => setINVESTASI_form((f) => ({ ...f, formula: e.target.value }))}
+                      />
+                      <label className="flex items-center gap-2 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={INVESTASI_form.isPercent || false}
+                          onChange={(e) => setINVESTASI_form((f) => ({ ...f, isPercent: e.target.checked }))}
+                          className="w-6 h-6 rounded-full border-2 border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <div className="w-12 h-12 flex items-center justify-center rounded-lg border-2 border-gray-300 bg-gray-100 text-lg font-bold">%</div>
+                      </label>
+                    </div>
+                    <div className="text-xs text-white/80 mt-2">Aktifkan checkbox untuk mengubah hasil menjadi persentase (hasil × 100). Weighted tetap angka (bukan persen).</div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {INVESTASI_form.mode === 'RASIO' && (
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="text-sm font-medium mb-2 block text-white">Faktor Pembilang</label>
+                  <input
+                    className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-sm bg-white"
+                    value={INVESTASI_form.numeratorLabel}
+                    onChange={(e) => setINVESTASI_form((f) => ({ ...f, numeratorLabel: e.target.value }))}
+                    placeholder="Misal: Total Outstanding (OS) Non-Investment Grade"
+                  />
                 </div>
-                <div className="text-xs text-blue-600">
-                  Bobot: {sectionForm.bobotSection}% | Periode: {viewYear}-{viewQuarter} | Data akan disimpan untuk periode ini
+                <div>
+                  <label className="text-sm font-medium mb-2 block text-white">Nilai Pembilang</label>
+                  <input
+                    className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-sm bg-white"
+                    value={rawNumeratorInput}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setRawNumeratorInput(val);
+                      setINVESTASI_form((f) => ({ ...f, numeratorValue: val }));
+                    }}
+                    onBlur={(e) => {
+                      const val = e.target.value;
+                      if (!val || val.endsWith(',') || val.endsWith('.') || val === '-') return;
+                      const formatted = fmtNumberSmart(val);
+                      if (formatted && formatted !== val) {
+                        setRawNumeratorInput(formatted);
+                        setINVESTASI_form((f) => ({ ...f, numeratorValue: formatted }));
+                      }
+                    }}
+                    placeholder="Contoh: -1000, 1.000, 1.000,50, 10%"
+                  />
                 </div>
               </div>
             )}
 
-            {/* Tombol refresh sections */}
-            <div className="mt-4 flex justify-end">
-              <button onClick={loadAllSections} className="flex items-center gap-2 text-sm text-white hover:text-white/80" disabled={loadingAllSections}>
-                <RefreshCw size={14} />
-                Refresh Daftar Section
-              </button>
-            </div>
-          </div>
-
-          {/* main body: indicator form */}
-          {sectionForm.id && (
-            <div className="rounded-xl border-2 border-gray-300 shadow-sm p-6 mb-6">
-              <h3 className="text-white font-semibold text-lg mb-4">{isEditingIndicator ? 'Edit Indikator' : 'Tambah Indikator'}</h3>
-
-              {/* Sub No & Indikator & Bobot Par Row */}
-              <div className="grid grid-cols-12 gap-4 mb-4">
-                <div className="col-span-2">
-                  <label className="text-sm font-medium mb-2 block text-white">No Indikator</label>
-                  <input className="w-full rounded-lg border-2 border-gray-300 px-3 py-3 text-sm bg-white" value={indicatorForm.subNo} onChange={(e) => setIndicatorField('subNo', e.target.value)} placeholder="6.1.1" />
-                </div>
-                <div className="col-span-7">
-                  <label className="text-sm font-medium mb-2 block text-white">Indikator</label>
-                  <input
-                    className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-sm bg-white"
-                    value={indicatorForm.indikator}
-                    onChange={(e) => setIndicatorField('indikator', e.target.value)}
-                    placeholder="Teks indikator risiko investasi…"
-                  />
-                </div>
-                <div className="col-span-3">
-                  <label className="text-sm font-medium mb-2 block text-right text-white">Bobot Indikator (%)</label>
-                  <input
-                    type="number"
-                    className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-sm text-right bg-white"
-                    value={indicatorForm.bobotIndikator || ''}
-                    onChange={(e) => setIndicatorField('bobotIndikator', e.target.value)}
-                    placeholder="100"
-                    min="0"
-                    max="100"
-                    step="0.01"
-                  />
-                </div>
-              </div>
-
-              {/* Metode Penghitungan + Rumus / Hasil Teks */}
-              <div className="grid grid-cols-12 gap-4 mb-4">
-                <div className="col-span-4">
-                  <label className="text-sm font-medium mb-2 block text-white">Metode Penghitungan</label>
-                  <select
-                    className="w-full rounded-lg border-2 border-gray-300 px-3 py-3 text-sm bg-white"
-                    value={indicatorForm.mode || CalculationMode.RASIO}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      setIndicatorField('mode', v);
-                      if (v === CalculationMode.TEKS) {
-                        setIndicatorForm((prev) => ({
-                          ...prev,
-                          formula: '',
-                          isPercent: false,
-                          pembilangLabel: '',
-                          pembilangValue: '',
-                          penyebutLabel: '',
-                          penyebutValue: '',
-                          hasil: '',
-                        }));
-                      }
-                    }}
-                  >
-                    <option value={CalculationMode.RASIO}>Rasio (Pembilang / Penyebut)</option>
-                    <option value={CalculationMode.NILAI_TUNGGAL}>Nilai tunggal (hanya penyebut)</option>
-                    <option value={CalculationMode.TEKS}>Kualitatif (hasil berupa teks)</option>
-                  </select>
-                </div>
-
-                <div className="col-span-8">
-                  {indicatorForm.mode === CalculationMode.TEKS ? (
-                    <>
-                      <label className="text-sm font-medium mb-2 block text-white">Hasil (Teks) – akan muncul di kolom "Hasil"</label>
-                      <input
-                        className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-sm bg-white"
-                        value={indicatorForm.hasilText}
-                        onChange={(e) => setIndicatorField('hasilText', e.target.value)}
-                        placeholder="misal: pencapaian KPI investasi sesuai target"
-                      />
-                    </>
-                  ) : (
-                    <>
-                      <label className="text-sm font-medium mb-2 block text-white">
-                        Rumus Parameter (opsional) &nbsp;
-                        <span className="text-xs">
-                          gunakan variabel <b>pemb</b> dan <b>peny</b>
-                        </span>
-                      </label>
-                      <div className="flex items-center gap-4">
-                        <input
-                          type="text"
-                          className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-sm bg-white"
-                          placeholder={indicatorForm.mode === CalculationMode.NILAI_TUNGGAL ? 'Contoh: peny / 1000' : 'Contoh: pemb / peny'}
-                          value={indicatorForm.formula || ''}
-                          onChange={(e) => setIndicatorField('formula', e.target.value)}
-                        />
-                        <label className="flex items-center gap-2 cursor-pointer select-none">
-                          <input
-                            type="checkbox"
-                            checked={indicatorForm.isPercent || false}
-                            onChange={(e) => setIndicatorField('isPercent', e.target.checked)}
-                            className="w-6 h-6 rounded-full border-2 border-gray-300 text-blue-600 focus:ring-blue-500"
-                          />
-                          <div
-                            className="w-12 h-12 flex items-center justify-center rounded-lg border-2 border-gray-300 bg-gray-100 text-lg font-bold cursor-pointer"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setIndicatorField('isPercent', !indicatorForm.isPercent);
-                            }}
-                          >
-                            %
-                          </div>
-                        </label>
-                      </div>
-                    </>
-                  )}
-                </div>
-              </div>
-
-              {/* Faktor Pembilang (hanya untuk RASIO) */}
-              {indicatorForm.mode === CalculationMode.RASIO && (
-                <div className="grid grid-cols-2 gap-4 mb-4">
-                  <div>
-                    <label className="text-sm font-medium mb-2 block text-white">Faktor Pembilang</label>
-                    <input
-                      className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-sm bg-white"
-                      value={indicatorForm.pembilangLabel}
-                      onChange={(e) => setIndicatorField('pembilangLabel', e.target.value)}
-                      placeholder="Actual investasi, pencapaian real investasi, dll."
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium mb-2 block text-white">Nilai Pembilang</label>
-                    <input
-                      className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-sm bg-white"
-                      value={indicatorForm.pembilangValue ?? ''}
-                      onChange={(e) => setIndicatorField('pembilangValue', e.target.value)}
-                      placeholder="96.55"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Faktor Penyebut (non TEKS) */}
-              {indicatorForm.mode !== CalculationMode.TEKS && (
-                <div className="grid grid-cols-2 gap-4 mb-4">
-                  <div>
-                    <label className="text-sm font-medium mb-2 block text-white">Faktor Penyebut</label>
-                    <input
-                      className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-sm bg-white"
-                      value={indicatorForm.penyebutLabel}
-                      onChange={(e) => setIndicatorField('penyebutLabel', e.target.value)}
-                      placeholder="Target investasi, target yang ditetapkan, dll."
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium mb-2 block text-white">Nilai Penyebut</label>
-                    <input className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-sm bg-white" value={indicatorForm.penyebutValue ?? ''} onChange={(e) => setIndicatorField('penyebutValue', e.target.value)} placeholder="100" />
-                  </div>
-                </div>
-              )}
-
-              {/* Sumber risiko & dampak */}
+            {INVESTASI_form.mode !== 'TEKS' && (
               <div className="grid grid-cols-2 gap-4 mb-4">
                 <div>
-                  <label className="text-sm font-medium mb-2 block text-white">Sumber Risiko</label>
-                  <textarea
-                    rows={4}
-                    className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-sm resize-none bg-white"
-                    value={indicatorForm.sumberRisiko}
-                    onChange={(e) => setIndicatorField('sumberRisiko', e.target.value)}
-                    placeholder="Contoh: fluktuasi pasar modal, perubahan suku bunga, kondisi ekonomi makro, dll."
+                  <label className="text-sm font-medium mb-2 block text-white">Faktor Penyebut</label>
+                  <input
+                    className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-sm bg-white"
+                    value={INVESTASI_form.denominatorLabel}
+                    onChange={(e) => setINVESTASI_form((f) => ({ ...f, denominatorLabel: e.target.value }))}
+                    placeholder={INVESTASI_form.mode === 'RASIO' ? 'Total Asset (Jutaan)' : 'Jumlah kejadian, jumlah kasus, dll.'}
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium mb-2 block text-white">Dampak</label>
-                  <textarea
-                    rows={4}
-                    className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-sm resize-none bg-white"
-                    value={indicatorForm.dampak}
-                    onChange={(e) => setIndicatorField('dampak', e.target.value)}
-                    placeholder="Contoh: penurunan nilai portofolio, kerugian investasi, tidak tercapainya target return, dll."
+                  <label className="text-sm font-medium mb-2 block text-white">Nilai Penyebut</label>
+                  <input
+                    className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-sm bg-white"
+                    value={rawDenominatorInput}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setRawDenominatorInput(val);
+                      setINVESTASI_form((f) => ({ ...f, denominatorValue: val }));
+                    }}
+                    onBlur={(e) => {
+                      const val = e.target.value;
+                      if (!val || val.endsWith(',') || val.endsWith('.') || val === '-') return;
+                      const formatted = fmtNumberSmart(val);
+                      if (formatted && formatted !== val) {
+                        setRawDenominatorInput(formatted);
+                        setINVESTASI_form((f) => ({ ...f, denominatorValue: formatted }));
+                      }
+                    }}
+                    placeholder="Contoh: -1000, 1.000, 1.000,50, 10%"
                   />
                 </div>
               </div>
+            )}
 
-              {/* Risk Levels Grid */}
-              <div className="mt-6 rounded-2xl border-2 border-white/70 bg-white/5 p-4">
-                <div className="grid grid-cols-12 gap-4">
-                  {/* KIRI: Preview + peringkat + weighted */}
-                  <div className="col-span-6 space-y-4">
-                    <div className="grid grid-cols-3 gap-4">
-                      <div>
-                        <label className="text-sm font-medium mb-2 block text-white">Peringkat (1 – 5)</label>
-                        <input
-                          type="number"
-                          min="1"
-                          max="5"
-                          className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-sm bg-white"
-                          value={indicatorForm.peringkat || ''}
-                          onChange={(e) => setIndicatorField('peringkat', e.target.value)}
-                        />
-                      </div>
+            <div className="mt-6 rounded-2xl border-2 border-white/70 bg-white/5 p-4">
+              <div className="grid grid-cols-12 gap-4">
+                <div className="col-span-6 space-y-4">
+                  <div>
+                    <label className="text-sm font-medium mb-2 block text-white">Sumber Risiko</label>
+                    <textarea
+                      rows={4}
+                      className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-sm resize-none bg-white"
+                      value={INVESTASI_form.sumberRisiko}
+                      onChange={(e) => setINVESTASI_form((f) => ({ ...f, sumberRisiko: e.target.value }))}
+                      placeholder="Contoh: kelemahan proses, human error, kegagalan sistem, dsb."
+                    />
+                  </div>
 
-                      <div>
-                        <label className="text-sm font-medium mb-2 block text-white">Weighted (auto)</label>
-                        <input className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-sm bg-gray-50" value={weightedPreview.toFixed(2)} readOnly />
-                      </div>
+                  <div>
+                    <label className="text-sm font-medium mb-2 block text-white">Dampak</label>
+                    <textarea
+                      rows={4}
+                      className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-sm resize-none bg-white"
+                      value={INVESTASI_form.dampak}
+                      onChange={(e) => setINVESTASI_form((f) => ({ ...f, dampak: e.target.value }))}
+                      placeholder="Contoh: kerugian finansial, penurunan layanan, risiko hukum, dsb."
+                    />
+                  </div>
 
-                      <div>
-                        <label className="text-sm font-medium mb-2 block text-white">Preview value</label>
-                        <input className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-sm bg-gray-50" value={hasilPreview} readOnly />
-                      </div>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <label className="text-sm font-medium mb-2 block text-white">Peringkat (Auto)</label>
+                      <input type="number" className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-sm bg-gray-100 font-bold text-center" value={INVESTASI_form.peringkat ?? ''} readOnly />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium mb-2 block text-white">Weighted (auto)</label>
+                      <input
+                        className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-sm bg-gray-50"
+                        value={(() => {
+                          const peringkatNum = INVESTASI_form.peringkat === '' || INVESTASI_form.peringkat == null ? 0 : Number(INVESTASI_form.peringkat);
+                          const bobotSecNum = Number(INVESTASI_sectionForm.bobotSection || 0);
+                          const bobotIndNum = Number(INVESTASI_form.bobotIndikator || 0);
+                          const res = computeWeightedLocal(bobotSecNum, bobotIndNum, peringkatNum);
+                          const num = Number(res);
+                          if (!isFinite(num) || isNaN(num)) return '';
+                          return num.toFixed(2);
+                        })()}
+                        readOnly
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium mb-2 block text-white">Hasil Preview (Rasio)</label>
+                      <input
+                        className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-sm bg-gray-50"
+                        value={(() => {
+                          if (INVESTASI_form.mode === 'TEKS') return INVESTASI_form.hasilText || '';
+                          const raw = computeInvestasiHasil(buildBaseRow());
+                          if (raw === '' || raw == null) return '';
+                          if (INVESTASI_form.isPercent) {
+                            const pct = Number(raw) * 100;
+                            if (!isFinite(pct) || isNaN(pct)) return '';
+                            return `${pct.toFixed(2)}%`;
+                          }
+                          if (INVESTASI_form.mode === 'NILAI_TUNGGAL') return fmtNumber(raw);
+                          return Number(raw).toFixed(4);
+                        })()}
+                        readOnly
+                      />
                     </div>
                   </div>
 
-                  {/* KANAN: Risk level (Low s/d High) vertikal */}
-                  <div className="col-span-6 grid grid-cols-1 gap-3 items-stretch">
-                    <RiskBox className="w-full" label="Low" value={indicatorForm.low} onChange={(v) => setIndicatorField('low', v)} color="#B7E1A1" textColor="#0B3D2E" placeholder="x > 90%" />
-                    <RiskBox className="w-full" label="Low to Moderate" value={indicatorForm.lowToModerate} onChange={(v) => setIndicatorField('lowToModerate', v)} color="#CFE0FF" textColor="#0B2545" placeholder="90% ≥ x > 70%" />
-                    <RiskBox className="w-full" label="Moderate" value={indicatorForm.moderate} onChange={(v) => setIndicatorField('moderate', v)} color="#FFEEAD" textColor="#4B3A00" placeholder="70% ≥ x > 50%" />
-                    <RiskBox className="w-full" label="Moderate to High" value={indicatorForm.moderateToHigh} onChange={(v) => setIndicatorField('moderateToHigh', v)} color="#FAD2A7" textColor="#5A2E00" placeholder="50% ≥ x > 30%" />
-                    <RiskBox className="w-full" label="High" value={indicatorForm.high} onChange={(v) => setIndicatorField('high', v)} color="#E57373" textColor="#FFFFFF" placeholder="x < 30%" />
+                  <div>
+                    <label className="text-sm font-medium mb-2 block text-white">Keterangan</label>
+                    <textarea rows={3} className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-sm bg-white" value={INVESTASI_form.keterangan} onChange={(e) => setINVESTASI_form((f) => ({ ...f, keterangan: e.target.value }))} />
                   </div>
                 </div>
-              </div>
 
-              {/* Keterangan */}
-              <div className="mt-4">
-                <label className="text-sm font-medium mb-2 block text-white">Keterangan</label>
-                <textarea
-                  rows={2}
-                  className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-sm bg-white"
-                  value={indicatorForm.keterangan}
-                  onChange={(e) => setIndicatorField('keterangan', e.target.value)}
-                  placeholder="Keterangan tambahan..."
-                />
-              </div>
-
-              {/* Add/Save Button */}
-              <div className="mt-6 flex justify-end">
-                {!isEditingIndicator ? (
-                  <button onClick={handleCreateIndicator} disabled={isCreating} className="px-8 py-3 rounded-lg bg-green-500 hover:bg-green-600 text-white font-semibold disabled:bg-gray-400">
-                    {isCreating ? 'Menyimpan...' : '+ Tambah Indikator'}
-                  </button>
-                ) : (
-                  <div className="flex gap-3">
-                    <button onClick={handleUpdateIndicator} disabled={isUpdating} className="px-8 py-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold disabled:bg-gray-400">
-                      {isUpdating ? 'Menyimpan...' : 'Simpan Perubahan'}
-                    </button>
-                    <button onClick={resetIndicatorForm} className="px-8 py-3 rounded-lg border-2 border-gray-300 hover:bg-gray-50 font-semibold">
-                      Batal
-                    </button>
-                  </div>
-                )}
+                <div className="col-span-6 grid grid-cols-1 gap-3 items-stretch">
+                  <RiskField
+                    className="w-full"
+                    label="Low"
+                    value={INVESTASI_form.low}
+                    onChange={(v) => setINVESTASI_form((f) => ({ ...f, low: v }))}
+                    color="#4A5A2C"
+                    textColor="#ffffff"
+                    placeholder={INVESTASI_form.mode === 'TEKS' ? 'Contoh: Baik, Aman, Tes' : 'x ≤ 1%'}
+                  />
+                  <RiskField
+                    className="w-full"
+                    label="Low to Moderate"
+                    value={INVESTASI_form.lowToModerate}
+                    onChange={(v) => setINVESTASI_form((f) => ({ ...f, lowToModerate: v }))}
+                    color="#A6D86C"
+                    textColor="#0B2545"
+                    placeholder={INVESTASI_form.mode === 'TEKS' ? 'Contoh: Cukup Baik' : '1% < x ≤ 2%'}
+                  />
+                  <RiskField
+                    className="w-full"
+                    label="Moderate"
+                    value={INVESTASI_form.moderate}
+                    onChange={(v) => setINVESTASI_form((f) => ({ ...f, moderate: v }))}
+                    color="#FFFF00"
+                    textColor="#4B3A00"
+                    placeholder={INVESTASI_form.mode === 'TEKS' ? 'Contoh: Sedang, Normal' : '2% < x ≤ 3%'}
+                  />
+                  <RiskField
+                    className="w-full"
+                    label="Moderate to High"
+                    value={INVESTASI_form.moderateToHigh}
+                    onChange={(v) => setINVESTASI_form((f) => ({ ...f, moderateToHigh: v }))}
+                    color="#FAD2A7"
+                    textColor="#5A2E00"
+                    placeholder={INVESTASI_form.mode === 'TEKS' ? 'Contoh: Cukup Tinggi' : '3% < x ≤ 4%'}
+                  />
+                  <RiskField
+                    className="w-full"
+                    label="High"
+                    value={INVESTASI_form.high}
+                    onChange={(v) => setINVESTASI_form((f) => ({ ...f, high: v }))}
+                    color="#E57373"
+                    textColor="#FFFFFF"
+                    placeholder={INVESTASI_form.mode === 'TEKS' ? 'Contoh: Buruk, Berbahaya, Tinggi' : 'x > 4%'}
+                  />
+                </div>
               </div>
             </div>
-          )}
-        </div>
 
-        {/* ===== TABEL INVESTASI ===== */}
-        <section className="mt-4">
-          <div className="bg-white rounded-2xl shadow overflow-hidden">
-            <div className="relative h-[350px]">
-              <div className="absolute inset-0 overflow-x-auto overflow-y-auto">
-                <table className="min-w-[1450px] text-sm border border-gray-300 border-collapse">
-                  <thead>
-                    <tr className="bg-[#1f4e79] text-white">
-                      <th className="border border-black px-3 py-2 text-left" rowSpan={2} style={{ width: 60 }}>
-                        No
-                      </th>
-                      <th className="border border-black px-3 py-2 text-left" rowSpan={2} style={{ width: 80 }}>
-                        Bobot
-                      </th>
-                      <th className="border border-black px-3 py-2 text-left" colSpan={3}>
-                        Parameter atau Indikator
-                      </th>
-                      <th className="border border-black px-3 py-2 text-center" rowSpan={2} style={{ width: 90 }}>
-                        Bobot Indikator
-                      </th>
-                      <th className="border border-black px-3 py-2 text-left" rowSpan={2} style={{ minWidth: 220 }}>
-                        Sumber Risiko
-                      </th>
-                      <th className="border border-black px-3 py-2 text-left" rowSpan={2} style={{ minWidth: 240 }}>
-                        Dampak
-                      </th>
-                      <th className="border border-black px-3 py-2 bg-[#b7d7a8] text-center text-black" rowSpan={2}>
-                        Low
-                      </th>
-                      <th className="border border-black px-3 py-2 bg-[#c9daf8] text-left text-black" rowSpan={2}>
-                        Low to Moderate
-                      </th>
-                      <th className="border border-black px-3 py-2 bg-[#fff2cc] text-left text-black" rowSpan={2}>
-                        Moderate
-                      </th>
-                      <th className="border border-black px-3 py-2 bg-[#f9cb9c] text-left text-black" rowSpan={2}>
-                        Moderate to High
-                      </th>
-                      <th className="border border-black px-3 py-2 bg-[#e06666] text-center" rowSpan={2}>
-                        High
-                      </th>
-                      <th className="border border-black px-3 py-2 bg-[#2e75b6]" rowSpan={2} style={{ width: 100 }}>
-                        Hasil
-                      </th>
-                      <th className="border border-black px-3 py-2 bg-[#2e75b6]" rowSpan={2} style={{ width: 70 }}>
-                        Peringkat
-                      </th>
-                      <th className="border border-black px-3 py-2 bg-[#2e75b6] text-white" rowSpan={2} style={{ width: 90 }}>
-                        Weighted
-                      </th>
-                      <th className="border border-black px-3 py-2 text-center" rowSpan={2} style={{ width: 80 }}>
-                        Aksi
-                      </th>
-                    </tr>
-                    <tr className="bg-[#1f4e79] text-white">
-                      <th className="border border-black px-3 py-2 text-left" style={{ minWidth: 260 }}>
-                        Section
-                      </th>
-                      <th className="border border-black px-3 py-2 text-left" style={{ width: 70 }}>
-                        Sub No
-                      </th>
-                      <th className="border border-black px-3 py-2 text-left" style={{ minWidth: 360 }}>
-                        Indikator
-                      </th>
-                    </tr>
-                  </thead>
-
-                  <tbody>
-                    {loadingData ? (
-                      <tr>
-                        <td className="border px-3 py-6 text-center text-gray-500" colSpan={17}>
-                          <div className="flex items-center justify-center gap-2">
-                            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-                            Memuat data...
-                          </div>
-                        </td>
-                      </tr>
-                    ) : filteredSections.length === 0 ? (
-                      <tr>
-                        <td className="border px-3 py-6 text-center text-gray-500" colSpan={17}>
-                          Belum ada data
-                        </td>
-                      </tr>
-                    ) : (
-                      filteredSections.map((s) => {
-                        const inds = s.indicators || [];
-
-                        if (!inds.length) {
-                          return (
-                            <tr key={s.id} className="bg-[#e9f5e1]">
-                              <td className="border px-3 py-3 text-center">{s.no}</td>
-                              <td className="border px-3 py-3 text-center">{s.bobotSection}%</td>
-                              <td className="border px-3 py-3" colSpan={15}>
-                                {s.parameter} – Belum ada indikator
-                              </td>
-                            </tr>
-                          );
-                        }
-
-                        const sectionRowSpan = inds.reduce((sum, it) => {
-                          const rowCount = it.mode === CalculationMode.TEKS ? 1 : rowsPerIndicator(it);
-                          return sum + rowCount;
-                        }, 0);
-
-                        return (
-                          <React.Fragment key={s.id}>
-                            {inds.map((it, idx) => {
-                              const firstOfSection = idx === 0;
-                              const transformed = transformIndicatorToFrontend(it);
-
-                              let hasilDisplay = '';
-                              if (transformed.mode === CalculationMode.TEKS) {
-                                hasilDisplay = transformed.hasilText || '';
-                              } else if (transformed.hasil !== '' && transformed.hasil != null && !isNaN(Number(transformed.hasil))) {
-                                if (transformed.isPercent) {
-                                  hasilDisplay = (Number(transformed.hasil) * 100).toFixed(2) + '%';
-                                } else {
-                                  hasilDisplay = Number(transformed.hasil).toFixed(4);
-                                }
-                              }
-
-                              const weightedDisplay = transformed.weighted !== '' && transformed.weighted != null && !isNaN(Number(transformed.weighted)) ? Number(transformed.weighted).toFixed(2) : '';
-
-                              return (
-                                <React.Fragment key={transformed.id}>
-                                  {/* ── baris utama indikator ── */}
-                                  <tr>
-                                    {firstOfSection && (
-                                      <>
-                                        <td rowSpan={sectionRowSpan} className="border px-3 py-3 align-top bg-[#d9eefb] text-center font-semibold">
-                                          {s.no}
-                                        </td>
-                                        <td rowSpan={sectionRowSpan} className="border px-3 py-3 align-top bg-[#d9eefb] text-center">
-                                          {s.bobotSection}%
-                                        </td>
-                                        <td rowSpan={sectionRowSpan} className="border px-3 py-3 align-top bg-[#d9eefb]">
-                                          {s.parameter}
-                                        </td>
-                                      </>
-                                    )}
-
-                                    <td className="border px-3 py-3 text-center align-top bg-[#d9eefb]">{transformed.subNo}</td>
-                                    <td className="border px-3 py-3 align-top bg-[#d9eefb]">
-                                      <div className="font-medium whitespace-pre-wrap">{transformed.indikator}</div>
-                                    </td>
-
-                                    <td className="border px-3 py-3 text-center align-top bg-[#d9eefb]">{transformed.bobotIndikator}%</td>
-                                    <td className="border px-3 py-3 align-top bg-[#d9eefb] whitespace-pre-wrap">{transformed.sumberRisiko}</td>
-                                    <td className="border px-3 py-3 align-top bg-[#d9eefb] whitespace-pre-wrap">{transformed.dampak}</td>
-
-                                    <td className="border px-3 py-3 text-center bg-green-700/10 whitespace-pre-wrap">{transformed.low}</td>
-                                    <td className="border px-3 py-3 text-center bg-green-700/10 whitespace-pre-wrap">{transformed.lowToModerate}</td>
-                                    <td className="border px-3 py-3 text-center bg-green-700/10 whitespace-pre-wrap">{transformed.moderate}</td>
-                                    <td className="border px-3 py-3 text-center bg-green-700/10 whitespace-pre-wrap">{transformed.moderateToHigh}</td>
-                                    <td className="border px-3 py-3 text-center bg-green-700/10 whitespace-pre-wrap">{transformed.high}</td>
-
-                                    <td className="border px-3 py-3 text-right bg-gray-400/20 whitespace-pre-wrap">{hasilDisplay}</td>
-
-                                    <td className="border px-3 py-3 text-center">
-                                      <div style={{ minWidth: 36, minHeight: 24 }} className="inline-block rounded bg-yellow-300 px-2">
-                                        {transformed.peringkat}
-                                      </div>
-                                    </td>
-
-                                    <td className="border px-3 py-3 text-right bg-gray-400/20">{weightedDisplay}</td>
-
-                                    <td className="border px-3 py-3 text-center">
-                                      <div className="flex items-center justify-center gap-2">
-                                        <button onClick={() => handleEditIndicator(transformed)} className="px-2 py-1 rounded border hover:bg-gray-100" disabled={loadingData || isUpdating || isDeleting}>
-                                          <Edit3 size={14} />
-                                        </button>
-                                        <button onClick={() => handleDeleteIndicator(transformed.id)} className="px-2 py-1 rounded border text-red-600 hover:bg-red-50" disabled={loadingData || isDeleting}>
-                                          <Trash2 size={14} />
-                                        </button>
-                                      </div>
-                                    </td>
-                                  </tr>
-
-                                  {/* ── baris penyebut ── */}
-                                  {transformed.mode !== CalculationMode.TEKS && (
-                                    <>
-                                      {/* baris penyebut */}
-                                      <tr className="bg-white">
-                                        <td className="border px-3 py-2 text-center"></td>
-                                        <td className="border px-3 py-2">
-                                          <div className="text-sm text-gray-700 mt-1">{transformed.penyebutLabel || '-'}</div>
-                                        </td>
-                                        <td className="border px-3 py-2"></td>
-                                        <td className="border px-3 py-2"></td>
-                                        <td className="border px-3 py-2"></td>
-                                        <td className="border px-3 py-2"></td>
-                                        <td className="border px-3 py-2"></td>
-                                        <td className="border px-3 py-2"></td>
-                                        <td className="border px-3 py-2"></td>
-                                        <td className="border px-3 py-2"></td>
-                                        <td className="border px-3 py-2 bg-[#c6d9a7] text-right">{transformed.penyebutValue ? fmtNumber(transformed.penyebutValue) : ''}</td>
-                                        <td className="border px-3 py-2"></td>
-                                        <td className="border px-3 py-2"></td>
-                                        <td className="border px-3 py-2"></td>
-                                      </tr>
-
-                                      {/* baris pembilang (hanya untuk RASIO) */}
-                                      {transformed.mode === CalculationMode.RASIO && (
-                                        <tr className="bg-white">
-                                          <td className="border px-3 py-2 text-center"></td>
-                                          <td className="border px-3 py-2">
-                                            <div className="text-sm text-gray-700 mt-1">{transformed.pembilangLabel || '-'}</div>
-                                          </td>
-                                          <td className="border px-3 py-2"></td>
-                                          <td className="border px-3 py-2"></td>
-                                          <td className="border px-3 py-2"></td>
-                                          <td className="border px-3 py-2"></td>
-                                          <td className="border px-3 py-2"></td>
-                                          <td className="border px-3 py-2"></td>
-                                          <td className="border px-3 py-2"></td>
-                                          <td className="border px-3 py-2"></td>
-                                          <td className="border px-3 py-2 bg-[#c6d9a7] text-right">{transformed.pembilangValue ? fmtNumber(transformed.pembilangValue) : ''}</td>
-                                          <td className="border px-3 py-2"></td>
-                                          <td className="border px-3 py-2"></td>
-                                          <td className="border px-3 py-2"></td>
-                                        </tr>
-                                      )}
-                                    </>
-                                  )}
-                                </React.Fragment>
-                              );
-                            })}
-                          </React.Fragment>
-                        );
-                      })
-                    )}
-                  </tbody>
-
-                  <tfoot>
-                    <tr>
-                      {/* sampai kolom High */}
-                      <td className="border border-gray-400" colSpan={13}></td>
-
-                      {/* Summary memanjang sampai kolom Peringkat (Hasil + Peringkat) */}
-                      <td className="border border-gray-400 text-white font-semibold text-center bg-[#0b3861]" colSpan={2}>
-                        Summary
-                      </td>
-
-                      {/* Nilai total di bawah kolom Weighted */}
-                      <td className="border border-gray-400 text-white font-semibold text-center bg-[#8fce00]">{Number(totalWeighted || totalWeightedCalc || 0).toFixed(2)}</td>
-
-                      {/* Kolom Aksi (kosong) */}
-                      <td className="border border-gray-400"></td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
+            <div className="mt-6 flex justify-end">
+              {!INVESTASI_editingRow ? (
+                <button onClick={INVESTASI_addRow} className="px-8 py-3 rounded-lg bg-green-500 hover:bg-green-600 text-white font-semibold">
+                  + Tambah
+                </button>
+              ) : (
+                <div className="flex gap-3">
+                  <button onClick={INVESTASI_saveEdit} className="px-8 py-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold">
+                    Simpan
+                  </button>
+                  <button onClick={INVESTASI_resetForm} className="px-8 py-3 rounded-lg border-2 border-gray-300 hover:bg-gray-50 font-semibold">
+                    Batal
+                  </button>
+                </div>
+              )}
             </div>
           </div>
-        </section>
-      </div>
-    </div>
+        </div>
+      )}
+
+      {/* Data Table */}
+      <section className="mt-4">
+        <div className="bg-white rounded-2xl shadow overflow-hidden border border-gray-200">
+          <div className="relative h-[350px]">
+            <div className="absolute inset-0 overflow-x-auto overflow-y-auto">
+              <DataTable rows={INVESTASI_filtered} totalWeighted={INVESTASI_totalWeighted} viewYear={viewYear} viewQuarter={viewQuarter} startEdit={INVESTASI_startEdit} removeRow={INVESTASI_removeRow} />
+            </div>
+          </div>
+        </div>
+      </section>
+    </>
   );
 }

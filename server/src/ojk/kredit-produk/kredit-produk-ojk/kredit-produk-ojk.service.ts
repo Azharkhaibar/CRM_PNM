@@ -1,3 +1,4 @@
+// src/ojk/kredit-produk/kredit-produk-ojk/kredit-produk-ojk.service.ts
 import {
   Injectable,
   NotFoundException,
@@ -9,38 +10,21 @@ import { Repository, DataSource } from 'typeorm';
 import { KreditProdukOjk } from './entities/kredit-produk-ojk.entity';
 import { KreditParameter } from './entities/kredit-produk-parameter.entity';
 import { KreditNilai } from './entities/kredit-produk-nilai.entity';
-// import { InherentReferenceKredit } from './entities/kredit-produk-references.entity';
 import { InherentReferenceKredit } from './entities/kredit-inherent-references.entity';
-// import {
-//   CreateKreditProdukDto,
-//   UpdateKreditProdukDto,
-//   CreateParameterDto,
-//   UpdateParameterDto,
-//   CreateNilaiDto,
-//   UpdateNilaiDto,
-//   ReorderParametersDto,
-//   ReorderNilaiDto,
-//   UpdateSummaryDto,
-//   KategoriModel,
-//   KategoriPrinsip,
-//   KategoriJenis,
-//   JudulType,
-// } from './dto/kredit-produk.dto';
-
 import {
-  CreateKreditProdukDto,
-  UpdateKreditProdukDto,
+  CreateKreditProdukInherentDto,
+  UpdateKreditProdukInherentDto,
   CreateParameterDto,
   UpdateParameterDto,
   CreateNilaiDto,
   UpdateNilaiDto,
-  ReorderNilaiDto,
   ReorderParametersDto,
+  ReorderNilaiDto,
   UpdateSummaryDto,
-  KategoriJenis,
-  KategoriPrinsip,
-  JudulType,
   KategoriModel,
+  KategoriPrinsip,
+  KategoriJenis,
+  JudulType,
 } from './dto/kredit-produk-inherent.dto';
 
 @Injectable()
@@ -49,7 +33,7 @@ export class KreditProdukOjkService {
 
   constructor(
     @InjectRepository(KreditProdukOjk)
-    private kreditRepository: Repository<KreditProdukOjk>,
+    private inherentRepository: Repository<KreditProdukOjk>,
     @InjectRepository(KreditParameter)
     private parameterRepository: Repository<KreditParameter>,
     @InjectRepository(KreditNilai)
@@ -61,9 +45,9 @@ export class KreditProdukOjkService {
 
   // === CRUD UTAMA (KreditProdukOjk) ===
 
-  async create(createDto: CreateKreditProdukDto, userId: string) {
+  async create(createDto: CreateKreditProdukInherentDto, userId: string) {
     try {
-      const existing = await this.kreditRepository.findOne({
+      const existing = await this.inherentRepository.findOne({
         where: { year: createDto.year, quarter: createDto.quarter },
       });
 
@@ -74,7 +58,7 @@ export class KreditProdukOjkService {
         return existing;
       }
 
-      const kredit = this.kreditRepository.create({
+      const inherent = this.inherentRepository.create({
         year: createDto.year,
         quarter: createDto.quarter,
         isActive: createDto.isActive ?? true,
@@ -83,7 +67,7 @@ export class KreditProdukOjkService {
         version: createDto.version || '1.0.0',
       });
 
-      const saved = await this.kreditRepository.save(kredit);
+      const saved = await this.inherentRepository.save(inherent);
       this.logger.log(`create: Data berhasil dibuat - ID: ${saved.id}`);
 
       return saved;
@@ -100,7 +84,7 @@ export class KreditProdukOjkService {
     this.logger.debug('findActive: Mencari data aktif');
 
     try {
-      const kredit = await this.kreditRepository.findOne({
+      const inherent = await this.inherentRepository.findOne({
         where: { isActive: true },
         relations: ['parameters', 'parameters.nilaiList'],
         order: {
@@ -113,13 +97,13 @@ export class KreditProdukOjkService {
         },
       });
 
-      if (!kredit) {
+      if (!inherent) {
         this.logger.warn('findActive: Tidak ada data aktif ditemukan');
         return null;
       }
 
-      this.logger.log(`findActive: Data ditemukan - ID: ${kredit.id}`);
-      return kredit;
+      this.logger.log(`findActive: Data ditemukan - ID: ${inherent.id}`);
+      return inherent;
     } catch (error) {
       this.logger.error(`findActive: Error - ${error.message}`, error.stack);
       throw error;
@@ -135,7 +119,7 @@ export class KreditProdukOjkService {
     );
 
     try {
-      const kredit = await this.kreditRepository.findOne({
+      const inherent = await this.inherentRepository.findOne({
         where: { year, quarter },
         relations: ['parameters', 'parameters.nilaiList'],
         order: {
@@ -148,15 +132,15 @@ export class KreditProdukOjkService {
         },
       });
 
-      if (!kredit) {
+      if (!inherent) {
         this.logger.warn(
           `findByYearQuarter: Data tidak ditemukan untuk Year: ${year}, Quarter: ${quarter}`,
         );
         return null;
       }
 
-      this.logger.log(`findByYearQuarter: Data ditemukan - ID: ${kredit.id}`);
-      return kredit;
+      this.logger.log(`findByYearQuarter: Data ditemukan - ID: ${inherent.id}`);
+      return inherent;
     } catch (error) {
       this.logger.error(
         `findByYearQuarter: Error - ${error.message}`,
@@ -168,37 +152,45 @@ export class KreditProdukOjkService {
 
   async getAll() {
     this.logger.debug('getAll: Mendapatkan semua data');
-    return this.kreditRepository.find({
+    return this.inherentRepository.find({
       relations: ['parameters'],
       order: { year: 'DESC', quarter: 'DESC' },
     });
   }
 
-  async update(id: number, updateDto: UpdateKreditProdukDto, userId: string) {
+  async update(
+    id: number,
+    updateDto: UpdateKreditProdukInherentDto,
+    userId: string,
+  ) {
     this.logger.log(`update: Mengupdate data - ID: ${id}`);
 
-    const kredit = await this.kreditRepository.findOne({
+    const inherent = await this.inherentRepository.findOne({
       where: { id },
     });
 
-    if (!kredit) {
+    if (!inherent) {
       this.logger.error(`update: Data dengan ID ${id} tidak ditemukan`);
       throw new NotFoundException(`Data dengan ID ${id} tidak ditemukan`);
     }
 
     // Update field yang ada
-    if (updateDto.year !== undefined) kredit.year = updateDto.year;
-    if (updateDto.quarter !== undefined) kredit.quarter = updateDto.quarter;
-    if (updateDto.isActive !== undefined) kredit.isActive = updateDto.isActive;
-    if (updateDto.summary !== undefined) kredit.summary = updateDto.summary;
-    if (updateDto.isLocked !== undefined) kredit.isLocked = updateDto.isLocked;
-    if (updateDto.lockedBy !== undefined) kredit.lockedBy = updateDto.lockedBy;
-    if (updateDto.lockedAt !== undefined) kredit.lockedAt = updateDto.lockedAt;
-    if (updateDto.notes !== undefined) kredit.notes = updateDto.notes;
+    if (updateDto.year !== undefined) inherent.year = updateDto.year;
+    if (updateDto.quarter !== undefined) inherent.quarter = updateDto.quarter;
+    if (updateDto.isActive !== undefined)
+      inherent.isActive = updateDto.isActive;
+    if (updateDto.summary !== undefined) inherent.summary = updateDto.summary;
+    if (updateDto.isLocked !== undefined)
+      inherent.isLocked = updateDto.isLocked;
+    if (updateDto.lockedBy !== undefined)
+      inherent.lockedBy = updateDto.lockedBy;
+    if (updateDto.lockedAt !== undefined)
+      inherent.lockedAt = updateDto.lockedAt;
+    if (updateDto.notes !== undefined) inherent.notes = updateDto.notes;
 
-    kredit.updatedBy = userId;
+    inherent.updatedBy = userId;
 
-    const result = await this.kreditRepository.save(kredit);
+    const result = await this.inherentRepository.save(inherent);
     this.logger.log(`update: Data berhasil diupdate - ID: ${result.id}`);
 
     return result;
@@ -211,22 +203,22 @@ export class KreditProdukOjkService {
   ) {
     this.logger.log(`updateSummary: Mengupdate summary - ID: ${id}`);
 
-    const kredit = await this.kreditRepository.findOne({
+    const inherent = await this.inherentRepository.findOne({
       where: { id },
     });
 
-    if (!kredit) {
+    if (!inherent) {
       throw new NotFoundException(`Data dengan ID ${id} tidak ditemukan`);
     }
 
-    kredit.summary = {
-      ...kredit.summary,
+    inherent.summary = {
+      ...inherent.summary,
       ...summaryDto,
       computedAt: new Date(),
     };
-    kredit.updatedBy = userId;
+    inherent.updatedBy = userId;
 
-    const result = await this.kreditRepository.save(kredit);
+    const result = await this.inherentRepository.save(inherent);
     this.logger.log(
       `updateSummary: Summary berhasil diupdate - ID: ${result.id}`,
     );
@@ -238,11 +230,11 @@ export class KreditProdukOjkService {
       `updateActiveStatus: Mengupdate status aktif - ID: ${id}, isActive: ${isActive}`,
     );
 
-    const kredit = await this.kreditRepository.findOne({
+    const inherent = await this.inherentRepository.findOne({
       where: { id },
     });
 
-    if (!kredit) {
+    if (!inherent) {
       this.logger.error(
         `updateActiveStatus: Data dengan ID ${id} tidak ditemukan`,
       );
@@ -252,17 +244,17 @@ export class KreditProdukOjkService {
     // Jika mengaktifkan satu, nonaktifkan yang lain
     if (isActive) {
       this.logger.debug('updateActiveStatus: Menonaktifkan data lain');
-      await this.kreditRepository
+      await this.inherentRepository
         .createQueryBuilder()
         .update(KreditProdukOjk)
         .set({ isActive: false })
         .execute();
     }
 
-    kredit.isActive = isActive;
-    kredit.updatedBy = userId;
+    inherent.isActive = isActive;
+    inherent.updatedBy = userId;
 
-    const result = await this.kreditRepository.save(kredit);
+    const result = await this.inherentRepository.save(inherent);
     this.logger.log(
       `updateActiveStatus: Status berhasil diupdate - ID: ${result.id}`,
     );
@@ -273,12 +265,12 @@ export class KreditProdukOjkService {
   async remove(id: number) {
     this.logger.log(`remove: Menghapus data - ID: ${id}`);
 
-    const kredit = await this.kreditRepository.findOne({
+    const inherent = await this.inherentRepository.findOne({
       where: { id },
       relations: ['parameters', 'parameters.nilaiList'],
     });
 
-    if (!kredit) {
+    if (!inherent) {
       this.logger.error(`remove: Data dengan ID ${id} tidak ditemukan`);
       throw new NotFoundException(`Data dengan ID ${id} tidak ditemukan`);
     }
@@ -290,7 +282,7 @@ export class KreditProdukOjkService {
 
     try {
       // Hapus semua nilai terlebih dahulu
-      for (const parameter of kredit.parameters || []) {
+      for (const parameter of inherent.parameters || []) {
         await queryRunner.manager.delete(KreditNilai, {
           parameterId: parameter.id,
         });
@@ -301,7 +293,7 @@ export class KreditProdukOjkService {
         kreditProdukOjkId: id,
       });
 
-      // Hapus kredit
+      // Hapus inherent
       await queryRunner.manager.delete(KreditProdukOjk, { id });
 
       await queryRunner.commitTransaction();
@@ -320,81 +312,80 @@ export class KreditProdukOjkService {
   // === OPERASI PARAMETER ===
 
   async addParameter(
-    kreditId: number,
+    inherentId: number,
     createParamDto: CreateParameterDto,
     userId: string,
   ) {
     this.logger.log(
-      `addParameter: Menambahkan parameter - Kredit ID: ${kreditId}`,
+      `addParameter: Menambahkan parameter - Inherent ID: ${inherentId}`,
     );
 
-    const kredit = await this.kreditRepository.findOne({
-      where: { id: kreditId },
+    const inherent = await this.inherentRepository.findOne({
+      where: { id: inherentId },
     });
 
-    if (!kredit) {
-      throw new NotFoundException(`Data dengan ID ${kreditId} tidak ditemukan`);
+    if (!inherent) {
+      throw new NotFoundException(
+        `Data dengan ID ${inherentId} tidak ditemukan`,
+      );
     }
 
-    // =========== VALIDASI UNTUK MODEL KREDIT ===========
+    // =========== VALIDASI YANG DIRELAKSASI UNTUK MODEL TERSTRUKTUR ===========
     if (createParamDto.kategori) {
       const kategori = createParamDto.kategori;
 
-      // Validasi untuk model konvensional
-      if (kategori.model === KategoriModel.KONVENSIONAL) {
+      // Validasi untuk model 'open_end'
+      if (kategori.model === KategoriModel.OPEN_END) {
         if (!kategori.jenis) {
           throw new BadRequestException(
-            'Untuk model "konvensional", jenis kredit wajib dipilih',
+            'Untuk model "open_end", jenis reksa dana wajib dipilih',
           );
         }
-        if (
-          !kategori.prinsip ||
-          kategori.prinsip !== KategoriPrinsip.KONVENSIONAL
-        ) {
+        if (kategori.underlying && kategori.underlying.length > 0) {
           throw new BadRequestException(
-            'Prinsip harus "konvensional" untuk model konvensional',
+            'Untuk model "open_end", aset dasar harus kosong',
           );
         }
-      }
-
-      // Validasi untuk model syariah
-      if (kategori.model === KategoriModel.SYARIAH) {
-        if (!kategori.jenis) {
-          throw new BadRequestException(
-            'Untuk model "syariah", jenis kredit wajib dipilih',
-          );
-        }
-        if (!kategori.prinsip || kategori.prinsip !== KategoriPrinsip.SYARIAH) {
-          throw new BadRequestException(
-            'Prinsip harus "syariah" untuk model syariah',
-          );
-        }
-      }
-
-      // Validasi untuk model kombinasi
-      if (kategori.model === KategoriModel.KOMBINASI) {
         if (!kategori.prinsip) {
           throw new BadRequestException(
-            'Prinsip (syariah/konvensional) wajib dipilih untuk model "kombinasi"',
+            'Prinsip (syariah/konvensional) wajib dipilih untuk model "open_end"',
           );
         }
+      }
+
+      // Validasi untuk model 'terstruktur' - DIRELAKSASI
+      if (kategori.model === KategoriModel.TERSTRUKTUR) {
+        if (kategori.jenis) {
+          throw new BadRequestException(
+            'Untuk model "terstruktur", jenis harus kosong',
+          );
+        }
+
+        // VALIDASI DIRELAKSASI: Tidak memaksa underlying harus ada
         // Hanya warning jika tidak ada underlying
         if (!kategori.underlying || kategori.underlying.length === 0) {
           this.logger.warn(
-            `addParameter: Model "kombinasi" tanpa underlying untuk parameter "${createParamDto.judul}"`,
+            `addParameter: Model "terstruktur" tanpa underlying untuk parameter "${createParamDto.judul}"`,
+          );
+          // Tidak throw error, hanya log warning
+        }
+
+        if (!kategori.prinsip) {
+          throw new BadRequestException(
+            'Prinsip (syariah/konvensional) wajib dipilih untuk model "terstruktur"',
           );
         }
       }
 
-      // Validasi untuk model lainnya
-      if (kategori.model === KategoriModel.LAINNYA) {
+      // Validasi untuk model 'tanpa_model'
+      if (kategori.model === KategoriModel.TANPA_MODEL) {
         if (
           kategori.prinsip ||
           kategori.jenis ||
           (kategori.underlying && kategori.underlying.length > 0)
         ) {
           throw new BadRequestException(
-            'Untuk model "lainnya", prinsip, jenis, dan aset dasar harus kosong',
+            'Untuk model "tanpa_model", prinsip, jenis, dan aset dasar harus kosong',
           );
         }
       }
@@ -402,19 +393,28 @@ export class KreditProdukOjkService {
 
     // Cari orderIndex terakhir
     const lastParam = await this.parameterRepository.findOne({
-      where: { kreditProdukOjkId: kreditId },
+      where: { kreditProdukOjkId: inherentId },
       order: { orderIndex: 'DESC' },
     });
 
     const orderIndex = lastParam ? lastParam.orderIndex + 1 : 0;
 
-    // Format kategori dengan validasi yang lebih fleksibel
+    // Format kategori dengan validasi yang lebih fleksibel untuk terstruktur
     const kategoriFormatted = createParamDto.kategori
       ? {
           model: createParamDto.kategori.model,
-          prinsip: createParamDto.kategori.prinsip,
-          jenis: createParamDto.kategori.jenis,
-          underlying: createParamDto.kategori.underlying || [],
+          prinsip:
+            createParamDto.kategori.model !== KategoriModel.TANPA_MODEL
+              ? createParamDto.kategori.prinsip
+              : undefined,
+          jenis:
+            createParamDto.kategori.model === KategoriModel.OPEN_END
+              ? createParamDto.kategori.jenis
+              : undefined,
+          underlying:
+            createParamDto.kategori.model === KategoriModel.TERSTRUKTUR
+              ? createParamDto.kategori.underlying || []
+              : [],
         }
       : undefined;
 
@@ -424,7 +424,7 @@ export class KreditProdukOjkService {
         judul: createParamDto.judul.trim(),
         bobot: createParamDto.bobot,
         kategori: kategoriFormatted,
-        kreditProdukOjkId: kreditId,
+        kreditProdukOjkId: inherentId,
         orderIndex: createParamDto.orderIndex ?? orderIndex,
       });
 
@@ -434,8 +434,8 @@ export class KreditProdukOjkService {
         `addParameter: Parameter berhasil ditambahkan - ID: ${savedParam.id}`,
       );
 
-      // Update timestamp kredit
-      await this.kreditRepository.update(kreditId, {
+      // Update timestamp inherent
+      await this.inherentRepository.update(inherentId, {
         updatedBy: userId,
         updatedAt: new Date(),
       });
@@ -455,7 +455,7 @@ export class KreditProdukOjkService {
   }
 
   async updateParameter(
-    kreditId: number,
+    inherentId: number,
     parameterId: number,
     updateParamDto: UpdateParameterDto,
     userId: string,
@@ -465,7 +465,7 @@ export class KreditProdukOjkService {
     );
 
     const parameter = await this.parameterRepository.findOne({
-      where: { id: parameterId, kreditProdukOjkId: kreditId },
+      where: { id: parameterId, kreditProdukOjkId: inherentId },
     });
 
     if (!parameter) {
@@ -487,75 +487,81 @@ export class KreditProdukOjkService {
     if (updateParamDto.kategori) {
       const kategori = updateParamDto.kategori;
 
-      // Validasi kategori untuk update
-      if (kategori.model === KategoriModel.KONVENSIONAL) {
-        if (!kategori.jenis) {
-          throw new BadRequestException(
-            'Untuk model "konvensional", jenis kredit wajib dipilih',
-          );
-        }
-        if (
-          !kategori.prinsip ||
-          kategori.prinsip !== KategoriPrinsip.KONVENSIONAL
-        ) {
-          throw new BadRequestException(
-            'Prinsip harus "konvensional" untuk model konvensional',
-          );
-        }
-      }
-
-      if (kategori.model === KategoriModel.SYARIAH) {
-        if (!kategori.jenis) {
-          throw new BadRequestException(
-            'Untuk model "syariah", jenis kredit wajib dipilih',
-          );
-        }
-        if (!kategori.prinsip || kategori.prinsip !== KategoriPrinsip.SYARIAH) {
-          throw new BadRequestException(
-            'Prinsip harus "syariah" untuk model syariah',
-          );
-        }
-      }
-
-      if (kategori.model === KategoriModel.KOMBINASI) {
+      // Validasi kategori untuk update dengan relaksasi untuk terstruktur
+      if (kategori.model === KategoriModel.TERSTRUKTUR) {
         if (!kategori.prinsip) {
           throw new BadRequestException(
-            'Prinsip (syariah/konvensional) wajib dipilih untuk model "kombinasi"',
+            'Prinsip (syariah/konvensional) wajib dipilih untuk model "terstruktur"',
           );
         }
+
+        // VALIDASI DIRELAKSASI: Hanya warning jika tidak ada underlying
         if (!kategori.underlying || kategori.underlying.length === 0) {
           this.logger.warn(
-            `updateParameter: Model "kombinasi" tanpa underlying untuk parameter "${parameter.judul}"`,
+            `updateParameter: Model "terstruktur" tanpa underlying untuk parameter "${parameter.judul}"`,
+          );
+        }
+
+        if (kategori.jenis) {
+          throw new BadRequestException(
+            'Untuk model "terstruktur", jenis harus kosong',
           );
         }
       }
 
-      if (kategori.model === KategoriModel.LAINNYA) {
+      if (kategori.model === KategoriModel.OPEN_END) {
+        if (!kategori.prinsip) {
+          throw new BadRequestException(
+            'Prinsip (syariah/konvensional) wajib dipilih untuk model "open_end"',
+          );
+        }
+        if (!kategori.jenis) {
+          throw new BadRequestException(
+            'Untuk model "open_end", jenis reksa dana wajib dipilih',
+          );
+        }
+        if (kategori.underlying && kategori.underlying.length > 0) {
+          throw new BadRequestException(
+            'Untuk model "open_end", aset dasar harus kosong',
+          );
+        }
+      }
+
+      if (kategori.model === KategoriModel.TANPA_MODEL) {
         if (
           kategori.prinsip ||
           kategori.jenis ||
           (kategori.underlying && kategori.underlying.length > 0)
         ) {
           throw new BadRequestException(
-            'Untuk model "lainnya", prinsip, jenis, dan aset dasar harus kosong',
+            'Untuk model "tanpa_model", prinsip, jenis, dan aset dasar harus kosong',
           );
         }
       }
 
-      // Update kategori
+      // Update kategori dengan format yang benar
       parameter.kategori = {
         model: kategori.model,
-        prinsip: kategori.prinsip,
-        jenis: kategori.jenis,
-        underlying: kategori.underlying || [],
+        prinsip:
+          kategori.model !== KategoriModel.TANPA_MODEL
+            ? kategori.prinsip
+            : undefined,
+        jenis:
+          kategori.model === KategoriModel.OPEN_END
+            ? kategori.jenis
+            : undefined,
+        underlying:
+          kategori.model === KategoriModel.TERSTRUKTUR
+            ? kategori.underlying || []
+            : [],
       };
     }
 
     try {
       const updated = await this.parameterRepository.save(parameter);
 
-      // Update timestamp kredit
-      await this.kreditRepository.update(kreditId, {
+      // Update timestamp inherent
+      await this.inherentRepository.update(inherentId, {
         updatedBy: userId,
         updatedAt: new Date(),
       });
@@ -570,9 +576,12 @@ export class KreditProdukOjkService {
     }
   }
 
-  async reorderParameters(kreditId: number, reorderDto: ReorderParametersDto) {
+  async reorderParameters(
+    inherentId: number,
+    reorderDto: ReorderParametersDto,
+  ) {
     this.logger.log(
-      `reorderParameters: Mengurutkan parameter - Kredit ID: ${kreditId}`,
+      `reorderParameters: Mengurutkan parameter - Inherent ID: ${inherentId}`,
     );
 
     const queryRunner = this.dataSource.createQueryRunner();
@@ -584,14 +593,14 @@ export class KreditProdukOjkService {
         const parameterId = reorderDto.parameterIds[i];
         await queryRunner.manager.update(
           KreditParameter,
-          { id: parameterId, kreditProdukOjkId: kreditId },
+          { id: parameterId, kreditProdukOjkId: inherentId },
           { orderIndex: i },
         );
       }
 
       await queryRunner.commitTransaction();
       this.logger.log(
-        `reorderParameters: Parameter berhasil diurutkan - Kredit ID: ${kreditId}`,
+        `reorderParameters: Parameter berhasil diurutkan - Inherent ID: ${inherentId}`,
       );
 
       return { message: 'Parameter berhasil diurutkan' };
@@ -607,11 +616,11 @@ export class KreditProdukOjkService {
     }
   }
 
-  async copyParameter(kreditId: number, parameterId: number, userId: string) {
+  async copyParameter(inherentId: number, parameterId: number, userId: string) {
     this.logger.log(`copyParameter: Menyalin parameter - ID: ${parameterId}`);
 
     const originalParam = await this.parameterRepository.findOne({
-      where: { id: parameterId, kreditProdukOjkId: kreditId },
+      where: { id: parameterId, kreditProdukOjkId: inherentId },
       relations: ['nilaiList'],
     });
 
@@ -623,7 +632,7 @@ export class KreditProdukOjkService {
 
     // Cari orderIndex terakhir
     const lastParam = await this.parameterRepository.findOne({
-      where: { kreditProdukOjkId: kreditId },
+      where: { kreditProdukOjkId: inherentId },
       order: { orderIndex: 'DESC' },
     });
 
@@ -640,7 +649,7 @@ export class KreditProdukOjkService {
         judul: `${originalParam.judul} (Copy)`,
         bobot: originalParam.bobot,
         kategori: originalParam.kategori,
-        kreditProdukOjkId: kreditId,
+        kreditProdukOjkId: inherentId,
         orderIndex,
       });
 
@@ -670,8 +679,8 @@ export class KreditProdukOjkService {
 
       await queryRunner.commitTransaction();
 
-      // Update timestamp kredit
-      await this.kreditRepository.update(kreditId, {
+      // Update timestamp inherent
+      await this.inherentRepository.update(inherentId, {
         updatedBy: userId,
         updatedAt: new Date(),
       });
@@ -689,13 +698,17 @@ export class KreditProdukOjkService {
     }
   }
 
-  async removeParameter(kreditId: number, parameterId: number, userId: string) {
+  async removeParameter(
+    inherentId: number,
+    parameterId: number,
+    userId: string,
+  ) {
     this.logger.log(
       `removeParameter: Menghapus parameter - ID: ${parameterId}`,
     );
 
     const parameter = await this.parameterRepository.findOne({
-      where: { id: parameterId, kreditProdukOjkId: kreditId },
+      where: { id: parameterId, kreditProdukOjkId: inherentId },
       relations: ['nilaiList'],
     });
 
@@ -722,8 +735,8 @@ export class KreditProdukOjkService {
 
       await queryRunner.commitTransaction();
 
-      // Update timestamp kredit
-      await this.kreditRepository.update(kreditId, {
+      // Update timestamp inherent
+      await this.inherentRepository.update(inherentId, {
         updatedBy: userId,
         updatedAt: new Date(),
       });
@@ -747,7 +760,7 @@ export class KreditProdukOjkService {
   // === OPERASI NILAI ===
 
   async addNilai(
-    kreditId: number,
+    inherentId: number,
     parameterId: number,
     createNilaiDto: CreateNilaiDto,
     userId: string,
@@ -757,7 +770,7 @@ export class KreditProdukOjkService {
     );
 
     const parameter = await this.parameterRepository.findOne({
-      where: { id: parameterId, kreditProdukOjkId: kreditId },
+      where: { id: parameterId, kreditProdukOjkId: inherentId },
     });
 
     if (!parameter) {
@@ -766,7 +779,7 @@ export class KreditProdukOjkService {
       );
     }
 
-    // Validasi judul.text
+    // Validasi judul.text - PERBAIKAN: handle optional
     const judulText = createNilaiDto.judul?.text;
     if (!judulText || judulText.trim() === '') {
       throw new BadRequestException('Judul nilai wajib diisi');
@@ -808,8 +821,8 @@ export class KreditProdukOjkService {
 
     const savedNilai = await this.nilaiRepository.save(nilai);
 
-    // Update timestamp kredit
-    await this.kreditRepository.update(kreditId, {
+    // Update timestamp inherent
+    await this.inherentRepository.update(inherentId, {
       updatedBy: userId,
       updatedAt: new Date(),
     });
@@ -821,7 +834,7 @@ export class KreditProdukOjkService {
   }
 
   async updateNilai(
-    kreditId: number,
+    inherentId: number,
     parameterId: number,
     nilaiId: number,
     updateNilaiDto: UpdateNilaiDto,
@@ -838,10 +851,10 @@ export class KreditProdukOjkService {
       throw new NotFoundException(`Nilai dengan ID ${nilaiId} tidak ditemukan`);
     }
 
-    // Cek apakah parameter milik kredit yang benar
-    if (nilai.parameter.kreditProdukOjkId !== kreditId) {
+    // Cek apakah parameter milik inherent yang benar
+    if (nilai.parameter.kreditProdukOjkId !== inherentId) {
       throw new BadRequestException(
-        'Nilai tidak termasuk dalam kredit yang dimaksud',
+        'Nilai tidak termasuk dalam inherent yang dimaksud',
       );
     }
 
@@ -867,6 +880,7 @@ export class KreditProdukOjkService {
       nilai.judul = {
         ...nilai.judul,
         ...updateNilaiDto.judul,
+        // Handle text update dengan safety check
         ...(updateNilaiDto.judul.text && {
           text: updateNilaiDto.judul.text.trim(),
         }),
@@ -875,8 +889,8 @@ export class KreditProdukOjkService {
 
     const updated = await this.nilaiRepository.save(nilai);
 
-    // Update timestamp kredit
-    await this.kreditRepository.update(kreditId, {
+    // Update timestamp inherent
+    await this.inherentRepository.update(inherentId, {
       updatedBy: userId,
       updatedAt: new Date(),
     });
@@ -920,7 +934,7 @@ export class KreditProdukOjkService {
   }
 
   async copyNilai(
-    kreditId: number,
+    inherentId: number,
     parameterId: number,
     nilaiId: number,
     userId: string,
@@ -958,8 +972,8 @@ export class KreditProdukOjkService {
 
     const savedNilai = await this.nilaiRepository.save(newNilai);
 
-    // Update timestamp kredit
-    await this.kreditRepository.update(kreditId, {
+    // Update timestamp inherent
+    await this.inherentRepository.update(inherentId, {
       updatedBy: userId,
       updatedAt: new Date(),
     });
@@ -971,7 +985,7 @@ export class KreditProdukOjkService {
   }
 
   async removeNilai(
-    kreditId: number,
+    inherentId: number,
     parameterId: number,
     nilaiId: number,
     userId: string,
@@ -987,17 +1001,17 @@ export class KreditProdukOjkService {
       throw new NotFoundException(`Nilai dengan ID ${nilaiId} tidak ditemukan`);
     }
 
-    // Cek apakah parameter milik kredit yang benar
-    if (nilai.parameter.kreditProdukOjkId !== kreditId) {
+    // Cek apakah parameter milik inherent yang benar
+    if (nilai.parameter.kreditProdukOjkId !== inherentId) {
       throw new BadRequestException(
-        'Nilai tidak termasuk dalam kredit yang dimaksud',
+        'Nilai tidak termasuk dalam inherent yang dimaksud',
       );
     }
 
     await this.nilaiRepository.delete({ id: nilaiId });
 
-    // Update timestamp kredit
-    await this.kreditRepository.update(kreditId, {
+    // Update timestamp inherent
+    await this.inherentRepository.update(inherentId, {
       updatedBy: userId,
       updatedAt: new Date(),
     });
@@ -1026,8 +1040,8 @@ export class KreditProdukOjkService {
     return query.getMany();
   }
 
-  // === VALIDASI TAMBAHAN UNTUK MODEL KREDIT ===
-  async validateModelKredit(kreditId: number): Promise<{
+  // === VALIDASI TAMBAHAN UNTUK MODEL TERSTRUKTUR ===
+  async validateModelTerstruktur(inherentId: number): Promise<{
     isValid: boolean;
     warnings: string[];
     errors: string[];
@@ -1038,28 +1052,28 @@ export class KreditProdukOjkService {
       errors: [] as string[],
     };
 
-    const kredit = await this.kreditRepository.findOne({
-      where: { id: kreditId },
+    const inherent = await this.inherentRepository.findOne({
+      where: { id: inherentId },
       relations: ['parameters'],
     });
 
-    if (!kredit) {
-      result.errors.push(`Data dengan ID ${kreditId} tidak ditemukan`);
+    if (!inherent) {
+      result.errors.push(`Data dengan ID ${inherentId} tidak ditemukan`);
       result.isValid = false;
       return result;
     }
 
-    // Cek parameter dengan model kombinasi
-    const kombinasiParams =
-      kredit.parameters?.filter(
-        (param) => param.kategori?.model === KategoriModel.KOMBINASI,
+    // Cek parameter dengan model terstruktur
+    const terstrukturParams =
+      inherent.parameters?.filter(
+        (param) => param.kategori?.model === KategoriModel.TERSTRUKTUR,
       ) || [];
 
-    kombinasiParams.forEach((param, index) => {
+    terstrukturParams.forEach((param, index) => {
       // Validasi prinsip
       if (!param.kategori?.prinsip) {
         result.errors.push(
-          `Parameter "${param.judul}" (model kombinasi) harus memiliki prinsip`,
+          `Parameter "${param.judul}" (model terstruktur) harus memiliki prinsip`,
         );
         result.isValid = false;
       }
@@ -1070,61 +1084,21 @@ export class KreditProdukOjkService {
         param.kategori.underlying.length === 0
       ) {
         result.warnings.push(
-          `Parameter "${param.judul}" (model kombinasi) tidak memiliki aset dasar`,
+          `Parameter "${param.judul}" (model terstruktur) tidak memiliki aset dasar`,
         );
       }
-    });
 
-    // Cek parameter dengan model konvensional
-    const konvensionalParams =
-      kredit.parameters?.filter(
-        (param) => param.kategori?.model === KategoriModel.KONVENSIONAL,
-      ) || [];
-
-    konvensionalParams.forEach((param, index) => {
-      if (!param.kategori?.jenis) {
+      // Validasi jenis - harus kosong
+      if (param.kategori?.jenis) {
         result.errors.push(
-          `Parameter "${param.judul}" (model konvensional) harus memiliki jenis kredit`,
-        );
-        result.isValid = false;
-      }
-      if (
-        !param.kategori?.prinsip ||
-        param.kategori.prinsip !== KategoriPrinsip.KONVENSIONAL
-      ) {
-        result.errors.push(
-          `Parameter "${param.judul}" (model konvensional) harus memiliki prinsip konvensional`,
-        );
-        result.isValid = false;
-      }
-    });
-
-    // Cek parameter dengan model syariah
-    const syariahParams =
-      kredit.parameters?.filter(
-        (param) => param.kategori?.model === KategoriModel.SYARIAH,
-      ) || [];
-
-    syariahParams.forEach((param, index) => {
-      if (!param.kategori?.jenis) {
-        result.errors.push(
-          `Parameter "${param.judul}" (model syariah) harus memiliki jenis kredit`,
-        );
-        result.isValid = false;
-      }
-      if (
-        !param.kategori?.prinsip ||
-        param.kategori.prinsip !== KategoriPrinsip.SYARIAH
-      ) {
-        result.errors.push(
-          `Parameter "${param.judul}" (model syariah) harus memiliki prinsip syariah`,
+          `Parameter "${param.judul}" (model terstruktur) seharusnya tidak memiliki jenis`,
         );
         result.isValid = false;
       }
     });
 
     this.logger.log(
-      `validateModelKredit: Validasi selesai - ${result.errors.length} errors, ${result.warnings.length} warnings`,
+      `validateModelTerstruktur: Validasi selesai - ${result.errors.length} errors, ${result.warnings.length} warnings`,
     );
 
     return result;
@@ -1132,11 +1106,11 @@ export class KreditProdukOjkService {
 
   // === IMPORT/EXPORT ===
 
-  async exportToExcel(kreditId: number) {
-    this.logger.log(`exportToExcel: Mengekspor ke Excel - ID: ${kreditId}`);
+  async exportToExcel(inherentId: number) {
+    this.logger.log(`exportToExcel: Mengekspor ke Excel - ID: ${inherentId}`);
 
-    const kredit = await this.kreditRepository.findOne({
-      where: { id: kreditId },
+    const inherent = await this.inherentRepository.findOne({
+      where: { id: inherentId },
       relations: ['parameters', 'parameters.nilaiList'],
       order: {
         parameters: {
@@ -1148,24 +1122,26 @@ export class KreditProdukOjkService {
       },
     });
 
-    if (!kredit) {
-      throw new NotFoundException(`Data dengan ID ${kreditId} tidak ditemukan`);
+    if (!inherent) {
+      throw new NotFoundException(
+        `Data dengan ID ${inherentId} tidak ditemukan`,
+      );
     }
 
     const exportData = {
       metadata: {
-        year: kredit.year,
-        quarter: kredit.quarter,
+        year: inherent.year,
+        quarter: inherent.quarter,
         exportedAt: new Date().toISOString(),
-        totalParameters: kredit.parameters?.length || 0,
+        totalParameters: inherent.parameters?.length || 0,
         totalNilai:
-          kredit.parameters?.reduce(
+          inherent.parameters?.reduce(
             (total, param) => total + (param.nilaiList?.length || 0),
             0,
           ) || 0,
       },
       parameters:
-        kredit.parameters?.map((param) => ({
+        inherent.parameters?.map((param) => ({
           id: param.id,
           nomor: param.nomor,
           judul: param.judul,
@@ -1211,8 +1187,8 @@ export class KreditProdukOjkService {
         { isActive: false },
       );
 
-      // Buat kredit baru
-      const kredit = {
+      // Buat inherent baru
+      const inherent = {
         year: importData.metadata?.year || new Date().getFullYear(),
         quarter: importData.metadata?.quarter || 1,
         summary: importData.summary,
@@ -1221,9 +1197,9 @@ export class KreditProdukOjkService {
         updatedBy: userId,
       };
 
-      const savedKredit = await queryRunner.manager.save(
+      const savedInherent = await queryRunner.manager.save(
         KreditProdukOjk,
-        kredit,
+        inherent,
       );
 
       // Import parameters
@@ -1240,7 +1216,7 @@ export class KreditProdukOjkService {
             jenis: '' as KategoriJenis,
             underlying: [],
           },
-          kreditProdukOjkId: savedKredit.id,
+          kreditProdukOjkId: savedInherent.id,
           orderIndex: paramData.orderIndex || i,
         };
 
@@ -1289,9 +1265,9 @@ export class KreditProdukOjkService {
       await queryRunner.commitTransaction();
 
       this.logger.log(
-        `importFromExcel: Data berhasil diimpor - ID: ${savedKredit.id}, Jumlah parameter: ${importData.parameters.length}`,
+        `importFromExcel: Data berhasil diimpor - ID: ${savedInherent.id}, Jumlah parameter: ${importData.parameters.length}`,
       );
-      return savedKredit;
+      return savedInherent;
     } catch (error) {
       await queryRunner.rollbackTransaction();
       this.logger.error(

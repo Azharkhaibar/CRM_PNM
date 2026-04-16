@@ -1625,7 +1625,7 @@ import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Download, Trash2, Edit3, Search, Plus, ChevronDown, RefreshCw, CheckCircle, XCircle } from 'lucide-react';
 
 // Import components
-import { YearInput, QuarterSelect } from '../../pasar/components/Inputs.jsx';
+import { YearInput, QuarterSelect } from '../../pasar/components/pasar/input-pasar.jsx';
 import { exportKPMRPasarToExcel as exportKPMRStratejikToExcel } from '../../pasar/utils/excelexportpasar.jsx';
 import { useStrategik } from '../hook/stratejik/stratejik.hook.js';
 import { exportStrategikToExcel } from '../components/exportstrategiktoexcel.jsx';

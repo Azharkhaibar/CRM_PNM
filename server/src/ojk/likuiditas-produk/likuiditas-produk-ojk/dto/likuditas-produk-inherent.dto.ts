@@ -17,31 +17,34 @@ import {
 import { Type } from 'class-transformer';
 
 // === ENUMS ===
-export enum LikuiditasKategoriModel {
+export enum KategoriModel {
   TANPA_MODEL = 'tanpa_model',
-  STANDAR = 'standar',
-  KOMPREHENSIF = 'komprehensif',
+  OPEN_END = 'open_end',
+  TERSTRUKTUR = 'terstruktur',
 }
 
-export enum LikuiditasKategoriUnderlying {
-  KEWAJIBAN = 'kewajiban',
-  ASET_LANCAR = 'aset_lancar',
-  ARUS_KAS = 'arus_kas',
-  RASIO = 'rasio',
+export enum KategoriUnderlying {
+  INDEKS = 'indeks',
+  EBA = 'eba',
+  DINFRA = 'dinfra',
+  OBLIGASI = 'obligasi',
 }
 
-export enum LikuiditasKategoriPrinsip {
+export enum KategoriPrinsip {
   SYARIAH = 'syariah',
   KONVENSIONAL = 'konvensional',
 }
 
-export enum LikuiditasKategoriJenis {
-  JANGKA_PENDEK = 'jangka_pendek',
-  JANGKA_MENENGAH = 'jangka_menengah',
-  JANGKA_PANJANG = 'jangka_panjang',
+export enum KategoriJenis {
+  PASAR_UANG = 'pasar_uang',
+  PENDAPATAN_TETAP = 'pendapatan_tetap',
+  CAMPURAN = 'campuran',
+  SAHAM = 'saham',
+  INDEKS = 'indeks',
+  TERPROTEKSI = 'terproteksi',
 }
 
-export enum LikuiditasJudulType {
+export enum JudulType {
   TANPA_FAKTOR = 'Tanpa Faktor',
   SATU_FAKTOR = 'Satu Faktor',
   DUA_FAKTOR = 'Dua Faktor',
@@ -49,11 +52,11 @@ export enum LikuiditasJudulType {
 
 // === SUBCLASSES ===
 
-export class LikuiditasKategoriDto {
+export class KategoriDto {
   @IsOptional()
   @IsString()
-  @IsIn(['tanpa_model', 'standar', 'komprehensif'], {
-    message: 'Model harus salah satu dari: tanpa_model, standar, komprehensif',
+  @IsIn(['tanpa_model', 'open_end', 'terstruktur'], {
+    message: 'Model harus salah satu dari: tanpa_model, open_end, terstruktur',
   })
   model?: string;
 
@@ -66,23 +69,33 @@ export class LikuiditasKategoriDto {
 
   @IsOptional()
   @IsString()
-  @IsIn(['jangka_pendek', 'jangka_menengah', 'jangka_panjang'], {
-    message:
-      'Jenis harus salah satu dari: jangka_pendek, jangka_menengah, jangka_panjang',
-  })
+  @IsIn(
+    [
+      'pasar_uang',
+      'pendapatan_tetap',
+      'campuran',
+      'saham',
+      'indeks',
+      'terproteksi',
+    ],
+    {
+      message:
+        'Jenis harus salah satu dari: pasar_uang, pendapatan_tetap, campuran, saham, indeks, terproteksi',
+    },
+  )
   jenis?: string;
 
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
-  @IsIn(['kewajiban', 'aset_lancar', 'arus_kas', 'rasio'], { each: true })
+  @IsIn(['indeks', 'eba', 'dinfra', 'obligasi'], { each: true })
   underlying?: string[];
 }
 
-export class LikuiditasJudulDto {
+export class JudulDto {
   @IsOptional()
-  @IsEnum(LikuiditasJudulType)
-  type?: LikuiditasJudulType;
+  @IsEnum(JudulType)
+  type?: JudulType;
 
   @IsOptional()
   @IsString()
@@ -114,7 +127,7 @@ export class LikuiditasJudulDto {
   percent?: boolean;
 }
 
-export class LikuiditasRiskindikatorDto {
+export class RiskindikatorDto {
   @IsOptional()
   @IsString()
   low?: string;
@@ -208,7 +221,7 @@ export class UpdateLikuiditasProdukInherentDto {
 }
 
 // DTO untuk Parameter (Create)
-export class CreateLikuiditasParameterDto {
+export class CreateParameterDto {
   @IsOptional()
   @IsString()
   nomor?: string;
@@ -224,8 +237,8 @@ export class CreateLikuiditasParameterDto {
 
   @IsOptional()
   @ValidateNested()
-  @Type(() => LikuiditasKategoriDto)
-  kategori?: LikuiditasKategoriDto;
+  @Type(() => KategoriDto)
+  kategori?: KategoriDto;
 
   @IsOptional()
   @IsInt()
@@ -233,7 +246,7 @@ export class CreateLikuiditasParameterDto {
 }
 
 // DTO untuk Parameter (Update)
-export class UpdateLikuiditasParameterDto {
+export class UpdateParameterDto {
   @IsOptional()
   @IsString()
   nomor?: string;
@@ -251,8 +264,8 @@ export class UpdateLikuiditasParameterDto {
 
   @IsOptional()
   @ValidateNested()
-  @Type(() => LikuiditasKategoriDto)
-  kategori?: LikuiditasKategoriDto;
+  @Type(() => KategoriDto)
+  kategori?: KategoriDto;
 
   @IsOptional()
   @IsInt()
@@ -260,15 +273,15 @@ export class UpdateLikuiditasParameterDto {
 }
 
 // DTO untuk Nilai (Create)
-export class CreateLikuiditasNilaiDto {
+export class CreateNilaiDto {
   @IsOptional()
   @IsString()
   nomor?: string;
 
   @IsObject()
   @ValidateNested()
-  @Type(() => LikuiditasJudulDto)
-  judul: LikuiditasJudulDto;
+  @Type(() => JudulDto)
+  judul: JudulDto;
 
   @IsNumber()
   @Min(0)
@@ -285,8 +298,8 @@ export class CreateLikuiditasNilaiDto {
 
   @IsOptional()
   @ValidateNested()
-  @Type(() => LikuiditasRiskindikatorDto)
-  riskindikator?: LikuiditasRiskindikatorDto;
+  @Type(() => RiskindikatorDto)
+  riskindikator?: RiskindikatorDto;
 
   @IsOptional()
   @IsInt()
@@ -294,15 +307,15 @@ export class CreateLikuiditasNilaiDto {
 }
 
 // DTO untuk Nilai (Update)
-export class UpdateLikuiditasNilaiDto {
+export class UpdateNilaiDto {
   @IsOptional()
   @IsString()
   nomor?: string;
 
   @IsOptional()
   @ValidateNested()
-  @Type(() => LikuiditasJudulDto)
-  judul?: LikuiditasJudulDto;
+  @Type(() => JudulDto)
+  judul?: JudulDto;
 
   @IsOptional()
   @IsNumber()
@@ -320,8 +333,8 @@ export class UpdateLikuiditasNilaiDto {
 
   @IsOptional()
   @ValidateNested()
-  @Type(() => LikuiditasRiskindikatorDto)
-  riskindikator?: LikuiditasRiskindikatorDto;
+  @Type(() => RiskindikatorDto)
+  riskindikator?: RiskindikatorDto;
 
   @IsOptional()
   @IsInt()
@@ -329,21 +342,21 @@ export class UpdateLikuiditasNilaiDto {
 }
 
 // DTO untuk Reorder Parameters
-export class ReorderLikuiditasParametersDto {
+export class ReorderParametersDto {
   @IsArray()
   @IsInt({ each: true })
   parameterIds: number[];
 }
 
 // DTO untuk Reorder Nilai
-export class ReorderLikuiditasNilaiDto {
+export class ReorderNilaiDto {
   @IsArray()
   @IsInt({ each: true })
   nilaiIds: number[];
 }
 
 // DTO untuk Summary
-export class UpdateLikuiditasSummaryDto {
+export class UpdateSummaryDto {
   @IsOptional()
   @IsNumber()
   totalWeighted?: number;
@@ -357,7 +370,7 @@ export class UpdateLikuiditasSummaryDto {
 }
 
 // DTO untuk Import/Export
-export class LikuiditasExportImportMetadataDto {
+export class ExportImportMetadataDto {
   @IsInt()
   @Min(2000)
   year: number;
@@ -382,7 +395,7 @@ export class LikuiditasExportImportMetadataDto {
   totalNilai?: number;
 }
 
-export class LikuiditasExportParameterDto {
+export class ExportParameterDto {
   @IsOptional()
   @IsInt()
   id?: number;
@@ -401,8 +414,8 @@ export class LikuiditasExportParameterDto {
 
   @IsOptional()
   @ValidateNested()
-  @Type(() => LikuiditasKategoriDto)
-  kategori?: LikuiditasKategoriDto;
+  @Type(() => KategoriDto)
+  kategori?: KategoriDto;
 
   @IsOptional()
   @IsInt()
@@ -411,11 +424,11 @@ export class LikuiditasExportParameterDto {
   @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => LikuiditasExportNilaiDto)
-  nilaiList?: LikuiditasExportNilaiDto[];
+  @Type(() => ExportNilaiDto)
+  nilaiList?: ExportNilaiDto[];
 }
 
-export class LikuiditasExportNilaiDto {
+export class ExportNilaiDto {
   @IsOptional()
   @IsInt()
   id?: number;
@@ -426,8 +439,8 @@ export class LikuiditasExportNilaiDto {
 
   @IsObject()
   @ValidateNested()
-  @Type(() => LikuiditasJudulDto)
-  judul: LikuiditasJudulDto;
+  @Type(() => JudulDto)
+  judul: JudulDto;
 
   @IsNumber()
   @Min(0)
@@ -444,21 +457,21 @@ export class LikuiditasExportNilaiDto {
 
   @IsOptional()
   @ValidateNested()
-  @Type(() => LikuiditasRiskindikatorDto)
-  riskindikator?: LikuiditasRiskindikatorDto;
+  @Type(() => RiskindikatorDto)
+  riskindikator?: RiskindikatorDto;
 
   @IsOptional()
   @IsInt()
   orderIndex?: number;
 }
 
-export class LikuiditasImportExportDto {
+export class ImportExportDto {
   @ValidateNested()
-  @Type(() => LikuiditasExportImportMetadataDto)
-  metadata: LikuiditasExportImportMetadataDto;
+  @Type(() => ExportImportMetadataDto)
+  metadata: ExportImportMetadataDto;
 
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => LikuiditasExportParameterDto)
-  parameters: LikuiditasExportParameterDto[];
+  @Type(() => ExportParameterDto)
+  parameters: ExportParameterDto[];
 }

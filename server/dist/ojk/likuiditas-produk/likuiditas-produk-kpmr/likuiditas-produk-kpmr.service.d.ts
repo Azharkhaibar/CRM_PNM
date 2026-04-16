@@ -1,7 +1,7 @@
 import { Repository, DataSource } from 'typeorm';
 import { CreateKpmrLikuiditasOjkDto, CreateKpmrAspekLikuiditasDto, CreateKpmrPertanyaanLikuiditasDto, UpdateKpmrAspekLikuiditasDto, UpdateKpmrLikuiditasOjkDto, ReorderAspekDto, ReorderPertanyaanDto, UpdateKpmrPertanyaanLikuiditasDto, UpdateSkorDto, UpdateSummaryDto, BulkUpdateSkorDto, FrontendAspekResponseDto, FrontendKpmrResponseDto, FrontendPertanyaanResponseDto } from './dto/likuiditas-kpmr.dto';
 import { KpmrPertanyaanLikuiditas } from './entities/likuiditas-kpmr-pertanyaan.entity';
-import { KpmrLikuiditas } from './entities/likuiditas-produk-ojk.entity';
+import { KpmrLikuiditasOjk } from './entities/likuiditas-produk-ojk.entity';
 import { KpmrAspekLikuiditas } from './entities/likuiditas-kpmr-aspek.entity';
 export declare class KpmrLikuiditasService {
     private readonly kpmrRepository;
@@ -11,7 +11,7 @@ export declare class KpmrLikuiditasService {
     private readonly logger;
     private readonly MAX_BOBOT_TOTAL;
     private readonly BOBOT_TOLERANCE;
-    constructor(kpmrRepository: Repository<KpmrLikuiditas>, aspekRepository: Repository<KpmrAspekLikuiditas>, pertanyaanRepository: Repository<KpmrPertanyaanLikuiditas>, dataSource: DataSource);
+    constructor(kpmrRepository: Repository<KpmrLikuiditasOjk>, aspekRepository: Repository<KpmrAspekLikuiditas>, pertanyaanRepository: Repository<KpmrPertanyaanLikuiditas>, dataSource: DataSource);
     private validateQuarter;
     private validateSkor;
     private validateBobot;
@@ -41,7 +41,7 @@ export declare class KpmrLikuiditasService {
         withRelations?: boolean;
     }): Promise<FrontendKpmrResponseDto[]>;
     findOne(id: number, withRelations?: boolean): Promise<FrontendKpmrResponseDto>;
-    findOneEntity(id: number): Promise<KpmrLikuiditas>;
+    findOneEntity(id: number): Promise<KpmrLikuiditasOjk>;
     findByYearQuarter(year: number, quarter: number, withRelations?: boolean): Promise<FrontendKpmrResponseDto>;
     updateKpmr(id: number, updateDto: UpdateKpmrLikuiditasOjkDto, updatedBy?: string): Promise<FrontendKpmrResponseDto>;
     deleteKpmr(id: number): Promise<void>;

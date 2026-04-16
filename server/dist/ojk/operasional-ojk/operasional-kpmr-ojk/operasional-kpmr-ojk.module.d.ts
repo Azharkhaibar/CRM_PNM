@@ -1,2 +1,2 @@
-export declare class OperasionalKpmrOjkModule {
+export declare class OperasionalKpmrModule {
 }

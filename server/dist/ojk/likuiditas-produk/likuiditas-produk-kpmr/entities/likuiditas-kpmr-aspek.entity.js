@@ -40,20 +40,15 @@ __decorate([
     __metadata("design:type", String)
 ], KpmrAspekLikuiditas.prototype, "nomor", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ nullable: false }),
+    (0, typeorm_1.Column)(),
     __metadata("design:type", String)
 ], KpmrAspekLikuiditas.prototype, "judul", void 0);
 __decorate([
-    (0, typeorm_1.Column)('decimal', {
-        precision: 10,
-        scale: 2,
-        nullable: false,
-        default: 0,
-    }),
+    (0, typeorm_1.Column)('decimal', { precision: 10, scale: 2, default: 0 }),
     __metadata("design:type", Number)
 ], KpmrAspekLikuiditas.prototype, "bobot", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'varchar', length: 500, nullable: true }),
+    (0, typeorm_1.Column)({ type: 'text', nullable: true }),
     __metadata("design:type", String)
 ], KpmrAspekLikuiditas.prototype, "deskripsi", void 0);
 __decorate([
@@ -61,16 +56,15 @@ __decorate([
     __metadata("design:type", Number)
 ], KpmrAspekLikuiditas.prototype, "kpmrOjkId", void 0);
 __decorate([
-    (0, typeorm_1.ManyToOne)(() => likuiditas_produk_ojk_entity_1.KpmrLikuiditas, (kpmr) => kpmr.aspekList, {
+    (0, typeorm_1.ManyToOne)(() => likuiditas_produk_ojk_entity_1.KpmrLikuiditasOjk, (kpmr) => kpmr.aspekList, {
         onDelete: 'CASCADE',
     }),
     (0, typeorm_1.JoinColumn)({ name: 'kpmr_ojk_id' }),
-    __metadata("design:type", likuiditas_produk_ojk_entity_1.KpmrLikuiditas)
+    __metadata("design:type", likuiditas_produk_ojk_entity_1.KpmrLikuiditasOjk)
 ], KpmrAspekLikuiditas.prototype, "kpmrOjk", void 0);
 __decorate([
     (0, typeorm_1.OneToMany)(() => likuiditas_kpmr_pertanyaan_entity_1.KpmrPertanyaanLikuiditas, (pertanyaan) => pertanyaan.aspek, {
         cascade: true,
-        eager: false,
     }),
     __metadata("design:type", Array)
 ], KpmrAspekLikuiditas.prototype, "pertanyaanList", void 0);
@@ -104,13 +98,13 @@ __decorate([
     __metadata("design:type", String)
 ], KpmrAspekLikuiditas.prototype, "updatedBy", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ nullable: true, type: 'text' }),
+    (0, typeorm_1.Column)({ type: 'text', nullable: true }),
     __metadata("design:type", String)
 ], KpmrAspekLikuiditas.prototype, "notes", void 0);
 exports.KpmrAspekLikuiditas = KpmrAspekLikuiditas = __decorate([
     (0, typeorm_1.Entity)('kpmr_aspek_likuiditas'),
-    (0, typeorm_1.Index)(['kpmrOjkId', 'nomor'], { unique: false }),
-    (0, typeorm_1.Index)(['kpmrOjkId', 'orderIndex'], { unique: false }),
+    (0, typeorm_1.Index)(['kpmrOjkId', 'nomor']),
+    (0, typeorm_1.Index)(['kpmrOjkId', 'orderIndex']),
     (0, typeorm_1.Index)(['kpmrOjkId', 'bobot']),
     (0, typeorm_1.Index)(['kpmrOjkId', 'createdAt'])
 ], KpmrAspekLikuiditas);

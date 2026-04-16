@@ -1,330 +1,458 @@
-// services/kpmrPasar.service.ts
-import axios from 'axios';
+// src/features/Dashboard/pages/RiskProfile/pages/Pasar/services/kpmr-pasar.service.ts
+import api_pasar from '../api-pasar.service';
+// ============================================================================
+// INTERFACES - Sesuai dengan Entity Backend (dengan Year) - HARD DELETE ONLY
+// ============================================================================
 
-const API_BASE_URL = 'http://localhost:5530/api/v1/kpmr-pasar';
-
-// Interfaces berdasarkan entity KPMR Pasar
-export interface KpmrPasar {
-  id_kpmr_pasar: number;
+// ---------- ASPEK (Master) ----------
+export interface KPMRPasarAspect {
+  id: number;
   year: number;
-  quarter: string;
+  aspekNo: string;
+  aspekTitle: string;
+  aspekBobot: number;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+export interface CreateKPMRPasarAspectData {
+  year: number;
+  aspekNo: string;
+  aspekTitle: string;
+  aspekBobot: number;
+}
+
+export interface UpdateKPMRPasarAspectData {
   aspekNo?: string;
-  aspekBobot?: number;
   aspekTitle?: string;
+  aspekBobot?: number;
+}
+
+// ---------- QUESTION (Master Pertanyaan) ----------
+export interface KPMRPasarQuestion {
+  id: number;
+  year: number;
+  aspekNo: string;
+  sectionNo: string;
+  sectionTitle: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+export interface CreateKPMRPasarQuestionData {
+  year: number;
+  aspekNo: string;
+  sectionNo: string;
+  sectionTitle: string;
+}
+
+export interface UpdateKPMRPasarQuestionData {
+  aspekNo?: string;
   sectionNo?: string;
-  indikator?: string;
-  sectionSkor?: number;
-  strong?: string;
-  satisfactory?: string;
-  fair?: string;
-  marginal?: string;
-  unsatisfactory?: string;
+  sectionTitle?: string;
+}
+
+// ---------- DEFINITION (Year-Level) ----------
+export interface KPMRPasarDefinition {
+  id: number;
+  year: number;
+  aspekNo: string;
+  aspekTitle: string;
+  aspekBobot: number;
+  sectionNo: string;
+  sectionTitle: string;
+  level1: string | null;
+  level2: string | null;
+  level3: string | null;
+  level4: string | null;
+  level5: string | null;
+  evidence: string | null;
+  createdAt?: Date;
+  updatedAt?: Date;
+  createdBy?: string;
+  updatedBy?: string;
+  scores?: KPMRPasarScore[];
+}
+
+export interface CreateKPMRPasarDefinitionData {
+  year: number;
+  aspekNo: string;
+  aspekTitle: string;
+  aspekBobot: number;
+  sectionNo: string;
+  sectionTitle: string;
+  level1?: string;
+  level2?: string;
+  level3?: string;
+  level4?: string;
+  level5?: string;
   evidence?: string;
-  created_at?: string;
-  updated_at?: string;
 }
 
-export interface GroupedAspek {
+export interface UpdateKPMRPasarDefinitionData {
+  year?: number;
   aspekNo?: string;
   aspekTitle?: string;
   aspekBobot?: number;
-  items: KpmrPasar[];
-  average_skor: string;
-  total_items: number;
-}
-
-export interface PeriodResult {
-  year: number;
-  quarter: string;
-  total_records?: number;
-}
-
-// Interface untuk response dari backend
-export interface ApiResponse<T> {
-  success: boolean;
-  message?: string;
-  data?: T;
-}
-
-// DTOs untuk create/update operations
-export interface CreateKpmrPasarDto {
-  year: number;
-  quarter: string;
-  aspekNo?: string;
-  aspekBobot?: number;
-  aspekTitle?: string;
   sectionNo?: string;
-  indikator?: string;
-  sectionSkor?: number;
-  strong?: string;
-  satisfactory?: string;
-  fair?: string;
-  marginal?: string;
-  unsatisfactory?: string;
+  sectionTitle?: string;
+  level1?: string;
+  level2?: string;
+  level3?: string;
+  level4?: string;
+  level5?: string;
   evidence?: string;
 }
 
-export interface UpdateKpmrPasarDto extends Partial<CreateKpmrPasarDto> {}
-
-// Filter interfaces
-export interface PeriodFilter {
+// ---------- SCORE (Quarter-Level) ----------
+export interface KPMRPasarScore {
+  id: number;
+  definitionId: number;
   year: number;
   quarter: string;
+  sectionSkor: number | null;
+  createdAt?: Date;
+  updatedAt?: Date;
+  createdBy?: string;
+  updatedBy?: string;
+  definition?: KPMRPasarDefinition;
 }
 
-export interface SearchFilter {
-  query?: string;
+export interface CreateKPMRPasarScoreData {
+  definitionId: number;
+  year: number;
+  quarter: string;
+  sectionSkor?: number;
+}
+
+export interface UpdateKPMRPasarScoreData {
+  definitionId?: number;
   year?: number;
   quarter?: string;
-  aspekNo?: string;
-  sectionNo?: string;
+  sectionSkor?: number;
 }
 
-// Utility function untuk handle error
-const handleServiceError = (error: any, defaultMessage: string): never => {
-  console.error('KPMR Pasar Service Error:', {
-    message: defaultMessage,
-    error: error.response?.data || error.message,
-    url: error.config?.url,
-    method: error.config?.method,
-  });
+// ---------- RESPONSE INTERFACES ----------
+export interface KPMRPasarFullDataResponse {
+  success: boolean;
+  year: number;
+  aspects: Array<{
+    aspekNo: string;
+    aspekTitle: string;
+    aspekBobot: number;
+    sections: Array<{
+      definitionId: number;
+      sectionNo: string;
+      sectionTitle: string;
+      level1: string | null;
+      level2: string | null;
+      level3: string | null;
+      level4: string | null;
+      level5: string | null;
+      evidence: string | null;
+      scores: Record<
+        string,
+        {
+          sectionSkor: number | null;
+          id: number;
+        }
+      >;
+    }>;
+    quarterAverages: Record<string, number | null>;
+  }>;
+  overallAverages: Record<string, number | null>;
+}
 
-  if (axios.isAxiosError(error)) {
-    if (error.response?.status === 404) {
-      throw new Error(`Endpoint tidak ditemukan: ${error.config?.url}`);
-    }
-    if (error.response?.status === 500) {
-      throw new Error(`Server error: ${error.response?.data?.message || defaultMessage}`);
-    }
-    if (error.response?.status === 400) {
-      throw new Error(`Data tidak valid: ${error.response?.data?.message || defaultMessage}`);
-    }
-    if (error.response?.status === 409) {
-      throw new Error(`Data duplikat: ${error.response?.data?.message || defaultMessage}`);
-    }
-    const message = error.response?.data?.message || defaultMessage;
-    throw new Error(message);
+export interface Period {
+  year: number;
+  quarter: string;
+}
+
+export interface PeriodsResponse {
+  success: boolean;
+  data: Period[];
+}
+
+export interface YearsResponse {
+  success: boolean;
+  data: number[];
+}
+
+export interface DeleteResponse {
+  success: boolean;
+  message: string;
+}
+
+// ============================================================================
+// API SERVICE CLASS - HARD DELETE ONLY
+// ============================================================================
+
+class KPMRPasarApiService {
+  // ========== ASPECT API ==========
+  async createAspect(data: CreateKPMRPasarAspectData): Promise<KPMRPasarAspect> {
+    console.log('📤 POST to: /kpmr-pasar/aspects', data);
+    const response = await api_pasar.post<KPMRPasarAspect>('/kpmr-pasar/aspects', data);
+    return response.data;
   }
-  throw new Error(defaultMessage);
-};
 
-// Helper function untuk transform form data ke DTO
-export const transformFormToDto = (formData: any): CreateKpmrPasarDto => {
+  async getAllAspects(year?: number): Promise<KPMRPasarAspect[]> {
+    let url = '/kpmr-pasar/aspects';
+    if (year) url += `?year=${year}`;
+    console.log('📥 GET from:', url);
+    const response = await api_pasar.get<KPMRPasarAspect[]>(url);
+    return response.data;
+  }
+
+  async getAspectById(id: number): Promise<KPMRPasarAspect> {
+    console.log(`📥 GET from: /kpmr-pasar/aspects/${id}`);
+    const response = await api_pasar.get<KPMRPasarAspect>(`/kpmr-pasar/aspects/${id}`);
+    return response.data;
+  }
+
+  async updateAspect(id: number, data: UpdateKPMRPasarAspectData): Promise<KPMRPasarAspect> {
+    console.log(`📤 PUT to: /kpmr-pasar/aspects/${id}`, data);
+    const response = await api_pasar.put<KPMRPasarAspect>(`/kpmr-pasar/aspects/${id}`, data);
+    return response.data;
+  }
+
+  // HARD DELETE
+  async deleteAspect(id: number): Promise<DeleteResponse> {
+    console.log(`🗑️ DELETE (hard) from: /kpmr-pasar/aspects/${id}`);
+    const response = await api_pasar.delete<DeleteResponse>(`/kpmr-pasar/aspects/${id}`);
+    return response.data;
+  }
+
+  // ========== QUESTION API ==========
+  async createQuestion(data: CreateKPMRPasarQuestionData): Promise<KPMRPasarQuestion> {
+    console.log('📤 POST to: /kpmr-pasar/questions', data);
+    const response = await api_pasar.post<KPMRPasarQuestion>('/kpmr-pasar/questions', data);
+    return response.data;
+  }
+
+  async getAllQuestions(year?: number): Promise<KPMRPasarQuestion[]> {
+    let url = '/kpmr-pasar/questions';
+    if (year) url += `?year=${year}`;
+    console.log('📥 GET from:', url);
+    const response = await api_pasar.get<KPMRPasarQuestion[]>(url);
+    return response.data;
+  }
+
+  async getQuestionsByAspect(aspekNo: string, year?: number): Promise<KPMRPasarQuestion[]> {
+    let url = `/kpmr-pasar/questions/aspect/${aspekNo}`;
+    if (year) url += `?year=${year}`;
+    console.log('📥 GET from:', url);
+    const response = await api_pasar.get<KPMRPasarQuestion[]>(url);
+    return response.data;
+  }
+
+  async getQuestionById(id: number): Promise<KPMRPasarQuestion> {
+    console.log(`📥 GET from: /kpmr-pasar/questions/${id}`);
+    const response = await api_pasar.get<KPMRPasarQuestion>(`/kpmr-pasar/questions/${id}`);
+    return response.data;
+  }
+
+  async updateQuestion(id: number, data: UpdateKPMRPasarQuestionData): Promise<KPMRPasarQuestion> {
+    console.log(`📤 PUT to: /kpmr-pasar/questions/${id}`, data);
+    const response = await api_pasar.put<KPMRPasarQuestion>(`/kpmr-pasar/questions/${id}`, data);
+    return response.data;
+  }
+
+  // HARD DELETE
+  async deleteQuestion(id: number): Promise<DeleteResponse> {
+    console.log(`🗑️ DELETE (hard) from: /kpmr-pasar/questions/${id}`);
+    const response = await api_pasar.delete<DeleteResponse>(`/kpmr-pasar/questions/${id}`);
+    return response.data;
+  }
+
+  // ========== DEFINITION API ==========
+  async createOrUpdateDefinition(data: CreateKPMRPasarDefinitionData): Promise<KPMRPasarDefinition> {
+    console.log('📤 POST to: /kpmr-pasar/definitions', data);
+    const response = await api_pasar.post<KPMRPasarDefinition>('/kpmr-pasar/definitions', data);
+    return response.data;
+  }
+
+  async getAllDefinitions(): Promise<KPMRPasarDefinition[]> {
+    console.log('📥 GET from: /kpmr-pasar/definitions');
+    const response = await api_pasar.get<KPMRPasarDefinition[]>('/kpmr-pasar/definitions');
+    return response.data;
+  }
+
+  async getDefinitionsByYear(year: number): Promise<KPMRPasarDefinition[]> {
+    console.log(`📥 GET from: /kpmr-pasar/definitions/year/${year}`);
+    const response = await api_pasar.get<KPMRPasarDefinition[]>(`/kpmr-pasar/definitions/year/${year}`);
+    return response.data;
+  }
+
+  async getDefinitionById(id: number): Promise<KPMRPasarDefinition> {
+    console.log(`📥 GET from: /kpmr-pasar/definitions/${id}`);
+    const response = await api_pasar.get<KPMRPasarDefinition>(`/kpmr-pasar/definitions/${id}`);
+    return response.data;
+  }
+
+  async updateDefinition(id: number, data: UpdateKPMRPasarDefinitionData): Promise<KPMRPasarDefinition> {
+    console.log(`📤 PUT to: /kpmr-pasar/definitions/${id}`, data);
+    const response = await api_pasar.put<KPMRPasarDefinition>(`/kpmr-pasar/definitions/${id}`, data);
+    return response.data;
+  }
+
+  // HARD DELETE definition with scores
+  async deleteDefinitionPermanent(definitionId: number, year: number): Promise<DeleteResponse> {
+    console.log(`🗑️ DELETE to: /kpmr-pasar/definition/${definitionId}/${year}`);
+    const response = await api_pasar.delete<DeleteResponse>(`/kpmr-pasar/definition/${definitionId}/${year}`);
+    return response.data;
+  }
+
+  // ========== SCORE API ==========
+  async createOrUpdateScore(data: CreateKPMRPasarScoreData): Promise<KPMRPasarScore> {
+    console.log('📤 POST to: /kpmr-pasar/scores', data);
+    const response = await api_pasar.post<KPMRPasarScore>('/kpmr-pasar/scores', data);
+    return response.data;
+  }
+
+  async getAllScores(): Promise<KPMRPasarScore[]> {
+    console.log('📥 GET from: /kpmr-pasar/scores');
+    const response = await api_pasar.get<KPMRPasarScore[]>('/kpmr-pasar/scores');
+    return response.data;
+  }
+
+  async getScoresByPeriod(year: number, quarter?: string): Promise<KPMRPasarScore[]> {
+    let url = `/kpmr-pasar/scores/period?year=${year}`;
+    if (quarter) url += `&quarter=${quarter}`;
+    console.log('📥 GET from:', url);
+    const response = await api_pasar.get<KPMRPasarScore[]>(url);
+    return response.data;
+  }
+
+  async getScoresByDefinition(definitionId: number): Promise<KPMRPasarScore[]> {
+    console.log(`📥 GET from: /kpmr-pasar/scores/definition/${definitionId}`);
+    const response = await api_pasar.get<KPMRPasarScore[]>(`/kpmr-pasar/scores/definition/${definitionId}`);
+    return response.data;
+  }
+
+  async getScoreById(id: number): Promise<KPMRPasarScore> {
+    console.log(`📥 GET from: /kpmr-pasar/scores/${id}`);
+    const response = await api_pasar.get<KPMRPasarScore>(`/kpmr-pasar/scores/${id}`);
+    return response.data;
+  }
+
+  async updateScore(id: number, data: UpdateKPMRPasarScoreData): Promise<KPMRPasarScore> {
+    console.log(`📤 PUT to: /kpmr-pasar/scores/${id}`, data);
+    const response = await api_pasar.put<KPMRPasarScore>(`/kpmr-pasar/scores/${id}`, data);
+    return response.data;
+  }
+
+  // HARD DELETE
+  async deleteScore(id: number): Promise<DeleteResponse> {
+    console.log(`🗑️ DELETE (hard) from: /kpmr-pasar/scores/${id}`);
+    const response = await api_pasar.delete<DeleteResponse>(`/kpmr-pasar/scores/${id}`);
+    return response.data;
+  }
+
+  async deleteScoreByTarget(definitionId: number, year: number, quarter: string): Promise<DeleteResponse> {
+    console.log('🗑️ POST to: /kpmr-pasar/scores/target/delete', { definitionId, year, quarter });
+    const response = await api_pasar.post<DeleteResponse>('/kpmr-pasar/scores/target/delete', { definitionId, year, quarter });
+    return response.data;
+  }
+
+  // ========== COMPLEX QUERIES ==========
+  async getFullData(year: number): Promise<KPMRPasarFullDataResponse> {
+    console.log(`📥 GET full data from: /kpmr-pasar/full-data/${year}`);
+    const response = await api_pasar.get<KPMRPasarFullDataResponse>(`/kpmr-pasar/full-data/${year}`);
+    return response.data;
+  }
+
+  async searchKPMR(year?: number, query?: string, aspekNo?: string): Promise<KPMRPasarDefinition[]> {
+    let url = '/kpmr-pasar/search';
+    const params = new URLSearchParams();
+    if (year) params.append('year', String(year));
+    if (query) params.append('query', query);
+    if (aspekNo) params.append('aspekNo', aspekNo);
+
+    if (params.toString()) url += `?${params.toString()}`;
+    console.log('📥 GET from:', url);
+    const response = await api_pasar.get<KPMRPasarDefinition[]>(url);
+    return response.data;
+  }
+
+  async getAvailableYears(): Promise<number[]> {
+    console.log('📥 GET from: /kpmr-pasar/years');
+    const response = await api_pasar.get<YearsResponse>('/kpmr-pasar/years');
+    return response.data.data;
+  }
+
+  async getPeriods(): Promise<Period[]> {
+    console.log('📥 GET from: /kpmr-pasar/periods');
+    const response = await api_pasar.get<PeriodsResponse>('/kpmr-pasar/periods');
+    return response.data.data;
+  }
+}
+
+// ============================================================================
+// EXPORT SINGLETON
+// ============================================================================
+
+export const kpmrPasarApiService = new KPMRPasarApiService();
+
+// ============================================================================
+// UTILITY FUNCTIONS untuk Transform Data
+// ============================================================================
+
+export const transformDefinitionToComponent = (definition: KPMRPasarDefinition, scores: KPMRPasarScore[] = []) => {
+  const quarterScores = scores.reduce(
+    (acc, score) => {
+      acc[score.quarter] = {
+        sectionSkor: score.sectionSkor,
+        id: score.id,
+      };
+      return acc;
+    },
+    {} as Record<string, { sectionSkor: number | null; id: number }>,
+  );
+
   return {
-    year: formData.year,
-    quarter: formData.quarter,
-    aspekNo: formData.aspekNo || undefined,
-    aspekBobot: formData.aspekBobot ? Number(formData.aspekBobot) : undefined,
-    aspekTitle: formData.aspekTitle || undefined,
-    sectionNo: formData.sectionNo || undefined,
-    indikator: formData.sectionTitle || undefined, // Map sectionTitle ke indikator
-    sectionSkor: formData.sectionSkor ? Number(formData.sectionSkor) : undefined,
-    strong: formData.level1 || undefined,
-    satisfactory: formData.level2 || undefined,
-    fair: formData.level3 || undefined,
-    marginal: formData.level4 || undefined,
-    unsatisfactory: formData.level5 || undefined,
-    evidence: formData.evidence || undefined,
+    definitionId: definition.id,
+    year: definition.year,
+    aspekNo: definition.aspekNo,
+    aspekTitle: definition.aspekTitle,
+    aspekBobot: definition.aspekBobot,
+    sectionNo: definition.sectionNo,
+    sectionTitle: definition.sectionTitle,
+    level1: definition.level1,
+    level2: definition.level2,
+    level3: definition.level3,
+    level4: definition.level4,
+    level5: definition.level5,
+    evidence: definition.evidence,
+    scores: quarterScores,
   };
 };
 
-// Service class untuk KPMR Pasar
-class KpmrPasarService {
-  private readonly baseURL = API_BASE_URL;
-
-  // ==================== CRUD METHODS ====================
-
-  async getAll(): Promise<KpmrPasar[]> {
-    try {
-      const response = await axios.get<ApiResponse<KpmrPasar[]>>(`${API_BASE_URL}`);
-      if (!response.data.success) {
-        throw new Error(response.data.message || 'Gagal mengambil data');
-      }
-      return response.data.data || [];
-    } catch (error) {
-      throw handleServiceError(error, 'Gagal mengambil data KPMR Pasar');
-    }
-  }
-
-  async getByPeriod(year: number, quarter: string): Promise<GroupedAspek[]> {
-    try {
-      console.log('Fetching data for period:', year, quarter);
-      const response = await axios.get<ApiResponse<GroupedAspek[]>>(`${API_BASE_URL}?year=${year}&quarter=${quarter}`);
-
-      if (!response.data.success) {
-        throw new Error(response.data.message || 'Gagal mengambil data periode');
-      }
-
-      console.log('Response data:', response.data);
-      return response.data.data || [];
-    } catch (error) {
-      throw handleServiceError(error, 'Gagal mengambil data KPMR Pasar berdasarkan periode');
-    }
-  }
-
-  async getById(id: number): Promise<KpmrPasar> {
-    try {
-      const response = await axios.get<ApiResponse<KpmrPasar>>(`${API_BASE_URL}/${id}`);
-      if (!response.data.success) {
-        throw new Error(response.data.message || 'Data tidak ditemukan');
-      }
-      if (!response.data.data) {
-        throw new Error('Data tidak ditemukan');
-      }
-      return response.data.data;
-    } catch (error) {
-      throw handleServiceError(error, `Gagal mengambil KPMR Pasar ${id}`);
-    }
-  }
-
-  async create(dto: CreateKpmrPasarDto): Promise<KpmrPasar> {
-    try {
-      console.log('Creating KPMR Pasar with data:', dto);
-      const response = await axios.post<ApiResponse<KpmrPasar>>(`${API_BASE_URL}`, dto);
-
-      if (!response.data.success) {
-        throw new Error(response.data.message || 'Gagal membuat data');
-      }
-      if (!response.data.data) {
-        throw new Error('Data tidak berhasil dibuat');
-      }
-
-      console.log('Create response:', response.data);
-      return response.data.data;
-    } catch (error) {
-      throw handleServiceError(error, 'Gagal membuat KPMR Pasar');
-    }
-  }
-
-  async update(id: number, dto: UpdateKpmrPasarDto): Promise<KpmrPasar> {
-    try {
-      console.log('Updating KPMR Pasar:', id, dto);
-      const response = await axios.patch<ApiResponse<KpmrPasar>>(`${API_BASE_URL}/${id}`, dto);
-
-      if (!response.data.success) {
-        throw new Error(response.data.message || 'Gagal mengupdate data');
-      }
-      if (!response.data.data) {
-        throw new Error('Data tidak berhasil diupdate');
-      }
-
-      return response.data.data;
-    } catch (error) {
-      throw handleServiceError(error, `Gagal mengupdate KPMR Pasar ${id}`);
-    }
-  }
-
-  async delete(id: number): Promise<void> {
-    try {
-      console.log('Deleting KPMR Pasar:', id);
-      const response = await axios.delete(`${API_BASE_URL}/${id}`);
-
-      if (response.status !== 204) {
-        throw new Error('Gagal menghapus data');
-      }
-    } catch (error) {
-      throw handleServiceError(error, `Gagal menghapus KPMR Pasar ${id}`);
-    }
-  }
-
-  // ==================== SPECIAL METHODS ====================
-
-  async getPeriods(): Promise<PeriodResult[]> {
-    try {
-      const response = await axios.get<ApiResponse<PeriodResult[]>>(`${API_BASE_URL}/periods`);
-
-      if (!response.data.success) {
-        throw new Error(response.data.message || 'Gagal mengambil daftar periode');
-      }
-
-      return response.data.data || [];
-    } catch (error) {
-      throw handleServiceError(error, 'Gagal mengambil daftar periode');
-    }
-  }
-
-  async getTotalAverage(year: number, quarter: string): Promise<number> {
-    try {
-      const response = await axios.get<ApiResponse<{ average: number }>>(`${API_BASE_URL}/average/total?year=${year}&quarter=${quarter}`);
-
-      if (!response.data.success) {
-        throw new Error(response.data.message || 'Gagal mengambil rata-rata');
-      }
-
-      return response.data.data?.average || 0;
-    } catch (error) {
-      throw handleServiceError(error, 'Gagal mengambil rata-rata total');
-    }
-  }
-
-  async searchByCriteria(criteria: SearchFilter): Promise<KpmrPasar[]> {
-    try {
-      const params = new URLSearchParams();
-      if (criteria.year) params.append('year', criteria.year.toString());
-      if (criteria.quarter) params.append('quarter', criteria.quarter);
-      if (criteria.aspekNo) params.append('aspekNo', criteria.aspekNo);
-      if (criteria.sectionNo) params.append('sectionNo', criteria.sectionNo);
-
-      const response = await axios.get<ApiResponse<KpmrPasar[]>>(`${API_BASE_URL}/search/criteria?${params.toString()}`);
-
-      if (!response.data.success) {
-        throw new Error(response.data.message || 'Gagal mencari data');
-      }
-
-      return response.data.data || [];
-    } catch (error) {
-      throw handleServiceError(error, 'Gagal mencari data');
-    }
-  }
-
-  // ==================== COMPREHENSIVE DATA FETCHING ====================
-
-  async getComprehensiveData(filter: PeriodFilter): Promise<{
-    groupedData: GroupedAspek[];
-    totalAverage: number;
-    periods: PeriodResult[];
-  }> {
-    try {
-      const [groupedData, totalAverage, periods] = await Promise.all([this.getByPeriod(filter.year, filter.quarter), this.getTotalAverage(filter.year, filter.quarter), this.getPeriods()]);
-
-      return {
-        groupedData,
-        totalAverage,
-        periods,
-      };
-    } catch (error) {
-      throw handleServiceError(error, 'Gagal mengambil data komprehensif');
-    }
-  }
-
-  // ==================== UTILITY METHODS ====================
-
-  validateQuarter(quarter: string): boolean {
-    return ['Q1', 'Q2', 'Q3', 'Q4'].includes(quarter);
-  }
-
-  validateYear(year: number): boolean {
-    const currentYear = new Date().getFullYear();
-    return year >= 2000 && year <= currentYear + 5;
-  }
-
-  calculateSectionAverage(sections: KpmrPasar[]): number {
-    const validScores = sections.map((section) => section.sectionSkor).filter((score): score is number => typeof score === 'number' && !isNaN(score));
-
-    if (validScores.length === 0) return 0;
-
-    const average = validScores.reduce((sum, score) => sum + score, 0) / validScores.length;
-    return Number(average.toFixed(2));
-  }
-
-  // Method untuk transform form data ke DTO
-  transformToDto(formData: any): CreateKpmrPasarDto {
-    return transformFormToDto(formData);
-  }
-}
-
-// Export singleton instance
-export const kpmrPasarService = new KpmrPasarService();
-
-// Export class untuk testing atau extension
-export default KpmrPasarService;
+export const transformFullDataToGroups = (fullData: KPMRPasarFullDataResponse) => {
+  return fullData.aspects.map((aspect) => ({
+    aspekNo: aspect.aspekNo,
+    aspekTitle: aspect.aspekTitle,
+    aspekBobot: aspect.aspekBobot,
+    sections: aspect.sections.map((section) => ({
+      sectionNo: section.sectionNo,
+      sectionTitle: section.sectionTitle,
+      definitionId: section.definitionId,
+      level1: section.level1,
+      level2: section.level2,
+      level3: section.level3,
+      level4: section.level4,
+      level5: section.level5,
+      evidence: section.evidence,
+      quarters: Object.keys(section.scores).reduce(
+        (acc, quarter) => {
+          acc[quarter] = {
+            sectionSkor: section.scores[quarter].sectionSkor,
+            id: section.scores[quarter].id,
+          };
+          return acc;
+        },
+        {} as Record<string, { sectionSkor: number | null; id: number }>,
+      ),
+    })),
+    quarterAverages: aspect.quarterAverages,
+  }));
+};

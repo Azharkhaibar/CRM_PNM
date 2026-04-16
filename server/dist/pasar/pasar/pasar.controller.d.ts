@@ -1,29 +1,38 @@
 import { PasarService } from './pasar.service';
 import { CreatePasarSectionDto } from './dto/create-pasar-section.dto';
 import { UpdatePasarSectionDto } from './dto/update-pasar-section.dto';
-import { CreatePasarDto } from './dto/create-pasar-indikator.dto';
+import { CreatePasarDto } from './dto/create-pasar.dto';
 import { UpdatePasarDto } from './dto/update-pasar.dto';
-import { Quarter } from './entities/indikator.entity';
+import { Quarter } from './entities/pasar.entity';
 export declare class PasarController {
     private readonly pasarService;
     constructor(pasarService: PasarService);
-    createSection(createDto: CreatePasarSectionDto): Promise<import("./entities/section.entity").PasarSection>;
-    getSections(isActive?: boolean): Promise<import("./entities/section.entity").PasarSection[]>;
-    getSection(id: number): Promise<import("./entities/section.entity").PasarSection>;
-    updateSection(id: number, updateDto: UpdatePasarSectionDto): Promise<import("./entities/section.entity").PasarSection>;
-    deleteSection(id: number): Promise<void>;
+    createSection(createDto: CreatePasarSectionDto): Promise<import("./entities/pasar-section.entity").PasarSection>;
+    getSections(isActive?: boolean): Promise<import("./entities/pasar-section.entity").PasarSection[]>;
+    getSection(id: number): Promise<import("./entities/pasar-section.entity").PasarSection>;
+    getSectionsByPeriod(year: number, quarter: Quarter): Promise<import("./entities/pasar-section.entity").PasarSection[]>;
+    updateSection(id: number, updateDto: UpdatePasarSectionDto): Promise<import("./entities/pasar-section.entity").PasarSection>;
+    deleteSection(id: number): Promise<{
+        success: boolean;
+        message: string;
+    }>;
+    createIndikator(createDto: CreatePasarDto): Promise<import("./entities/pasar.entity").Pasar>;
+    getAllIndikators(): Promise<import("./entities/pasar.entity").Pasar[]>;
+    getIndikatorsByPeriod(year: number, quarter: Quarter): Promise<import("./entities/pasar.entity").Pasar[]>;
+    searchIndikators(query?: string, year?: number, quarter?: Quarter): Promise<import("./entities/pasar.entity").Pasar[]>;
+    getIndikator(id: number): Promise<import("./entities/pasar.entity").Pasar>;
+    updateIndikator(id: number, updateDto: UpdatePasarDto): Promise<import("./entities/pasar.entity").Pasar>;
+    deleteIndikator(id: number): Promise<{
+        success: boolean;
+        message: string;
+    }>;
     getSectionsWithIndicatorsByPeriod(year: number, quarter: Quarter): Promise<any>;
-    createIndikator(createDto: CreatePasarDto): Promise<import("./entities/indikator.entity").Pasar>;
-    getAllIndikators(): Promise<import("./entities/indikator.entity").Pasar[]>;
-    getIndikatorsByPeriod(year: number, quarter: Quarter): Promise<import("./entities/indikator.entity").Pasar[]>;
-    searchIndikators(query?: string, year?: number, quarter?: Quarter): Promise<import("./entities/indikator.entity").Pasar[]>;
-    getIndikator(id: number): Promise<import("./entities/indikator.entity").Pasar>;
-    updateIndikator(id: number, updateDto: UpdatePasarDto): Promise<import("./entities/indikator.entity").Pasar>;
-    deleteIndikator(id: number): Promise<void>;
     getTotalWeighted(year: number, quarter: Quarter): Promise<{
+        success: boolean;
+        year: number;
+        quarter: Quarter;
         total: number;
     }>;
-    getSectionsByPeriod(year: number, quarter: Quarter): Promise<import("./entities/section.entity").PasarSection[]>;
     getAvailablePeriods(): Promise<{
         success: boolean;
         data: {
@@ -32,7 +41,7 @@ export declare class PasarController {
         }[];
         count: number;
     }>;
-    getAllPeriods(): Promise<{
+    getAllPeriodsWithCounts(): Promise<{
         success: boolean;
         data: {
             indicatorCount: number;
@@ -41,5 +50,11 @@ export declare class PasarController {
         }[];
         count: number;
     }>;
-    duplicateIndikator(id: number, year: number, quarter: Quarter): Promise<import("./entities/indikator.entity").Pasar>;
+    getIndikatorCount(year: number, quarter: Quarter): Promise<{
+        success: boolean;
+        year: number;
+        quarter: Quarter;
+        count: number;
+    }>;
+    duplicateIndikator(id: number, year: number, quarter: Quarter): Promise<import("./entities/pasar.entity").Pasar>;
 }

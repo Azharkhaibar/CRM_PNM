@@ -6,26 +6,18 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In, Like, Not } from 'typeorm';
+import { Repository, Like, Not } from 'typeorm';
+import { OperasionalSection } from './entities/operasional-section.entity';
 import {
-  OperasionalSection,
+  Operasional,
+  CalculationMode,
   Quarter,
-} from './entities/operasional-section.entity';
-import { CalculationMode, Operasional } from './entities/operasional.entity';
-import { CreateOperasionalSectionDto } from './dto/create-operasional-section.dto';
-import { UpdateOperasionalSectionDto } from './dto/update-operasional-section.dto';
+} from './entities/operasional.entity';
 import { CreateOperasionalDto } from './dto/create-operasional.dto';
+import { UpdateOperasionalSectionDto } from './dto/update-operasional-section.dto';
 import { UpdateOperasionalDto } from './dto/update-operasional.dto';
-// import { OperasionalSection } from '../entities/operasional-section.entity';
-// import {
-//   Operasional,
-//   CalculationMode,
-//   Quarter,
-// } from '../entities/operasional.entity';
-// import { CreateOperasionalSectionDto } from '../dto/create-operasional-section.dto';
-// import { UpdateOperasionalSectionDto } from '../dto/update-operasional-section.dto';
-// import { CreateOperasionalDto } from '../dto/create-operasional.dto';
-// import { UpdateOperasionalDto } from '../dto/update-operasional.dto'
+import { CreateOperasionalSectionDto } from './dto/create-operasional-section.dto';
+
 @Injectable()
 export class OperasionalService {
   constructor(
@@ -42,7 +34,6 @@ export class OperasionalService {
     createDto: CreateOperasionalSectionDto,
     createdBy?: string,
   ): Promise<OperasionalSection> {
-    // Cek apakah ada data yang sudah dihapus dengan no+parameter+year+quarter yang sama
     const deletedSection = await this.operasionalSectionRepository.findOne({
       where: {
         no: createDto.no,
@@ -53,7 +44,6 @@ export class OperasionalService {
       },
     });
 
-    // Jika ada data yang sudah dihapus, REACTIVATE data tersebut
     if (deletedSection) {
       console.log(
         `🔄 Reactivating deleted section: ${deletedSection.no} - ${deletedSection.parameter}`,
@@ -69,14 +59,12 @@ export class OperasionalService {
         createDto.sortOrder || deletedSection.sortOrder;
 
       if (createdBy) {
-        deletedSection['updatedBy'] = createdBy;
-        deletedSection['updatedAt'] = new Date();
+        deletedSection.updatedBy = createdBy;
       }
 
       return await this.operasionalSectionRepository.save(deletedSection);
     }
 
-    // Cek duplikasi hanya untuk data yang TIDAK dihapus
     const existingSection = await this.operasionalSectionRepository.findOne({
       where: {
         no: createDto.no,
@@ -93,7 +81,6 @@ export class OperasionalService {
       );
     }
 
-    // Buat baru
     const sectionData: Partial<OperasionalSection> = {
       no: createDto.no,
       parameter: createDto.parameter,
@@ -107,7 +94,7 @@ export class OperasionalService {
     };
 
     if (createdBy) {
-      sectionData['createdBy'] = createdBy;
+      sectionData.createdBy = createdBy;
     }
 
     const section = this.operasionalSectionRepository.create(sectionData);
@@ -129,15 +116,11 @@ export class OperasionalService {
 
   async findSectionById(id: number): Promise<OperasionalSection> {
     try {
-      console.log(`🔍 [SERVICE] Finding section by ID: ${id}`);
-
       const section = await this.operasionalSectionRepository
         .createQueryBuilder('section')
         .where('section.id = :id', { id })
         .andWhere('section.is_deleted = false')
         .getOne();
-
-      console.log(`🔍 [SERVICE] Found section:`, section);
 
       if (!section) {
         throw new NotFoundException(`Section dengan ID ${id} tidak ditemukan`);
@@ -172,7 +155,6 @@ export class OperasionalService {
   ): Promise<OperasionalSection> {
     const section = await this.findSectionById(id);
 
-    // Jika ada perubahan no/parameter/year/quarter, cek duplikasi
     const checkNo = updateDto.no || section.no;
     const checkParam = updateDto.parameter || section.parameter;
     const checkYear = updateDto.year || section.year;
@@ -195,7 +177,6 @@ export class OperasionalService {
       );
     }
 
-    // Update field
     if (updateDto.no !== undefined) section.no = updateDto.no;
     if (updateDto.parameter !== undefined)
       section.parameter = updateDto.parameter;
@@ -210,7 +191,7 @@ export class OperasionalService {
     if (updateDto.quarter !== undefined) section.quarter = updateDto.quarter;
 
     if (updatedBy) {
-      section['updatedBy'] = updatedBy;
+      section.updatedBy = updatedBy;
     }
 
     return await this.operasionalSectionRepository.save(section);
@@ -219,18 +200,16 @@ export class OperasionalService {
   async deleteSection(
     id: number,
   ): Promise<{ success: boolean; message: string }> {
-    // const section = await this.findSectionById(id);
     const section = await this.operasionalSectionRepository.findOne({
       where: { id },
     });
 
-    // Cek apakah section digunakan di indikator aktif
     if (!section) {
-      throw new NotFoundException(`tidak ditemukan id section ${id}`);
+      throw new NotFoundException(`Section dengan ID ${id} tidak ditemukan`);
     }
 
     const countIndikator = await this.operasionalRepository.count({
-      where: { sectionId: id },
+      where: { sectionId: id, isDeleted: false },
     });
 
     if (countIndikator > 0) {
@@ -239,7 +218,8 @@ export class OperasionalService {
       );
     }
 
-    await this.operasionalSectionRepository.delete(id);
+    section.isDeleted = true;
+    await this.operasionalSectionRepository.save(section);
 
     return {
       success: true,
@@ -247,16 +227,14 @@ export class OperasionalService {
     };
   }
 
-  // ========== OPERASIONAL (INDIKATOR) SERVICES ==========
+  // ========== INDIKATOR SERVICES ==========
 
   async createIndikator(
     createDto: CreateOperasionalDto,
     createdBy?: string,
   ): Promise<Operasional> {
-    // Validasi section exist
     const section = await this.findSectionById(createDto.sectionId);
 
-    // Cek apakah ada indikator yang sudah dihapus dengan data yang sama
     const deletedIndikator = await this.operasionalRepository.findOne({
       where: {
         year: createDto.year,
@@ -267,7 +245,6 @@ export class OperasionalService {
       },
     });
 
-    // Jika ada data yang sudah dihapus, REACTIVATE
     if (deletedIndikator) {
       console.log(
         `🔄 Reactivating deleted indicator: ${deletedIndikator.subNo} - ${deletedIndikator.indikator}`,
@@ -288,6 +265,7 @@ export class OperasionalService {
       deletedIndikator.hasil = createDto.hasil || null;
       deletedIndikator.hasilText = createDto.hasilText || null;
       deletedIndikator.peringkat = createDto.peringkat;
+
       deletedIndikator.weighted =
         createDto.weighted ||
         this.calculateWeighted(
@@ -295,7 +273,9 @@ export class OperasionalService {
           createDto.bobotIndikator,
           createDto.peringkat,
         );
+
       deletedIndikator.keterangan = createDto.keterangan || null;
+      deletedIndikator.version += 1;
 
       if (createdBy) {
         deletedIndikator.updatedBy = createdBy;
@@ -304,7 +284,6 @@ export class OperasionalService {
       return await this.operasionalRepository.save(deletedIndikator);
     }
 
-    // Cek duplikasi hanya untuk data yang TIDAK dihapus
     const existingIndikator = await this.operasionalRepository.findOne({
       where: {
         year: createDto.year,
@@ -321,10 +300,8 @@ export class OperasionalService {
       );
     }
 
-    // Validasi mode-specific fields
     this.validateModeSpecificFields(createDto);
 
-    // Hitung weighted jika belum diisi
     const weighted =
       createDto.weighted ||
       this.calculateWeighted(
@@ -333,7 +310,6 @@ export class OperasionalService {
         createDto.peringkat,
       );
 
-    // Handle nullable fields
     const operasionalData: Partial<Operasional> = {
       year: createDto.year,
       quarter: createDto.quarter,
@@ -364,6 +340,7 @@ export class OperasionalService {
       weighted: weighted,
       keterangan: createDto.keterangan || null,
       isValidated: false,
+      version: 1,
       isDeleted: false,
     };
 
@@ -426,17 +403,14 @@ export class OperasionalService {
   ): Promise<Operasional> {
     const indikator = await this.findIndikatorById(id);
 
-    // Validasi jika ada perubahan sectionId
     if (updateDto.sectionId && updateDto.sectionId !== indikator.sectionId) {
       const newSection = await this.findSectionById(updateDto.sectionId);
 
-      // Update data section yang denormalized
       updateDto.no = newSection.no;
       updateDto.sectionLabel = newSection.parameter;
       updateDto.bobotSection = newSection.bobotSection;
     }
 
-    // Validasi jika ada perubahan periode atau subNo
     if (
       (updateDto.year && updateDto.year !== indikator.year) ||
       (updateDto.quarter && updateDto.quarter !== indikator.quarter) ||
@@ -465,7 +439,6 @@ export class OperasionalService {
       }
     }
 
-    // Validasi mode-specific fields
     if (updateDto.mode) {
       const validationDto: Partial<CreateOperasionalDto> = {
         mode: updateDto.mode,
@@ -476,34 +449,27 @@ export class OperasionalService {
       this.validateModeSpecificFields(validationDto);
     }
 
-    // Hitung weighted baru jika ada perubahan bobot/peringkat
-    if (
-      updateDto.bobotSection ||
-      updateDto.bobotIndikator ||
-      updateDto.peringkat
-    ) {
-      const bobotSection = updateDto.bobotSection || indikator.bobotSection;
+    if (updateDto.bobotIndikator || updateDto.peringkat) {
       const bobotIndikator =
         updateDto.bobotIndikator || indikator.bobotIndikator;
       const peringkat = updateDto.peringkat || indikator.peringkat;
 
       updateDto.weighted = this.calculateWeighted(
-        bobotSection,
+        indikator.bobotSection,
         bobotIndikator,
         peringkat,
       );
     }
 
-    // Update field yang ada di updateDto
     Object.keys(updateDto).forEach((key) => {
       if (updateDto[key] !== undefined) {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         indikator[key] = updateDto[key];
       }
     });
 
     if (updatedBy) {
       indikator.updatedBy = updatedBy;
+      indikator.version += 1;
     }
 
     return await this.operasionalRepository.save(indikator);
@@ -520,7 +486,10 @@ export class OperasionalService {
       throw new NotFoundException(`Indikator dengan ID ${id} tidak ditemukan`);
     }
 
-    await this.operasionalRepository.delete(id);
+    indikator.isDeleted = true;
+    indikator.deletedAt = new Date();
+    await this.operasionalRepository.save(indikator);
+
     return {
       success: true,
       message: `Indikator "${indikator.indikator}" (${indikator.subNo}) berhasil dihapus`,
@@ -563,7 +532,6 @@ export class OperasionalService {
     year: number,
     quarter: Quarter,
   ): Promise<number> {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const result = await this.operasionalRepository
       .createQueryBuilder('operasional')
       .select('SUM(operasional.weighted)', 'total')
@@ -575,107 +543,7 @@ export class OperasionalService {
     return parseFloat(result?.total || 0) || 0;
   }
 
-  // ========== HELPER METHODS ==========
-
-  private validateModeSpecificFields(dto: Partial<CreateOperasionalDto>): void {
-    const mode = dto.mode;
-
-    if (mode === CalculationMode.RASIO) {
-      if (dto.pembilangValue !== undefined && dto.pembilangValue < 0) {
-        throw new BadRequestException(
-          'Pembilang value tidak boleh negatif untuk mode RASIO',
-        );
-      }
-      if (dto.penyebutValue !== undefined && dto.penyebutValue <= 0) {
-        throw new BadRequestException(
-          'Penyebut value harus lebih besar dari 0 untuk mode RASIO',
-        );
-      }
-    } else if (mode === CalculationMode.NILAI_TUNGGAL) {
-      if (dto.penyebutValue !== undefined && dto.penyebutValue < 0) {
-        throw new BadRequestException(
-          'Nilai penyebut tidak boleh negatif untuk mode NILAI_TUNGGAL',
-        );
-      }
-    } else if (mode === CalculationMode.TEKS) {
-      if (!dto.hasilText && !dto.hasilText?.trim()) {
-        throw new BadRequestException('Hasil text wajib diisi untuk mode TEKS');
-      }
-    }
-  }
-
-  private calculateWeighted(
-    bobotSection: number,
-    bobotIndikator: number,
-    peringkat: number,
-  ): number {
-    return (bobotSection * bobotIndikator * peringkat) / 10000;
-  }
-
-  async duplicateIndikatorToNewPeriod(
-    sourceId: number,
-    targetYear: number,
-    targetQuarter: Quarter,
-    createdBy?: string,
-  ): Promise<Operasional> {
-    const source = await this.findIndikatorById(sourceId);
-
-    // Cek apakah sudah ada di periode target
-    const existing = await this.operasionalRepository.findOne({
-      where: {
-        year: targetYear,
-        quarter: targetQuarter,
-        sectionId: source.sectionId,
-        subNo: source.subNo,
-        isDeleted: false,
-      },
-    });
-
-    if (existing) {
-      throw new ConflictException(
-        `Indikator dengan subNo "${source.subNo}" sudah ada pada periode ${targetYear}-${targetQuarter}`,
-      );
-    }
-
-    // Duplikasi dengan periode baru
-    const newIndikatorData: Partial<Operasional> = {
-      ...source,
-      id: undefined,
-      year: targetYear,
-      quarter: targetQuarter,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      isDeleted: false,
-    };
-
-    if (createdBy) {
-      newIndikatorData.createdBy = createdBy;
-    }
-
-    const newIndikator = this.operasionalRepository.create(newIndikatorData);
-    return await this.operasionalRepository.save(newIndikator);
-  }
-
-  async getIndikatorCountByPeriod(
-    year: number,
-    quarter: Quarter,
-  ): Promise<number> {
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-      const result = await this.operasionalRepository
-        .createQueryBuilder('operasional')
-        .select('COUNT(operasional.id)', 'count')
-        .where('operasional.year = :year', { year })
-        .andWhere('operasional.quarter = :quarter', { quarter })
-        .andWhere('operasional.is_deleted = false')
-        .getRawOne();
-
-      return parseInt(result?.count || 0) || 0;
-    } catch (error) {
-      console.error('Error in getIndikatorCountByPeriod:', error);
-      return 0;
-    }
-  }
+  // ========== COMPLEX QUERIES ==========
 
   async getSectionsWithIndicatorsByPeriod(
     year: number,
@@ -686,7 +554,6 @@ export class OperasionalService {
         `Loading sections with indicators for period: ${year}-${quarter}`,
       );
 
-      // Ambil sections untuk periode ini saja
       const sections = await this.operasionalSectionRepository.find({
         where: {
           year,
@@ -762,7 +629,6 @@ export class OperasionalService {
         }),
       );
 
-      // Filter hanya sections yang punya indikator
       const sectionsWithData = sectionsWithIndicators.filter(
         (s) => s.indicators.length > 0,
       );
@@ -805,5 +671,106 @@ export class OperasionalService {
       year: p.operasional_year,
       quarter: p.operasional_quarter,
     }));
+  }
+
+  async getIndikatorCountByPeriod(
+    year: number,
+    quarter: Quarter,
+  ): Promise<number> {
+    try {
+      const result = await this.operasionalRepository
+        .createQueryBuilder('operasional')
+        .select('COUNT(operasional.id)', 'count')
+        .where('operasional.year = :year', { year })
+        .andWhere('operasional.quarter = :quarter', { quarter })
+        .andWhere('operasional.is_deleted = false')
+        .getRawOne();
+
+      return parseInt(result?.count || 0) || 0;
+    } catch (error) {
+      console.error('Error in getIndikatorCountByPeriod:', error);
+      return 0;
+    }
+  }
+
+  async duplicateIndikatorToNewPeriod(
+    sourceId: number,
+    targetYear: number,
+    targetQuarter: Quarter,
+    createdBy?: string,
+  ): Promise<Operasional> {
+    const source = await this.findIndikatorById(sourceId);
+
+    const existing = await this.operasionalRepository.findOne({
+      where: {
+        year: targetYear,
+        quarter: targetQuarter,
+        sectionId: source.sectionId,
+        subNo: source.subNo,
+        isDeleted: false,
+      },
+    });
+
+    if (existing) {
+      throw new ConflictException(
+        `Indikator dengan subNo "${source.subNo}" sudah ada pada periode ${targetYear}-${targetQuarter}`,
+      );
+    }
+
+    const newIndikatorData: Partial<Operasional> = {
+      ...source,
+      id: undefined,
+      year: targetYear,
+      quarter: targetQuarter,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      version: 1,
+      revisionNotes: `Duplikasi dari periode ${source.year}-${source.quarter}`,
+      isDeleted: false,
+    };
+
+    if (createdBy) {
+      newIndikatorData.createdBy = createdBy;
+    }
+
+    const newIndikator = this.operasionalRepository.create(newIndikatorData);
+    return await this.operasionalRepository.save(newIndikator);
+  }
+
+  // ========== HELPER METHODS ==========
+
+  private validateModeSpecificFields(dto: Partial<CreateOperasionalDto>): void {
+    const mode = dto.mode;
+
+    if (mode === CalculationMode.RASIO) {
+      if (dto.pembilangValue !== undefined && dto.pembilangValue < 0) {
+        throw new BadRequestException(
+          'Pembilang value tidak boleh negatif untuk mode RASIO',
+        );
+      }
+      if (dto.penyebutValue !== undefined && dto.penyebutValue <= 0) {
+        throw new BadRequestException(
+          'Penyebut value harus lebih besar dari 0 untuk mode RASIO',
+        );
+      }
+    } else if (mode === CalculationMode.NILAI_TUNGGAL) {
+      if (dto.penyebutValue !== undefined && dto.penyebutValue < 0) {
+        throw new BadRequestException(
+          'Nilai penyebut tidak boleh negatif untuk mode NILAI_TUNGGAL',
+        );
+      }
+    } else if (mode === CalculationMode.TEKS) {
+      if (!dto.hasilText || !dto.hasilText.trim()) {
+        throw new BadRequestException('Hasil text wajib diisi untuk mode TEKS');
+      }
+    }
+  }
+
+  private calculateWeighted(
+    bobotSection: number,
+    bobotIndikator: number,
+    peringkat: number,
+  ): number {
+    return (bobotSection * bobotIndikator * peringkat) / 10000;
   }
 }

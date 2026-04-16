@@ -9,16 +9,22 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ImportExportDto = exports.ExportNilaiDto = exports.ExportParameterDto = exports.ExportImportMetadataDto = exports.UpdateSummaryDto = exports.ReorderNilaiDto = exports.ReorderParametersDto = exports.UpdateNilaiDto = exports.CreateNilaiDto = exports.UpdateParameterDto = exports.CreateParameterDto = exports.UpdateKreditProdukDto = exports.CreateKreditProdukDto = exports.RiskindikatorDto = exports.JudulDto = exports.KategoriDto = exports.JudulType = exports.KategoriUnderlying = exports.KategoriJenis = exports.KategoriPrinsip = exports.KategoriModel = void 0;
+exports.ImportExportDto = exports.ExportNilaiDto = exports.ExportParameterDto = exports.ExportImportMetadataDto = exports.UpdateSummaryDto = exports.ReorderNilaiDto = exports.ReorderParametersDto = exports.UpdateNilaiDto = exports.CreateNilaiDto = exports.UpdateParameterDto = exports.CreateParameterDto = exports.UpdateKreditProdukInherentDto = exports.CreateKreditProdukInherentDto = exports.RiskindikatorDto = exports.JudulDto = exports.KategoriDto = exports.JudulType = exports.KategoriJenis = exports.KategoriPrinsip = exports.KategoriUnderlying = exports.KategoriModel = void 0;
 const class_validator_1 = require("class-validator");
 const class_transformer_1 = require("class-transformer");
 var KategoriModel;
 (function (KategoriModel) {
-    KategoriModel["KONVENSIONAL"] = "konvensional";
-    KategoriModel["SYARIAH"] = "syariah";
-    KategoriModel["KOMBINASI"] = "kombinasi";
-    KategoriModel["LAINNYA"] = "lainnya";
+    KategoriModel["TANPA_MODEL"] = "tanpa_model";
+    KategoriModel["OPEN_END"] = "open_end";
+    KategoriModel["TERSTRUKTUR"] = "terstruktur";
 })(KategoriModel || (exports.KategoriModel = KategoriModel = {}));
+var KategoriUnderlying;
+(function (KategoriUnderlying) {
+    KategoriUnderlying["INDEKS"] = "indeks";
+    KategoriUnderlying["EBA"] = "eba";
+    KategoriUnderlying["DINFRA"] = "dinfra";
+    KategoriUnderlying["OBLIGASI"] = "obligasi";
+})(KategoriUnderlying || (exports.KategoriUnderlying = KategoriUnderlying = {}));
 var KategoriPrinsip;
 (function (KategoriPrinsip) {
     KategoriPrinsip["SYARIAH"] = "syariah";
@@ -26,19 +32,13 @@ var KategoriPrinsip;
 })(KategoriPrinsip || (exports.KategoriPrinsip = KategoriPrinsip = {}));
 var KategoriJenis;
 (function (KategoriJenis) {
-    KategoriJenis["MODAL_KERJA"] = "modal_kerja";
-    KategoriJenis["INVESTASI"] = "investasi";
-    KategoriJenis["KONSUMSI"] = "konsumsi";
-    KategoriJenis["MULTIGUNA"] = "multiguna";
+    KategoriJenis["PASAR_UANG"] = "pasar_uang";
+    KategoriJenis["PENDAPATAN_TETAP"] = "pendapatan_tetap";
+    KategoriJenis["CAMPURAN"] = "campuran";
+    KategoriJenis["SAHAM"] = "saham";
+    KategoriJenis["INDEKS"] = "indeks";
+    KategoriJenis["TERPROTEKSI"] = "terproteksi";
 })(KategoriJenis || (exports.KategoriJenis = KategoriJenis = {}));
-var KategoriUnderlying;
-(function (KategoriUnderlying) {
-    KategoriUnderlying["PIUTANG"] = "piutang";
-    KategoriUnderlying["PERSEDIAAN"] = "persediaan";
-    KategoriUnderlying["ASET_TETAP"] = "aset_tetap";
-    KategoriUnderlying["PROYEK"] = "proyek";
-    KategoriUnderlying["KOMODITAS"] = "komoditas";
-})(KategoriUnderlying || (exports.KategoriUnderlying = KategoriUnderlying = {}));
 var JudulType;
 (function (JudulType) {
     JudulType["TANPA_FAKTOR"] = "Tanpa Faktor";
@@ -55,8 +55,8 @@ exports.KategoriDto = KategoriDto;
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
-    (0, class_validator_1.IsIn)(['konvensional', 'syariah', 'kombinasi', 'lainnya'], {
-        message: 'Model harus salah satu dari: konvensional, syariah, kombinasi, lainnya',
+    (0, class_validator_1.IsIn)(['tanpa_model', 'open_end', 'terstruktur'], {
+        message: 'Model harus salah satu dari: tanpa_model, open_end, terstruktur',
     }),
     __metadata("design:type", String)
 ], KategoriDto.prototype, "model", void 0);
@@ -71,8 +71,15 @@ __decorate([
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
-    (0, class_validator_1.IsIn)(['modal_kerja', 'investasi', 'konsumsi', 'multiguna'], {
-        message: 'Jenis harus salah satu dari: modal_kerja, investasi, konsumsi, multiguna',
+    (0, class_validator_1.IsIn)([
+        'pasar_uang',
+        'pendapatan_tetap',
+        'campuran',
+        'saham',
+        'indeks',
+        'terproteksi',
+    ], {
+        message: 'Jenis harus salah satu dari: pasar_uang, pendapatan_tetap, campuran, saham, indeks, terproteksi',
     }),
     __metadata("design:type", String)
 ], KategoriDto.prototype, "jenis", void 0);
@@ -80,9 +87,7 @@ __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsArray)(),
     (0, class_validator_1.IsString)({ each: true }),
-    (0, class_validator_1.IsIn)(['piutang', 'persediaan', 'aset_tetap', 'proyek', 'komoditas'], {
-        each: true,
-    }),
+    (0, class_validator_1.IsIn)(['indeks', 'eba', 'dinfra', 'obligasi'], { each: true }),
     __metadata("design:type", Array)
 ], KategoriDto.prototype, "underlying", void 0);
 class JudulDto {
@@ -172,41 +177,41 @@ __decorate([
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], RiskindikatorDto.prototype, "high", void 0);
-class CreateKreditProdukDto {
+class CreateKreditProdukInherentDto {
     year;
     quarter;
     isActive;
     createdBy;
     version;
 }
-exports.CreateKreditProdukDto = CreateKreditProdukDto;
+exports.CreateKreditProdukInherentDto = CreateKreditProdukInherentDto;
 __decorate([
     (0, class_validator_1.IsInt)(),
     (0, class_validator_1.Min)(2000),
     __metadata("design:type", Number)
-], CreateKreditProdukDto.prototype, "year", void 0);
+], CreateKreditProdukInherentDto.prototype, "year", void 0);
 __decorate([
     (0, class_validator_1.IsInt)(),
     (0, class_validator_1.Min)(1),
     (0, class_validator_1.Max)(4),
     __metadata("design:type", Number)
-], CreateKreditProdukDto.prototype, "quarter", void 0);
+], CreateKreditProdukInherentDto.prototype, "quarter", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsBoolean)(),
     __metadata("design:type", Boolean)
-], CreateKreditProdukDto.prototype, "isActive", void 0);
+], CreateKreditProdukInherentDto.prototype, "isActive", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
-], CreateKreditProdukDto.prototype, "createdBy", void 0);
+], CreateKreditProdukInherentDto.prototype, "createdBy", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
-], CreateKreditProdukDto.prototype, "version", void 0);
-class UpdateKreditProdukDto {
+], CreateKreditProdukInherentDto.prototype, "version", void 0);
+class UpdateKreditProdukInherentDto {
     year;
     quarter;
     isActive;
@@ -217,54 +222,54 @@ class UpdateKreditProdukDto {
     notes;
     updatedBy;
 }
-exports.UpdateKreditProdukDto = UpdateKreditProdukDto;
+exports.UpdateKreditProdukInherentDto = UpdateKreditProdukInherentDto;
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsInt)(),
     (0, class_validator_1.Min)(2000),
     __metadata("design:type", Number)
-], UpdateKreditProdukDto.prototype, "year", void 0);
+], UpdateKreditProdukInherentDto.prototype, "year", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsInt)(),
     (0, class_validator_1.Min)(1),
     (0, class_validator_1.Max)(4),
     __metadata("design:type", Number)
-], UpdateKreditProdukDto.prototype, "quarter", void 0);
+], UpdateKreditProdukInherentDto.prototype, "quarter", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsBoolean)(),
     __metadata("design:type", Boolean)
-], UpdateKreditProdukDto.prototype, "isActive", void 0);
+], UpdateKreditProdukInherentDto.prototype, "isActive", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsObject)(),
     __metadata("design:type", Object)
-], UpdateKreditProdukDto.prototype, "summary", void 0);
+], UpdateKreditProdukInherentDto.prototype, "summary", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsBoolean)(),
     __metadata("design:type", Boolean)
-], UpdateKreditProdukDto.prototype, "isLocked", void 0);
+], UpdateKreditProdukInherentDto.prototype, "isLocked", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
-], UpdateKreditProdukDto.prototype, "lockedBy", void 0);
+], UpdateKreditProdukInherentDto.prototype, "lockedBy", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     __metadata("design:type", Date)
-], UpdateKreditProdukDto.prototype, "lockedAt", void 0);
+], UpdateKreditProdukInherentDto.prototype, "lockedAt", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
-], UpdateKreditProdukDto.prototype, "notes", void 0);
+], UpdateKreditProdukInherentDto.prototype, "notes", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
-], UpdateKreditProdukDto.prototype, "updatedBy", void 0);
+], UpdateKreditProdukInherentDto.prototype, "updatedBy", void 0);
 class CreateParameterDto {
     nomor;
     judul;

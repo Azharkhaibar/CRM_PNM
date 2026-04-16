@@ -1,8 +1,13 @@
-// LikuiditasTabs.jsx
+// src/features/Dashboard/pages/RiskProfile/pages/Likuiditas/LikuiditasPage.jsx
 import React, { useState } from 'react';
-import LikuiditasTab from './tabs/likuiditas-tab';
-import KPMRLikuiditasTab from './tabs/kpmr-likuiditas-tab';
-
+// import { getCurrentQuarter, getCurrentYear } from '../utils/time';
+// import { getCurrentQuarter, getCurrentYear } from './utils/likuiditas/time';
+import { getCurrentQuarter, getCurrentYear } from './utils/likuiditas/time';
+// import LikuiditasInherent from './components/LikuiditasInherent';
+// import LikuiditasInherent from './likuiditas-page';
+// import LikuiditasKPMR from './kpmr_likuiditas-page';
+import LikuiditasInherent from './likuiditas-page';
+import LikuiditasKPMR from './kpmr-likuiditas-page';
 // ===================== Brand =====================
 const PNM_BRAND = {
   primary: '#0068B3',
@@ -10,20 +15,23 @@ const PNM_BRAND = {
   gradient: 'bg-gradient-to-r from-[#0076C6]/90 via-[#00A3DA]/90 to-[#33C2B5]/90',
 };
 
-export default function Likuiditas() {
+export default function LikuiditasPage() {
+  // ====== Tabs ======
   const [activeTab, setActiveTab] = useState('likuiditas');
-  const [viewYear, setViewYear] = useState(new Date().getFullYear());
-  const [viewQuarter, setViewQuarter] = useState('Q1');
+
+  // ====== Periode + search (shared state) ======
+  const [viewYear, setViewYear] = useState(getCurrentYear ? getCurrentYear() : new Date().getFullYear());
+  const [viewQuarter, setViewQuarter] = useState(getCurrentQuarter ? getCurrentQuarter() : 'Q1');
   const [query, setQuery] = useState('');
 
   return (
-    <div className="p-6">
-      {/* HERO */}
+    <div className="p-6 bg-[#f3f6f8] min-h-screen">
+      {/* HERO / TITLE */}
       <div className={`relative rounded-2xl overflow-hidden mb-6 shadow-sm ${PNM_BRAND.gradient}`}>
         <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_20%_0%,white,transparent_40%),radial-gradient(circle_at_80%_100%,white,transparent_35%)]" />
         <div className="relative px-6 py-7 sm:px-8 sm:py-8">
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white drop-shadow-sm">Risk Form – Likuiditas</h1>
-          <p className="mt-1 text-white/90 text-sm">Form Likuiditas & KPMR dalam 1 halaman.</p>
+          <p className="mt-1 text-white/90 text-sm">Input laporan lebih cepat, rapi, dan konsisten.</p>
         </div>
       </div>
 
@@ -34,22 +42,24 @@ export default function Likuiditas() {
             onClick={() => setActiveTab('likuiditas')}
             className={`py-3 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'likuiditas' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-600 hover:text-gray-800 hover:border-gray-300'}`}
           >
-            Resiko Inheren
+            Likuiditas
           </button>
 
           <button
             onClick={() => setActiveTab('kpmr')}
             className={`py-3 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'kpmr' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-600 hover:text-gray-800 hover:border-gray-300'}`}
           >
-            Kualitas Penerapan Manajemen Resiko (KPMR)
+            KPMR Likuiditas
           </button>
         </nav>
       </div>
 
-      <div className="bg-white rounded-lg shadow-sm border border-gray-100 w-full w-full mx-auto p-4">
-        {activeTab === 'likuiditas' && <LikuiditasTab viewYear={viewYear} setViewYear={setViewYear} viewQuarter={viewQuarter} setViewQuarter={setViewQuarter} query={query} setQuery={setQuery} />}
+      <div className="bg-white rounded-2xl shadow-md p-6">
+        {/* ================= TAB: LIKUIDITAS (INHERENT) ================= */}
+        {activeTab === 'likuiditas' && <LikuiditasInherent viewYear={viewYear} viewQuarter={viewQuarter} onViewYearChange={setViewYear} onViewQuarterChange={setViewQuarter} query={query} onQueryChange={setQuery} />}
 
-        {activeTab === 'kpmr' && <KPMRLikuiditasTab viewYear={viewYear} setViewYear={setViewYear} viewQuarter={viewQuarter} setViewQuarter={setViewQuarter} query={query} setQuery={setQuery} />}
+        {/* ================= TAB: KPMR ================= */}
+        {activeTab === 'kpmr' && <LikuiditasKPMR viewYear={viewYear} viewQuarter={viewQuarter} onViewYearChange={setViewYear} query={query} onQueryChange={setQuery} />}
       </div>
     </div>
   );

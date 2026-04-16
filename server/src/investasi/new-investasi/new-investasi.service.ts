@@ -1,4 +1,4 @@
-// src/features/Dashboard/pages/RiskProfile/pages/Strategik/services/strategik.service.ts
+// src/features/Dashboard/pages/RiskProfile/pages/Investasi/services/new-investasi.service.ts
 import {
   Injectable,
   NotFoundException,
@@ -6,18 +6,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In, Like, Not } from 'typeorm';
-// import { StrategikSection } from './entities/stratejik-section.entity';
-// import {
-//   Strategik,
-//   CalculationMode,
-//   Quarter,
-// } from './entities/stratejik.entity';
-// import { CreateStrategikSectionDto } from './dto/create-stratejik-section.dto';
-// import { UpdateStrategikSectionDto } from './dto/update-stratejik-section.dto';
-// import { CreateStrategikDto } from './dto/create-stratejik.dto';
-// import { UpdateStrategikDto } from './dto/update-stratejik.dto';
-
+import { Repository, Like, Not } from 'typeorm';
 import { InvestasiSection } from './entities/new-investasi-section.entity';
 import {
   Investasi,
@@ -25,10 +14,12 @@ import {
   Quarter,
 } from './entities/new-investasi.entity';
 import { CreateInvestasiDto } from './dto/create-new-investasi.dto';
+// import { UpdateInvestasiSectionDto } from '../dto/update-investasi-section.dto';
+// import { UpdateInvestasiDto } from '../dto/update-new-investasi.dto';
+// import { CreateInvestasiSectionDto } from '../dto/create-investasi-section.dto';
 import { UpdateInvestasiSectionDto } from './dto/update-new-investasi-section.dto';
 import { UpdateInvestasiDto } from './dto/update-new-investasi.dto';
 import { CreateInvestasiSectionDto } from './dto/create-investasi-section.dto';
-
 @Injectable()
 export class InvestasiService {
   constructor(
@@ -39,10 +30,13 @@ export class InvestasiService {
     private readonly investasiRepository: Repository<Investasi>,
   ) {}
 
+  // ========== SECTION SERVICES ==========
+
   async createSection(
     createDto: CreateInvestasiSectionDto,
     createdBy?: string,
   ): Promise<InvestasiSection> {
+    // Cek apakah ada data yang sudah dihapus (soft delete) dengan data yang sama
     const deletedSection = await this.investasiSectionRepository.findOne({
       where: {
         no: createDto.no,
@@ -53,6 +47,7 @@ export class InvestasiService {
       },
     });
 
+    // Jika ada data yang sudah dihapus, reactivate
     if (deletedSection) {
       console.log(
         `🔄 Reactivating deleted section: ${deletedSection.no} - ${deletedSection.parameter}`,
@@ -68,14 +63,13 @@ export class InvestasiService {
         createDto.sortOrder || deletedSection.sortOrder;
 
       if (createdBy) {
-        deletedSection['updatedBy'] = createdBy;
-        deletedSection['updatedAt'] = new Date();
+        deletedSection.updatedBy = createdBy;
       }
 
       return await this.investasiSectionRepository.save(deletedSection);
     }
 
-    // 3. Cek duplikasi hanya untuk data yang TIDAK dihapus
+    // Cek duplikasi untuk data aktif
     const existingSection = await this.investasiSectionRepository.findOne({
       where: {
         no: createDto.no,
@@ -92,7 +86,7 @@ export class InvestasiService {
       );
     }
 
-    // 4. Jika tidak ada data sama sekali, buat baru
+    // Buat section baru
     const sectionData: Partial<InvestasiSection> = {
       no: createDto.no,
       parameter: createDto.parameter,
@@ -106,7 +100,7 @@ export class InvestasiService {
     };
 
     if (createdBy) {
-      sectionData['createdBy'] = createdBy;
+      sectionData.createdBy = createdBy;
     }
 
     const section = this.investasiSectionRepository.create(sectionData);
@@ -114,7 +108,7 @@ export class InvestasiService {
   }
 
   async findAllSections(isActive?: boolean): Promise<InvestasiSection[]> {
-    const where: any = { isDeleted: false }; // Hanya ambil yang tidak dihapus
+    const where: any = { isDeleted: false };
 
     if (isActive !== undefined) {
       where.isActive = isActive;
@@ -126,19 +120,13 @@ export class InvestasiService {
     });
   }
 
-  // PERBAIKAN: Tambahkan method findSectionById yang hilang
   async findSectionById(id: number): Promise<InvestasiSection> {
     try {
-      console.log(`🔍 [SERVICE] Finding section by ID: ${id}`);
-
-      // Cari dengan query builder untuk menghindari naming issues
       const section = await this.investasiSectionRepository
         .createQueryBuilder('section')
         .where('section.id = :id', { id })
         .andWhere('section.is_deleted = false')
         .getOne();
-
-      console.log(`🔍 [SERVICE] Found section:`, section);
 
       if (!section) {
         throw new NotFoundException(`Section dengan ID ${id} tidak ditemukan`);
@@ -159,7 +147,7 @@ export class InvestasiService {
       where: {
         year,
         quarter,
-        isDeleted: false, // Hanya ambil yang tidak dihapus
+        isDeleted: false,
         isActive: true,
       },
       order: { sortOrder: 'ASC', no: 'ASC' },
@@ -173,14 +161,12 @@ export class InvestasiService {
   ): Promise<InvestasiSection> {
     const section = await this.findSectionById(id);
 
-    // Jika ada perubahan no/parameter/year/quarter, cek duplikasi
+    // Cek duplikasi jika ada perubahan field yang termasuk unique constraint
     const checkNo = updateDto.no || section.no;
-
     const checkParam = updateDto.parameter || section.parameter;
     const checkYear = updateDto.year || section.year;
     const checkQuarter = updateDto.quarter || section.quarter;
 
-    // Cek apakah ada section lain dengan no+parameter+year+quarter yang sama
     const existing = await this.investasiSectionRepository.findOne({
       where: {
         no: checkNo,
@@ -188,7 +174,7 @@ export class InvestasiService {
         year: checkYear,
         quarter: checkQuarter,
         isDeleted: false,
-        id: Not(id), // Exclude current section
+        id: Not(id),
       },
     });
 
@@ -199,7 +185,6 @@ export class InvestasiService {
     }
 
     // Update field
-
     if (updateDto.no !== undefined) section.no = updateDto.no;
     if (updateDto.parameter !== undefined)
       section.parameter = updateDto.parameter;
@@ -214,8 +199,7 @@ export class InvestasiService {
     if (updateDto.quarter !== undefined) section.quarter = updateDto.quarter;
 
     if (updatedBy) {
-      // Jika ada updatedBy field di entity
-      section['updatedBy'] = updatedBy;
+      section.updatedBy = updatedBy;
     }
 
     return await this.investasiSectionRepository.save(section);
@@ -224,18 +208,17 @@ export class InvestasiService {
   async deleteSection(
     id: number,
   ): Promise<{ success: boolean; message: string }> {
-    // const section = await this.findSectionById(id);
     const section = await this.investasiSectionRepository.findOne({
       where: { id },
     });
 
-    // Cek apakah section digunakan di indikator aktif
     if (!section) {
-      throw new NotFoundException(`tidak ditemukan id section ${id}`);
+      throw new NotFoundException(`Section dengan ID ${id} tidak ditemukan`);
     }
 
+    // Cek apakah section masih memiliki indikator aktif
     const countIndikator = await this.investasiRepository.count({
-      where: { sectionId: id },
+      where: { sectionId: id, isDeleted: false },
     });
 
     if (countIndikator > 0) {
@@ -244,7 +227,9 @@ export class InvestasiService {
       );
     }
 
-    await this.investasiSectionRepository.delete(id);
+    // Soft delete
+    section.isDeleted = true;
+    await this.investasiSectionRepository.save(section);
 
     return {
       success: true,
@@ -252,33 +237,32 @@ export class InvestasiService {
     };
   }
 
-  // ========== STRATEGIK (INDIKATOR) SERVICES ==========
+  // ========== INDIKATOR SERVICES ==========
 
   async createIndikator(
     createDto: CreateInvestasiDto,
     createdBy?: string,
   ): Promise<Investasi> {
-    // 1. Validasi section exist
+    // Validasi section exist
     const section = await this.findSectionById(createDto.sectionId);
 
-    // 2. Cek apakah ada indikator yang sudah dihapus dengan data yang sama
+    // Cek apakah ada indikator yang sudah dihapus dengan data yang sama
     const deletedIndikator = await this.investasiRepository.findOne({
       where: {
         year: createDto.year,
         quarter: createDto.quarter,
         sectionId: createDto.sectionId,
         subNo: createDto.subNo,
-        isDeleted: true, // Hanya cek yang sudah dihapus
+        isDeleted: true,
       },
     });
 
-    // 3. Jika ada data yang sudah dihapus, REACTIVATE
+    // Jika ada data yang sudah dihapus, reactivate
     if (deletedIndikator) {
       console.log(
         `🔄 Reactivating deleted indicator: ${deletedIndikator.subNo} - ${deletedIndikator.indikator}`,
       );
 
-      // Update data dengan nilai baru
       deletedIndikator.isDeleted = false;
       deletedIndikator.indikator = createDto.indikator;
       deletedIndikator.bobotIndikator = createDto.bobotIndikator;
@@ -295,7 +279,7 @@ export class InvestasiService {
       deletedIndikator.hasilText = createDto.hasilText || null;
       deletedIndikator.peringkat = createDto.peringkat;
 
-      // Hitung weighted baru
+      // Hitung weighted
       deletedIndikator.weighted =
         createDto.weighted ||
         this.calculateWeighted(
@@ -314,14 +298,14 @@ export class InvestasiService {
       return await this.investasiRepository.save(deletedIndikator);
     }
 
-    // 4. Cek duplikasi hanya untuk data yang TIDAK dihapus
+    // Cek duplikasi untuk data aktif
     const existingIndikator = await this.investasiRepository.findOne({
       where: {
         year: createDto.year,
         quarter: createDto.quarter,
         sectionId: createDto.sectionId,
         subNo: createDto.subNo,
-        isDeleted: false, // Hanya cek yang tidak dihapus
+        isDeleted: false,
       },
     });
 
@@ -331,10 +315,10 @@ export class InvestasiService {
       );
     }
 
-    // 5. Validasi mode-specific fields
+    // Validasi mode-specific fields
     this.validateModeSpecificFields(createDto);
 
-    // 6. Hitung weighted jika belum diisi
+    // Hitung weighted
     const weighted =
       createDto.weighted ||
       this.calculateWeighted(
@@ -343,7 +327,7 @@ export class InvestasiService {
         createDto.peringkat,
       );
 
-    // 7. Handle nullable fields
+    // Buat indikator baru
     const investasiData: Partial<Investasi> = {
       year: createDto.year,
       quarter: createDto.quarter,
@@ -437,17 +421,16 @@ export class InvestasiService {
   ): Promise<Investasi> {
     const indikator = await this.findIndikatorById(id);
 
-    // 1. Validasi jika ada perubahan sectionId
+    // Validasi jika ada perubahan sectionId
     if (updateDto.sectionId && updateDto.sectionId !== indikator.sectionId) {
       const newSection = await this.findSectionById(updateDto.sectionId);
 
-      // Update data section yang denormalized
       updateDto.no = newSection.no;
       updateDto.sectionLabel = newSection.parameter;
       updateDto.bobotSection = newSection.bobotSection;
     }
 
-    // 2. Validasi jika ada perubahan periode atau subNo
+    // Validasi jika ada perubahan periode atau subNo
     if (
       (updateDto.year && updateDto.year !== indikator.year) ||
       (updateDto.quarter && updateDto.quarter !== indikator.quarter) ||
@@ -465,7 +448,7 @@ export class InvestasiService {
           sectionId,
           subNo,
           isDeleted: false,
-          id: Not(id), // Exclude current
+          id: Not(id),
         },
       });
 
@@ -476,7 +459,7 @@ export class InvestasiService {
       }
     }
 
-    // 3. Validasi mode-specific fields
+    // Validasi mode-specific fields
     if (updateDto.mode) {
       const validationDto: Partial<CreateInvestasiDto> = {
         mode: updateDto.mode,
@@ -487,28 +470,22 @@ export class InvestasiService {
       this.validateModeSpecificFields(validationDto);
     }
 
-    // 4. Hitung weighted baru jika ada perubahan bobot/peringkat
-    if (
-      updateDto.bobotSection ||
-      updateDto.bobotIndikator ||
-      updateDto.peringkat
-    ) {
-      const bobotSection = updateDto.bobotSection || indikator.bobotSection;
+    // Hitung weighted baru jika ada perubahan
+    if (updateDto.bobotIndikator || updateDto.peringkat) {
       const bobotIndikator =
         updateDto.bobotIndikator || indikator.bobotIndikator;
       const peringkat = updateDto.peringkat || indikator.peringkat;
 
       updateDto.weighted = this.calculateWeighted(
-        bobotSection,
+        indikator.bobotSection,
         bobotIndikator,
         peringkat,
       );
     }
 
-    // 5. Update field yang ada di updateDto
+    // Update field
     Object.keys(updateDto).forEach((key) => {
       if (updateDto[key] !== undefined) {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         indikator[key] = updateDto[key];
       }
     });
@@ -532,7 +509,11 @@ export class InvestasiService {
       throw new NotFoundException(`Indikator dengan ID ${id} tidak ditemukan`);
     }
 
-    await this.investasiRepository.delete(id);
+    // Soft delete
+    indikator.isDeleted = true;
+    indikator.deletedAt = new Date();
+    await this.investasiRepository.save(indikator);
+
     return {
       success: true,
       message: `Indikator "${indikator.indikator}" (${indikator.subNo}) berhasil dihapus`,
@@ -546,9 +527,7 @@ export class InvestasiService {
   ): Promise<Investasi[]> {
     const where: any = { isDeleted: false };
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     if (year) where.year = year;
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     if (quarter) where.quarter = quarter;
 
     if (query) {
@@ -577,7 +556,6 @@ export class InvestasiService {
     year: number,
     quarter: Quarter,
   ): Promise<number> {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const result = await this.investasiRepository
       .createQueryBuilder('investasi')
       .select('SUM(investasi.weighted)', 'total')
@@ -589,114 +567,7 @@ export class InvestasiService {
     return parseFloat(result?.total || 0) || 0;
   }
 
-  // ========== HELPER METHODS ==========
-
-  private validateModeSpecificFields(dto: Partial<CreateInvestasiDto>): void {
-    const mode = dto.mode;
-
-    if (mode === CalculationMode.RASIO) {
-      if (dto.pembilangValue !== undefined && dto.pembilangValue < 0) {
-        throw new BadRequestException(
-          'Pembilang value tidak boleh negatif untuk mode RASIO',
-        );
-      }
-      if (dto.penyebutValue !== undefined && dto.penyebutValue <= 0) {
-        throw new BadRequestException(
-          'Penyebut value harus lebih besar dari 0 untuk mode RASIO',
-        );
-      }
-    } else if (mode === CalculationMode.NILAI_TUNGGAL) {
-      if (dto.penyebutValue !== undefined && dto.penyebutValue < 0) {
-        throw new BadRequestException(
-          'Nilai penyebut tidak boleh negatif untuk mode NILAI_TUNGGAL',
-        );
-      }
-    } else if (mode === CalculationMode.TEKS) {
-      // Untuk mode TEKS, hasil harus berupa text
-      if (!dto.hasilText && !dto.hasilText?.trim()) {
-        throw new BadRequestException('Hasil text wajib diisi untuk mode TEKS');
-      }
-    }
-  }
-
-  private calculateWeighted(
-    bobotSection: number,
-    bobotIndikator: number,
-    peringkat: number,
-  ): number {
-    // Formula: (bobotSection * bobotIndikator * peringkat) / 10000
-    return (bobotSection * bobotIndikator * peringkat) / 10000;
-  }
-
-  async duplicateIndikatorToNewPeriod(
-    sourceId: number,
-    targetYear: number,
-    targetQuarter: Quarter,
-    createdBy?: string,
-  ): Promise<Investasi> {
-    const source = await this.findIndikatorById(sourceId);
-
-    // Cek apakah sudah ada di periode target
-    const existing = await this.investasiRepository.findOne({
-      where: {
-        year: targetYear,
-        quarter: targetQuarter,
-        sectionId: source.sectionId,
-        subNo: source.subNo,
-        isDeleted: false,
-      },
-    });
-
-    if (existing) {
-      throw new ConflictException(
-        `Indikator dengan subNo "${source.subNo}" sudah ada pada periode ${targetYear}-${targetQuarter}`,
-      );
-    }
-
-    // Duplikasi dengan periode baru
-    const newIndikatorData: Partial<Investasi> = {
-      ...source,
-      id: undefined,
-      year: targetYear,
-      quarter: targetQuarter,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      version: 1,
-      revisionNotes: `Duplikasi dari periode ${source.year}-${source.quarter}`,
-      isDeleted: false,
-    };
-
-    if (createdBy) {
-      newIndikatorData.createdBy = createdBy;
-    }
-
-    const newIndikator = this.investasiRepository.create(newIndikatorData);
-    return await this.investasiRepository.save(newIndikator);
-  }
-
-  // ========== ADDITIONAL METHODS ==========
-
-  // PERBAIKAN: Hapus deklarasi duplikat dan implementasi method
-  async getIndikatorCountByPeriod(
-    year: number,
-    quarter: Quarter,
-  ): Promise<number> {
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-      const result = await this.investasiRepository
-        .createQueryBuilder('investasi')
-        .select('COUNT(investasi.id)', 'count')
-        .where('investasi.year = :year', { year })
-        .andWhere('investasi.quarter = :quarter', { quarter })
-        .andWhere('investasi.is_deleted = false')
-        .getRawOne();
-
-      return parseInt(result?.count || 0) || 0;
-    } catch (error) {
-      console.error('Error in getIndikatorCountByPeriod:', error);
-      return 0;
-    }
-  }
+  // ========== COMPLEX QUERIES ==========
 
   async getSectionsWithIndicatorsByPeriod(
     year: number,
@@ -707,7 +578,6 @@ export class InvestasiService {
         `Loading sections with indicators for period: ${year}-${quarter}`,
       );
 
-      // 1. Ambil sections untuk periode ini saja
       const sections = await this.investasiSectionRepository.find({
         where: {
           year,
@@ -783,7 +653,6 @@ export class InvestasiService {
         }),
       );
 
-      // Filter hanya sections yang punya indikator
       const sectionsWithData = sectionsWithIndicators.filter(
         (s) => s.indicators.length > 0,
       );
@@ -826,5 +695,108 @@ export class InvestasiService {
       year: p.investasi_year,
       quarter: p.investasi_quarter,
     }));
+  }
+
+  async getIndikatorCountByPeriod(
+    year: number,
+    quarter: Quarter,
+  ): Promise<number> {
+    try {
+      const result = await this.investasiRepository
+        .createQueryBuilder('investasi')
+        .select('COUNT(investasi.id)', 'count')
+        .where('investasi.year = :year', { year })
+        .andWhere('investasi.quarter = :quarter', { quarter })
+        .andWhere('investasi.is_deleted = false')
+        .getRawOne();
+
+      return parseInt(result?.count || 0) || 0;
+    } catch (error) {
+      console.error('Error in getIndikatorCountByPeriod:', error);
+      return 0;
+    }
+  }
+
+  async duplicateIndikatorToNewPeriod(
+    sourceId: number,
+    targetYear: number,
+    targetQuarter: Quarter,
+    createdBy?: string,
+  ): Promise<Investasi> {
+    const source = await this.findIndikatorById(sourceId);
+
+    // Cek apakah sudah ada di periode target
+    const existing = await this.investasiRepository.findOne({
+      where: {
+        year: targetYear,
+        quarter: targetQuarter,
+        sectionId: source.sectionId,
+        subNo: source.subNo,
+        isDeleted: false,
+      },
+    });
+
+    if (existing) {
+      throw new ConflictException(
+        `Indikator dengan subNo "${source.subNo}" sudah ada pada periode ${targetYear}-${targetQuarter}`,
+      );
+    }
+
+    // Duplikasi dengan periode baru
+    const newIndikatorData: Partial<Investasi> = {
+      ...source,
+      id: undefined,
+      year: targetYear,
+      quarter: targetQuarter,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      version: 1,
+      revisionNotes: `Duplikasi dari periode ${source.year}-${source.quarter}`,
+      isDeleted: false,
+    };
+
+    if (createdBy) {
+      newIndikatorData.createdBy = createdBy;
+    }
+
+    const newIndikator = this.investasiRepository.create(newIndikatorData);
+    return await this.investasiRepository.save(newIndikator);
+  }
+
+  // ========== HELPER METHODS ==========
+
+  private validateModeSpecificFields(dto: Partial<CreateInvestasiDto>): void {
+    const mode = dto.mode;
+
+    if (mode === CalculationMode.RASIO) {
+      if (dto.pembilangValue !== undefined && dto.pembilangValue < 0) {
+        throw new BadRequestException(
+          'Pembilang value tidak boleh negatif untuk mode RASIO',
+        );
+      }
+      if (dto.penyebutValue !== undefined && dto.penyebutValue <= 0) {
+        throw new BadRequestException(
+          'Penyebut value harus lebih besar dari 0 untuk mode RASIO',
+        );
+      }
+    } else if (mode === CalculationMode.NILAI_TUNGGAL) {
+      if (dto.penyebutValue !== undefined && dto.penyebutValue < 0) {
+        throw new BadRequestException(
+          'Nilai penyebut tidak boleh negatif untuk mode NILAI_TUNGGAL',
+        );
+      }
+    } else if (mode === CalculationMode.TEKS) {
+      if (!dto.hasilText || !dto.hasilText.trim()) {
+        throw new BadRequestException('Hasil text wajib diisi untuk mode TEKS');
+      }
+    }
+  }
+
+  private calculateWeighted(
+    bobotSection: number,
+    bobotIndikator: number,
+    peringkat: number,
+  ): number {
+    return (bobotSection * bobotIndikator * peringkat) / 10000;
   }
 }

@@ -1,5 +1,4 @@
-import { Quarter } from '../entities/operasional-section.entity';
-import { CalculationMode } from '../entities/operasional.entity';
+import { CalculationMode, Quarter } from '../entities/operasional.entity';
 export declare class CreateOperasionalDto {
     year: number;
     quarter: Quarter;

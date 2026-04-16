@@ -155,26 +155,31 @@ import ForgotPassword from './features/auth/pages/forgot-password.jsx';
 import DashboardLayout from './features/Dashboard/main.jsx';
 import Dashboard from './features/Dashboard/layout/dashboard.jsx';
 import Investasi from './features/Dashboard/pages/RiskProfile/pages/investasi/Investasi.jsx';
-import Pasar from './features/Dashboard/pages/RiskProfile/pages/pasar/Pasar.jsx';
+import Pasar from './features/Dashboard/pages/RiskProfile/pages/pasar/pasarPage.jsx';
 import Likuiditas from './features/Dashboard/pages/RiskProfile/pages/likuiditas/Likuiditas.jsx';
-import Hukum from './features/Dashboard/pages/RiskProfile/pages/hukum/Hukum.jsx';
-import Kepatuhan from './features/Dashboard/pages/RiskProfile/pages/kepatuhan/Kepatuhan.jsx';
-import Reputasi from './features/Dashboard/pages/RiskProfile/reputasi/Reputasi.jsx';
+// import Hukum from './features/Dashboard/pages/RiskProfile/pages/hukum/Hukum.jsx';
+// import Kepatuhan from './features/Dashboard/pages/RiskProfile/pages/kepatuhan/Kepatuhan.jsx';
+// import Reputasi from './features/Dashboard/pages/RiskProfile/reputasi/Reputasi.jsx';
 import Report from './features/Dashboard/report/report.jsx';
 import Settings from './features/Dashboard/pages/RiskProfile/setting/setting.jsx';
 import ProfilePage from './features/Dashboard/pages/profile/pages/userprofile.jsx';
 import NotificationPage from './features/Dashboard/pages/notification/pages/notification.jsx';
 import { useAuth } from './features/auth/hooks/useAuth.hook.js';
 import { AuditLog } from './features/Dashboard/pages/audit-log/pages/audit-log-page.jsx';
-
+import OperasionalOJK from './features/Dashboard/pages/OJK/pages/regulatory/operasional/tabs/operasional';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
-import Stratejik from './features/Dashboard/pages/RiskProfile/pages/stratejik/stratejik.jsx';
+// import Stratejik from './features/Dashboard/pages/RiskProfile/pages/stratejik/stratejik.jsx';
 import Ras from './features/Dashboard/pages/RAS/pages/ras.jsx'; // RAS Asli
-import Operational from './features/Dashboard/pages/RiskProfile/pages/operational/Operational.jsx';
+// import Operational from './features/Dashboard/pages/RiskProfile/pages/operational/Operational.jsx';
 import RiskProfileRepository from './features/Dashboard/pages/RiskProfile/pages/riskResikoProfile/pages/riskprofilerepository.jsx';
 import RasPageDummy from './features/Dashboard/pages/RAS/pages/ras.jsx';
 import PasarProdukOJK from './features/Dashboard/pages/OJK/pages/produk/pasar-produk/tabs/pasar-produk.jsx';
+import LikuiditasProdukOJK from './features/Dashboard/pages/OJK/pages/produk/likuiditas-produk/tabs/likuiditas-produk';
+import KreditProdukOJK from './features/Dashboard/pages/OJK/pages/produk/kredit-produk/tabs/kredit-produk';
+import KonsentrasiProdukOJK from './features/Dashboard/pages/OJK/pages/produk/konsentrasi-produk/tabs/konsentrasi-produk';
+import KepatuhanOJK from './features/Dashboard/pages/OJK/pages/regulatory/kepatuhan/tabs/kepatuhan';
+import HukumOJK from './features/Dashboard/pages/OJK/pages/regulatory/hukum/tabs/hukum';
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -248,11 +253,11 @@ function App() {
               <Route path="risk-form/investasi" element={<Investasi />} />
               <Route path="risk-form/pasar" element={<Pasar />} />
               <Route path="risk-form/likuiditas" element={<Likuiditas />} />
-              <Route path="risk-form/hukum" element={<Hukum />} />
+              {/* <Route path="risk-form/hukum" element={<Hukum />} />
               <Route path="risk-form/operasional" element={<Operational />} />
               <Route path="risk-form/kepatuhan" element={<Kepatuhan />} />
               <Route path="risk-form/stratejik" element={<Stratejik />} />
-              <Route path="risk-form/reputasi" element={<Reputasi />} />
+              <Route path="risk-form/reputasi" element={<Reputasi />} />  */}
               <Route path="profile" element={<ProfilePage />} />
               <Route path="report" element={<Report />} />
               
@@ -268,6 +273,13 @@ function App() {
 
               {/* ROUTE UNTUK OJK */}
               <Route path='ojk/pasar-produk' element={<PasarProdukOJK />} />
+              <Route path='ojk/likuiditas-produk' element={<LikuiditasProdukOJK />} />
+              <Route path='ojk/kredit-produk' element={<KreditProdukOJK />} />
+              <Route path='ojk/konsentrasi-produk' element={<KonsentrasiProdukOJK />} />
+              <Route path='ojk/operasional' element={<OperasionalOJK />} />
+              <Route path='ojk/hukum' element={<HukumOJK />} />
+              <Route path='ojk/kepatuhan' element={<KepatuhanOJK />} />
+
               {/* <Route path='ojk/likuiditas-produk' element={<LikuiditasProdukOJK />} />
               <Route path='ojk/kredit-produk' element={<KreditProdukOJK />} />
               <Route path='ojk/kosentrasi-produk' element={<KosentrasiProdukOJK />} />

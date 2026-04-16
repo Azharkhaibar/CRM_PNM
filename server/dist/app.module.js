@@ -20,9 +20,10 @@ const likuiditas_module_1 = require("./likuiditas/likuiditas/likuiditas.module")
 const operasional_module_1 = require("./operasional/operasional/operasional.module");
 const divisi_module_1 = require("./divisi/divisi.module");
 const notification_module_1 = require("./notification/notification.module");
-const kpmr_investasi_module_1 = require("./investasi/kpmr-investasi/kpmr-investasi.module");
-const audit_log_module_1 = require("./audit-log/audit-log.module");
 const kpmr_likuiditas_module_1 = require("./likuiditas/kpmr-likuiditas/kpmr-likuiditas.module");
+const audit_log_module_1 = require("./audit-log/audit-log.module");
+const likuiditas_produk_kpmr_module_1 = require("./ojk/likuiditas-produk/likuiditas-produk-kpmr/likuiditas-produk-kpmr.module");
+const kpmr_investasi_module_1 = require("./investasi/kpmr-investasi/kpmr-investasi.module");
 const new_investasi_module_1 = require("./investasi/new-investasi/new-investasi.module");
 const hukum_module_1 = require("./hukum/hukum/hukum.module");
 const kpmr_hukum_module_1 = require("./hukum/kpmr-hukum/kpmr-hukum.module");
@@ -38,13 +39,10 @@ const gemini_classifier_module_1 = require("./gemini_classifier/gemini_classifie
 const ras_module_1 = require("./ras/ras.module");
 const kpmr_pasar_module_1 = require("./pasar/kpmr-pasar/kpmr-pasar.module");
 const likuiditas_produk_ojk_module_1 = require("./ojk/likuiditas-produk/likuiditas-produk-ojk/likuiditas-produk-ojk.module");
-const likuiditas_produk_kpmr_module_1 = require("./ojk/likuiditas-produk/likuiditas-produk-kpmr/likuiditas-produk-kpmr.module");
 const kredit_produk_ojk_module_1 = require("./ojk/kredit-produk/kredit-produk-ojk/kredit-produk-ojk.module");
 const kredit_produk_kpmr_module_1 = require("./ojk/kredit-produk/kredit-produk-kpmr/kredit-produk-kpmr.module");
 const konsentrasi_produk_ojk_module_1 = require("./ojk/konsentrasi-produk/konsentrasi-produk-ojk/konsentrasi-produk-ojk.module");
 const konsentrasi_produk_kpmr_module_1 = require("./ojk/konsentrasi-produk/konsentrasi-produk-kpmr/konsentrasi-produk-kpmr.module");
-const operasional_ojk_module_1 = require("./ojk/operasional-ojk/operasional-ojk/operasional-ojk.module");
-const operasional_kpmr_ojk_module_1 = require("./ojk/operasional-ojk/operasional-kpmr-ojk/operasional-kpmr-ojk.module");
 const hukum_ojk_module_1 = require("./ojk/hukum-ojk/hukum-ojk/hukum-ojk.module");
 const hukum_kpmr_ojk_module_1 = require("./ojk/hukum-ojk/hukum-kpmr-ojk/hukum-kpmr-ojk.module");
 const kepatuhan_ojk_module_1 = require("./ojk/kepatuhan-ojk/kepatuhan-ojk/kepatuhan-ojk.module");
@@ -61,6 +59,8 @@ const pasar_produk_ojk_module_1 = require("./ojk/pasar-produk/pasar-produk-ojk/p
 const rekap_data_1_module_1 = require("./ojk/rekap-data/rekap-data-1/rekap-data-1.module");
 const rekap_data_2_module_1 = require("./ojk/rekap-data/rekap-data-2/rekap-data-2.module");
 const pasar_produk_kpmr_module_1 = require("./ojk/pasar-produk/pasar-produk-kpmr/pasar-produk-kpmr.module");
+const operasional_ojk_module_1 = require("./ojk/operasional-ojk/operasional-ojk/operasional-ojk.module");
+const operasional_kpmr_ojk_module_1 = require("./ojk/operasional-ojk/operasional-kpmr-ojk/operasional-kpmr-ojk.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -82,10 +82,11 @@ exports.AppModule = AppModule = __decorate([
             notification_module_1.NotificationModule,
             kpmr_investasi_module_1.KpmrInvestasiModule,
             audit_log_module_1.AuditLogModule,
-            kpmr_likuiditas_module_1.KpmrLikuiditasModule,
             likuiditas_produk_kpmr_module_1.LikuiditasKpmrModule,
-            new_investasi_module_1.NewInvestasiModule,
+            new_investasi_module_1.InvestasiModule,
             hukum_module_1.HukumModule,
+            konsentrasi_produk_ojk_module_1.KonsentrasiProdukOjkModule,
+            konsentrasi_produk_kpmr_module_1.KonsentrasiKpmrModule,
             pasar_produk_kpmr_module_1.PasarProdukKpmrModule,
             kpmr_hukum_module_1.KpmrHukumModule,
             stratejik_module_1.StrategikModule,
@@ -104,20 +105,20 @@ exports.AppModule = AppModule = __decorate([
             kredit_produk_ojk_module_1.KreditProdukOjkModule,
             kredit_produk_kpmr_module_1.KreditProdukKpmrModule,
             konsentrasi_produk_ojk_module_1.KonsentrasiProdukOjkModule,
-            konsentrasi_produk_kpmr_module_1.KonsentrasiProdukKpmrModule,
             operasional_ojk_module_1.OperasionalOjkModule,
-            operasional_kpmr_ojk_module_1.OperasionalKpmrOjkModule,
+            operasional_kpmr_ojk_module_1.OperasionalKpmrModule,
             hukum_ojk_module_1.HukumOjkModule,
-            hukum_kpmr_ojk_module_1.HukumKpmrOjkModule,
+            hukum_kpmr_ojk_module_1.HukumKpmrModule,
             kepatuhan_ojk_module_1.KepatuhanOjkModule,
-            kepatuhan_kpmr_ojk_module_1.KepatuhanKpmrOjkModule,
+            kepatuhan_kpmr_ojk_module_1.KepatuhanProdukKpmrModule,
             reputasi_ojk_module_1.ReputasiOjkModule,
-            reputasi_kpmr_ojk_module_1.ReputasiKpmrOjkModule,
+            reputasi_kpmr_ojk_module_1.ReputasiProdukKpmrModule,
             investasi_ojk_module_1.InvestasiOjkModule,
             investasi_kpmr_ojk_module_1.InvestasiKpmrOjkModule,
+            kpmr_likuiditas_module_1.KpmrLikuiditasModule,
             strategis_ojk_module_1.StrategisOjkModule,
-            strategis_kpmr_ojk_module_1.StrategisKpmrOjkModule,
-            rentabilitas_ojk_module_1.RentabilitasOjkModule,
+            strategis_kpmr_ojk_module_1.StrategisProdukKpmrModule,
+            rentabilitas_ojk_module_1.RentabilitasProdukOjkModule,
             rentabilitas_kpmr_ojk_module_1.RentabilitasKpmrOjkModule,
             rekap_data_1_module_1.RekapData1Module,
             rekap_data_2_module_1.RekapData2Module,

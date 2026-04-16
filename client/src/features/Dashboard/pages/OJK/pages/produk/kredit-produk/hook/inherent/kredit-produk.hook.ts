@@ -1,14 +1,13 @@
-// hook/inherent/kredit-produk.hook.ts
 import { useState, useCallback, useRef, useEffect } from 'react';
-import kreditProdukService, { CreateKreditNilaiDto, CreateKreditParameterDto, KreditProdukOjkEntity, UpdateKreditNilaiDto, UpdateKreditParameterDto } from '../../service/inherent/kredit-produk.service';
+import kreditProdukService, { CreateNilaiDto, CreateParameterDto, KreditProdukOjkEntity, UpdateNilaiDto, UpdateParameterDto } from '../../services/inherent/kredit-produk.service';
 
 export const useKreditProdukIntegration = (initialYear?: number, initialQuarter?: number) => {
   // State untuk data yang sedang aktif
   const [rows, setRows] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [currentKreditId, setCurrentKreditId] = useState<number | null>(null);
-  const [currentKreditData, setCurrentKreditData] = useState<KreditProdukOjkEntity | null>(null);
+  const [currentInherentId, setCurrentInherentId] = useState<number | null>(null);
+  const [currentInherentData, setCurrentInherentData] = useState<KreditProdukOjkEntity | null>(null);
   const [year, setYear] = useState<number | null>(initialYear ?? null);
   const [quarter, setQuarter] = useState<number | null>(initialQuarter ?? null);
 
@@ -21,7 +20,7 @@ export const useKreditProdukIntegration = (initialYear?: number, initialQuarter?
       string,
       {
         rows: any[];
-        kreditId: number | null;
+        inherentId: number | null;
         entity: KreditProdukOjkEntity | null;
         timestamp: number;
       }
@@ -54,13 +53,13 @@ export const useKreditProdukIntegration = (initialYear?: number, initialQuarter?
    * Menggunakan findOrCreate dari service
    */
   const getOrCreateData = useCallback(async (targetYear: number, targetQuarter: number, forceReload = false) => {
-    console.log(`[KreditHook] getOrCreateData: ${targetYear}-Q${targetQuarter}, force: ${forceReload}`);
+    console.log(`[Hook] getOrCreateData: ${targetYear}-Q${targetQuarter}, force: ${forceReload}`);
 
     const cacheKey = getCacheKey(targetYear, targetQuarter);
 
     // Skip jika sudah loading
     if (loadingQueueRef.current.has(cacheKey) && !forceReload) {
-      console.log(`[KreditHook] Load already in progress for ${cacheKey}`);
+      console.log(`[Hook] Load already in progress for ${cacheKey}`);
       return null;
     }
 
@@ -84,18 +83,18 @@ export const useKreditProdukIntegration = (initialYear?: number, initialQuarter?
       // Update cache
       updateCache(targetYear, targetQuarter, {
         rows: formattedRows,
-        kreditId: result.data.id,
+        inherentId: result.data.id,
         entity: result.data,
       });
 
       return {
         rows: formattedRows,
-        kreditId: result.data.id,
+        inherentId: result.data.id,
         entity: result.data,
         isNew: result.isNew,
       };
     } catch (error: any) {
-      console.error(`[KreditHook] Error in getOrCreateData for ${cacheKey}:`, error);
+      console.error(`[Hook] Error in getOrCreateData for ${cacheKey}:`, error);
       throw error;
     } finally {
       loadingQueueRef.current.delete(cacheKey);
@@ -116,18 +115,18 @@ export const useKreditProdukIntegration = (initialYear?: number, initialQuarter?
   }, [year, quarter, getCacheKey]);
 
   const updateCache = useCallback(
-    (y: number, q: number, data: { rows: any[]; kreditId: number | null; entity: KreditProdukOjkEntity | null }) => {
+    (y: number, q: number, data: { rows: any[]; inherentId: number | null; entity: KreditProdukOjkEntity | null }) => {
       const key = getCacheKey(y, q);
       const cacheEntry = {
         rows: data.rows,
-        kreditId: data.kreditId,
+        inherentId: data.inherentId,
         entity: data.entity,
         timestamp: Date.now(),
       };
       cacheRef.current.set(key, cacheEntry);
-      console.log(`[KreditHook] Cache updated for ${key}:`, {
+      console.log(`[Hook] Cache updated for ${key}:`, {
         rowsCount: data.rows.length,
-        kreditId: data.kreditId,
+        inherentId: data.inherentId,
         hasEntity: !!data.entity,
       });
     },
@@ -139,12 +138,12 @@ export const useKreditProdukIntegration = (initialYear?: number, initialQuarter?
       const key = getCacheKey(y, q);
       const cached = cacheRef.current.get(key);
       if (cached) {
-        console.log(`[KreditHook] Cache hit for ${key}:`, {
+        console.log(`[Hook] Cache hit for ${key}:`, {
           rowsCount: cached.rows.length,
           age: Date.now() - cached.timestamp,
         });
       } else {
-        console.log(`[KreditHook] Cache miss for ${key}`);
+        console.log(`[Hook] Cache miss for ${key}`);
       }
       return cached;
     },
@@ -156,11 +155,11 @@ export const useKreditProdukIntegration = (initialYear?: number, initialQuarter?
       if (y !== undefined && q !== undefined) {
         const key = getCacheKey(y, q);
         const deleted = cacheRef.current.delete(key);
-        console.log(`[KreditHook] Cache cleared for ${key}: ${deleted ? 'success' : 'not found'}`);
+        console.log(`[Hook] Cache cleared for ${key}: ${deleted ? 'success' : 'not found'}`);
       } else {
         const size = cacheRef.current.size;
         cacheRef.current.clear();
-        console.log(`[KreditHook] All cache cleared (${size} entries)`);
+        console.log(`[Hook] All cache cleared (${size} entries)`);
       }
     },
     [getCacheKey],
@@ -177,14 +176,14 @@ export const useKreditProdukIntegration = (initialYear?: number, initialQuarter?
 
     const { model, prinsip, jenis, underlying } = kategori;
 
-    const validModels = ['konvensional', 'syariah', 'kombinasi', 'lainnya'];
+    const validModels = ['tanpa_model', 'open_end', 'terstruktur'];
     if (!model || !validModels.includes(model)) {
       return { isValid: false, error: `Model harus salah satu dari: ${validModels.join(', ')}` };
     }
 
-    if (model === 'lainnya') {
+    if (model === 'tanpa_model') {
       if (prinsip || jenis || (Array.isArray(underlying) && underlying.length > 0)) {
-        return { isValid: false, error: 'Untuk model "lainnya", prinsip, jenis, dan aset dasar harus kosong' };
+        return { isValid: false, error: 'Untuk model "tanpa_model", prinsip, jenis, dan aset dasar harus kosong' };
       }
       return { isValid: true };
     }
@@ -194,41 +193,22 @@ export const useKreditProdukIntegration = (initialYear?: number, initialQuarter?
       return { isValid: false, error: `Prinsip harus salah satu dari: ${validPrinsip.join(', ')}` };
     }
 
-    if (model === 'konvensional') {
-      const validJenis = ['kpr', 'kpa', 'multiguna', 'modal_kerja', 'investasi', 'kkb', 'lainnya'];
+    if (model === 'open_end') {
+      const validJenis = ['pasar_uang', 'pendapatan_tetap', 'campuran', 'saham', 'indeks', 'terproteksi'];
       if (!jenis || !validJenis.includes(jenis)) {
-        return { isValid: false, error: `Jenis kredit harus salah satu dari: ${validJenis.join(', ')}` };
-      }
-      if (prinsip !== 'konvensional') {
-        return { isValid: false, error: 'Untuk model "konvensional", prinsip harus "konvensional"' };
+        return { isValid: false, error: `Jenis harus salah satu dari: ${validJenis.join(', ')}` };
       }
       if (Array.isArray(underlying) && underlying.length > 0) {
-        return { isValid: false, error: 'Untuk model "konvensional", aset dasar harus kosong' };
+        return { isValid: false, error: 'Untuk model "open_end", aset dasar harus kosong' };
       }
     }
 
-    if (model === 'syariah') {
-      const validJenis = ['kpr', 'kpa', 'multiguna', 'modal_kerja', 'investasi', 'kkb', 'lainnya'];
-      if (!jenis || !validJenis.includes(jenis)) {
-        return { isValid: false, error: `Jenis kredit harus salah satu dari: ${validJenis.join(', ')}` };
-      }
-      if (prinsip !== 'syariah') {
-        return { isValid: false, error: 'Untuk model "syariah", prinsip harus "syariah"' };
-      }
-      if (Array.isArray(underlying) && underlying.length > 0) {
-        return { isValid: false, error: 'Untuk model "syariah", aset dasar harus kosong' };
-      }
-    }
-
-    if (model === 'kombinasi') {
-      if (!prinsip || !validPrinsip.includes(prinsip)) {
-        return { isValid: false, error: `Prinsip harus salah satu dari: ${validPrinsip.join(', ')}` };
-      }
+    if (model === 'terstruktur') {
       if (jenis) {
-        return { isValid: false, error: 'Untuk model "kombinasi", jenis harus kosong' };
+        return { isValid: false, error: 'Untuk model "terstruktur", jenis harus kosong' };
       }
       if (Array.isArray(underlying)) {
-        const validUnderlying = ['kpr', 'kpa', 'multiguna', 'modal_kerja', 'investasi', 'kkb'];
+        const validUnderlying = ['indeks', 'eba', 'dinfra', 'obligasi'];
         const invalidValues = underlying.filter((v: string) => !validUnderlying.includes(v));
         if (invalidValues.length > 0) {
           return { isValid: false, error: `Aset dasar tidak valid: ${invalidValues.join(', ')}` };
@@ -272,7 +252,7 @@ export const useKreditProdukIntegration = (initialYear?: number, initialQuarter?
     [validateParameterJudul],
   );
 
-  const formatNilaiJudul = useCallback((judul: any): CreateKreditNilaiDto['judul'] => {
+  const formatNilaiJudul = useCallback((judul: any): CreateNilaiDto['judul'] => {
     return kreditProdukService.formatNilaiJudul(judul);
   }, []);
 
@@ -308,7 +288,7 @@ export const useKreditProdukIntegration = (initialYear?: number, initialQuarter?
 
         const validation = validateKategori(cleanKategori);
         if (!validation.isValid && cleanKategori.model) {
-          console.warn('[KreditHook] Invalid kategori:', validation.error);
+          console.warn('[Hook] Invalid kategori:', validation.error);
         }
 
         return cleanKategori;
@@ -331,11 +311,11 @@ export const useKreditProdukIntegration = (initialYear?: number, initialQuarter?
   const loadData = useCallback(
     async (loadYear: number, loadQuarter: number, forceReload = false) => {
       const cacheKey = getCacheKey(loadYear, loadQuarter);
-      console.log(`[KreditHook] loadData called for ${cacheKey}, forceReload: ${forceReload}`);
+      console.log(`[Hook] loadData called for ${cacheKey}, forceReload: ${forceReload}`);
 
       if (!loadYear || !loadQuarter || loadQuarter < 1 || loadQuarter > 4) {
         const errorMsg = 'Year dan quarter harus valid';
-        console.warn(`[KreditHook] ${errorMsg}: Year=${loadYear}, Quarter=${loadQuarter}`);
+        console.warn(`[Hook] ${errorMsg}: Year=${loadYear}, Quarter=${loadQuarter}`);
 
         // Reset state jika year/quarter tidak valid
         if (year === loadYear && quarter === loadQuarter) {
@@ -348,7 +328,7 @@ export const useKreditProdukIntegration = (initialYear?: number, initialQuarter?
 
       // Cegah multiple loading untuk year-quarter yang sama
       if (loadingQueueRef.current.has(cacheKey) && !forceReload) {
-        console.log(`[KreditHook] Load already in progress for ${cacheKey}, skipping...`);
+        console.log(`[Hook] Load already in progress for ${cacheKey}, skipping...`);
         const cached = getFromCache(loadYear, loadQuarter);
         return cached?.rows || [];
       }
@@ -359,8 +339,8 @@ export const useKreditProdukIntegration = (initialYear?: number, initialQuarter?
       const isActivePeriod = year === loadYear && quarter === loadQuarter;
       if (isActivePeriod) {
         safeSet(setRows, []);
-        safeSet(setCurrentKreditId, null);
-        safeSet(setCurrentKreditData, null);
+        safeSet(setCurrentInherentId, null);
+        safeSet(setCurrentInherentData, null);
         safeSet(setError, null);
       }
 
@@ -370,13 +350,13 @@ export const useKreditProdukIntegration = (initialYear?: number, initialQuarter?
       if (!forceReload) {
         const cached = getFromCache(loadYear, loadQuarter);
         if (cached) {
-          console.log(`[KreditHook] Loading from cache: ${cacheKey}`);
+          console.log(`[Hook] Loading from cache: ${cacheKey}`);
 
           // Update state hanya jika ini adalah period yang aktif
           if (isActivePeriod) {
             safeSet(setRows, cached.rows);
-            safeSet(setCurrentKreditId, cached.kreditId);
-            safeSet(setCurrentKreditData, cached.entity);
+            safeSet(setCurrentInherentId, cached.inherentId);
+            safeSet(setCurrentInherentData, cached.entity);
             safeSet(setYear, loadYear);
             safeSet(setQuarter, loadQuarter);
             safeSet(setActivePeriodKey, cacheKey);
@@ -384,13 +364,13 @@ export const useKreditProdukIntegration = (initialYear?: number, initialQuarter?
           }
 
           loadingQueueRef.current.delete(cacheKey);
-          console.log(`[KreditHook] Cache loaded: ${cached.rows.length} rows`);
+          console.log(`[Hook] Cache loaded: ${cached.rows.length} rows`);
           return cached.rows;
         }
       }
 
       try {
-        console.log(`[KreditHook] Loading data for ${cacheKey} from API`);
+        console.log(`[Hook] Loading data for ${cacheKey} from API`);
 
         // Gunakan getOrCreateData yang baru
         const data = await getOrCreateData(loadYear, loadQuarter, forceReload);
@@ -402,27 +382,27 @@ export const useKreditProdukIntegration = (initialYear?: number, initialQuarter?
         // Update cache untuk year-quarter ini
         updateCache(loadYear, loadQuarter, {
           rows: data.rows,
-          kreditId: data.kreditId,
+          inherentId: data.inherentId,
           entity: data.entity,
         });
 
         // Update state hanya jika ini adalah period yang aktif
         if (isActivePeriod) {
           safeSet(setRows, data.rows);
-          safeSet(setCurrentKreditId, data.kreditId);
-          safeSet(setCurrentKreditData, data.entity);
+          safeSet(setCurrentInherentId, data.inherentId);
+          safeSet(setCurrentInherentData, data.entity);
           safeSet(setYear, loadYear);
           safeSet(setQuarter, loadQuarter);
           safeSet(setActivePeriodKey, cacheKey);
           safeSet(setIsLoading, false);
         }
 
-        console.log(`[KreditHook] Data loaded successfully for ${cacheKey}: ID=${data.kreditId || 'N/A'}, Parameters=${data.rows.length}, isNew=${data.isNew}`);
+        console.log(`[Hook] Data loaded successfully for ${cacheKey}: ID=${data.inherentId || 'N/A'}, Parameters=${data.rows.length}, isNew=${data.isNew}`);
         loadingQueueRef.current.delete(cacheKey);
 
         return data.rows;
       } catch (e: any) {
-        console.error(`[KreditHook] Error loading data for ${cacheKey}:`, e);
+        console.error(`[Hook] Error loading data for ${cacheKey}:`, e);
 
         const errorMsg = e.response?.data?.message || e.message || 'Gagal memuat data';
 
@@ -430,8 +410,8 @@ export const useKreditProdukIntegration = (initialYear?: number, initialQuarter?
         if (isActivePeriod) {
           safeSet(setError, errorMsg);
           safeSet(setRows, []);
-          safeSet(setCurrentKreditId, null);
-          safeSet(setCurrentKreditData, null);
+          safeSet(setCurrentInherentId, null);
+          safeSet(setCurrentInherentData, null);
           safeSet(setIsLoading, false);
         }
 
@@ -448,7 +428,7 @@ export const useKreditProdukIntegration = (initialYear?: number, initialQuarter?
 
   const changeYearQuarter = useCallback(
     async (newYear: number, newQuarter: number) => {
-      console.log(`[KreditHook] Changing from ${year}-Q${quarter} to ${newYear}-Q${newQuarter}`);
+      console.log(`[Hook] Changing from ${year}-Q${quarter} to ${newYear}-Q${newQuarter}`);
 
       // Validasi input
       if (!newYear || !newQuarter || newQuarter < 1 || newQuarter > 4) {
@@ -458,12 +438,12 @@ export const useKreditProdukIntegration = (initialYear?: number, initialQuarter?
       }
 
       const newCacheKey = getCacheKey(newYear, newQuarter);
-      console.log(`[KreditHook] New cache key: ${newCacheKey}`);
+      console.log(`[Hook] New cache key: ${newCacheKey}`);
 
       // PERBAIKAN PENTING: Reset state untuk periode baru
       safeSet(setRows, []);
-      safeSet(setCurrentKreditId, null);
-      safeSet(setCurrentKreditData, null);
+      safeSet(setCurrentInherentId, null);
+      safeSet(setCurrentInherentData, null);
       safeSet(setYear, newYear);
       safeSet(setQuarter, newQuarter);
       safeSet(setActivePeriodKey, newCacheKey);
@@ -474,14 +454,14 @@ export const useKreditProdukIntegration = (initialYear?: number, initialQuarter?
         // Load data untuk year-quarter yang baru
         const data = await loadData(newYear, newQuarter, false);
 
-        console.log(`[KreditHook] Successfully changed to ${newYear}-Q${newQuarter}:`, {
+        console.log(`[Hook] Successfully changed to ${newYear}-Q${newQuarter}:`, {
           parameters: data.length,
           cacheKey: newCacheKey,
         });
 
         return data;
       } catch (error) {
-        console.error('[KreditHook] Error changing year-quarter:', error);
+        console.error('[Hook] Error changing year-quarter:', error);
         safeSet(setError, 'Gagal memuat data untuk periode baru');
         safeSet(setIsLoading, false);
         throw error;
@@ -495,15 +475,15 @@ export const useKreditProdukIntegration = (initialYear?: number, initialQuarter?
   ======================= */
 
   const validateAndGetCurrentContext = useCallback(() => {
-    if (!currentKreditId) {
+    if (!currentInherentId) {
       throw new Error('Data belum dimuat. Silakan load data terlebih dahulu.');
     }
     if (!year || !quarter) {
       throw new Error('Year dan quarter tidak valid untuk operasi ini');
     }
 
-    return { kreditId: currentKreditId, year, quarter };
-  }, [currentKreditId, year, quarter]);
+    return { inherentId: currentInherentId, year, quarter };
+  }, [currentInherentId, year, quarter]);
 
   const updateCacheAfterOperation = useCallback(
     async (targetYear?: number, targetQuarter?: number) => {
@@ -511,12 +491,12 @@ export const useKreditProdukIntegration = (initialYear?: number, initialQuarter?
       const effectiveQuarter = targetQuarter ?? quarter;
 
       if (!effectiveYear || !effectiveQuarter) {
-        console.warn('[KreditHook] Cannot update cache: year or quarter is null');
+        console.warn('[Hook] Cannot update cache: year or quarter is null');
         return [];
       }
 
       try {
-        console.log(`[KreditHook] Updating cache for ${effectiveYear}-Q${effectiveQuarter}`);
+        console.log(`[Hook] Updating cache for ${effectiveYear}-Q${effectiveQuarter}`);
 
         // Gunakan getOrCreateData untuk mendapatkan data terbaru
         const data = await getOrCreateData(effectiveYear, effectiveQuarter, true);
@@ -528,23 +508,23 @@ export const useKreditProdukIntegration = (initialYear?: number, initialQuarter?
         // Update cache
         updateCache(effectiveYear, effectiveQuarter, {
           rows: data.rows,
-          kreditId: data.kreditId,
+          inherentId: data.inherentId,
           entity: data.entity,
         });
 
         // Update state jika ini adalah period yang aktif
         if (year === effectiveYear && quarter === effectiveQuarter) {
           safeSet(setRows, data.rows);
-          safeSet(setCurrentKreditData, data.entity);
-          if (data.kreditId) {
-            safeSet(setCurrentKreditId, data.kreditId);
+          safeSet(setCurrentInherentData, data.entity);
+          if (data.inherentId) {
+            safeSet(setCurrentInherentId, data.inherentId);
           }
         }
 
-        console.log(`[KreditHook] Cache updated for ${effectiveYear}-Q${effectiveQuarter}: ${data.rows.length} parameters`);
+        console.log(`[Hook] Cache updated for ${effectiveYear}-Q${effectiveQuarter}: ${data.rows.length} parameters`);
         return data.rows;
       } catch (error) {
-        console.error(`[KreditHook] Error updating cache for ${effectiveYear}-Q${effectiveQuarter}:`, error);
+        console.error(`[Hook] Error updating cache for ${effectiveYear}-Q${effectiveQuarter}:`, error);
         throw error;
       }
     },
@@ -556,15 +536,15 @@ export const useKreditProdukIntegration = (initialYear?: number, initialQuarter?
   ======================= */
 
   const handleAddParameter = useCallback(
-    async (dto: Partial<CreateKreditParameterDto>) => {
+    async (dto: Partial<CreateParameterDto>) => {
       const context = validateAndGetCurrentContext();
-      console.log('[KreditHook] handleAddParameter called:', context);
+      console.log('[Hook] handleAddParameter called:', context);
 
       safeSet(setIsLoading, true);
       safeSet(setError, null);
 
       try {
-        const cleanPayload: CreateKreditParameterDto = {
+        const cleanPayload: CreateParameterDto = {
           nomor: dto.nomor?.toString().trim() || '',
           judul: dto.judul?.toString().trim() || '',
           bobot: formatBobot(dto.bobot),
@@ -594,40 +574,40 @@ export const useKreditProdukIntegration = (initialYear?: number, initialQuarter?
           underlying: Array.isArray(underlying) ? underlying : [],
         };
 
-        if (model === 'lainnya') {
-          cleanKategori.prinsip = undefined;
-          cleanKategori.jenis = undefined;
+        if (model === 'tanpa_model') {
+          cleanKategori.prinsip = null;
+          cleanKategori.jenis = null;
         } else {
-          cleanKategori.prinsip = prinsip || undefined;
-          if (model === 'konvensional' || model === 'syariah') {
-            cleanKategori.jenis = jenis || undefined;
-          } else if (model === 'kombinasi') {
-            cleanKategori.jenis = undefined;
+          cleanKategori.prinsip = prinsip || null;
+          if (model === 'open_end') {
+            cleanKategori.jenis = jenis || null;
+          } else if (model === 'terstruktur') {
+            cleanKategori.jenis = null;
           }
         }
 
-        const finalPayload: CreateKreditParameterDto = {
+        const finalPayload: CreateParameterDto = {
           ...cleanPayload,
           kategori: cleanKategori,
         };
 
-        console.log('[KreditHook] Add parameter payload:', JSON.stringify(finalPayload, null, 2));
+        console.log('[Hook] Add parameter payload:', JSON.stringify(finalPayload, null, 2));
 
         // Gunakan loadOrCreateData dari service untuk memastikan data ada
         await kreditProdukService.loadOrCreateData(context.year, context.quarter);
 
         // Tambahkan parameter
-        await kreditProdukService.addParameter(context.kreditId, finalPayload);
+        await kreditProdukService.addParameter(context.inherentId, finalPayload);
 
         // Update cache untuk year-quarter ini
         await updateCacheAfterOperation(context.year, context.quarter);
 
-        console.log('[KreditHook] Parameter added successfully');
+        console.log('[Hook] Parameter added successfully');
         safeSet(setIsLoading, false);
 
         return true;
       } catch (e: any) {
-        console.error('[KreditHook] Error adding parameter:', e);
+        console.error('[Hook] Error adding parameter:', e);
 
         let errorMessage = 'Gagal menambahkan parameter';
         if (e.response?.data) {
@@ -662,15 +642,15 @@ export const useKreditProdukIntegration = (initialYear?: number, initialQuarter?
   // =======================
 
   const handleUpdateParameter = useCallback(
-    async (parameterId: string, dto: UpdateKreditParameterDto) => {
+    async (parameterId: string, dto: UpdateParameterDto) => {
       const context = validateAndGetCurrentContext();
-      console.log('[KreditHook] handleUpdateParameter called:', { context, parameterId });
+      console.log('[Hook] handleUpdateParameter called:', { context, parameterId });
 
       safeSet(setIsLoading, true);
       safeSet(setError, null);
 
       try {
-        const payload: UpdateKreditParameterDto = {};
+        const payload: UpdateParameterDto = {};
 
         if (dto.nomor !== undefined) payload.nomor = dto.nomor;
         if (dto.judul !== undefined) {
@@ -694,25 +674,12 @@ export const useKreditProdukIntegration = (initialYear?: number, initialQuarter?
             throw new Error(validation.error);
           }
 
-          const { model, prinsip, jenis, underlying } = cleanKategori;
-          const formattedKategori: any = {
-            model,
+          const formattedKategori = {
+            model: cleanKategori.model,
+            prinsip: cleanKategori.model !== 'tanpa_model' ? cleanKategori.prinsip : undefined,
+            jenis: cleanKategori.model === 'open_end' ? cleanKategori.jenis : undefined,
+            underlying: cleanKategori.model === 'terstruktur' ? (Array.isArray(cleanKategori.underlying) ? cleanKategori.underlying : []) : [],
           };
-
-          if (model === 'lainnya') {
-            formattedKategori.prinsip = undefined;
-            formattedKategori.jenis = undefined;
-            formattedKategori.underlying = [];
-          } else {
-            formattedKategori.prinsip = prinsip || undefined;
-            if (model === 'konvensional' || model === 'syariah') {
-              formattedKategori.jenis = jenis || undefined;
-              formattedKategori.underlying = [];
-            } else if (model === 'kombinasi') {
-              formattedKategori.jenis = undefined;
-              formattedKategori.underlying = Array.isArray(underlying) ? underlying : [];
-            }
-          }
 
           payload.kategori = formattedKategori;
         }
@@ -723,19 +690,19 @@ export const useKreditProdukIntegration = (initialYear?: number, initialQuarter?
           throw new Error(`Parameter ID tidak valid: ${parameterId}`);
         }
 
-        console.log('[KreditHook] Update parameter payload:', JSON.stringify(payload, null, 2));
+        console.log('[Hook] Update parameter payload:', JSON.stringify(payload, null, 2));
 
-        await kreditProdukService.updateParameter(context.kreditId, parameterIdNum, payload);
+        await kreditProdukService.updateParameter(context.inherentId, parameterIdNum, payload);
 
         // Update cache untuk year-quarter ini
         await updateCacheAfterOperation(context.year, context.quarter);
 
-        console.log(`[KreditHook] Parameter ${parameterId} updated successfully`);
+        console.log(`[Hook] Parameter ${parameterId} updated successfully`);
         safeSet(setIsLoading, false);
 
         return true;
       } catch (e: any) {
-        console.error('[KreditHook] Error updating parameter:', e);
+        console.error('[Hook] Error updating parameter:', e);
 
         let errorMsg = 'Gagal mengupdate parameter';
         if (e.response?.data) {
@@ -765,7 +732,7 @@ export const useKreditProdukIntegration = (initialYear?: number, initialQuarter?
   const handleCopyParameter = useCallback(
     async (parameterId: string) => {
       const context = validateAndGetCurrentContext();
-      console.log(`[KreditHook] handleCopyParameter called: ${parameterId}`, context);
+      console.log(`[Hook] handleCopyParameter called: ${parameterId}`, context);
 
       safeSet(setIsLoading, true);
       safeSet(setError, null);
@@ -776,17 +743,17 @@ export const useKreditProdukIntegration = (initialYear?: number, initialQuarter?
           throw new Error(`Parameter ID tidak valid: ${parameterId}`);
         }
 
-        await kreditProdukService.copyParameter(context.kreditId, parameterIdNum);
+        await kreditProdukService.copyParameter(context.inherentId, parameterIdNum);
 
         // Update cache untuk year-quarter ini
         await updateCacheAfterOperation(context.year, context.quarter);
 
-        console.log(`[KreditHook] Parameter ${parameterId} copied successfully`);
+        console.log(`[Hook] Parameter ${parameterId} copied successfully`);
         safeSet(setIsLoading, false);
 
         return true;
       } catch (e: any) {
-        console.error('[KreditHook] Error copying parameter:', e);
+        console.error('[Hook] Error copying parameter:', e);
         const errorMsg = e.response?.data?.message || e.message || 'Gagal menyalin parameter';
         safeSet(setError, errorMsg);
         safeSet(setIsLoading, false);
@@ -803,7 +770,7 @@ export const useKreditProdukIntegration = (initialYear?: number, initialQuarter?
   const handleDeleteParameter = useCallback(
     async (parameterId: string) => {
       const context = validateAndGetCurrentContext();
-      console.log(`[KreditHook] handleDeleteParameter called: ${parameterId}`, context);
+      console.log(`[Hook] handleDeleteParameter called: ${parameterId}`, context);
 
       safeSet(setIsLoading, true);
       safeSet(setError, null);
@@ -814,17 +781,17 @@ export const useKreditProdukIntegration = (initialYear?: number, initialQuarter?
           throw new Error(`Parameter ID tidak valid: ${parameterId}`);
         }
 
-        await kreditProdukService.removeParameter(context.kreditId, parameterIdNum);
+        await kreditProdukService.removeParameter(context.inherentId, parameterIdNum);
 
         // Update cache untuk year-quarter ini
         await updateCacheAfterOperation(context.year, context.quarter);
 
-        console.log(`[KreditHook] Parameter ${parameterId} deleted successfully`);
+        console.log(`[Hook] Parameter ${parameterId} deleted successfully`);
         safeSet(setIsLoading, false);
 
         return true;
       } catch (e: any) {
-        console.error('[KreditHook] Error deleting parameter:', e);
+        console.error('[Hook] Error deleting parameter:', e);
         const errorMsg = e.response?.data?.message || e.message || 'Gagal menghapus parameter';
         safeSet(setError, errorMsg);
         safeSet(setIsLoading, false);
@@ -843,9 +810,9 @@ export const useKreditProdukIntegration = (initialYear?: number, initialQuarter?
   // =======================
 
   const handleAddNilai = useCallback(
-    async (parameterId: string, dto: CreateKreditNilaiDto) => {
+    async (parameterId: string, dto: CreateNilaiDto) => {
       const context = validateAndGetCurrentContext();
-      console.log(`[KreditHook] handleAddNilai called:`, { context, parameterId });
+      console.log(`[Hook] handleAddNilai called:`, { context, parameterId });
 
       safeSet(setIsLoading, true);
       safeSet(setError, null);
@@ -865,29 +832,29 @@ export const useKreditProdukIntegration = (initialYear?: number, initialQuarter?
           throw new Error(bobotValidation.error || 'Bobot tidak valid');
         }
 
-        const payload: CreateKreditNilaiDto = {
+        const payload: CreateNilaiDto = {
           ...dto,
           bobot: bobotValidation.value,
           judul: formatNilaiJudul(dto.judul),
         };
 
-        console.log('[KreditHook] Add nilai payload:', payload);
+        console.log('[Hook] Add nilai payload:', payload);
 
         // Gunakan loadOrCreateData dari service untuk memastikan data ada
         await kreditProdukService.loadOrCreateData(context.year, context.quarter);
 
         // Tambahkan nilai
-        await kreditProdukService.addNilai(context.kreditId, parameterIdNum, payload);
+        await kreditProdukService.addNilai(context.inherentId, parameterIdNum, payload);
 
         // Update cache untuk year-quarter ini
         await updateCacheAfterOperation(context.year, context.quarter);
 
-        console.log(`[KreditHook] Nilai added to parameter ${parameterId} successfully`);
+        console.log(`[Hook] Nilai added to parameter ${parameterId} successfully`);
         safeSet(setIsLoading, false);
 
         return true;
       } catch (e: any) {
-        console.error('[KreditHook] Error adding nilai:', e);
+        console.error('[Hook] Error adding nilai:', e);
         const errorMsg = e.response?.data?.message || e.message || 'Gagal menambahkan nilai';
         safeSet(setError, errorMsg);
         safeSet(setIsLoading, false);
@@ -902,9 +869,9 @@ export const useKreditProdukIntegration = (initialYear?: number, initialQuarter?
   // =======================
 
   const handleUpdateNilai = useCallback(
-    async (parameterId: string, nilaiId: string, dto: UpdateKreditNilaiDto) => {
+    async (parameterId: string, nilaiId: string, dto: UpdateNilaiDto) => {
       const context = validateAndGetCurrentContext();
-      console.log(`[KreditHook] handleUpdateNilai called:`, { context, parameterId, nilaiId });
+      console.log(`[Hook] handleUpdateNilai called:`, { context, parameterId, nilaiId });
 
       safeSet(setIsLoading, true);
       safeSet(setError, null);
@@ -917,7 +884,7 @@ export const useKreditProdukIntegration = (initialYear?: number, initialQuarter?
           throw new Error(`ID tidak valid: parameterId=${parameterId}, nilaiId=${nilaiId}`);
         }
 
-        const payload: UpdateKreditNilaiDto = { ...dto };
+        const payload: UpdateNilaiDto = { ...dto };
 
         if (dto.judul !== undefined) {
           payload.judul = formatNilaiJudul(dto.judul);
@@ -927,19 +894,19 @@ export const useKreditProdukIntegration = (initialYear?: number, initialQuarter?
           payload.bobot = formatBobot(dto.bobot);
         }
 
-        console.log('[KreditHook] Update nilai payload:', payload);
+        console.log('[Hook] Update nilai payload:', payload);
 
-        await kreditProdukService.updateNilai(context.kreditId, parameterIdNum, nilaiIdNum, payload);
+        await kreditProdukService.updateNilai(context.inherentId, parameterIdNum, nilaiIdNum, payload);
 
         // Update cache untuk year-quarter ini
         await updateCacheAfterOperation(context.year, context.quarter);
 
-        console.log(`[KreditHook] Nilai ${nilaiId} updated successfully`);
+        console.log(`[Hook] Nilai ${nilaiId} updated successfully`);
         safeSet(setIsLoading, false);
 
         return true;
       } catch (e: any) {
-        console.error('[KreditHook] Error updating nilai:', e);
+        console.error('[Hook] Error updating nilai:', e);
         const errorMsg = e.response?.data?.message || e.message || 'Gagal mengupdate nilai';
         safeSet(setError, errorMsg);
         safeSet(setIsLoading, false);
@@ -956,7 +923,7 @@ export const useKreditProdukIntegration = (initialYear?: number, initialQuarter?
   const handleCopyNilai = useCallback(
     async (parameterId: string, nilaiId: string) => {
       const context = validateAndGetCurrentContext();
-      console.log(`[KreditHook] handleCopyNilai called:`, { context, parameterId, nilaiId });
+      console.log(`[Hook] handleCopyNilai called:`, { context, parameterId, nilaiId });
 
       safeSet(setIsLoading, true);
       safeSet(setError, null);
@@ -969,17 +936,17 @@ export const useKreditProdukIntegration = (initialYear?: number, initialQuarter?
           throw new Error(`ID tidak valid: parameterId=${parameterId}, nilaiId=${nilaiId}`);
         }
 
-        await kreditProdukService.copyNilai(context.kreditId, parameterIdNum, nilaiIdNum);
+        await kreditProdukService.copyNilai(context.inherentId, parameterIdNum, nilaiIdNum);
 
         // Update cache untuk year-quarter ini
         await updateCacheAfterOperation(context.year, context.quarter);
 
-        console.log(`[KreditHook] Nilai ${nilaiId} copied successfully`);
+        console.log(`[Hook] Nilai ${nilaiId} copied successfully`);
         safeSet(setIsLoading, false);
 
         return true;
       } catch (e: any) {
-        console.error('[KreditHook] Error copying nilai:', e);
+        console.error('[Hook] Error copying nilai:', e);
         const errorMsg = e.response?.data?.message || e.message || 'Gagal menyalin nilai';
         safeSet(setError, errorMsg);
         safeSet(setIsLoading, false);
@@ -996,7 +963,7 @@ export const useKreditProdukIntegration = (initialYear?: number, initialQuarter?
   const handleDeleteNilai = useCallback(
     async (parameterId: string, nilaiId: string) => {
       const context = validateAndGetCurrentContext();
-      console.log(`[KreditHook] handleDeleteNilai called:`, { context, parameterId, nilaiId });
+      console.log(`[Hook] handleDeleteNilai called:`, { context, parameterId, nilaiId });
 
       safeSet(setIsLoading, true);
       safeSet(setError, null);
@@ -1009,17 +976,17 @@ export const useKreditProdukIntegration = (initialYear?: number, initialQuarter?
           throw new Error(`ID tidak valid: parameterId=${parameterId}, nilaiId=${nilaiId}`);
         }
 
-        await kreditProdukService.removeNilai(context.kreditId, parameterIdNum, nilaiIdNum);
+        await kreditProdukService.removeNilai(context.inherentId, parameterIdNum, nilaiIdNum);
 
         // Update cache untuk year-quarter ini
         await updateCacheAfterOperation(context.year, context.quarter);
 
-        console.log(`[KreditHook] Nilai ${nilaiId} deleted successfully`);
+        console.log(`[Hook] Nilai ${nilaiId} deleted successfully`);
         safeSet(setIsLoading, false);
 
         return true;
       } catch (e: any) {
-        console.error('[KreditHook] Error deleting nilai:', e);
+        console.error('[Hook] Error deleting nilai:', e);
         const errorMsg = e.response?.data?.message || e.message || 'Gagal menghapus nilai';
         safeSet(setError, errorMsg);
         safeSet(setIsLoading, false);
@@ -1036,7 +1003,7 @@ export const useKreditProdukIntegration = (initialYear?: number, initialQuarter?
   const handleReorderParameters = useCallback(
     async (parameterIds: string[]) => {
       const context = validateAndGetCurrentContext();
-      console.log(`[KreditHook] handleReorderParameters called:`, { context, parameterIds });
+      console.log(`[Hook] handleReorderParameters called:`, { context, parameterIds });
 
       safeSet(setIsLoading, true);
       safeSet(setError, null);
@@ -1048,17 +1015,17 @@ export const useKreditProdukIntegration = (initialYear?: number, initialQuarter?
           throw new Error('Beberapa ID parameter tidak valid');
         }
 
-        await kreditProdukService.reorderParameters(context.kreditId, parameterIdsNum);
+        await kreditProdukService.reorderParameters(context.inherentId, parameterIdsNum);
 
         // Update cache untuk year-quarter ini
         await updateCacheAfterOperation(context.year, context.quarter);
 
-        console.log(`[KreditHook] Parameters reordered successfully`);
+        console.log(`[Hook] Parameters reordered successfully`);
         safeSet(setIsLoading, false);
 
         return true;
       } catch (e: any) {
-        console.error('[KreditHook] Error reordering parameters:', e);
+        console.error('[Hook] Error reordering parameters:', e);
         const errorMsg = e.response?.data?.message || e.message || 'Gagal mengurutkan parameter';
         safeSet(setError, errorMsg);
         safeSet(setIsLoading, false);
@@ -1075,7 +1042,7 @@ export const useKreditProdukIntegration = (initialYear?: number, initialQuarter?
   const handleReorderNilai = useCallback(
     async (parameterId: string, nilaiIds: string[]) => {
       const context = validateAndGetCurrentContext();
-      console.log(`[KreditHook] handleReorderNilai called:`, { context, parameterId, nilaiIds });
+      console.log(`[Hook] handleReorderNilai called:`, { context, parameterId, nilaiIds });
 
       safeSet(setIsLoading, true);
       safeSet(setError, null);
@@ -1092,17 +1059,17 @@ export const useKreditProdukIntegration = (initialYear?: number, initialQuarter?
           throw new Error('Beberapa ID nilai tidak valid');
         }
 
-        await kreditProdukService.reorderNilai(context.kreditId, parameterIdNum, nilaiIdsNum);
+        await kreditProdukService.reorderNilai(context.inherentId, parameterIdNum, nilaiIdsNum);
 
         // Update cache untuk year-quarter ini
         await updateCacheAfterOperation(context.year, context.quarter);
 
-        console.log(`[KreditHook] Nilai reordered successfully for parameter ${parameterId}`);
+        console.log(`[Hook] Nilai reordered successfully for parameter ${parameterId}`);
         safeSet(setIsLoading, false);
 
         return true;
       } catch (e: any) {
-        console.error('[KreditHook] Error reordering nilai:', e);
+        console.error('[Hook] Error reordering nilai:', e);
         const errorMsg = e.response?.data?.message || e.message || 'Gagal mengurutkan nilai';
         safeSet(setError, errorMsg);
         safeSet(setIsLoading, false);
@@ -1119,7 +1086,7 @@ export const useKreditProdukIntegration = (initialYear?: number, initialQuarter?
   const getParameterById = useCallback(
     (parameterId: string) => {
       if (!Array.isArray(rows)) {
-        console.warn('[KreditHook] rows is not an array in getParameterById');
+        console.warn('[Hook] rows is not an array in getParameterById');
         return undefined;
       }
       return rows.find((p) => p.id === parameterId);
@@ -1140,7 +1107,7 @@ export const useKreditProdukIntegration = (initialYear?: number, initialQuarter?
         throw new Error('Year dan quarter diperlukan untuk reload data');
       }
 
-      console.log(`[KreditHook] Reloading data for ${targetYear}-Q${targetQuarter}`);
+      console.log(`[Hook] Reloading data for ${targetYear}-Q${targetQuarter}`);
 
       // Clear cache untuk year-quarter ini
       clearCache(targetYear, targetQuarter);
@@ -1148,8 +1115,8 @@ export const useKreditProdukIntegration = (initialYear?: number, initialQuarter?
       // Jika ini adalah period yang aktif, update state
       if (year === targetYear && quarter === targetQuarter) {
         safeSet(setRows, []);
-        safeSet(setCurrentKreditId, null);
-        safeSet(setCurrentKreditData, null);
+        safeSet(setCurrentInherentId, null);
+        safeSet(setCurrentInherentData, null);
         safeSet(setError, null);
         safeSet(setIsLoading, true);
       }
@@ -1160,13 +1127,13 @@ export const useKreditProdukIntegration = (initialYear?: number, initialQuarter?
   );
 
   const reset = useCallback(() => {
-    console.log('[KreditHook] Resetting hook state');
+    console.log('[Hook] Resetting hook state');
 
     safeSet(setRows, []);
     safeSet(setIsLoading, false);
     safeSet(setError, null);
-    safeSet(setCurrentKreditId, null);
-    safeSet(setCurrentKreditData, null);
+    safeSet(setCurrentInherentId, null);
+    safeSet(setCurrentInherentData, null);
     safeSet(setYear, null);
     safeSet(setQuarter, null);
     safeSet(setActivePeriodKey, '');
@@ -1176,12 +1143,12 @@ export const useKreditProdukIntegration = (initialYear?: number, initialQuarter?
   }, [clearCache]);
 
   const clearError = useCallback(() => {
-    console.log('[KreditHook] Clearing error');
+    console.log('[Hook] Clearing error');
     safeSet(setError, null);
   }, []);
 
   const safeSetRows = useCallback((newRows: any) => {
-    console.log('[KreditHook] Setting new rows:', {
+    console.log('[Hook] Setting new rows:', {
       inputType: typeof newRows,
       isArray: Array.isArray(newRows),
       length: Array.isArray(newRows) ? newRows.length : 'N/A',
@@ -1198,15 +1165,15 @@ export const useKreditProdukIntegration = (initialYear?: number, initialQuarter?
   useEffect(() => {
     const initLoad = async () => {
       if (initialYear && initialQuarter) {
-        console.log(`[KreditHook] Auto-loading data for ${initialYear}-Q${initialQuarter}`);
+        console.log(`[Hook] Auto-loading data for ${initialYear}-Q${initialQuarter}`);
         try {
           await loadData(initialYear, initialQuarter, true);
         } catch (error) {
-          console.error('[KreditHook] Auto-load failed:', error);
+          console.error('[Hook] Auto-load failed:', error);
           safeSet(setRows, []);
         }
       } else {
-        console.log('[KreditHook] No initialYear/initialQuarter provided, skipping auto-load');
+        console.log('[Hook] No initialYear/initialQuarter provided, skipping auto-load');
       }
     };
 
@@ -1228,8 +1195,8 @@ export const useKreditProdukIntegration = (initialYear?: number, initialQuarter?
     rows: Array.isArray(rows) ? rows : [],
     isLoading,
     error,
-    currentKreditId,
-    currentKreditData,
+    currentInherentId,
+    currentInherentData,
     year,
     quarter,
     activePeriodKey,
@@ -1243,19 +1210,19 @@ export const useKreditProdukIntegration = (initialYear?: number, initialQuarter?
 
     // Parameter operations
     handleAddParameter,
-    handleUpdateParameter,
-    handleCopyParameter,
-    handleDeleteParameter,
+    handleUpdateParameter, // DITAMBAHKAN
+    handleCopyParameter, // DITAMBAHKAN
+    handleDeleteParameter, // DITAMBAHKAN
 
     // Nilai operations
-    handleAddNilai,
-    handleUpdateNilai,
-    handleCopyNilai,
-    handleDeleteNilai,
+    handleAddNilai, // DITAMBAHKAN
+    handleUpdateNilai, // DITAMBAHKAN
+    handleCopyNilai, // DITAMBAHKAN
+    handleDeleteNilai, // DITAMBAHKAN
 
     // Reorder operations
-    handleReorderParameters,
-    handleReorderNilai,
+    handleReorderParameters, // DITAMBAHKAN
+    handleReorderNilai, // DITAMBAHKAN
 
     // Helper functions
     getParameterById,
@@ -1283,7 +1250,7 @@ export const useKreditProdukIntegration = (initialYear?: number, initialQuarter?
 
     // Status helpers
     hasData: Array.isArray(rows) && rows.length > 0,
-    isReady: currentKreditId !== null && !isLoading,
+    isReady: currentInherentId !== null && !isLoading,
     hasError: error !== null,
 
     // Debug info

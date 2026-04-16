@@ -1,12 +1,36 @@
-import { OperasionalKpmrOjkService } from './operasional-kpmr-ojk.service';
-import { CreateOperasionalKpmrOjkDto } from './dto/create-operasional-kpmr-ojk.dto';
-import { UpdateOperasionalKpmrOjkDto } from './dto/update-operasional-kpmr-ojk.dto';
-export declare class OperasionalKpmrOjkController {
-    private readonly operasionalKpmrOjkService;
-    constructor(operasionalKpmrOjkService: OperasionalKpmrOjkService);
-    create(createOperasionalKpmrOjkDto: CreateOperasionalKpmrOjkDto): string;
-    findAll(): string;
-    findOne(id: string): string;
-    update(id: string, updateOperasionalKpmrOjkDto: UpdateOperasionalKpmrOjkDto): string;
-    remove(id: string): string;
+import { KpmrOperasionalService } from './operasional-kpmr-ojk.service';
+import { CreateKpmrOperasionalOjkDto, CreateKpmrAspekOperasionalDto, CreateKpmrPertanyaanOperasionalDto, UpdateKpmrAspekOperasionalDto, UpdateKpmrOperasionalOjkDto, UpdateKpmrPertanyaanOperasionalDto, UpdateSkorDto, UpdateSummaryDto, BulkUpdateSkorDto, ReorderAspekDto, ReorderPertanyaanDto, FrontendAspekResponseDto, FrontendKpmrResponseDto, FrontendPertanyaanResponseDto } from './dto/operasional-kpmr.dto';
+export declare class KpmrOperasionalController {
+    private readonly kpmrService;
+    constructor(kpmrService: KpmrOperasionalService);
+    create(createDto: CreateKpmrOperasionalOjkDto, req: any): Promise<FrontendKpmrResponseDto>;
+    findAll(year?: string, quarter?: string, isActive?: string, isLocked?: string, search?: string, withRelations?: string): Promise<FrontendKpmrResponseDto[]>;
+    getActive(): Promise<FrontendKpmrResponseDto | null>;
+    findByYearQuarter(year: string, quarter: string): Promise<FrontendKpmrResponseDto>;
+    findOne(id: string): Promise<FrontendKpmrResponseDto>;
+    update(id: string, updateDto: UpdateKpmrOperasionalOjkDto): Promise<FrontendKpmrResponseDto>;
+    remove(id: string): Promise<void>;
+    lockKpmr(id: string, lockedBy: string): Promise<FrontendKpmrResponseDto>;
+    unlockKpmr(id: string, unlockedBy?: string): Promise<FrontendKpmrResponseDto>;
+    duplicate(id: string, year: number, quarter: number, createdBy?: string, copyScores?: boolean): Promise<FrontendKpmrResponseDto>;
+    getSummary(id: string): Promise<UpdateSummaryDto>;
+    updateSummary(id: string, updateDto: UpdateSummaryDto): Promise<UpdateSummaryDto>;
+    createAspek(kpmrId: string, createDto: CreateKpmrAspekOperasionalDto): Promise<FrontendAspekResponseDto>;
+    updateAspek(id: string, updateDto: UpdateKpmrAspekOperasionalDto): Promise<FrontendAspekResponseDto>;
+    removeAspek(id: string): Promise<void>;
+    reorderAspek(kpmrId: string, reorderDto: ReorderAspekDto): Promise<void>;
+    createPertanyaan(aspekId: string, createDto: CreateKpmrPertanyaanOperasionalDto): Promise<FrontendPertanyaanResponseDto>;
+    updatePertanyaan(id: string, updateDto: UpdateKpmrPertanyaanOperasionalDto): Promise<FrontendPertanyaanResponseDto>;
+    findAllAspek(kpmrId: string): Promise<FrontendAspekResponseDto[]>;
+    findOneAspek(id: string): Promise<FrontendAspekResponseDto>;
+    updateSkor(id: string, updateSkorDto: UpdateSkorDto): Promise<FrontendPertanyaanResponseDto>;
+    bulkUpdateSkor(bulkDto: BulkUpdateSkorDto): Promise<void>;
+    removePertanyaan(id: string): Promise<void>;
+    reorderPertanyaan(aspekId: string, reorderDto: ReorderPertanyaanDto): Promise<void>;
+    validateKpmr(id: string): Promise<{
+        isValid: boolean;
+        errors: string[];
+        warnings: string[];
+    }>;
+    getStatistics(id: string): Promise<any>;
 }

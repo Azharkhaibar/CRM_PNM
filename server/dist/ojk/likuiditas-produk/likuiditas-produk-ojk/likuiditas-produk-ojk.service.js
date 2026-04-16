@@ -240,33 +240,33 @@ let LikuiditasProdukOjkService = LikuiditasProdukOjkService_1 = class Likuiditas
         }
         if (createParamDto.kategori) {
             const kategori = createParamDto.kategori;
-            if (kategori.model === likuditas_produk_inherent_dto_1.LikuiditasKategoriModel.STANDAR) {
+            if (kategori.model === likuditas_produk_inherent_dto_1.KategoriModel.OPEN_END) {
                 if (!kategori.jenis) {
-                    throw new common_1.BadRequestException('Untuk model "standar", jenis likuiditas wajib dipilih');
+                    throw new common_1.BadRequestException('Untuk model "open_end", jenis reksa dana wajib dipilih');
                 }
                 if (kategori.underlying && kategori.underlying.length > 0) {
-                    throw new common_1.BadRequestException('Untuk model "standar", underlying harus kosong');
+                    throw new common_1.BadRequestException('Untuk model "open_end", aset dasar harus kosong');
                 }
                 if (!kategori.prinsip) {
-                    throw new common_1.BadRequestException('Prinsip (syariah/konvensional) wajib dipilih untuk model "standar"');
+                    throw new common_1.BadRequestException('Prinsip (syariah/konvensional) wajib dipilih untuk model "open_end"');
                 }
             }
-            if (kategori.model === likuditas_produk_inherent_dto_1.LikuiditasKategoriModel.KOMPREHENSIF) {
+            if (kategori.model === likuditas_produk_inherent_dto_1.KategoriModel.TERSTRUKTUR) {
                 if (kategori.jenis) {
-                    throw new common_1.BadRequestException('Untuk model "komprehensif", jenis harus kosong');
+                    throw new common_1.BadRequestException('Untuk model "terstruktur", jenis harus kosong');
                 }
                 if (!kategori.underlying || kategori.underlying.length === 0) {
-                    this.logger.warn(`addParameter: Model "komprehensif" tanpa underlying untuk parameter "${createParamDto.judul}"`);
+                    this.logger.warn(`addParameter: Model "terstruktur" tanpa underlying untuk parameter "${createParamDto.judul}"`);
                 }
                 if (!kategori.prinsip) {
-                    throw new common_1.BadRequestException('Prinsip (syariah/konvensional) wajib dipilih untuk model "komprehensif"');
+                    throw new common_1.BadRequestException('Prinsip (syariah/konvensional) wajib dipilih untuk model "terstruktur"');
                 }
             }
-            if (kategori.model === likuditas_produk_inherent_dto_1.LikuiditasKategoriModel.TANPA_MODEL) {
+            if (kategori.model === likuditas_produk_inherent_dto_1.KategoriModel.TANPA_MODEL) {
                 if (kategori.prinsip ||
                     kategori.jenis ||
                     (kategori.underlying && kategori.underlying.length > 0)) {
-                    throw new common_1.BadRequestException('Untuk model "tanpa_model", prinsip, jenis, dan underlying harus kosong');
+                    throw new common_1.BadRequestException('Untuk model "tanpa_model", prinsip, jenis, dan aset dasar harus kosong');
                 }
             }
         }
@@ -278,15 +278,13 @@ let LikuiditasProdukOjkService = LikuiditasProdukOjkService_1 = class Likuiditas
         const kategoriFormatted = createParamDto.kategori
             ? {
                 model: createParamDto.kategori.model,
-                prinsip: createParamDto.kategori.model !==
-                    likuditas_produk_inherent_dto_1.LikuiditasKategoriModel.TANPA_MODEL
+                prinsip: createParamDto.kategori.model !== likuditas_produk_inherent_dto_1.KategoriModel.TANPA_MODEL
                     ? createParamDto.kategori.prinsip
                     : undefined,
-                jenis: createParamDto.kategori.model === likuditas_produk_inherent_dto_1.LikuiditasKategoriModel.STANDAR
+                jenis: createParamDto.kategori.model === likuditas_produk_inherent_dto_1.KategoriModel.OPEN_END
                     ? createParamDto.kategori.jenis
                     : undefined,
-                underlying: createParamDto.kategori.model ===
-                    likuditas_produk_inherent_dto_1.LikuiditasKategoriModel.KOMPREHENSIF
+                underlying: createParamDto.kategori.model === likuditas_produk_inherent_dto_1.KategoriModel.TERSTRUKTUR
                     ? createParamDto.kategori.underlying || []
                     : [],
             }
@@ -334,44 +332,44 @@ let LikuiditasProdukOjkService = LikuiditasProdukOjkService_1 = class Likuiditas
             parameter.orderIndex = updateParamDto.orderIndex;
         if (updateParamDto.kategori) {
             const kategori = updateParamDto.kategori;
-            if (kategori.model === likuditas_produk_inherent_dto_1.LikuiditasKategoriModel.KOMPREHENSIF) {
+            if (kategori.model === likuditas_produk_inherent_dto_1.KategoriModel.TERSTRUKTUR) {
                 if (!kategori.prinsip) {
-                    throw new common_1.BadRequestException('Prinsip (syariah/konvensional) wajib dipilih untuk model "komprehensif"');
+                    throw new common_1.BadRequestException('Prinsip (syariah/konvensional) wajib dipilih untuk model "terstruktur"');
                 }
                 if (!kategori.underlying || kategori.underlying.length === 0) {
-                    this.logger.warn(`updateParameter: Model "komprehensif" tanpa underlying untuk parameter "${parameter.judul}"`);
+                    this.logger.warn(`updateParameter: Model "terstruktur" tanpa underlying untuk parameter "${parameter.judul}"`);
                 }
                 if (kategori.jenis) {
-                    throw new common_1.BadRequestException('Untuk model "komprehensif", jenis harus kosong');
+                    throw new common_1.BadRequestException('Untuk model "terstruktur", jenis harus kosong');
                 }
             }
-            if (kategori.model === likuditas_produk_inherent_dto_1.LikuiditasKategoriModel.STANDAR) {
+            if (kategori.model === likuditas_produk_inherent_dto_1.KategoriModel.OPEN_END) {
                 if (!kategori.prinsip) {
-                    throw new common_1.BadRequestException('Prinsip (syariah/konvensional) wajib dipilih untuk model "standar"');
+                    throw new common_1.BadRequestException('Prinsip (syariah/konvensional) wajib dipilih untuk model "open_end"');
                 }
                 if (!kategori.jenis) {
-                    throw new common_1.BadRequestException('Untuk model "standar", jenis likuiditas wajib dipilih');
+                    throw new common_1.BadRequestException('Untuk model "open_end", jenis reksa dana wajib dipilih');
                 }
                 if (kategori.underlying && kategori.underlying.length > 0) {
-                    throw new common_1.BadRequestException('Untuk model "standar", underlying harus kosong');
+                    throw new common_1.BadRequestException('Untuk model "open_end", aset dasar harus kosong');
                 }
             }
-            if (kategori.model === likuditas_produk_inherent_dto_1.LikuiditasKategoriModel.TANPA_MODEL) {
+            if (kategori.model === likuditas_produk_inherent_dto_1.KategoriModel.TANPA_MODEL) {
                 if (kategori.prinsip ||
                     kategori.jenis ||
                     (kategori.underlying && kategori.underlying.length > 0)) {
-                    throw new common_1.BadRequestException('Untuk model "tanpa_model", prinsip, jenis, dan underlying harus kosong');
+                    throw new common_1.BadRequestException('Untuk model "tanpa_model", prinsip, jenis, dan aset dasar harus kosong');
                 }
             }
             parameter.kategori = {
                 model: kategori.model,
-                prinsip: kategori.model !== likuditas_produk_inherent_dto_1.LikuiditasKategoriModel.TANPA_MODEL
+                prinsip: kategori.model !== likuditas_produk_inherent_dto_1.KategoriModel.TANPA_MODEL
                     ? kategori.prinsip
                     : undefined,
-                jenis: kategori.model === likuditas_produk_inherent_dto_1.LikuiditasKategoriModel.STANDAR
+                jenis: kategori.model === likuditas_produk_inherent_dto_1.KategoriModel.OPEN_END
                     ? kategori.jenis
                     : undefined,
-                underlying: kategori.model === likuditas_produk_inherent_dto_1.LikuiditasKategoriModel.KOMPREHENSIF
+                underlying: kategori.model === likuditas_produk_inherent_dto_1.KategoriModel.TERSTRUKTUR
                     ? kategori.underlying || []
                     : [],
             };
@@ -531,7 +529,7 @@ let LikuiditasProdukOjkService = LikuiditasProdukOjkService_1 = class Likuiditas
         const nilai = {
             nomor: createNilaiDto.nomor || '',
             judul: {
-                type: createNilaiDto.judul?.type || likuditas_produk_inherent_dto_1.LikuiditasJudulType.TANPA_FAKTOR,
+                type: createNilaiDto.judul?.type || likuditas_produk_inherent_dto_1.JudulType.TANPA_FAKTOR,
                 text: judulText.trim(),
                 value: createNilaiDto.judul?.value ?? null,
                 pembilang: createNilaiDto.judul?.pembilang || '',
@@ -695,74 +693,38 @@ let LikuiditasProdukOjkService = LikuiditasProdukOjkService_1 = class Likuiditas
         query.orderBy('ref.order', 'ASC');
         return query.getMany();
     }
-    async validateModelLikuiditas(id) {
+    async validateModelTerstruktur(inherentId) {
         const result = {
             isValid: true,
             warnings: [],
             errors: [],
         };
         const inherent = await this.inherentRepository.findOne({
-            where: { id },
+            where: { id: inherentId },
             relations: ['parameters'],
         });
         if (!inherent) {
-            result.errors.push(`Data dengan ID ${id} tidak ditemukan`);
+            result.errors.push(`Data dengan ID ${inherentId} tidak ditemukan`);
             result.isValid = false;
             return result;
         }
-        const komprehensifParams = inherent.parameters?.filter((param) => param.kategori?.model === likuditas_produk_inherent_dto_1.LikuiditasKategoriModel.KOMPREHENSIF) || [];
-        komprehensifParams.forEach((param, index) => {
+        const terstrukturParams = inherent.parameters?.filter((param) => param.kategori?.model === likuditas_produk_inherent_dto_1.KategoriModel.TERSTRUKTUR) || [];
+        terstrukturParams.forEach((param, index) => {
             if (!param.kategori?.prinsip) {
-                result.errors.push(`Parameter "${param.judul}" (model komprehensif) harus memiliki prinsip`);
+                result.errors.push(`Parameter "${param.judul}" (model terstruktur) harus memiliki prinsip`);
                 result.isValid = false;
             }
             if (!param.kategori?.underlying ||
                 param.kategori.underlying.length === 0) {
-                result.warnings.push(`Parameter "${param.judul}" (model komprehensif) tidak memiliki underlying`);
+                result.warnings.push(`Parameter "${param.judul}" (model terstruktur) tidak memiliki aset dasar`);
             }
             if (param.kategori?.jenis) {
-                result.errors.push(`Parameter "${param.judul}" (model komprehensif) seharusnya tidak memiliki jenis`);
+                result.errors.push(`Parameter "${param.judul}" (model terstruktur) seharusnya tidak memiliki jenis`);
                 result.isValid = false;
             }
         });
-        this.logger.log(`validateModelLikuiditas: Validasi selesai - ${result.errors.length} errors, ${result.warnings.length} warnings`);
+        this.logger.log(`validateModelTerstruktur: Validasi selesai - ${result.errors.length} errors, ${result.warnings.length} warnings`);
         return result;
-    }
-    async getStatistics(id) {
-        this.logger.log(`getStatistics: Mendapatkan statistik - ID: ${id}`);
-        const inherent = await this.inherentRepository.findOne({
-            where: { id },
-            relations: ['parameters', 'parameters.nilaiList'],
-        });
-        if (!inherent) {
-            throw new common_1.NotFoundException(`Data dengan ID ${id} tidak ditemukan`);
-        }
-        let totalQuestions = 0;
-        let totalWeighted = 0;
-        inherent.parameters?.forEach((param) => {
-            const paramBobot = Number(param.bobot) / 100;
-            param.nilaiList?.forEach((nilai) => {
-                totalQuestions++;
-                totalWeighted += Number(nilai.bobot) * paramBobot;
-            });
-        });
-        return {
-            totalQuestions,
-            aspekCount: inherent.parameters?.length || 0,
-            averageScore: totalWeighted,
-            rating: this.getRating(totalWeighted),
-        };
-    }
-    getRating(score) {
-        if (score >= 4.5)
-            return 'Strong';
-        if (score >= 3.5)
-            return 'Satisfactory';
-        if (score >= 2.5)
-            return 'Fair';
-        if (score >= 1.5)
-            return 'Marginal';
-        return 'Unsatisfactory';
     }
     async exportToExcel(inherentId) {
         this.logger.log(`exportToExcel: Mengekspor ke Excel - ID: ${inherentId}`);
@@ -852,7 +814,7 @@ let LikuiditasProdukOjkService = LikuiditasProdukOjkService_1 = class Likuiditas
                         const nilai = {
                             nomor: nilaiData.nomor || '',
                             judul: nilaiData.judul || {
-                                type: likuditas_produk_inherent_dto_1.LikuiditasJudulType.TANPA_FAKTOR,
+                                type: likuditas_produk_inherent_dto_1.JudulType.TANPA_FAKTOR,
                                 text: '',
                                 value: null,
                                 pembilang: '',

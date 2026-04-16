@@ -14,10 +14,11 @@ import { LikuiditasModule } from './likuiditas/likuiditas/likuiditas.module';
 import { OperasionalModule } from './operasional/operasional/operasional.module';
 import { DivisiModule } from './divisi/divisi.module';
 import { NotificationModule } from './notification/notification.module';
-import { KpmrInvestasiModule } from './investasi/kpmr-investasi/kpmr-investasi.module';
-import { AuditLogModule } from './audit-log/audit-log.module';
 import { KpmrLikuiditasModule } from './likuiditas/kpmr-likuiditas/kpmr-likuiditas.module';
-import { NewInvestasiModule } from './investasi/new-investasi/new-investasi.module';
+import { AuditLogModule } from './audit-log/audit-log.module';
+import { LikuiditasKpmrModule } from './ojk/likuiditas-produk/likuiditas-produk-kpmr/likuiditas-produk-kpmr.module';
+import { KpmrInvestasiModule } from './investasi/kpmr-investasi/kpmr-investasi.module';
+import { InvestasiModule } from './investasi/new-investasi/new-investasi.module';
 import { HukumModule } from './hukum/hukum/hukum.module';
 import { KpmrHukumModule } from './hukum/kpmr-hukum/kpmr-hukum.module';
 import { StrategikModule } from './stratejik/stratejik/stratejik.module';
@@ -34,30 +35,30 @@ import { RasModule } from './ras/ras.module';
 // import { PasarProdukKpmrModule } from './ojk/pasar-produk/pasar-produk-kpmr/pasar-produk-kpmr.module';
 import { KpmrPasarModule } from './pasar/kpmr-pasar/kpmr-pasar.module';
 import { LikuiditasProdukOjkModule } from './ojk/likuiditas-produk/likuiditas-produk-ojk/likuiditas-produk-ojk.module';
-import { LikuiditasKpmrModule } from './ojk/likuiditas-produk/likuiditas-produk-kpmr/likuiditas-produk-kpmr.module';
+
 import { KreditProdukOjkModule } from './ojk/kredit-produk/kredit-produk-ojk/kredit-produk-ojk.module';
 import { KreditProdukKpmrModule } from './ojk/kredit-produk/kredit-produk-kpmr/kredit-produk-kpmr.module';
 import { KonsentrasiProdukOjkModule } from './ojk/konsentrasi-produk/konsentrasi-produk-ojk/konsentrasi-produk-ojk.module';
-import { KonsentrasiProdukKpmrModule } from './ojk/konsentrasi-produk/konsentrasi-produk-kpmr/konsentrasi-produk-kpmr.module';
-import { OperasionalOjkModule } from './ojk/operasional-ojk/operasional-ojk/operasional-ojk.module';
-import { OperasionalKpmrOjkModule } from './ojk/operasional-ojk/operasional-kpmr-ojk/operasional-kpmr-ojk.module';
+import { KonsentrasiKpmrModule } from './ojk/konsentrasi-produk/konsentrasi-produk-kpmr/konsentrasi-produk-kpmr.module';
 import { HukumOjkModule } from './ojk/hukum-ojk/hukum-ojk/hukum-ojk.module';
-import { HukumKpmrOjkModule } from './ojk/hukum-ojk/hukum-kpmr-ojk/hukum-kpmr-ojk.module';
+import { HukumKpmrModule } from './ojk/hukum-ojk/hukum-kpmr-ojk/hukum-kpmr-ojk.module';
 import { KepatuhanOjkModule } from './ojk/kepatuhan-ojk/kepatuhan-ojk/kepatuhan-ojk.module';
-import { KepatuhanKpmrOjkModule } from './ojk/kepatuhan-ojk/kepatuhan-kpmr-ojk/kepatuhan-kpmr-ojk.module';
+import { KepatuhanProdukKpmrModule } from './ojk/kepatuhan-ojk/kepatuhan-kpmr-ojk/kepatuhan-kpmr-ojk.module';
 import { ReputasiOjkModule } from './ojk/reputasi-ojk/reputasi-ojk/reputasi-ojk.module';
-import { ReputasiKpmrOjkModule } from './ojk/reputasi-ojk/reputasi-kpmr-ojk/reputasi-kpmr-ojk.module';
+import { ReputasiProdukKpmrModule } from './ojk/reputasi-ojk/reputasi-kpmr-ojk/reputasi-kpmr-ojk.module';
 import { InvestasiOjkModule } from './ojk/investasi-ojk/investasi-ojk/investasi-ojk.module';
 import { InvestasiKpmrOjkModule } from './ojk/investasi-ojk/investasi-kpmr-ojk/investasi-kpmr-ojk.module';
 import { StrategisOjkModule } from './ojk/strategis-ojk/strategis-ojk/strategis-ojk.module';
-import { StrategisKpmrOjkModule } from './ojk/strategis-ojk/strategis-kpmr-ojk/strategis-kpmr-ojk.module';
-import { RentabilitasOjkModule } from './ojk/rentabilitas-ojk/rentabilitas-ojk/rentabilitas-ojk.module';
+import { StrategisProdukKpmrModule } from './ojk/strategis-ojk/strategis-kpmr-ojk/strategis-kpmr-ojk.module';
+import { RentabilitasProdukOjkModule } from './ojk/rentabilitas-ojk/rentabilitas-ojk/rentabilitas-ojk.module';
 import { RentabilitasKpmrOjkModule } from './ojk/rentabilitas-ojk/rentabilitas-kpmr-ojk/rentabilitas-kpmr-ojk.module';
 import { PasarProdukOjkModule } from './ojk/pasar-produk/pasar-produk-ojk/pasar-produk-ojk.module';
 import { RekapData1Module } from './ojk/rekap-data/rekap-data-1/rekap-data-1.module';
 import { RekapData2Module } from './ojk/rekap-data/rekap-data-2/rekap-data-2.module';
 import { PasarProdukKpmrModule } from './ojk/pasar-produk/pasar-produk-kpmr/pasar-produk-kpmr.module';
 import { Likuiditas } from './likuiditas/likuiditas/entities/likuiditas.entity';
+import { OperasionalOjkModule } from './ojk/operasional-ojk/operasional-ojk/operasional-ojk.module';
+import { OperasionalKpmrModule } from './ojk/operasional-ojk/operasional-kpmr-ojk/operasional-kpmr-ojk.module';
 
 @Module({
   imports: [
@@ -77,10 +78,11 @@ import { Likuiditas } from './likuiditas/likuiditas/entities/likuiditas.entity';
     NotificationModule,
     KpmrInvestasiModule,
     AuditLogModule,
-    KpmrLikuiditasModule,
     LikuiditasKpmrModule,
-    NewInvestasiModule,
+    InvestasiModule,
     HukumModule,
+    KonsentrasiProdukOjkModule,
+    KonsentrasiKpmrModule,
     PasarProdukKpmrModule,
     KpmrHukumModule,
     StrategikModule,
@@ -99,20 +101,20 @@ import { Likuiditas } from './likuiditas/likuiditas/entities/likuiditas.entity';
     KreditProdukOjkModule,
     KreditProdukKpmrModule,
     KonsentrasiProdukOjkModule,
-    KonsentrasiProdukKpmrModule,
     OperasionalOjkModule,
-    OperasionalKpmrOjkModule,
+    OperasionalKpmrModule,
     HukumOjkModule,
-    HukumKpmrOjkModule,
+    HukumKpmrModule,
     KepatuhanOjkModule,
-    KepatuhanKpmrOjkModule,
+    KepatuhanProdukKpmrModule,
     ReputasiOjkModule,
-    ReputasiKpmrOjkModule,
+    ReputasiProdukKpmrModule,
     InvestasiOjkModule,
     InvestasiKpmrOjkModule,
+    KpmrLikuiditasModule,
     StrategisOjkModule,
-    StrategisKpmrOjkModule,
-    RentabilitasOjkModule,
+    StrategisProdukKpmrModule,
+    RentabilitasProdukOjkModule,
     RentabilitasKpmrOjkModule,
     RekapData1Module,
     RekapData2Module,

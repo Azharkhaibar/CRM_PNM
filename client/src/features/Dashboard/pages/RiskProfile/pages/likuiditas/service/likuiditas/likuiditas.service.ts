@@ -1,4 +1,5 @@
 import axios, { AxiosResponse } from 'axios';
+import { SectionsWithIndicatorsResponse } from '../../pasar/service/pasar/pasar.service';
 
 // ENUMS
 export enum CalculationMode {
@@ -174,16 +175,14 @@ export const formatHasilNumber = (value: any, maxDecimals = 4): string => {
   const n = Number(value);
   if (!isFinite(n) || isNaN(n)) return '';
 
-  // batasi maxDecimals, lalu buang .0000 di belakang
   const fixed = n.toFixed(maxDecimals);
-  return fixed.replace(/\.?0+$/, ''); // "1.2300" -> "1.23", "0.0000" -> "0"
+  return fixed.replace(/\.?0+$/, '');
 };
 
 export const parseNum = (v: any): number => {
   if (v == null || v === '') return 0;
   if (typeof v === 'number') return v;
 
-  // buang koma, spasi, dll biar "1,000" -> "1000"
   const cleaned = String(v).replace(/,/g, '').replace(/\s/g, '');
   const n = Number(cleaned);
   return isNaN(n) ? 0 : n;
@@ -195,6 +194,11 @@ export const computeHasil = (ind: any): number | null => {
 
   const pemb = parseNum(ind.pembilangValue);
   const peny = parseNum(ind.penyebutValue);
+
+  if (mode === 'RASIO' && peny === 0) {
+    console.warn('Penyebut value adalah 0 untuk mode RASIO');
+    return null;
+  }
 
   if (ind.formula && ind.formula.trim() !== '') {
     try {
@@ -214,13 +218,11 @@ export const computeHasil = (ind: any): number | null => {
     }
   }
 
-  // 🔹 NILAI_TUNGGAL → langsung pakai nilai penyebut
   if (mode === 'NILAI_TUNGGAL') {
     if (ind.penyebutValue === '' || ind.penyebutValue == null) return null;
-    return peny; // boleh 0, 10, 100, dll
+    return peny;
   }
 
-  // 🔹 RASIO (default) → pemb / peny
   if (peny === 0) return null;
   const result = pemb / peny;
   if (!isFinite(result) || isNaN(result)) return null;
@@ -238,6 +240,14 @@ export const computeWeightedAuto = (ind: any, sectionBobot: number): number => {
 
 export const transformIndicatorToBackend = (indicatorData: any, year: number, quarter: Quarter, sectionId: number, sectionData: any): CreateLikuiditasData => {
   const hasilNum = computeHasil(indicatorData);
+
+  let penyebutValue = indicatorData.penyebutValue !== undefined && indicatorData.penyebutValue !== '' ? Number(indicatorData.penyebutValue) : undefined;
+
+  if (indicatorData.mode === CalculationMode.RASIO) {
+    if (penyebutValue === 0 || penyebutValue === undefined || isNaN(penyebutValue)) {
+      console.warn('Penyebut value untuk mode RASIO tidak valid:', penyebutValue);
+    }
+  }
 
   return {
     year,
@@ -262,7 +272,7 @@ export const transformIndicatorToBackend = (indicatorData: any, year: number, qu
     pembilangLabel: indicatorData.pembilangLabel?.trim() || undefined,
     pembilangValue: indicatorData.pembilangValue !== undefined && indicatorData.pembilangValue !== '' ? Number(indicatorData.pembilangValue) : undefined,
     penyebutLabel: indicatorData.penyebutLabel?.trim() || undefined,
-    penyebutValue: indicatorData.penyebutValue !== undefined && indicatorData.penyebutValue !== '' ? Number(indicatorData.penyebutValue) : undefined,
+    penyebutValue: penyebutValue,
     hasil: hasilNum !== null ? hasilNum : undefined,
     hasilText: indicatorData.mode === CalculationMode.TEKS ? indicatorData.hasilText || indicatorData.keterangan || '' : undefined,
     peringkat: Number(indicatorData.peringkat) || 1,
@@ -329,7 +339,6 @@ class LikuiditasApiService {
     this.baseUrl = 'http://localhost:5530/api/v1';
   }
 
-  // ========== SECTION API ==========
   async createSection(data: CreateLikuiditasSectionData): Promise<LikuiditasSection> {
     return this.request<LikuiditasSection>('post', '/likuiditas/sections', data);
   }
@@ -364,9 +373,26 @@ class LikuiditasApiService {
     return this.request<LikuiditasIndikator[]>('get', '/likuiditas/indikators/period', null, { year, quarter });
   }
 
-  // ✅ PERBAIKAN: Sama persis dengan Strategik
-  async getSectionsWithIndicatorsByPeriod(year: number, quarter: Quarter): Promise<Array<LikuiditasSection & { indicators: LikuiditasIndikator[] }>> {
-    return this.request<Array<LikuiditasSection & { indicators: LikuiditasIndikator[] }>>('get', '/likuiditas/indikators/sections-by-period', null, { year, quarter });
+  async getSectionsWithIndicatorsByPeriod(year: number, quarter: Quarter): Promise<any> {
+    try {
+      console.log(`📡 Calling API: getSectionsWithIndicatorsByPeriod for ${year}-${quarter}`);
+
+      const params = new URLSearchParams();
+      params.append('year', String(year));
+      params.append('quarter', String(quarter));
+
+      const url = `${this.baseUrl}/likuiditas/data/with-indicators?${params.toString()}`;
+      console.log('🔍 Full URL:', url);
+
+      const response = await axios.get(url);
+
+      console.log('✅ Response from backend:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error in getSectionsWithIndicatorsByPeriod:', error);
+      this.handleError(error);
+      throw error;
+    }
   }
 
   async searchIndikators(query?: string, year?: number, quarter?: Quarter): Promise<LikuiditasIndikator[]> {
@@ -390,7 +416,6 @@ class LikuiditasApiService {
     return this.request<void>('delete', `/likuiditas/indikators/${id}`);
   }
 
-  // ========== HELPER API ==========
   async getTotalWeightedByPeriod(year: number, quarter: Quarter): Promise<number> {
     const response = await this.request<TotalWeightedResponse>('get', '/likuiditas/total-weighted', null, { year, quarter });
     return response.total;
@@ -401,7 +426,10 @@ class LikuiditasApiService {
   }
 
   async duplicateIndikator(sourceId: number, targetYear: number, targetQuarter: Quarter): Promise<LikuiditasIndikator> {
-    return this.request<LikuiditasIndikator>('post', `/likuiditas/indikators/${sourceId}/duplicate`, null, { year: targetYear, quarter: targetQuarter });
+    return this.request<LikuiditasIndikator>('post', `/likuiditas/indikators/${sourceId}/duplicate`, null, {
+      year: targetYear,
+      quarter: targetQuarter,
+    });
   }
 
   // ========== HELPER METHODS ==========
@@ -463,5 +491,5 @@ class LikuiditasApiService {
   }
 }
 
-// Export singleton instance and all utilities
+// Export singleton instance
 export const likuiditasApiService = new LikuiditasApiService();

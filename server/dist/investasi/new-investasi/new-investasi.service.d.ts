@@ -29,13 +29,13 @@ export declare class InvestasiService {
     }>;
     searchIndikators(query?: string, year?: number, quarter?: Quarter): Promise<Investasi[]>;
     getTotalWeightedByPeriod(year: number, quarter: Quarter): Promise<number>;
-    private validateModeSpecificFields;
-    private calculateWeighted;
-    duplicateIndikatorToNewPeriod(sourceId: number, targetYear: number, targetQuarter: Quarter, createdBy?: string): Promise<Investasi>;
-    getIndikatorCountByPeriod(year: number, quarter: Quarter): Promise<number>;
     getSectionsWithIndicatorsByPeriod(year: number, quarter: Quarter): Promise<any>;
     getPeriods(): Promise<Array<{
         year: number;
         quarter: Quarter;
     }>>;
+    getIndikatorCountByPeriod(year: number, quarter: Quarter): Promise<number>;
+    duplicateIndikatorToNewPeriod(sourceId: number, targetYear: number, targetQuarter: Quarter, createdBy?: string): Promise<Investasi>;
+    private validateModeSpecificFields;
+    private calculateWeighted;
 }

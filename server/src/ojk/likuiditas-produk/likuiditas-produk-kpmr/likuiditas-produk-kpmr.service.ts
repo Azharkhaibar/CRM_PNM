@@ -27,7 +27,7 @@ import {
 } from './dto/likuiditas-kpmr.dto';
 
 import { KpmrPertanyaanLikuiditas } from './entities/likuiditas-kpmr-pertanyaan.entity';
-import { KpmrLikuiditas } from './entities/likuiditas-produk-ojk.entity';
+import { KpmrLikuiditasOjk } from './entities/likuiditas-produk-ojk.entity';
 import { KpmrAspekLikuiditas } from './entities/likuiditas-kpmr-aspek.entity';
 
 @Injectable()
@@ -37,8 +37,8 @@ export class KpmrLikuiditasService {
   private readonly BOBOT_TOLERANCE = 0.01;
 
   constructor(
-    @InjectRepository(KpmrLikuiditas)
-    private readonly kpmrRepository: Repository<KpmrLikuiditas>,
+    @InjectRepository(KpmrLikuiditasOjk)
+    private readonly kpmrRepository: Repository<KpmrLikuiditasOjk>,
 
     @InjectRepository(KpmrAspekLikuiditas)
     private readonly aspekRepository: Repository<KpmrAspekLikuiditas>,
@@ -85,7 +85,7 @@ export class KpmrLikuiditasService {
     }
   }
 
-  private async getKpmrWithRelations(id: number): Promise<KpmrLikuiditas> {
+  private async getKpmrWithRelations(id: number): Promise<KpmrLikuiditasOjk> {
     const kpmr = await this.kpmrRepository.findOne({
       where: { id },
       relations: ['aspekList', 'aspekList.pertanyaanList'],
@@ -107,7 +107,7 @@ export class KpmrLikuiditasService {
     return kpmr;
   }
 
-  private async getKpmrEntity(id: number): Promise<KpmrLikuiditas> {
+  private async getKpmrEntity(id: number): Promise<KpmrLikuiditasOjk> {
     const kpmr = await this.kpmrRepository.findOne({
       where: { id },
     });
@@ -176,7 +176,7 @@ export class KpmrLikuiditasService {
     return pertanyaan;
   }
 
-  private checkKpmrLocked(kpmr: KpmrLikuiditas, action: string): void {
+  private checkKpmrLocked(kpmr: KpmrLikuiditasOjk, action: string): void {
     if (kpmr.isLocked) {
       throw new BadRequestException(`KPMR terkunci, tidak dapat ${action}`);
     }
@@ -302,7 +302,7 @@ export class KpmrLikuiditasService {
   // =========================================================================
 
   private convertToFrontendFormat(
-    kpmr: KpmrLikuiditas,
+    kpmr: KpmrLikuiditasOjk,
   ): FrontendKpmrResponseDto {
     if (!kpmr) {
       throw new NotFoundException('KPMR tidak ditemukan');
@@ -411,7 +411,7 @@ export class KpmrLikuiditasService {
       version: createDto.version || '1.0.0',
       notes:
         createDto.notes ||
-        `KPMR Likuiditas ${createDto.year} Q${createDto.quarter}`,
+        `KPMR Likuiditas Produk ${createDto.year} Q${createDto.quarter}`,
       createdBy: createdBy,
       summary: createDto.summary || {
         totalScore: 0,
@@ -488,7 +488,7 @@ export class KpmrLikuiditasService {
       `🔍 Find KPMR by ID: ${id}, withRelations: ${withRelations}`,
     );
 
-    let kpmr: KpmrLikuiditas;
+    let kpmr: KpmrLikuiditasOjk;
 
     if (withRelations) {
       kpmr = await this.getKpmrWithRelations(id);
@@ -499,7 +499,7 @@ export class KpmrLikuiditasService {
     return this.convertToFrontendFormat(kpmr);
   }
 
-  async findOneEntity(id: number): Promise<KpmrLikuiditas> {
+  async findOneEntity(id: number): Promise<KpmrLikuiditasOjk> {
     return this.getKpmrEntity(id);
   }
 

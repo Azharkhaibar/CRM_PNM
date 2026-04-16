@@ -1,492 +1,569 @@
-// hooks/kpmr-likuiditas.hooks.ts
-import React from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { kpmrLikuiditasService, KpmrLikuiditas, CreateKpmrLikuiditasDto, UpdateKpmrLikuiditasDto, PeriodFilter, SearchFilter, GroupedKpmrResponse, PeriodResult } from '../../service/kpmr-likuiditas/kpmr-likuiditas.service';
+import { useState, useEffect, useCallback } from 'react';
+import {
+  kpmrLikuiditasApiService,
+  KPMRLikuiditasAspect,
+  KPMRLikuiditasQuestion,
+  KPMRLikuiditasDefinition,
+  KPMRLikuiditasScore,
+  KPMRLikuiditasFullDataResponse,
+  CreateKPMRLikuiditasAspectData,
+  UpdateKPMRLikuiditasAspectData,
+  CreateKPMRLikuiditasQuestionData,
+  UpdateKPMRLikuiditasQuestionData,
+  CreateKPMRLikuiditasDefinitionData,
+  UpdateKPMRLikuiditasDefinitionData,
+  CreateKPMRLikuiditasScoreData,
+  UpdateKPMRLikuiditasScoreData,
+  Period,
+  DeleteResponse,
+  transformFullDataToGroups,
+} from '../../service/kpmr-likuiditas/kpmr-likuiditas.service';
 
-// Query keys
-export const kpmrLikuiditasQueryKeys = {
-  all: ['kpmr-likuiditas'] as const,
-  lists: () => [...kpmrLikuiditasQueryKeys.all, 'list'] as const,
-  list: (filters?: Partial<PeriodFilter & SearchFilter>) => [...kpmrLikuiditasQueryKeys.lists(), filters] as const,
-  details: () => [...kpmrLikuiditasQueryKeys.all, 'detail'] as const,
-  detail: (id: number) => [...kpmrLikuiditasQueryKeys.details(), id] as const,
-  periods: () => [...kpmrLikuiditasQueryKeys.all, 'periods'] as const,
-  groupedByPeriod: (year: number, quarter: string) => [...kpmrLikuiditasQueryKeys.all, 'grouped', { year, quarter }] as const,
-  totalAverage: (year: number, quarter: string) => [...kpmrLikuiditasQueryKeys.all, 'average', { year, quarter }] as const,
-  search: (criteria: SearchFilter) => [...kpmrLikuiditasQueryKeys.all, 'search', criteria] as const,
-  comprehensive: (filter: PeriodFilter) => [...kpmrLikuiditasQueryKeys.all, 'comprehensive', filter] as const,
-  export: (year: number, quarter: string) => [...kpmrLikuiditasQueryKeys.all, 'export', { year, quarter }] as const,
-};
+// ===================== INTERFACES =====================
 
-// ==================== QUERY HOOKS ====================
+export interface KPMRLikuiditasFilters {
+  year?: number;
+  quarter?: string;
+  aspekNo?: string;
+  query?: string;
+}
 
-export const useKpmrLikuiditasList = (filter?: Partial<PeriodFilter & SearchFilter>) => {
-  return useQuery({
-    queryKey: kpmrLikuiditasQueryKeys.list(filter),
-    queryFn: () => {
-      if (filter?.year && filter?.quarter) {
-        return kpmrLikuiditasService.getByPeriod(filter.year, filter.quarter);
+export interface KPMRLikuiditasGroup {
+  aspekNo: string;
+  aspekTitle: string;
+  aspekBobot: number;
+  sections: Array<{
+    sectionNo: string;
+    sectionTitle: string;
+    definitionId: number;
+    level1: string | null;
+    level2: string | null;
+    level3: string | null;
+    level4: string | null;
+    level5: string | null;
+    evidence: string | null;
+    quarters: Record<
+      string,
+      {
+        sectionSkor: number | null;
+        id: number;
       }
-      return kpmrLikuiditasService.getAll();
+    >;
+  }>;
+  quarterAverages: Record<string, number | null>;
+}
+
+export interface UseKpmrLikuiditasReturn {
+  // ========== STATE ==========
+  aspects: KPMRLikuiditasAspect[];
+  questions: KPMRLikuiditasQuestion[];
+  definitions: KPMRLikuiditasDefinition[];
+  scores: KPMRLikuiditasScore[];
+  fullData: KPMRLikuiditasFullDataResponse | null;
+  groups: KPMRLikuiditasGroup[];
+  periods: Period[];
+  years: number[];
+  viewYear: number;
+  viewQuarter: string;
+  query: string;
+  loading: boolean;
+  error: string | null;
+
+  // ========== STATE SETTERS ==========
+  setViewYear: (year: number) => void;
+  setViewQuarter: (quarter: string) => void;
+  setQuery: (query: string) => void;
+  clearError: () => void;
+
+  // ========== DATA OPERATIONS ==========
+  fetchAllData: (year?: number) => Promise<void>;
+  fetchAspects: (year?: number) => Promise<void>;
+  fetchQuestions: (year?: number) => Promise<void>;
+  fetchDefinitions: (year?: number) => Promise<void>;
+  fetchScores: (year?: number, quarter?: string) => Promise<void>;
+  fetchFullData: (year: number) => Promise<void>;
+  fetchPeriods: () => Promise<void>;
+  fetchYears: () => Promise<void>;
+  search: (year?: number, query?: string, aspekNo?: string) => Promise<KPMRLikuiditasDefinition[]>;
+
+  // ========== ASPECT CRUD ==========
+  createAspect: (data: CreateKPMRLikuiditasAspectData) => Promise<KPMRLikuiditasAspect>;
+  updateAspect: (id: number, data: UpdateKPMRLikuiditasAspectData) => Promise<KPMRLikuiditasAspect>;
+  deleteAspect: (id: number) => Promise<DeleteResponse>;
+
+  // ========== QUESTION CRUD ==========
+  createQuestion: (data: CreateKPMRLikuiditasQuestionData) => Promise<KPMRLikuiditasQuestion>;
+  updateQuestion: (id: number, data: UpdateKPMRLikuiditasQuestionData) => Promise<KPMRLikuiditasQuestion>;
+  deleteQuestion: (id: number) => Promise<DeleteResponse>;
+
+  // ========== DEFINITION CRUD ==========
+  createOrUpdateDefinition: (data: CreateKPMRLikuiditasDefinitionData) => Promise<KPMRLikuiditasDefinition>;
+  updateDefinition: (id: number, data: UpdateKPMRLikuiditasDefinitionData) => Promise<KPMRLikuiditasDefinition>;
+  deleteDefinition: (definitionId: number, year: number) => Promise<DeleteResponse>;
+
+  // ========== SCORE CRUD ==========
+  createOrUpdateScore: (data: CreateKPMRLikuiditasScoreData) => Promise<KPMRLikuiditasScore>;
+  updateScore: (id: number, data: UpdateKPMRLikuiditasScoreData) => Promise<KPMRLikuiditasScore>;
+  deleteScore: (id: number) => Promise<DeleteResponse>;
+  deleteScoreByTarget: (definitionId: number, year: number, quarter: string) => Promise<DeleteResponse>;
+
+  // ========== UTILITIES ==========
+  refetch: () => Promise<void>;
+  resetState: () => void;
+}
+
+interface UseKpmrLikuiditasOptions {
+  initialYear?: number;
+  initialQuarter?: string;
+  autoLoad?: boolean;
+}
+
+// ===================== HOOK =====================
+
+export const useKpmrLikuiditas = (options?: UseKpmrLikuiditasOptions): UseKpmrLikuiditasReturn => {
+  const { initialYear = new Date().getFullYear(), initialQuarter = 'Q1', autoLoad = true } = options || {};
+
+  // ========== STATE ==========
+  const [viewYear, setViewYear] = useState<number>(initialYear);
+  const [viewQuarter, setViewQuarter] = useState<string>(initialQuarter);
+  const [query, setQuery] = useState<string>('');
+  const [aspects, setAspects] = useState<KPMRLikuiditasAspect[]>([]);
+  const [questions, setQuestions] = useState<KPMRLikuiditasQuestion[]>([]);
+  const [definitions, setDefinitions] = useState<KPMRLikuiditasDefinition[]>([]);
+  const [scores, setScores] = useState<KPMRLikuiditasScore[]>([]);
+  const [fullData, setFullData] = useState<KPMRLikuiditasFullDataResponse | null>(null);
+  const [groups, setGroups] = useState<KPMRLikuiditasGroup[]>([]);
+  const [periods, setPeriods] = useState<Period[]>([]);
+  const [years, setYears] = useState<number[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // ========== UTILITIES ==========
+  const clearError = useCallback(() => setError(null), []);
+
+  const resetState = useCallback(() => {
+    setAspects([]);
+    setQuestions([]);
+    setDefinitions([]);
+    setScores([]);
+    setFullData(null);
+    setGroups([]);
+    setPeriods([]);
+    setYears([]);
+    setError(null);
+  }, []);
+
+  const handleError = useCallback((err: any, operation: string) => {
+    console.error(`❌ Error during ${operation}:`, err);
+    let errorMessage = 'Terjadi kesalahan';
+    if (err instanceof Error) errorMessage = err.message;
+    else if (typeof err === 'string') errorMessage = err;
+    else if (err?.response?.data?.message) errorMessage = err.response.data.message;
+    setError(errorMessage);
+    throw err;
+  }, []);
+
+  const withLoading = useCallback(async <T>(fn: () => Promise<T>): Promise<T> => {
+    try {
+      setLoading(true);
+      return await fn();
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // ========== DATA FETCHING ==========
+  const fetchAspects = useCallback(
+    async (year?: number): Promise<void> => {
+      try {
+        const data = await withLoading(() => kpmrLikuiditasApiService.getAllAspects(year));
+        setAspects(data);
+      } catch (err) {
+        handleError(err, 'memuat aspek');
+      }
     },
-    staleTime: 5 * 60 * 1000,
-    gcTime: 10 * 60 * 1000,
-  });
-};
+    [handleError, withLoading],
+  );
 
-export const useKpmrLikuiditasByPeriod = (year: number, quarter: string) => {
-  return useQuery({
-    queryKey: kpmrLikuiditasQueryKeys.groupedByPeriod(year, quarter),
-    queryFn: () => kpmrLikuiditasService.getGroupedByPeriod(year, quarter),
-    enabled: !!year && !!quarter && kpmrLikuiditasService.validateQuarter(quarter),
-    staleTime: 5 * 60 * 1000,
-    gcTime: 10 * 60 * 1000,
-  });
-};
-
-export const useKpmrLikuiditas = (id: number | null) => {
-  return useQuery({
-    queryKey: kpmrLikuiditasQueryKeys.detail(id!),
-    queryFn: () => kpmrLikuiditasService.getById(id!),
-    enabled: !!id,
-    staleTime: 5 * 60 * 1000,
-    gcTime: 10 * 60 * 1000,
-  });
-};
-
-export const useKpmrLikuiditasPeriods = () => {
-  return useQuery({
-    queryKey: kpmrLikuiditasQueryKeys.periods(),
-    queryFn: () => kpmrLikuiditasService.getPeriods(),
-    staleTime: 10 * 60 * 1000,
-    gcTime: 15 * 60 * 1000,
-  });
-};
-
-export const useKpmrLikuiditasTotalAverage = (year: number, quarter: string) => {
-  return useQuery({
-    queryKey: kpmrLikuiditasQueryKeys.totalAverage(year, quarter),
-    queryFn: () => kpmrLikuiditasService.getTotalAverage(year, quarter),
-    enabled: !!year && !!quarter && kpmrLikuiditasService.validateQuarter(quarter),
-    staleTime: 2 * 60 * 1000,
-    gcTime: 5 * 60 * 1000,
-  });
-};
-
-export const useKpmrLikuiditasSearch = (criteria: SearchFilter) => {
-  return useQuery({
-    queryKey: kpmrLikuiditasQueryKeys.search(criteria),
-    queryFn: () => kpmrLikuiditasService.searchByCriteria(criteria),
-    enabled: !!(criteria.year && criteria.quarter) || !!criteria.query,
-    staleTime: 2 * 60 * 1000,
-    gcTime: 5 * 60 * 1000,
-  });
-};
-
-export const useKpmrLikuiditasComprehensive = (filter: PeriodFilter) => {
-  return useQuery({
-    queryKey: kpmrLikuiditasQueryKeys.comprehensive(filter),
-    queryFn: () => kpmrLikuiditasService.getComprehensiveData(filter),
-    enabled: !!filter.year && !!filter.quarter && kpmrLikuiditasService.validateQuarter(filter.quarter),
-    staleTime: 5 * 60 * 1000,
-    gcTime: 10 * 60 * 1000,
-  });
-};
-
-export const useKpmrLikuiditasExport = (year: number, quarter: string) => {
-  return useQuery({
-    queryKey: kpmrLikuiditasQueryKeys.export(year, quarter),
-    queryFn: () => kpmrLikuiditasService.getExportData(year, quarter),
-    enabled: !!year && !!quarter && kpmrLikuiditasService.validateQuarter(quarter),
-    staleTime: 2 * 60 * 1000,
-    gcTime: 5 * 60 * 1000,
-  });
-};
-
-// ==================== MUTATION HOOKS ====================
-
-export const useCreateKpmrLikuiditas = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: kpmrLikuiditasService.create,
-    onSuccess: (newData: KpmrLikuiditas) => {
-      // Invalidate queries berdasarkan periode data baru
-      const periodKey = kpmrLikuiditasQueryKeys.groupedByPeriod(newData.year, newData.quarter);
-
-      queryClient.invalidateQueries({
-        queryKey: kpmrLikuiditasQueryKeys.list(),
-      });
-
-      queryClient.invalidateQueries({
-        queryKey: periodKey,
-      });
-
-      queryClient.invalidateQueries({
-        queryKey: kpmrLikuiditasQueryKeys.totalAverage(newData.year, newData.quarter),
-      });
-
-      // Invalidate comprehensive queries
-      queryClient.invalidateQueries({
-        queryKey: kpmrLikuiditasQueryKeys.comprehensive({
-          year: newData.year,
-          quarter: newData.quarter,
-        }),
-      });
+  const fetchQuestions = useCallback(
+    async (year?: number): Promise<void> => {
+      try {
+        const data = await withLoading(() => kpmrLikuiditasApiService.getAllQuestions(year));
+        setQuestions(data);
+      } catch (err) {
+        handleError(err, 'memuat pertanyaan');
+      }
     },
-    onError: (error: Error) => {
-      console.error('Error creating KPMR Likuiditas:', error);
+    [handleError, withLoading],
+  );
+
+  const fetchDefinitions = useCallback(
+    async (year?: number): Promise<void> => {
+      try {
+        const targetYear = year || viewYear;
+        const data = await withLoading(() => kpmrLikuiditasApiService.getDefinitionsByYear(targetYear));
+        setDefinitions(data);
+      } catch (err) {
+        handleError(err, 'memuat definisi');
+      }
     },
-  });
-};
+    [viewYear, handleError, withLoading],
+  );
 
-export const useUpdateKpmrLikuiditas = () => {
-  const queryClient = useQueryClient();
+  const fetchScores = useCallback(
+    async (year?: number, quarter?: string): Promise<void> => {
+      try {
+        const targetYear = year || viewYear;
+        const data = await withLoading(() => kpmrLikuiditasApiService.getScoresByPeriod(targetYear, quarter));
+        setScores(data);
+      } catch (err) {
+        handleError(err, 'memuat skor');
+      }
+    },
+    [viewYear, handleError, withLoading],
+  );
 
-  return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: UpdateKpmrLikuiditasDto }) => kpmrLikuiditasService.update(id, data),
-    onSuccess: (updatedData: KpmrLikuiditas) => {
-      // Update cache untuk data tertentu
-      queryClient.setQueryData(kpmrLikuiditasQueryKeys.detail(updatedData.id_kpmr_likuiditas), updatedData);
+  const fetchFullData = useCallback(async (year: number): Promise<void> => {
+    if (!year || isNaN(year)) return;
+    try {
+      setLoading(true);
+      const data = await kpmrLikuiditasApiService.getFullData(year);
+      setFullData(data);
+      const transformedGroups = transformFullDataToGroups(data);
+      setGroups(transformedGroups);
+    } catch (err) {
+      console.error(`❌ Error fetching data for year ${year}:`, err);
+      setError(err?.response?.data?.message || err.message || 'Gagal memuat数据');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-      // Invalidate list queries
-      queryClient.invalidateQueries({
-        queryKey: kpmrLikuiditasQueryKeys.list(),
-      });
+  const fetchPeriods = useCallback(async (): Promise<void> => {
+    try {
+      const data = await withLoading(() => kpmrLikuiditasApiService.getPeriods());
+      setPeriods(data);
+    } catch (err) {
+      handleError(err, 'memuat periode');
+    }
+  }, [handleError, withLoading]);
 
-      // Invalidate queries berdasarkan periode
-      if (updatedData.year && updatedData.quarter) {
-        queryClient.invalidateQueries({
-          queryKey: kpmrLikuiditasQueryKeys.groupedByPeriod(updatedData.year, updatedData.quarter),
+  const fetchYears = useCallback(async (): Promise<void> => {
+    try {
+      const data = await withLoading(() => kpmrLikuiditasApiService.getAvailableYears());
+      setYears(data);
+    } catch (err) {
+      handleError(err, 'memuat tahun');
+    }
+  }, [handleError, withLoading]);
+
+  const fetchAllData = useCallback(
+    async (year?: number): Promise<void> => {
+      try {
+        await withLoading(async () => {
+          const targetYear = year || viewYear;
+          await Promise.all([fetchAspects(targetYear), fetchQuestions(targetYear), fetchDefinitions(targetYear), fetchScores(targetYear), fetchFullData(targetYear), fetchPeriods(), fetchYears()]);
         });
-
-        queryClient.invalidateQueries({
-          queryKey: kpmrLikuiditasQueryKeys.totalAverage(updatedData.year, updatedData.quarter),
-        });
-
-        queryClient.invalidateQueries({
-          queryKey: kpmrLikuiditasQueryKeys.comprehensive({
-            year: updatedData.year,
-            quarter: updatedData.quarter,
-          }),
-        });
+      } catch (err) {
+        handleError(err, 'memuat semua data');
       }
     },
-    onError: (error: Error) => {
-      console.error('Error updating KPMR Likuiditas:', error);
-    },
-  });
-};
+    [viewYear, fetchAspects, fetchQuestions, fetchDefinitions, fetchScores, fetchFullData, fetchPeriods, fetchYears, handleError, withLoading],
+  );
 
-export const useDeleteKpmrLikuiditas = (year: number, quarter: string) => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (id: number) => kpmrLikuiditasService.delete(id),
-
-    // ✅ OPTIMISTIC UPDATE: Hapus dari cache sebelum request
-    onMutate: async (id) => {
-      // Cancel outgoing queries
-      await queryClient.cancelQueries({ queryKey: kpmrLikuiditasQueryKeys.all });
-
-      // Snapshot previous values untuk rollback jika error
-      const previousQueries = {
-        list: queryClient.getQueryData(kpmrLikuiditasQueryKeys.list()),
-        grouped: queryClient.getQueryData(kpmrLikuiditasQueryKeys.groupedByPeriod(year, quarter)),
-      };
-
-      // Optimistically remove from all caches
-      queryClient.setQueriesData({ queryKey: kpmrLikuiditasQueryKeys.all }, (old: any) => {
-        if (!old) return old;
-
-        // Handle grouped data
-        if (old.groups && Array.isArray(old.groups)) {
-          return {
-            ...old,
-            data: old.data?.filter((item: KpmrLikuiditas) => item.id_kpmr_likuiditas !== id) || [],
-            groups: old.groups
-              .map((group: any) => ({
-                ...group,
-                items: group.items.filter((item: KpmrLikuiditas) => item.id_kpmr_likuiditas !== id),
-              }))
-              .filter((group: any) => group.items.length > 0), // Hapus group kosong
-          };
-        }
-
-        // Handle array data
-        if (Array.isArray(old)) {
-          return old.filter((item: KpmrLikuiditas) => item.id_kpmr_likuiditas !== id);
-        }
-
-        return old;
-      });
-
-      return { previousQueries };
-    },
-
-    onError: (error, id, context) => {
-      // ✅ ROLLBACK ON ERROR: Kembalikan data sebelumnya
-      if (context?.previousQueries) {
-        queryClient.setQueryData(kpmrLikuiditasQueryKeys.list(), context.previousQueries.list);
-        queryClient.setQueryData(kpmrLikuiditasQueryKeys.groupedByPeriod(year, quarter), context.previousQueries.grouped);
-      }
-
-      console.error('Error deleting KPMR Likuiditas:', error);
-    },
-
-    onSettled: () => {
-      // ✅ INVALIDATE UNTUK SYNC: Pastikan data sync dengan server
-      queryClient.invalidateQueries({
-        queryKey: kpmrLikuiditasQueryKeys.all,
-      });
-    },
-  });
-};
-
-// ==================== OPTIMISTIC MUTATION HOOKS ====================
-
-export const useOptimisticCreateKpmrLikuiditas = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: kpmrLikuiditasService.create,
-    onMutate: async (newData: CreateKpmrLikuiditasDto) => {
-      // Cancel outgoing queries
-      await queryClient.cancelQueries({
-        queryKey: kpmrLikuiditasQueryKeys.list(),
-      });
-
-      // Snapshot previous value
-      const previousData = queryClient.getQueryData(kpmrLikuiditasQueryKeys.list());
-
-      // Optimistically update cache dengan temporary ID
-      const tempData: KpmrLikuiditas = {
-        ...newData,
-        id_kpmr_likuiditas: Date.now(),
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      } as KpmrLikuiditas;
-
-      queryClient.setQueryData(kpmrLikuiditasQueryKeys.list(), (old: any) => {
-        if (Array.isArray(old)) {
-          return [...old, tempData];
-        }
-        return [tempData];
-      });
-
-      return { previousData };
-    },
-    onError: (error: Error, newData: CreateKpmrLikuiditasDto, context: any) => {
-      // Rollback on error
-      if (context?.previousData) {
-        queryClient.setQueryData(kpmrLikuiditasQueryKeys.list(), context.previousData);
+  const search = useCallback(
+    async (year?: number, searchQuery?: string, aspekNo?: string): Promise<KPMRLikuiditasDefinition[]> => {
+      try {
+        return await withLoading(() => kpmrLikuiditasApiService.searchKPMR(year, searchQuery || query, aspekNo));
+      } catch (err) {
+        handleError(err, 'mencari data');
+        return [];
       }
     },
-    onSettled: () => {
-      // Invalidate untuk mendapatkan data real dari server
-      queryClient.invalidateQueries({
-        queryKey: kpmrLikuiditasQueryKeys.list(),
+    [query, handleError, withLoading],
+  );
+
+  // ========== INITIAL LOAD ==========
+  const loadInitialData = useCallback(async () => {
+    try {
+      await withLoading(async () => {
+        await Promise.all([fetchAspects(), fetchQuestions(), fetchPeriods(), fetchYears()]);
       });
+    } catch (err) {
+      handleError(err, 'memuat data awal');
+    }
+  }, [fetchAspects, fetchQuestions, fetchPeriods, fetchYears, handleError, withLoading]);
+
+  useEffect(() => {
+    if (autoLoad) loadInitialData();
+  }, [autoLoad, loadInitialData]);
+
+  useEffect(() => {
+    if (autoLoad && viewYear) fetchFullData(viewYear);
+  }, [autoLoad, viewYear, fetchFullData]);
+
+  // ========== ASPECT CRUD ==========
+  const createAspect = useCallback(
+    async (data: CreateKPMRLikuiditasAspectData): Promise<KPMRLikuiditasAspect> => {
+      try {
+        const newAspect = await withLoading(() => kpmrLikuiditasApiService.createAspect(data));
+        setAspects((prev) => [...prev, newAspect]);
+        return newAspect;
+      } catch (err) {
+        throw handleError(err, 'membuat aspek');
+      }
     },
-  });
-};
+    [handleError, withLoading],
+  );
 
-// ==================== DATA MANAGEMENT HOOK ====================
+  const updateAspect = useCallback(
+    async (id: number, data: UpdateKPMRLikuiditasAspectData): Promise<KPMRLikuiditasAspect> => {
+      try {
+        const updatedAspect = await withLoading(() => kpmrLikuiditasApiService.updateAspect(id, data));
+        setAspects((prev) => prev.map((a) => (a.id === id ? updatedAspect : a)));
+        return updatedAspect;
+      } catch (err) {
+        throw handleError(err, `mengupdate aspek ${id}`);
+      }
+    },
+    [handleError, withLoading],
+  );
 
-export const useKpmrLikuiditasDataManagement = (filter: PeriodFilter) => {
-  const groupedQuery = useKpmrLikuiditasByPeriod(filter.year, filter.quarter);
-  const averageQuery = useKpmrLikuiditasTotalAverage(filter.year, filter.quarter);
-  const periodsQuery = useKpmrLikuiditasPeriods();
+  // HARD DELETE - Hanya ini yang digunakan
+  const deleteAspect = useCallback(
+    async (id: number): Promise<DeleteResponse> => {
+      try {
+        const result = await withLoading(() => kpmrLikuiditasApiService.deleteAspect(id));
+        if (result.success) {
+          setAspects((prev) => prev.filter((a) => a.id !== id));
+          await fetchFullData(viewYear);
+        }
+        return result;
+      } catch (err) {
+        throw handleError(err, `menghapus aspek ${id}`);
+      }
+    },
+    [handleError, withLoading, fetchFullData, viewYear],
+  );
 
-  const createMutation = useCreateKpmrLikuiditas();
-  const updateMutation = useUpdateKpmrLikuiditas();
-  const deleteMutation = useDeleteKpmrLikuiditas(filter.year, filter.quarter); // ✅ Pass parameters here
+  // ========== QUESTION CRUD ==========
+  const createQuestion = useCallback(
+    async (data: CreateKPMRLikuiditasQuestionData): Promise<KPMRLikuiditasQuestion> => {
+      try {
+        const newQuestion = await withLoading(() => kpmrLikuiditasApiService.createQuestion(data));
+        setQuestions((prev) => [...prev, newQuestion]);
+        return newQuestion;
+      } catch (err) {
+        throw handleError(err, 'membuat pertanyaan');
+      }
+    },
+    [handleError, withLoading],
+  );
 
-  const isLoading = groupedQuery.isLoading || averageQuery.isLoading || periodsQuery.isLoading;
-  const isFetching = groupedQuery.isFetching || averageQuery.isFetching || periodsQuery.isFetching;
-  const error = groupedQuery.error || averageQuery.error || periodsQuery.error;
+  const updateQuestion = useCallback(
+    async (id: number, data: UpdateKPMRLikuiditasQuestionData): Promise<KPMRLikuiditasQuestion> => {
+      try {
+        const updatedQuestion = await withLoading(() => kpmrLikuiditasApiService.updateQuestion(id, data));
+        setQuestions((prev) => prev.map((q) => (q.id === id ? updatedQuestion : q)));
+        return updatedQuestion;
+      } catch (err) {
+        throw handleError(err, `mengupdate pertanyaan ${id}`);
+      }
+    },
+    [handleError, withLoading],
+  );
 
+  // HARD DELETE - Hanya ini yang digunakan
+  const deleteQuestion = useCallback(
+    async (id: number): Promise<DeleteResponse> => {
+      try {
+        console.log(`🗑️ Hook: Deleting question ${id}`);
+        const result = await withLoading(() => kpmrLikuiditasApiService.deleteQuestion(id));
+        console.log(`✅ Hook: Delete result:`, result);
+
+        if (result.success) {
+          setQuestions((prev) => prev.filter((q) => q.id !== id));
+          // Refresh full data setelah delete
+          await fetchFullData(viewYear);
+          await fetchDefinitions(viewYear);
+          await fetchQuestions(viewYear);
+        }
+        return result;
+      } catch (err) {
+        console.error(`❌ Hook: Error deleting question ${id}:`, err);
+        throw handleError(err, `menghapus pertanyaan ${id}`);
+      }
+    },
+    [handleError, withLoading, fetchFullData, viewYear, fetchDefinitions, fetchQuestions],
+  );
+
+  // ========== DEFINITION CRUD ==========
+  const createOrUpdateDefinition = useCallback(
+    async (data: CreateKPMRLikuiditasDefinitionData): Promise<KPMRLikuiditasDefinition> => {
+      try {
+        const definition = await withLoading(() => kpmrLikuiditasApiService.createOrUpdateDefinition(data));
+        await fetchDefinitions(data.year);
+        await fetchFullData(data.year);
+        return definition;
+      } catch (err) {
+        throw handleError(err, 'membuat/mengupdate definisi');
+      }
+    },
+    [fetchDefinitions, fetchFullData, handleError, withLoading],
+  );
+
+  const updateDefinition = useCallback(
+    async (id: number, data: UpdateKPMRLikuiditasDefinitionData): Promise<KPMRLikuiditasDefinition> => {
+      try {
+        const cleanData: UpdateKPMRLikuiditasDefinitionData = {};
+        if (data.aspekTitle !== undefined) cleanData.aspekTitle = data.aspekTitle;
+        if (data.aspekBobot !== undefined) cleanData.aspekBobot = data.aspekBobot;
+        if (data.sectionTitle !== undefined) cleanData.sectionTitle = data.sectionTitle;
+        if (data.level1 !== undefined) cleanData.level1 = data.level1;
+        if (data.level2 !== undefined) cleanData.level2 = data.level2;
+        if (data.level3 !== undefined) cleanData.level3 = data.level3;
+        if (data.level4 !== undefined) cleanData.level4 = data.level4;
+        if (data.level5 !== undefined) cleanData.level5 = data.level5;
+        if (data.evidence !== undefined) cleanData.evidence = data.evidence;
+
+        const updatedDefinition = await withLoading(() => kpmrLikuiditasApiService.updateDefinition(id, cleanData));
+        if (updatedDefinition?.year) {
+          await fetchDefinitions(updatedDefinition.year);
+          await fetchFullData(updatedDefinition.year);
+        }
+        return updatedDefinition;
+      } catch (err) {
+        throw handleError(err, `mengupdate definisi ${id}`);
+      }
+    },
+    [fetchDefinitions, fetchFullData, handleError, withLoading],
+  );
+
+  const deleteDefinition = useCallback(
+    async (definitionId: number, year: number): Promise<DeleteResponse> => {
+      try {
+        console.log(`🗑️ Hard deleting definition ${definitionId} for year ${year}`);
+        const response = await withLoading(() => kpmrLikuiditasApiService.deleteDefinitionPermanent(definitionId, year));
+        console.log('✅ Delete response:', response);
+
+        await fetchFullData(year);
+        await fetchDefinitions(year);
+        await fetchScores(year);
+
+        return response;
+      } catch (err: any) {
+        console.error(`❌ Error deleting definition ${definitionId}:`, err);
+        const errorMessage = err?.response?.data?.message || err?.message || 'Gagal menghapus data';
+        setError(errorMessage);
+        throw err;
+      }
+    },
+    [fetchFullData, fetchDefinitions, fetchScores, withLoading],
+  );
+
+  // ========== SCORE CRUD ==========
+  const createOrUpdateScore = useCallback(
+    async (data: CreateKPMRLikuiditasScoreData): Promise<KPMRLikuiditasScore> => {
+      try {
+        const score = await withLoading(() => kpmrLikuiditasApiService.createOrUpdateScore(data));
+        await fetchScores(data.year);
+        await fetchFullData(data.year);
+        return score;
+      } catch (err) {
+        throw handleError(err, 'membuat/mengupdate skor');
+      }
+    },
+    [fetchScores, fetchFullData, handleError, withLoading],
+  );
+
+  const updateScore = useCallback(
+    async (id: number, data: UpdateKPMRLikuiditasScoreData): Promise<KPMRLikuiditasScore> => {
+      try {
+        const updatedScore = await withLoading(() => kpmrLikuiditasApiService.updateScore(id, data));
+        await fetchScores(updatedScore.year);
+        await fetchFullData(updatedScore.year);
+        return updatedScore;
+      } catch (err) {
+        throw handleError(err, `mengupdate skor ${id}`);
+      }
+    },
+    [fetchScores, fetchFullData, handleError, withLoading],
+  );
+
+  const deleteScore = useCallback(
+    async (id: number): Promise<DeleteResponse> => {
+      try {
+        const result = await withLoading(() => kpmrLikuiditasApiService.deleteScore(id));
+        await fetchScores(viewYear);
+        await fetchFullData(viewYear);
+        return result;
+      } catch (err) {
+        throw handleError(err, `menghapus skor ${id}`);
+      }
+    },
+    [viewYear, fetchScores, fetchFullData, handleError, withLoading],
+  );
+
+  const deleteScoreByTarget = useCallback(
+    async (definitionId: number, year: number, quarter: string): Promise<DeleteResponse> => {
+      try {
+        const response = await withLoading(() => kpmrLikuiditasApiService.deleteScoreByTarget(definitionId, year, quarter));
+        await fetchScores(year);
+        await fetchFullData(year);
+        return response;
+      } catch (err) {
+        throw handleError(err, `menghapus skor ${definitionId}-${year}-${quarter}`);
+      }
+    },
+    [fetchScores, fetchFullData, handleError, withLoading],
+  );
+
+  const refetch = useCallback(async (): Promise<void> => {
+    await fetchAllData(viewYear);
+  }, [viewYear, fetchAllData]);
+
+  // ========== RETURN ==========
   return {
-    // Data
-    groupedData: groupedQuery.data || { data: [], groups: [], overallAverage: 0 },
-    totalAverage: averageQuery.data || 0,
-    periods: periodsQuery.data || [],
-
-    // Status
-    isLoading,
-    isFetching,
+    aspects,
+    questions,
+    definitions,
+    scores,
+    fullData,
+    groups,
+    periods,
+    years,
+    viewYear,
+    viewQuarter,
+    query,
+    loading,
     error,
-
-    // Query status
-    groupedQuery,
-    averageQuery,
-    periodsQuery,
-
-    // Mutations
-    create: createMutation.mutate,
-    update: updateMutation.mutate,
-    remove: deleteMutation.mutate,
-
-    // Mutation status
-    isCreating: createMutation.isPending,
-    isUpdating: updateMutation.isPending,
-    isDeleting: deleteMutation.isPending,
-
-    // Mutation objects
-    createMutation,
-    updateMutation,
-    deleteMutation,
-
-    // Refresh
-    refetch: () => {
-      groupedQuery.refetch();
-      averageQuery.refetch();
-      periodsQuery.refetch();
-    },
-  };
-};
-
-// ==================== UTILITY HOOKS ====================
-
-export const useKpmrLikuiditasCalculations = () => {
-  const calculateAspekAverage = (items: KpmrLikuiditas[]): number => {
-    const validScores = items.map((item) => item.sectionSkor).filter((score): score is number => typeof score === 'number' && !isNaN(score));
-
-    if (validScores.length === 0) return 0;
-
-    const average = validScores.reduce((sum, score) => sum + score, 0) / validScores.length;
-    return Number(average.toFixed(2));
-  };
-
-  const calculateOverallAverage = (groupedData: GroupedKpmrResponse): number => {
-    return groupedData.overallAverage || 0;
-  };
-
-  const validateFormData = (data: any): string | null => {
-    return kpmrLikuiditasService.validateData(kpmrLikuiditasService.transformToDto(data));
-  };
-
-  const calculateWeightedScore = (bobot: number, skor: number): number => {
-    return (bobot * skor) / 100;
-  };
-
-  const getRiskLevel = (skor: number): string => {
-    if (skor >= 4.5) return 'Excellent';
-    if (skor >= 3.5) return 'Good';
-    if (skor >= 2.5) return 'Fair';
-    if (skor >= 1.5) return 'Poor';
-    return 'Very Poor';
-  };
-
-  const getRiskColor = (skor: number): string => {
-    if (skor >= 4.5) return '#10B981'; // green
-    if (skor >= 3.5) return '#34D399'; // light green
-    if (skor >= 2.5) return '#FBBF24'; // yellow
-    if (skor >= 1.5) return '#F87171'; // red
-    return '#DC2626'; // dark red
-  };
-
-  return {
-    calculateAspekAverage,
-    calculateOverallAverage,
-    validateFormData,
-    calculateWeightedScore,
-    getRiskLevel,
-    getRiskColor,
-  };
-};
-
-// ==================== FORM MANAGEMENT HOOK ====================
-
-export const useKpmrLikuiditasForm = (initialData?: Partial<CreateKpmrLikuiditasDto>) => {
-  const [formData, setFormData] = React.useState<CreateKpmrLikuiditasDto>({
-    year: new Date().getFullYear(),
-    quarter: 'Q1',
-    aspekNo: '',
-    aspekBobot: 0,
-    aspekTitle: '',
-    sectionNo: '',
-    indikator: '',
-    sectionSkor: undefined,
-    strong: '',
-    satisfactory: '',
-    fair: '',
-    marginal: '',
-    unsatisfactory: '',
-    evidence: '',
-    ...initialData,
-  });
-
-  const [errors, setErrors] = React.useState<Record<string, string>>({});
-
-  const updateField = (field: keyof CreateKpmrLikuiditasDto, value: any) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-
-    // Clear error when field is updated
-    if (errors[field]) {
-      setErrors((prev) => {
-        const newErrors = { ...prev };
-        delete newErrors[field];
-        return newErrors;
-      });
-    }
-  };
-
-  const validate = (): boolean => {
-    const newErrors: Record<string, string> = {};
-    const validationError = kpmrLikuiditasService.validateData(formData);
-
-    if (validationError) {
-      newErrors._form = validationError;
-    }
-
-    if (!formData.aspekNo) {
-      newErrors.aspekNo = 'Aspek No harus diisi';
-    }
-
-    if (!formData.aspekTitle) {
-      newErrors.aspekTitle = 'Judul Aspek harus diisi';
-    }
-
-    if (!formData.sectionNo) {
-      newErrors.sectionNo = 'Section No harus diisi';
-    }
-
-    if (!formData.indikator) {
-      newErrors.indikator = 'Indikator harus diisi';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const reset = () => {
-    setFormData({
-      year: new Date().getFullYear(),
-      quarter: 'Q1',
-      aspekNo: '',
-      aspekBobot: 0,
-      aspekTitle: '',
-      sectionNo: '',
-      indikator: '',
-      sectionSkor: undefined,
-      strong: '',
-      satisfactory: '',
-      fair: '',
-      marginal: '',
-      unsatisfactory: '',
-      evidence: '',
-      ...initialData,
-    });
-    setErrors({});
-  };
-
-  return {
-    formData,
-    errors,
-    updateField,
-    validate,
-    reset,
-    setFormData,
+    setViewYear,
+    setViewQuarter,
+    setQuery,
+    clearError,
+    fetchAllData,
+    fetchAspects,
+    fetchQuestions,
+    fetchDefinitions,
+    fetchScores,
+    fetchFullData,
+    fetchPeriods,
+    fetchYears,
+    search,
+    createAspect,
+    updateAspect,
+    deleteAspect,
+    createQuestion,
+    updateQuestion,
+    deleteQuestion,
+    createOrUpdateDefinition,
+    updateDefinition,
+    deleteDefinition,
+    createOrUpdateScore,
+    updateScore,
+    deleteScore,
+    deleteScoreByTarget,
+    refetch,
+    resetState,
   };
 };

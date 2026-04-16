@@ -1,411 +1,570 @@
-// hooks/kpmrPasar.hooks.ts
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { GroupedAspek, kpmrPasarService, PeriodResult, CreateKpmrPasarDto, UpdateKpmrPasarDto, PeriodFilter, SearchFilter, KpmrPasar } from '../../service/kpmr-pasar/kpmr-pasar.service';
+// src/features/Dashboard/pages/RiskProfile/pages/Pasar/hooks/KPMR/kpmr-pasar.hook.ts
+import { useState, useEffect, useCallback } from 'react';
+import {
+  kpmrPasarApiService,
+  KPMRPasarAspect,
+  KPMRPasarQuestion,
+  KPMRPasarDefinition,
+  KPMRPasarScore,
+  KPMRPasarFullDataResponse,
+  CreateKPMRPasarAspectData,
+  UpdateKPMRPasarAspectData,
+  CreateKPMRPasarQuestionData,
+  UpdateKPMRPasarQuestionData,
+  CreateKPMRPasarDefinitionData,
+  UpdateKPMRPasarDefinitionData,
+  CreateKPMRPasarScoreData,
+  UpdateKPMRPasarScoreData,
+  Period,
+  DeleteResponse,
+  transformFullDataToGroups,
+} from '../../service/kpmr-pasar/kpmr-pasar.service';
 
-// Query keys
-export const kpmrPasarQueryKeys = {
-  all: ['kpmr-pasar'] as const,
-  lists: () => [...kpmrPasarQueryKeys.all, 'list'] as const,
-  list: (filters?: Partial<PeriodFilter & SearchFilter>) => [...kpmrPasarQueryKeys.lists(), filters] as const,
-  details: () => [...kpmrPasarQueryKeys.all, 'detail'] as const,
-  detail: (id: number) => [...kpmrPasarQueryKeys.details(), id] as const,
-  periods: () => [...kpmrPasarQueryKeys.all, 'periods'] as const,
-  groupedByPeriod: (year: number, quarter: string) => [...kpmrPasarQueryKeys.all, 'grouped', { year, quarter }] as const,
-  totalAverage: (year: number, quarter: string) => [...kpmrPasarQueryKeys.all, 'average', { year, quarter }] as const,
-  search: (criteria: SearchFilter) => [...kpmrPasarQueryKeys.all, 'search', criteria] as const,
-  comprehensive: (filter: PeriodFilter) => [...kpmrPasarQueryKeys.all, 'comprehensive', filter] as const,
-};
+// ===================== INTERFACES =====================
 
-// ==================== QUERY HOOKS ====================
+export interface KPMRPasarFilters {
+  year?: number;
+  quarter?: string;
+  aspekNo?: string;
+  query?: string;
+}
 
-export const useKpmrPasarList = (filter?: Partial<PeriodFilter & SearchFilter>) => {
-  return useQuery({
-    queryKey: kpmrPasarQueryKeys.list(filter),
-    queryFn: () => {
-      if (filter?.year && filter?.quarter) {
-        return kpmrPasarService.getByPeriod(filter.year, filter.quarter);
+export interface KPMRPasarGroup {
+  aspekNo: string;
+  aspekTitle: string;
+  aspekBobot: number;
+  sections: Array<{
+    sectionNo: string;
+    sectionTitle: string;
+    definitionId: number;
+    level1: string | null;
+    level2: string | null;
+    level3: string | null;
+    level4: string | null;
+    level5: string | null;
+    evidence: string | null;
+    quarters: Record<
+      string,
+      {
+        sectionSkor: number | null;
+        id: number;
       }
-      return kpmrPasarService.getAll();
+    >;
+  }>;
+  quarterAverages: Record<string, number | null>;
+}
+
+export interface UseKpmrPasarReturn {
+  // ========== STATE ==========
+  aspects: KPMRPasarAspect[];
+  questions: KPMRPasarQuestion[];
+  definitions: KPMRPasarDefinition[];
+  scores: KPMRPasarScore[];
+  fullData: KPMRPasarFullDataResponse | null;
+  groups: KPMRPasarGroup[];
+  periods: Period[];
+  years: number[];
+  viewYear: number;
+  viewQuarter: string;
+  query: string;
+  loading: boolean;
+  error: string | null;
+
+  // ========== STATE SETTERS ==========
+  setViewYear: (year: number) => void;
+  setViewQuarter: (quarter: string) => void;
+  setQuery: (query: string) => void;
+  clearError: () => void;
+
+  // ========== DATA OPERATIONS ==========
+  fetchAllData: (year?: number) => Promise<void>;
+  fetchAspects: (year?: number) => Promise<void>;
+  fetchQuestions: (year?: number) => Promise<void>;
+  fetchDefinitions: (year?: number) => Promise<void>;
+  fetchScores: (year?: number, quarter?: string) => Promise<void>;
+  fetchFullData: (year: number) => Promise<void>;
+  fetchPeriods: () => Promise<void>;
+  fetchYears: () => Promise<void>;
+  search: (year?: number, query?: string, aspekNo?: string) => Promise<KPMRPasarDefinition[]>;
+
+  // ========== ASPECT CRUD ==========
+  createAspect: (data: CreateKPMRPasarAspectData) => Promise<KPMRPasarAspect>;
+  updateAspect: (id: number, data: UpdateKPMRPasarAspectData) => Promise<KPMRPasarAspect>;
+  deleteAspect: (id: number) => Promise<DeleteResponse>;
+
+  // ========== QUESTION CRUD ==========
+  createQuestion: (data: CreateKPMRPasarQuestionData) => Promise<KPMRPasarQuestion>;
+  updateQuestion: (id: number, data: UpdateKPMRPasarQuestionData) => Promise<KPMRPasarQuestion>;
+  deleteQuestion: (id: number) => Promise<DeleteResponse>;
+
+  // ========== DEFINITION CRUD ==========
+  createOrUpdateDefinition: (data: CreateKPMRPasarDefinitionData) => Promise<KPMRPasarDefinition>;
+  updateDefinition: (id: number, data: UpdateKPMRPasarDefinitionData) => Promise<KPMRPasarDefinition>;
+  deleteDefinition: (definitionId: number, year: number) => Promise<DeleteResponse>;
+
+  // ========== SCORE CRUD ==========
+  createOrUpdateScore: (data: CreateKPMRPasarScoreData) => Promise<KPMRPasarScore>;
+  updateScore: (id: number, data: UpdateKPMRPasarScoreData) => Promise<KPMRPasarScore>;
+  deleteScore: (id: number) => Promise<DeleteResponse>;
+  deleteScoreByTarget: (definitionId: number, year: number, quarter: string) => Promise<DeleteResponse>;
+
+  // ========== UTILITIES ==========
+  refetch: () => Promise<void>;
+  resetState: () => void;
+}
+
+interface UseKpmrPasarOptions {
+  initialYear?: number;
+  initialQuarter?: string;
+  autoLoad?: boolean;
+}
+
+// ===================== HOOK =====================
+
+export const useKpmrPasar = (options?: UseKpmrPasarOptions): UseKpmrPasarReturn => {
+  const { initialYear = new Date().getFullYear(), initialQuarter = 'Q1', autoLoad = true } = options || {};
+
+  // ========== STATE ==========
+  const [viewYear, setViewYear] = useState<number>(initialYear);
+  const [viewQuarter, setViewQuarter] = useState<string>(initialQuarter);
+  const [query, setQuery] = useState<string>('');
+  const [aspects, setAspects] = useState<KPMRPasarAspect[]>([]);
+  const [questions, setQuestions] = useState<KPMRPasarQuestion[]>([]);
+  const [definitions, setDefinitions] = useState<KPMRPasarDefinition[]>([]);
+  const [scores, setScores] = useState<KPMRPasarScore[]>([]);
+  const [fullData, setFullData] = useState<KPMRPasarFullDataResponse | null>(null);
+  const [groups, setGroups] = useState<KPMRPasarGroup[]>([]);
+  const [periods, setPeriods] = useState<Period[]>([]);
+  const [years, setYears] = useState<number[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // ========== UTILITIES ==========
+  const clearError = useCallback(() => setError(null), []);
+
+  const resetState = useCallback(() => {
+    setAspects([]);
+    setQuestions([]);
+    setDefinitions([]);
+    setScores([]);
+    setFullData(null);
+    setGroups([]);
+    setPeriods([]);
+    setYears([]);
+    setError(null);
+  }, []);
+
+  const handleError = useCallback((err: any, operation: string) => {
+    console.error(`❌ Error during ${operation}:`, err);
+    let errorMessage = 'Terjadi kesalahan';
+    if (err instanceof Error) errorMessage = err.message;
+    else if (typeof err === 'string') errorMessage = err;
+    else if (err?.response?.data?.message) errorMessage = err.response.data.message;
+    setError(errorMessage);
+    throw err;
+  }, []);
+
+  const withLoading = useCallback(async <T>(fn: () => Promise<T>): Promise<T> => {
+    try {
+      setLoading(true);
+      return await fn();
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // ========== DATA FETCHING ==========
+  const fetchAspects = useCallback(
+    async (year?: number): Promise<void> => {
+      try {
+        const data = await withLoading(() => kpmrPasarApiService.getAllAspects(year));
+        setAspects(data);
+      } catch (err) {
+        handleError(err, 'memuat aspek');
+      }
     },
-    staleTime: 5 * 60 * 1000,
-    gcTime: 10 * 60 * 1000,
-  });
-};
+    [handleError, withLoading],
+  );
 
-export const useKpmrPasarByPeriod = (year: number, quarter: string) => {
-  return useQuery({
-    queryKey: kpmrPasarQueryKeys.groupedByPeriod(year, quarter),
-    queryFn: () => kpmrPasarService.getByPeriod(year, quarter),
-    enabled: !!year && !!quarter && kpmrPasarService.validateQuarter(quarter),
-    staleTime: 5 * 60 * 1000,
-    gcTime: 10 * 60 * 1000,
-  });
-};
-
-export const useKpmrPasar = (id: number | null) => {
-  return useQuery({
-    queryKey: kpmrPasarQueryKeys.detail(id!),
-    queryFn: () => kpmrPasarService.getById(id!),
-    enabled: !!id,
-    staleTime: 5 * 60 * 1000,
-    gcTime: 10 * 60 * 1000,
-  });
-};
-
-export const useKpmrPasarPeriods = () => {
-  return useQuery({
-    queryKey: kpmrPasarQueryKeys.periods(),
-    queryFn: () => kpmrPasarService.getPeriods(),
-    staleTime: 10 * 60 * 1000,
-    gcTime: 15 * 60 * 1000,
-  });
-};
-
-export const useKpmrPasarTotalAverage = (year: number, quarter: string) => {
-  return useQuery({
-    queryKey: kpmrPasarQueryKeys.totalAverage(year, quarter),
-    queryFn: () => kpmrPasarService.getTotalAverage(year, quarter),
-    enabled: !!year && !!quarter && kpmrPasarService.validateQuarter(quarter),
-    staleTime: 2 * 60 * 1000,
-    gcTime: 5 * 60 * 1000,
-  });
-};
-
-export const useKpmrPasarSearch = (criteria: SearchFilter) => {
-  return useQuery({
-    queryKey: kpmrPasarQueryKeys.search(criteria),
-    queryFn: () => kpmrPasarService.searchByCriteria(criteria),
-    enabled: !!(criteria.year && criteria.quarter) || !!criteria.query,
-    staleTime: 2 * 60 * 1000,
-    gcTime: 5 * 60 * 1000,
-  });
-};
-
-export const useKpmrPasarComprehensive = (filter: PeriodFilter) => {
-  return useQuery({
-    queryKey: kpmrPasarQueryKeys.comprehensive(filter),
-    queryFn: () => kpmrPasarService.getComprehensiveData(filter),
-    enabled: !!filter.year && !!filter.quarter && kpmrPasarService.validateQuarter(filter.quarter),
-    staleTime: 5 * 60 * 1000,
-    gcTime: 10 * 60 * 1000,
-  });
-};
-
-// ==================== MUTATION HOOKS ====================
-
-export const useCreateKpmrPasar = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: kpmrPasarService.create,
-    onSuccess: (newData: KpmrPasar) => {
-      // Invalidate queries berdasarkan periode data baru
-      const periodKey = kpmrPasarQueryKeys.groupedByPeriod(newData.year, newData.quarter);
-
-      queryClient.invalidateQueries({
-        queryKey: kpmrPasarQueryKeys.list(),
-      });
-
-      queryClient.invalidateQueries({
-        queryKey: periodKey,
-      });
-
-      queryClient.invalidateQueries({
-        queryKey: kpmrPasarQueryKeys.totalAverage(newData.year, newData.quarter),
-      });
-
-      // Invalidate comprehensive queries
-      queryClient.invalidateQueries({
-        queryKey: kpmrPasarQueryKeys.comprehensive({ year: newData.year, quarter: newData.quarter }),
-      });
+  const fetchQuestions = useCallback(
+    async (year?: number): Promise<void> => {
+      try {
+        const data = await withLoading(() => kpmrPasarApiService.getAllQuestions(year));
+        setQuestions(data);
+      } catch (err) {
+        handleError(err, 'memuat pertanyaan');
+      }
     },
-    onError: (error: Error) => {
-      console.error('Error creating KPMR Pasar:', error);
+    [handleError, withLoading],
+  );
+
+  const fetchDefinitions = useCallback(
+    async (year?: number): Promise<void> => {
+      try {
+        const targetYear = year || viewYear;
+        const data = await withLoading(() => kpmrPasarApiService.getDefinitionsByYear(targetYear));
+        setDefinitions(data);
+      } catch (err) {
+        handleError(err, 'memuat definisi');
+      }
     },
-  });
-};
+    [viewYear, handleError, withLoading],
+  );
 
-export const useUpdateKpmrPasar = () => {
-  const queryClient = useQueryClient();
+  const fetchScores = useCallback(
+    async (year?: number, quarter?: string): Promise<void> => {
+      try {
+        const targetYear = year || viewYear;
+        const data = await withLoading(() => kpmrPasarApiService.getScoresByPeriod(targetYear, quarter));
+        setScores(data);
+      } catch (err) {
+        handleError(err, 'memuat skor');
+      }
+    },
+    [viewYear, handleError, withLoading],
+  );
 
-  return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: UpdateKpmrPasarDto }) => kpmrPasarService.update(id, data),
-    onSuccess: (updatedData: KpmrPasar) => {
-      // Update cache untuk data tertentu
-      queryClient.setQueryData(kpmrPasarQueryKeys.detail(updatedData.id_kpmr_pasar), updatedData);
+  const fetchFullData = useCallback(async (year: number): Promise<void> => {
+    if (!year || isNaN(year)) return;
+    try {
+      setLoading(true);
+      const data = await kpmrPasarApiService.getFullData(year);
+      setFullData(data);
+      const transformedGroups = transformFullDataToGroups(data);
+      setGroups(transformedGroups);
+    } catch (err) {
+      console.error(`❌ Error fetching data for year ${year}:`, err);
+      setError(err?.response?.data?.message || err.message || 'Gagal memuat data');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-      // Invalidate list queries
-      queryClient.invalidateQueries({
-        queryKey: kpmrPasarQueryKeys.list(),
-      });
+  const fetchPeriods = useCallback(async (): Promise<void> => {
+    try {
+      const data = await withLoading(() => kpmrPasarApiService.getPeriods());
+      setPeriods(data);
+    } catch (err) {
+      handleError(err, 'memuat periode');
+    }
+  }, [handleError, withLoading]);
 
-      // Invalidate queries berdasarkan periode
-      if (updatedData.year && updatedData.quarter) {
-        queryClient.invalidateQueries({
-          queryKey: kpmrPasarQueryKeys.groupedByPeriod(updatedData.year, updatedData.quarter),
+  const fetchYears = useCallback(async (): Promise<void> => {
+    try {
+      const data = await withLoading(() => kpmrPasarApiService.getAvailableYears());
+      setYears(data);
+    } catch (err) {
+      handleError(err, 'memuat tahun');
+    }
+  }, [handleError, withLoading]);
+
+  const fetchAllData = useCallback(
+    async (year?: number): Promise<void> => {
+      try {
+        await withLoading(async () => {
+          const targetYear = year || viewYear;
+          await Promise.all([fetchAspects(targetYear), fetchQuestions(targetYear), fetchDefinitions(targetYear), fetchScores(targetYear), fetchFullData(targetYear), fetchPeriods(), fetchYears()]);
         });
-
-        queryClient.invalidateQueries({
-          queryKey: kpmrPasarQueryKeys.totalAverage(updatedData.year, updatedData.quarter),
-        });
-
-        queryClient.invalidateQueries({
-          queryKey: kpmrPasarQueryKeys.comprehensive({ year: updatedData.year, quarter: updatedData.quarter }),
-        });
+      } catch (err) {
+        handleError(err, 'memuat semua data');
       }
     },
-    onError: (error: Error) => {
-      console.error('Error updating KPMR Pasar:', error);
-    },
-  });
-};
+    [viewYear, fetchAspects, fetchQuestions, fetchDefinitions, fetchScores, fetchFullData, fetchPeriods, fetchYears, handleError, withLoading],
+  );
 
-export const useDeleteKpmrPasar = (year: number, quarter: string) => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (id: number) => kpmrPasarService.delete(id),
-
-    // ✅ OPTIMISTIC UPDATE: Hapus dari cache sebelum request
-    onMutate: async (id) => {
-      // Cancel outgoing queries
-      await queryClient.cancelQueries({ queryKey: kpmrPasarQueryKeys.all });
-
-      // Snapshot previous values untuk rollback jika error
-      const previousQueries = {
-        list: queryClient.getQueryData(kpmrPasarQueryKeys.list()),
-        grouped: queryClient.getQueryData(kpmrPasarQueryKeys.groupedByPeriod(year, quarter)),
-        comprehensive: queryClient.getQueryData(kpmrPasarQueryKeys.comprehensive({ year, quarter })),
-      };
-
-      // Optimistically remove from all caches
-      queryClient.setQueriesData({ queryKey: kpmrPasarQueryKeys.all }, (old: any) => {
-        if (!old) return old;
-
-        // Handle grouped data (array of GroupedAspek)
-        if (Array.isArray(old) && old.length > 0 && old[0].items) {
-          return old
-            .map((group: GroupedAspek) => ({
-              ...group,
-              items: group.items.filter((item: KpmrPasar) => item.id_kpmr_pasar !== id),
-            }))
-            .filter((group: GroupedAspek) => group.items.length > 0); // Hapus group kosong
-        }
-
-        // Handle flat array data
-        if (Array.isArray(old)) {
-          return old.filter((item: KpmrPasar) => item.id_kpmr_pasar !== id);
-        }
-
-        return old;
-      });
-
-      // Juga update query data untuk groupedByPeriod secara spesifik
-      queryClient.setQueriesData({ queryKey: kpmrPasarQueryKeys.groupedByPeriod(year, quarter) }, (old: any) => {
-        if (!old) return old;
-
-        // Handle grouped data (array of GroupedAspek)
-        if (Array.isArray(old) && old.length > 0 && old[0].items) {
-          return old
-            .map((group: GroupedAspek) => ({
-              ...group,
-              items: group.items.filter((item: KpmrPasar) => item.id_kpmr_pasar !== id),
-            }))
-            .filter((group: GroupedAspek) => group.items.length > 0); // Hapus group kosong
-        }
-
-        // Handle flat array data
-        if (Array.isArray(old)) {
-          return old.filter((item: KpmrPasar) => item.id_kpmr_pasar !== id);
-        }
-
-        return old;
-      });
-
-      return { previousQueries };
-    },
-
-    onError: (error, id, context) => {
-      // ✅ ROLLBACK ON ERROR: Kembalikan data sebelumnya
-      if (context?.previousQueries) {
-        queryClient.setQueryData(kpmrPasarQueryKeys.list(), context.previousQueries.list);
-        queryClient.setQueryData(kpmrPasarQueryKeys.groupedByPeriod(year, quarter), context.previousQueries.grouped);
-        queryClient.setQueryData(kpmrPasarQueryKeys.comprehensive({ year, quarter }), context.previousQueries.comprehensive);
-      }
-
-      console.error('Error deleting KPMR Pasar:', error);
-    },
-
-    onSettled: () => {
-      // ✅ INVALIDATE UNTUK SYNC: Pastikan data sync dengan server
-      queryClient.invalidateQueries({
-        queryKey: kpmrPasarQueryKeys.all,
-      });
-    },
-  });
-};
-
-// ==================== OPTIMISTIC MUTATION HOOKS ====================
-
-export const useOptimisticCreateKpmrPasar = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: kpmrPasarService.create,
-    onMutate: async (newData: CreateKpmrPasarDto) => {
-      // Cancel outgoing queries
-      await queryClient.cancelQueries({
-        queryKey: kpmrPasarQueryKeys.list(),
-      });
-
-      // Snapshot previous value
-      const previousData = queryClient.getQueryData(kpmrPasarQueryKeys.list());
-
-      // Optimistically update cache dengan temporary ID
-      const tempData: KpmrPasar = {
-        ...newData,
-        id_kpmr_pasar: Date.now(),
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      } as KpmrPasar;
-
-      queryClient.setQueryData(kpmrPasarQueryKeys.list(), (old: any) => {
-        if (Array.isArray(old)) {
-          return [...old, tempData];
-        }
-        return [tempData];
-      });
-
-      return { previousData };
-    },
-    onError: (error: Error, newData: CreateKpmrPasarDto, context: any) => {
-      // Rollback on error
-      if (context?.previousData) {
-        queryClient.setQueryData(kpmrPasarQueryKeys.list(), context.previousData);
+  const search = useCallback(
+    async (year?: number, searchQuery?: string, aspekNo?: string): Promise<KPMRPasarDefinition[]> => {
+      try {
+        return await withLoading(() => kpmrPasarApiService.searchKPMR(year, searchQuery || query, aspekNo));
+      } catch (err) {
+        handleError(err, 'mencari data');
+        return [];
       }
     },
-    onSettled: () => {
-      // Invalidate untuk mendapatkan data real dari server
-      queryClient.invalidateQueries({
-        queryKey: kpmrPasarQueryKeys.list(),
+    [query, handleError, withLoading],
+  );
+
+  // ========== INITIAL LOAD ==========
+  const loadInitialData = useCallback(async () => {
+    try {
+      await withLoading(async () => {
+        await Promise.all([fetchAspects(), fetchQuestions(), fetchPeriods(), fetchYears()]);
       });
+    } catch (err) {
+      handleError(err, 'memuat data awal');
+    }
+  }, [fetchAspects, fetchQuestions, fetchPeriods, fetchYears, handleError, withLoading]);
+
+  useEffect(() => {
+    if (autoLoad) loadInitialData();
+  }, [autoLoad, loadInitialData]);
+
+  useEffect(() => {
+    if (autoLoad && viewYear) fetchFullData(viewYear);
+  }, [autoLoad, viewYear, fetchFullData]);
+
+  // ========== ASPECT CRUD ==========
+  const createAspect = useCallback(
+    async (data: CreateKPMRPasarAspectData): Promise<KPMRPasarAspect> => {
+      try {
+        const newAspect = await withLoading(() => kpmrPasarApiService.createAspect(data));
+        setAspects((prev) => [...prev, newAspect]);
+        return newAspect;
+      } catch (err) {
+        throw handleError(err, 'membuat aspek');
+      }
     },
-  });
-};
+    [handleError, withLoading],
+  );
 
-// ==================== DATA MANAGEMENT HOOK ====================
+  const updateAspect = useCallback(
+    async (id: number, data: UpdateKPMRPasarAspectData): Promise<KPMRPasarAspect> => {
+      try {
+        const updatedAspect = await withLoading(() => kpmrPasarApiService.updateAspect(id, data));
+        setAspects((prev) => prev.map((a) => (a.id === id ? updatedAspect : a)));
+        return updatedAspect;
+      } catch (err) {
+        throw handleError(err, `mengupdate aspek ${id}`);
+      }
+    },
+    [handleError, withLoading],
+  );
 
-export const useKpmrPasarDataManagement = (filter: PeriodFilter) => {
-  const groupedQuery = useKpmrPasarByPeriod(filter.year, filter.quarter);
-  const averageQuery = useKpmrPasarTotalAverage(filter.year, filter.quarter);
-  const periodsQuery = useKpmrPasarPeriods();
+  // HARD DELETE - Hanya ini yang digunakan
+  const deleteAspect = useCallback(
+    async (id: number): Promise<DeleteResponse> => {
+      try {
+        const result = await withLoading(() => kpmrPasarApiService.deleteAspect(id));
+        if (result.success) {
+          setAspects((prev) => prev.filter((a) => a.id !== id));
+          await fetchFullData(viewYear);
+        }
+        return result;
+      } catch (err) {
+        throw handleError(err, `menghapus aspek ${id}`);
+      }
+    },
+    [handleError, withLoading, fetchFullData, viewYear],
+  );
 
-  const createMutation = useCreateKpmrPasar();
-  const updateMutation = useUpdateKpmrPasar();
-  const deleteMutation = useDeleteKpmrPasar(filter.year, filter.quarter); // ✅ Pass parameters here
+  // ========== QUESTION CRUD ==========
+  const createQuestion = useCallback(
+    async (data: CreateKPMRPasarQuestionData): Promise<KPMRPasarQuestion> => {
+      try {
+        const newQuestion = await withLoading(() => kpmrPasarApiService.createQuestion(data));
+        setQuestions((prev) => [...prev, newQuestion]);
+        return newQuestion;
+      } catch (err) {
+        throw handleError(err, 'membuat pertanyaan');
+      }
+    },
+    [handleError, withLoading],
+  );
 
-  const isLoading = groupedQuery.isLoading || averageQuery.isLoading || periodsQuery.isLoading;
-  const isFetching = groupedQuery.isFetching || averageQuery.isFetching || periodsQuery.isFetching;
-  const error = groupedQuery.error || averageQuery.error || periodsQuery.error;
+  const updateQuestion = useCallback(
+    async (id: number, data: UpdateKPMRPasarQuestionData): Promise<KPMRPasarQuestion> => {
+      try {
+        const updatedQuestion = await withLoading(() => kpmrPasarApiService.updateQuestion(id, data));
+        setQuestions((prev) => prev.map((q) => (q.id === id ? updatedQuestion : q)));
+        return updatedQuestion;
+      } catch (err) {
+        throw handleError(err, `mengupdate pertanyaan ${id}`);
+      }
+    },
+    [handleError, withLoading],
+  );
 
+  // HARD DELETE - Hanya ini yang digunakan
+  const deleteQuestion = useCallback(
+    async (id: number): Promise<DeleteResponse> => {
+      try {
+        console.log(`🗑️ Hook: Deleting question ${id}`);
+        const result = await withLoading(() => kpmrPasarApiService.deleteQuestion(id));
+        console.log(`✅ Hook: Delete result:`, result);
+
+        if (result.success) {
+          setQuestions((prev) => prev.filter((q) => q.id !== id));
+          // Refresh full data setelah delete
+          await fetchFullData(viewYear);
+          await fetchDefinitions(viewYear);
+          await fetchQuestions(viewYear);
+        }
+        return result;
+      } catch (err) {
+        console.error(`❌ Hook: Error deleting question ${id}:`, err);
+        throw handleError(err, `menghapus pertanyaan ${id}`);
+      }
+    },
+    [handleError, withLoading, fetchFullData, viewYear, fetchDefinitions, fetchQuestions],
+  );
+
+  // ========== DEFINITION CRUD ==========
+  const createOrUpdateDefinition = useCallback(
+    async (data: CreateKPMRPasarDefinitionData): Promise<KPMRPasarDefinition> => {
+      try {
+        const definition = await withLoading(() => kpmrPasarApiService.createOrUpdateDefinition(data));
+        await fetchDefinitions(data.year);
+        await fetchFullData(data.year);
+        return definition;
+      } catch (err) {
+        throw handleError(err, 'membuat/mengupdate definisi');
+      }
+    },
+    [fetchDefinitions, fetchFullData, handleError, withLoading],
+  );
+
+  const updateDefinition = useCallback(
+    async (id: number, data: UpdateKPMRPasarDefinitionData): Promise<KPMRPasarDefinition> => {
+      try {
+        const cleanData: UpdateKPMRPasarDefinitionData = {};
+        if (data.aspekTitle !== undefined) cleanData.aspekTitle = data.aspekTitle;
+        if (data.aspekBobot !== undefined) cleanData.aspekBobot = data.aspekBobot;
+        if (data.sectionTitle !== undefined) cleanData.sectionTitle = data.sectionTitle;
+        if (data.level1 !== undefined) cleanData.level1 = data.level1;
+        if (data.level2 !== undefined) cleanData.level2 = data.level2;
+        if (data.level3 !== undefined) cleanData.level3 = data.level3;
+        if (data.level4 !== undefined) cleanData.level4 = data.level4;
+        if (data.level5 !== undefined) cleanData.level5 = data.level5;
+        if (data.evidence !== undefined) cleanData.evidence = data.evidence;
+
+        const updatedDefinition = await withLoading(() => kpmrPasarApiService.updateDefinition(id, cleanData));
+        if (updatedDefinition?.year) {
+          await fetchDefinitions(updatedDefinition.year);
+          await fetchFullData(updatedDefinition.year);
+        }
+        return updatedDefinition;
+      } catch (err) {
+        throw handleError(err, `mengupdate definisi ${id}`);
+      }
+    },
+    [fetchDefinitions, fetchFullData, handleError, withLoading],
+  );
+
+  const deleteDefinition = useCallback(
+    async (definitionId: number, year: number): Promise<DeleteResponse> => {
+      try {
+        console.log(`🗑️ Hard deleting definition ${definitionId} for year ${year}`);
+        const response = await withLoading(() => kpmrPasarApiService.deleteDefinitionPermanent(definitionId, year));
+        console.log('✅ Delete response:', response);
+
+        await fetchFullData(year);
+        await fetchDefinitions(year);
+        await fetchScores(year);
+
+        return response;
+      } catch (err: any) {
+        console.error(`❌ Error deleting definition ${definitionId}:`, err);
+        const errorMessage = err?.response?.data?.message || err?.message || 'Gagal menghapus data';
+        setError(errorMessage);
+        throw err;
+      }
+    },
+    [fetchFullData, fetchDefinitions, fetchScores, withLoading],
+  );
+
+  // ========== SCORE CRUD ==========
+  const createOrUpdateScore = useCallback(
+    async (data: CreateKPMRPasarScoreData): Promise<KPMRPasarScore> => {
+      try {
+        const score = await withLoading(() => kpmrPasarApiService.createOrUpdateScore(data));
+        await fetchScores(data.year);
+        await fetchFullData(data.year);
+        return score;
+      } catch (err) {
+        throw handleError(err, 'membuat/mengupdate skor');
+      }
+    },
+    [fetchScores, fetchFullData, handleError, withLoading],
+  );
+
+  const updateScore = useCallback(
+    async (id: number, data: UpdateKPMRPasarScoreData): Promise<KPMRPasarScore> => {
+      try {
+        const updatedScore = await withLoading(() => kpmrPasarApiService.updateScore(id, data));
+        await fetchScores(updatedScore.year);
+        await fetchFullData(updatedScore.year);
+        return updatedScore;
+      } catch (err) {
+        throw handleError(err, `mengupdate skor ${id}`);
+      }
+    },
+    [fetchScores, fetchFullData, handleError, withLoading],
+  );
+
+  const deleteScore = useCallback(
+    async (id: number): Promise<DeleteResponse> => {
+      try {
+        const result = await withLoading(() => kpmrPasarApiService.deleteScore(id));
+        await fetchScores(viewYear);
+        await fetchFullData(viewYear);
+        return result;
+      } catch (err) {
+        throw handleError(err, `menghapus skor ${id}`);
+      }
+    },
+    [viewYear, fetchScores, fetchFullData, handleError, withLoading],
+  );
+
+  const deleteScoreByTarget = useCallback(
+    async (definitionId: number, year: number, quarter: string): Promise<DeleteResponse> => {
+      try {
+        const response = await withLoading(() => kpmrPasarApiService.deleteScoreByTarget(definitionId, year, quarter));
+        await fetchScores(year);
+        await fetchFullData(year);
+        return response;
+      } catch (err) {
+        throw handleError(err, `menghapus skor ${definitionId}-${year}-${quarter}`);
+      }
+    },
+    [fetchScores, fetchFullData, handleError, withLoading],
+  );
+
+  const refetch = useCallback(async (): Promise<void> => {
+    await fetchAllData(viewYear);
+  }, [viewYear, fetchAllData]);
+
+  // ========== RETURN ==========
   return {
-    // Data
-    groupedData: groupedQuery.data || [],
-    totalAverage: averageQuery.data || 0,
-    periods: periodsQuery.data || [],
-
-    // Status
-    isLoading,
-    isFetching,
+    aspects,
+    questions,
+    definitions,
+    scores,
+    fullData,
+    groups,
+    periods,
+    years,
+    viewYear,
+    viewQuarter,
+    query,
+    loading,
     error,
-
-    // Query status
-    groupedQuery,
-    averageQuery,
-    periodsQuery,
-
-    // Mutations
-    create: createMutation.mutate,
-    update: updateMutation.mutate,
-    remove: deleteMutation.mutate,
-
-    // Mutation status
-    isCreating: createMutation.isPending,
-    isUpdating: updateMutation.isPending,
-    isDeleting: deleteMutation.isPending,
-
-    // Mutation objects
-    createMutation,
-    updateMutation,
-    deleteMutation,
-
-    // Refresh
-    refetch: () => {
-      groupedQuery.refetch();
-      averageQuery.refetch();
-      periodsQuery.refetch();
-    },
-  };
-};
-
-// ==================== UTILITY HOOKS ====================
-
-export const useKpmrPasarCalculations = () => {
-  const calculateAspekAverage = (items: KpmrPasar[]): string => {
-    const validScores = items.map((item) => item.sectionSkor).filter((score): score is number => typeof score === 'number' && !isNaN(score));
-
-    if (validScores.length === 0) return '0.00';
-
-    const average = validScores.reduce((sum, score) => sum + score, 0) / validScores.length;
-    return average.toFixed(2);
-  };
-
-  const calculateOverallAverage = (groupedData: GroupedAspek[]): number => {
-    const averages = groupedData.map((group) => parseFloat(group.average_skor)).filter((avg) => !isNaN(avg));
-
-    if (averages.length === 0) return 0;
-
-    const overallAverage = averages.reduce((sum, avg) => sum + avg, 0) / averages.length;
-    return Number(overallAverage.toFixed(2));
-  };
-
-  const validateFormData = (data: any): string | null => {
-    if (!data.year || !data.quarter) {
-      return 'Year dan Quarter harus diisi';
-    }
-
-    if (!kpmrPasarService.validateQuarter(data.quarter)) {
-      return 'Quarter harus Q1, Q2, Q3, atau Q4';
-    }
-
-    if (!kpmrPasarService.validateYear(data.year)) {
-      return 'Year tidak valid';
-    }
-
-    if (data.sectionSkor && (data.sectionSkor < 1 || data.sectionSkor > 5)) {
-      return 'Section Skor harus antara 1-5';
-    }
-
-    return null;
-  };
-
-  const calculateWeightedScore = (bobot: number, skor: number): number => {
-    return (bobot * skor) / 100;
-  };
-
-  const getRiskLevel = (skor: number): string => {
-    if (skor >= 4.5) return 'Excellent';
-    if (skor >= 3.5) return 'Good';
-    if (skor >= 2.5) return 'Fair';
-    if (skor >= 1.5) return 'Poor';
-    return 'Very Poor';
-  };
-
-  return {
-    calculateAspekAverage,
-    calculateOverallAverage,
-    validateFormData,
-    calculateWeightedScore,
-    getRiskLevel,
+    setViewYear,
+    setViewQuarter,
+    setQuery,
+    clearError,
+    fetchAllData,
+    fetchAspects,
+    fetchQuestions,
+    fetchDefinitions,
+    fetchScores,
+    fetchFullData,
+    fetchPeriods,
+    fetchYears,
+    search,
+    createAspect,
+    updateAspect,
+    deleteAspect,
+    createQuestion,
+    updateQuestion,
+    deleteQuestion,
+    createOrUpdateDefinition,
+    updateDefinition,
+    deleteDefinition,
+    createOrUpdateScore,
+    updateScore,
+    deleteScore,
+    deleteScoreByTarget,
+    refetch,
+    resetState,
   };
 };

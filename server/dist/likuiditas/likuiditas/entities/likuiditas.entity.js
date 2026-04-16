@@ -11,7 +11,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Likuiditas = exports.Quarter = exports.CalculationMode = void 0;
 const typeorm_1 = require("typeorm");
-const section_likuiditas_entity_1 = require("./section-likuiditas.entity");
+const likuiditas_section_entity_1 = require("./likuiditas-section.entity");
 var CalculationMode;
 (function (CalculationMode) {
     CalculationMode["RASIO"] = "RASIO";
@@ -87,12 +87,12 @@ __decorate([
     __metadata("design:type", Number)
 ], Likuiditas.prototype, "sectionId", void 0);
 __decorate([
-    (0, typeorm_1.ManyToOne)(() => section_likuiditas_entity_1.LikuiditasSection, (section) => section.likuiditasIndicators, {
+    (0, typeorm_1.ManyToOne)(() => likuiditas_section_entity_1.LikuiditasSection, (section) => section.likuiditasIndicators, {
         onUpdate: 'CASCADE',
         onDelete: 'CASCADE',
     }),
     (0, typeorm_1.JoinColumn)({ name: 'section_id' }),
-    __metadata("design:type", section_likuiditas_entity_1.LikuiditasSection)
+    __metadata("design:type", likuiditas_section_entity_1.LikuiditasSection)
 ], Likuiditas.prototype, "section", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: 'varchar', length: 50 }),
@@ -252,7 +252,7 @@ __decorate([
     (0, typeorm_1.Column)({
         type: 'decimal',
         precision: 15,
-        scale: 4,
+        scale: 6,
         nullable: true,
     }),
     __metadata("design:type", Object)
@@ -274,7 +274,7 @@ __decorate([
     (0, typeorm_1.Column)({
         type: 'decimal',
         precision: 10,
-        scale: 2,
+        scale: 4,
     }),
     __metadata("design:type", Number)
 ], Likuiditas.prototype, "weighted", void 0);
@@ -375,10 +375,9 @@ __decorate([
     __metadata("design:type", Object)
 ], Likuiditas.prototype, "revisionNotes", void 0);
 exports.Likuiditas = Likuiditas = __decorate([
-    (0, typeorm_1.Entity)('indikators_likuiditas'),
+    (0, typeorm_1.Entity)('indikators_likuiditas_holding'),
     (0, typeorm_1.Unique)('UQ_LIKUIDITAS_PERIOD_SUBNO', ['year', 'quarter', 'subNo', 'sectionId']),
     (0, typeorm_1.Index)('IDX_LIKUIDITAS_PERIOD', ['year', 'quarter']),
-    (0, typeorm_1.Index)('IDX_LIKUIDITAS_SECTION', ['sectionId']),
-    (0, typeorm_1.Index)('IDX_LIKUIDITAS_YEAR_QUARTER', ['year', 'quarter'])
+    (0, typeorm_1.Index)('IDX_LIKUIDITAS_SECTION', ['sectionId'])
 ], Likuiditas);
 //# sourceMappingURL=likuiditas.entity.js.map

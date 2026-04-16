@@ -1207,7 +1207,7 @@ function ParameterPanel({ rows, setRows, active, backendHandlers, isLoading: glo
         try {
           const result = await backendHandlers.deleteNilai(param.id, nilaiToDelete.id);
           if (!result.success) {
-            throw new Error(result.error || 'Gagal delete nilai dari backend');
+            throw new Error(result.error || 'Gagal delete nilai dari database');
           }
         } catch (error) {
           alert(error.message || '❌ Gagal menghapus nilai dari database');
@@ -2012,7 +2012,7 @@ function NilaiPanel({ param, nilaiList = [], activeNilaiIndex, setActiveNilaiInd
         );
       }
 
-      // PERBAIKAN: Keluar dari mode edit TANPA reset nilai aktif
+      // PERBAIKAN: Keluar dari edit mode TANPA reset nilai aktif
       setEditModeNilai(false);
       setOriginalNilai(null);
 
@@ -2054,7 +2054,7 @@ function NilaiPanel({ param, nilaiList = [], activeNilaiIndex, setActiveNilaiInd
       }
     }
 
-    // Keluar dari mode edit
+    // Keluar dari edit mode
     setEditModeNilai(false);
     setOriginalNilai(null);
 

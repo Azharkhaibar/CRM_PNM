@@ -1,6 +1,5 @@
+// src/features/Dashboard/pages/RiskProfile/pages/Investasi/dto/update-new-investasi.dto.ts
 import { PartialType } from '@nestjs/mapped-types';
 import { CreateInvestasiDto } from './create-new-investasi.dto';
-// import { CreateInvestasiSectionDto } from './create-investasi-section.dto';
 
 export class UpdateInvestasiDto extends PartialType(CreateInvestasiDto) {}
-

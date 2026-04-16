@@ -9,16 +9,9 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.OperasionalSection = exports.Quarter = void 0;
+exports.OperasionalSection = void 0;
 const typeorm_1 = require("typeorm");
 const operasional_entity_1 = require("./operasional.entity");
-var Quarter;
-(function (Quarter) {
-    Quarter["Q1"] = "Q1";
-    Quarter["Q2"] = "Q2";
-    Quarter["Q3"] = "Q3";
-    Quarter["Q4"] = "Q4";
-})(Quarter || (exports.Quarter = Quarter = {}));
 let OperasionalSection = class OperasionalSection {
     id;
     year;
@@ -126,7 +119,7 @@ __decorate([
     __metadata("design:type", Array)
 ], OperasionalSection.prototype, "operasionalIndicators", void 0);
 exports.OperasionalSection = OperasionalSection = __decorate([
-    (0, typeorm_1.Entity)('sections_operasional'),
-    (0, typeorm_1.Unique)('UQ_OPERASIONAL_SECTION_PERIOD', ['year', 'quarter', 'no', 'parameter'])
+    (0, typeorm_1.Entity)('sections_operasional_holding'),
+    (0, typeorm_1.Index)('IDX_OPERASIONAL_SECTION_PERIOD_UNIQUE', ['year', 'quarter', 'no', 'parameter'], { unique: true })
 ], OperasionalSection);
 //# sourceMappingURL=operasional-section.entity.js.map

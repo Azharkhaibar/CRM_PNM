@@ -1,8 +1,14 @@
-import { OperasionalSection, Quarter } from './operasional-section.entity';
+import { OperasionalSection } from './operasional-section.entity';
 export declare enum CalculationMode {
     RASIO = "RASIO",
     NILAI_TUNGGAL = "NILAI_TUNGGAL",
     TEKS = "TEKS"
+}
+export declare enum Quarter {
+    Q1 = "Q1",
+    Q2 = "Q2",
+    Q3 = "Q3",
+    Q4 = "Q4"
 }
 export declare class Operasional {
     id: number;

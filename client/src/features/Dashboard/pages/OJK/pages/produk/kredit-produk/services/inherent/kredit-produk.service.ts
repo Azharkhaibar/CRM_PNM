@@ -40,7 +40,7 @@ export interface ParameterEntity {
   };
   nilaiList?: NilaiEntity[];
   orderIndex: number;
-  pasarProdukOjkId: number;
+  kreditProdukOjkId: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -203,7 +203,7 @@ export interface ReferenceItem {
 // =============================================
 
 export class KreditProdukService {
-  private baseUrl = '/kredit-produk-ojk'; // PERBAIKAN: Ubah ke endpoint kredit
+  private baseUrl = '/kredit-produk-ojk';
 
   // TAMBAH FUNGSI BARU
 

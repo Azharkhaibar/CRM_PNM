@@ -94,7 +94,7 @@ __decorate([
     __metadata("design:type", String)
 ], Operasional.prototype, "notes", void 0);
 exports.Operasional = Operasional = __decorate([
-    (0, typeorm_1.Entity)('operasional'),
+    (0, typeorm_1.Entity)('operasional_ojk'),
     (0, typeorm_1.Index)(['year', 'quarter'], { unique: true })
 ], Operasional);
 //# sourceMappingURL=operasional-ojk.entity.js.map

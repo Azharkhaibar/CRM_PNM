@@ -94,40 +94,8 @@ export default function Dashboard() {
         <p className="text-blue-100 mt-1">Senang melihat Anda kembali. Semoga hari Anda produktif!</p>
       </motion.div>
 
-      <div className="grid md:grid-cols-3 gap-6">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.3 }} style={statCardStyle}>
-          <p className={`font-semibold ${darkMode ? 'dark-mode-text-secondary' : 'text-gray-600'}`}>Total Risks</p>
-          <h3 className="text-3xl font-bold text-blue-600 mt-2">125</h3>
-          <p className={`text-sm mt-1 ${darkMode ? 'dark-mode-text-secondary' : 'text-gray-500'}`}>Semua risiko tercatat</p>
-        </motion.div>
+    
 
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.4 }} style={statCardStyle}>
-          <p className={`font-semibold ${darkMode ? 'dark-mode-text-secondary' : 'text-gray-600'}`}>Mitigated</p>
-          <h3 className="text-3xl font-bold text-green-600 mt-2">58</h3>
-          <p className={`text-sm mt-1 ${darkMode ? 'dark-mode-text-secondary' : 'text-gray-500'}`}>Sudah terselesaikan</p>
-        </motion.div>
-
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.5 }} style={statCardStyle}>
-          <p className={`font-semibold ${darkMode ? 'dark-mode-text-secondary' : 'text-gray-600'}`}>In Progress</p>
-          <h3 className="text-3xl font-bold text-yellow-600 mt-2">32</h3>
-          <p className={`text-sm mt-1 ${darkMode ? 'dark-mode-text-secondary' : 'text-gray-500'}`}>Dalam proses</p>
-        </motion.div>
-      </div>
-
-      <motion.div initial={{ opacity: 0, y: 25 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.6 }} style={activityCardStyle}>
-        <h2 className={`text-xl font-semibold mb-4 ${darkMode ? 'dark-mode-text' : 'text-gray-900'}`}>Recent Activity</h2>
-        <div className="space-y-3">
-          <div style={activityItemStyle}>
-            ✅ Risk mitigation completed for <b>Operational Risk</b>
-          </div>
-          <div style={activityItemStyle}>
-            📌 New risk assessment added in <b>Market Risk</b>
-          </div>
-          <div style={activityItemStyle}>
-            🔄 Credit risk data updated for <b>Q4</b>
-          </div>
-        </div>
-      </motion.div>
     </>
   );
 

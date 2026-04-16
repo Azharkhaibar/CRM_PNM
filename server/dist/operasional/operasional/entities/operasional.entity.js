@@ -9,7 +9,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Operasional = exports.CalculationMode = void 0;
+exports.Operasional = exports.Quarter = exports.CalculationMode = void 0;
 const typeorm_1 = require("typeorm");
 const operasional_section_entity_1 = require("./operasional-section.entity");
 var CalculationMode;
@@ -18,6 +18,13 @@ var CalculationMode;
     CalculationMode["NILAI_TUNGGAL"] = "NILAI_TUNGGAL";
     CalculationMode["TEKS"] = "TEKS";
 })(CalculationMode || (exports.CalculationMode = CalculationMode = {}));
+var Quarter;
+(function (Quarter) {
+    Quarter["Q1"] = "Q1";
+    Quarter["Q2"] = "Q2";
+    Quarter["Q3"] = "Q3";
+    Quarter["Q4"] = "Q4";
+})(Quarter || (exports.Quarter = Quarter = {}));
 let Operasional = class Operasional {
     id;
     year;
@@ -72,7 +79,7 @@ __decorate([
     __metadata("design:type", Number)
 ], Operasional.prototype, "year", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'enum', enum: ['Q1', 'Q2', 'Q3', 'Q4'] }),
+    (0, typeorm_1.Column)({ type: 'enum', enum: Quarter }),
     __metadata("design:type", String)
 ], Operasional.prototype, "quarter", void 0);
 __decorate([
@@ -368,7 +375,7 @@ __decorate([
     __metadata("design:type", Object)
 ], Operasional.prototype, "revisionNotes", void 0);
 exports.Operasional = Operasional = __decorate([
-    (0, typeorm_1.Entity)('indikators_operasional'),
+    (0, typeorm_1.Entity)('indikators_operasional_holding'),
     (0, typeorm_1.Unique)('UQ_OPERASIONAL_PERIOD_SUBNO', [
         'year',
         'quarter',
@@ -376,7 +383,6 @@ exports.Operasional = Operasional = __decorate([
         'sectionId',
     ]),
     (0, typeorm_1.Index)('IDX_OPERASIONAL_PERIOD', ['year', 'quarter']),
-    (0, typeorm_1.Index)('IDX_OPERASIONAL_SECTION', ['sectionId']),
-    (0, typeorm_1.Index)('IDX_OPERASIONAL_YEAR_QUARTER', ['year', 'quarter'])
+    (0, typeorm_1.Index)('IDX_OPERASIONAL_SECTION', ['sectionId'])
 ], Operasional);
 //# sourceMappingURL=operasional.entity.js.map

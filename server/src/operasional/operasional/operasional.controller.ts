@@ -13,19 +13,13 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
-
-// import { OperasionalService } from '../services/operasional.service';
-// import { CreateOperasionalSectionDto } from '../dto/create-operasional-section.dto';
-// import { UpdateOperasionalSectionDto } from '../dto/update-operasional-section.dto';
-// import { CreateOperasionalDto } from '../dto/create-operasional.dto';
-// import { UpdateOperasionalDto } from '../dto/update-operasional.dto';
-// import { Quarter } from '../entities/operasional.entity';
 import { OperasionalService } from './operasional.service';
-import { UpdateOperasionalSectionDto } from './dto/update-operasional-section.dto';
 import { CreateOperasionalSectionDto } from './dto/create-operasional-section.dto';
+import { UpdateOperasionalSectionDto } from './dto/update-operasional-section.dto';
 import { CreateOperasionalDto } from './dto/create-operasional.dto';
 import { UpdateOperasionalDto } from './dto/update-operasional.dto';
-import { Quarter } from './entities/operasional-section.entity';
+import { Quarter } from './entities/operasional.entity';
+
 @ApiTags('Operasional')
 @Controller('operasional')
 export class OperasionalController {
@@ -36,6 +30,8 @@ export class OperasionalController {
   @Post('sections')
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Create new operasional section' })
+  @ApiResponse({ status: 201, description: 'Section created successfully' })
+  @ApiResponse({ status: 409, description: 'Section already exists' })
   async createSection(@Body() createDto: CreateOperasionalSectionDto) {
     return await this.operasionalService.createSection(createDto);
   }
@@ -53,6 +49,17 @@ export class OperasionalController {
     return await this.operasionalService.findSectionById(id);
   }
 
+  @Get('sections/period')
+  @ApiOperation({ summary: 'Get operasional sections by period' })
+  @ApiQuery({ name: 'year', required: true, type: Number })
+  @ApiQuery({ name: 'quarter', required: true, enum: Quarter })
+  async getSectionsByPeriod(
+    @Query('year', ParseIntPipe) year: number,
+    @Query('quarter') quarter: Quarter,
+  ) {
+    return await this.operasionalService.findSectionsByPeriod(year, quarter);
+  }
+
   @Put('sections/:id')
   @ApiOperation({ summary: 'Update operasional section' })
   async updateSection(
@@ -63,23 +70,10 @@ export class OperasionalController {
   }
 
   @Delete('sections/:id')
-  @HttpCode(HttpStatus.NO_CONTENT)
+  @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Delete operasional section' })
   async deleteSection(@Param('id', ParseIntPipe) id: number) {
-    await this.operasionalService.deleteSection(id);
-  }
-
-  @Get('indikators/sections-by-period')
-  @ApiOperation({ summary: 'Get sections with indicators by period' })
-  async getSectionsWithIndicatorsByPeriod(
-    @Query('year', ParseIntPipe) year: number,
-    @Query('quarter') quarter: Quarter,
-  ) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-    return await this.operasionalService.getSectionsWithIndicatorsByPeriod(
-      year,
-      quarter,
-    );
+    return await this.operasionalService.deleteSection(id);
   }
 
   // ========== INDIKATOR ENDPOINTS ==========
@@ -87,6 +81,8 @@ export class OperasionalController {
   @Post('indikators')
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Create new operasional indikator' })
+  @ApiResponse({ status: 201, description: 'Indikator created successfully' })
+  @ApiResponse({ status: 409, description: 'Indikator already exists' })
   async createIndikator(@Body() createDto: CreateOperasionalDto) {
     return await this.operasionalService.createIndikator(createDto);
   }
@@ -137,15 +133,35 @@ export class OperasionalController {
   }
 
   @Delete('indikators/:id')
-  @HttpCode(HttpStatus.NO_CONTENT)
+  @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Delete operasional indikator' })
   async deleteIndikator(@Param('id', ParseIntPipe) id: number) {
-    await this.operasionalService.deleteIndikator(id);
+    return await this.operasionalService.deleteIndikator(id);
+  }
+
+  // ========== COMPLEX QUERIES ENDPOINTS ==========
+
+  @Get('data/with-indicators')
+  @ApiOperation({
+    summary: 'Get sections with their indicators for a period',
+    description:
+      'Returns sections with nested indicators for a specific year and quarter',
+  })
+  @ApiQuery({ name: 'year', required: true, type: Number })
+  @ApiQuery({ name: 'quarter', required: true, enum: Quarter })
+  async getSectionsWithIndicatorsByPeriod(
+    @Query('year', ParseIntPipe) year: number,
+    @Query('quarter') quarter: Quarter,
+  ) {
+    return await this.operasionalService.getSectionsWithIndicatorsByPeriod(
+      year,
+      quarter,
+    );
   }
 
   @Get('total-weighted')
-  @ApiOperation({ summary: 'Get total weighted by period' })
-  @ApiQuery({ name: 'year', required: true })
+  @ApiOperation({ summary: 'Get total weighted value by period' })
+  @ApiQuery({ name: 'year', required: true, type: Number })
   @ApiQuery({ name: 'quarter', required: true, enum: Quarter })
   async getTotalWeighted(
     @Query('year', ParseIntPipe) year: number,
@@ -155,18 +171,12 @@ export class OperasionalController {
       year,
       quarter,
     );
-    return { total };
-  }
-
-  @Get('sections/period')
-  @ApiOperation({ summary: 'Get operasional sections by period' })
-  @ApiQuery({ name: 'year', required: true, type: Number })
-  @ApiQuery({ name: 'quarter', required: true, enum: Quarter })
-  async getSectionsByPeriod(
-    @Query('year', ParseIntPipe) year: number,
-    @Query('quarter') quarter: Quarter,
-  ) {
-    return await this.operasionalService.findSectionsByPeriod(year, quarter);
+    return {
+      success: true,
+      year,
+      quarter,
+      total,
+    };
   }
 
   @Get('periods')
@@ -188,12 +198,12 @@ export class OperasionalController {
     }
   }
 
-  @Get('all-periods')
+  @Get('periods/with-counts')
   @ApiOperation({
-    summary: 'Get all periods with count',
-    description: 'Get periods with indicator counts',
+    summary: 'Get all periods with indicator counts',
+    description: 'Get periods with indicator counts for each period',
   })
-  async getAllPeriods() {
+  async getAllPeriodsWithCounts() {
     try {
       const periods = await this.operasionalService.getPeriods();
 
@@ -216,14 +226,38 @@ export class OperasionalController {
         count: periodsWithCounts.length,
       };
     } catch (error) {
-      console.error('Error in getAllPeriods:', error);
+      console.error('Error in getAllPeriodsWithCounts:', error);
       throw error;
     }
   }
 
+  @Get('indikators/count')
+  @ApiOperation({ summary: 'Get indikator count by period' })
+  @ApiQuery({ name: 'year', required: true, type: Number })
+  @ApiQuery({ name: 'quarter', required: true, enum: Quarter })
+  async getIndikatorCount(
+    @Query('year', ParseIntPipe) year: number,
+    @Query('quarter') quarter: Quarter,
+  ) {
+    const count = await this.operasionalService.getIndikatorCountByPeriod(
+      year,
+      quarter,
+    );
+    return {
+      success: true,
+      year,
+      quarter,
+      count,
+    };
+  }
+
+  // ========== DUPLICATION ENDPOINT ==========
   @Post('indikators/:id/duplicate')
   @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'Duplicate indikator to new period' })
+  @ApiOperation({
+    summary: 'Duplicate indikator to new period',
+    description: 'Copy an existing indikator to a different period',
+  })
   async duplicateIndikator(
     @Param('id', ParseIntPipe) id: number,
     @Query('year', ParseIntPipe) year: number,

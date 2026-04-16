@@ -9,18 +9,28 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.KpmrLikuiditasModule = void 0;
 const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
-const kpmr_likuiditas_service_1 = require("./kpmr-likuiditas.service");
 const kpmr_likuiditas_controller_1 = require("./kpmr-likuiditas.controller");
-const kpmr_likuidita_entity_1 = require("./entities/kpmr-likuidita.entity");
+const kpmr_likuiditas_service_1 = require("./kpmr-likuiditas.service");
+const kpmr_likuiditas_definisi_entity_1 = require("./entities/kpmr-likuiditas-definisi.entity");
+const kpmr_likuiditas_skor_entity_1 = require("./entities/kpmr-likuiditas-skor.entity");
+const kpmr_likuiditas_aspek_entity_1 = require("./entities/kpmr-likuiditas-aspek.entity");
+const kpmr_likuiditas_pertanyaan_entity_1 = require("./entities/kpmr-likuiditas-pertanyaan.entity");
 let KpmrLikuiditasModule = class KpmrLikuiditasModule {
 };
 exports.KpmrLikuiditasModule = KpmrLikuiditasModule;
 exports.KpmrLikuiditasModule = KpmrLikuiditasModule = __decorate([
     (0, common_1.Module)({
-        imports: [typeorm_1.TypeOrmModule.forFeature([kpmr_likuidita_entity_1.KpmrLikuiditas])],
-        controllers: [kpmr_likuiditas_controller_1.KpmrLikuiditasController],
-        providers: [kpmr_likuiditas_service_1.KpmrLikuiditasService],
-        exports: [kpmr_likuiditas_service_1.KpmrLikuiditasService],
+        imports: [
+            typeorm_1.TypeOrmModule.forFeature([
+                kpmr_likuiditas_definisi_entity_1.KPMRLikuiditasDefinition,
+                kpmr_likuiditas_skor_entity_1.KPMRLikuiditasScore,
+                kpmr_likuiditas_aspek_entity_1.KPMRLikuiditasAspect,
+                kpmr_likuiditas_pertanyaan_entity_1.KPMRLikuiditasQuestion,
+            ]),
+        ],
+        controllers: [kpmr_likuiditas_controller_1.KPMRLikuiditasController],
+        providers: [kpmr_likuiditas_service_1.KPMRLikuiditasService],
+        exports: [kpmr_likuiditas_service_1.KPMRLikuiditasService],
     })
 ], KpmrLikuiditasModule);
 //# sourceMappingURL=kpmr-likuiditas.module.js.map

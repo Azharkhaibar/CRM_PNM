@@ -1,2 +1,2 @@
-export declare class HukumKpmrOjkModule {
+export declare class HukumKpmrModule {
 }

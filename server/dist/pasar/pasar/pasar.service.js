@@ -16,8 +16,8 @@ exports.PasarService = void 0;
 const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
-const section_entity_1 = require("./entities/section.entity");
-const indikator_entity_1 = require("./entities/indikator.entity");
+const pasar_section_entity_1 = require("./entities/pasar-section.entity");
+const pasar_entity_1 = require("./entities/pasar.entity");
 let PasarService = class PasarService {
     pasarSectionRepository;
     pasarRepository;
@@ -36,7 +36,7 @@ let PasarService = class PasarService {
             },
         });
         if (deletedSection) {
-            console.log(`🔄 [PASAR] Reactivating deleted section: ${deletedSection.no} - ${deletedSection.parameter}`);
+            console.log(`🔄 Reactivating deleted section: ${deletedSection.no} - ${deletedSection.parameter}`);
             deletedSection.isDeleted = false;
             deletedSection.isActive = createDto.isActive ?? true;
             deletedSection.bobotSection =
@@ -46,8 +46,7 @@ let PasarService = class PasarService {
             deletedSection.sortOrder =
                 createDto.sortOrder || deletedSection.sortOrder;
             if (createdBy) {
-                deletedSection['updatedBy'] = createdBy;
-                deletedSection['updatedAt'] = new Date();
+                deletedSection.updatedBy = createdBy;
             }
             return await this.pasarSectionRepository.save(deletedSection);
         }
@@ -75,7 +74,7 @@ let PasarService = class PasarService {
             isDeleted: false,
         };
         if (createdBy) {
-            sectionData['createdBy'] = createdBy;
+            sectionData.createdBy = createdBy;
         }
         const section = this.pasarSectionRepository.create(sectionData);
         return await this.pasarSectionRepository.save(section);
@@ -92,20 +91,18 @@ let PasarService = class PasarService {
     }
     async findSectionById(id) {
         try {
-            console.log(`🔍 [PASAR SERVICE] Finding section by ID: ${id}`);
             const section = await this.pasarSectionRepository
                 .createQueryBuilder('section')
                 .where('section.id = :id', { id })
                 .andWhere('section.is_deleted = false')
                 .getOne();
-            console.log(`🔍 [PASAR SERVICE] Found section:`, section);
             if (!section) {
                 throw new common_1.NotFoundException(`Section dengan ID ${id} tidak ditemukan`);
             }
             return section;
         }
         catch (error) {
-            console.error(`❌ [PASAR SERVICE] Error in findSectionById:`, error);
+            console.error(`❌ [SERVICE] Error in findSectionById:`, error);
             throw error;
         }
     }
@@ -156,7 +153,7 @@ let PasarService = class PasarService {
         if (updateDto.quarter !== undefined)
             section.quarter = updateDto.quarter;
         if (updatedBy) {
-            section['updatedBy'] = updatedBy;
+            section.updatedBy = updatedBy;
         }
         return await this.pasarSectionRepository.save(section);
     }
@@ -165,15 +162,16 @@ let PasarService = class PasarService {
             where: { id },
         });
         if (!section) {
-            throw new common_1.NotFoundException(`tidak ditemukan id section ${id}`);
+            throw new common_1.NotFoundException(`Section dengan ID ${id} tidak ditemukan`);
         }
         const countIndikator = await this.pasarRepository.count({
-            where: { sectionId: id },
+            where: { sectionId: id, isDeleted: false },
         });
         if (countIndikator > 0) {
             throw new common_1.ConflictException(`Section tidak dapat dihapus karena masih digunakan oleh ${countIndikator} indikator`);
         }
-        await this.pasarSectionRepository.delete(id);
+        section.isDeleted = true;
+        await this.pasarSectionRepository.save(section);
         return {
             success: true,
             message: `Section "${section.parameter}" berhasil dihapus`,
@@ -191,7 +189,7 @@ let PasarService = class PasarService {
             },
         });
         if (deletedIndikator) {
-            console.log(`🔄 [PASAR] Reactivating deleted indicator: ${deletedIndikator.subNo} - ${deletedIndikator.indikator}`);
+            console.log(`🔄 Reactivating deleted indicator: ${deletedIndikator.subNo} - ${deletedIndikator.indikator}`);
             deletedIndikator.isDeleted = false;
             deletedIndikator.indikator = createDto.indikator;
             deletedIndikator.bobotIndikator = createDto.bobotIndikator;
@@ -345,13 +343,10 @@ let PasarService = class PasarService {
             };
             this.validateModeSpecificFields(validationDto);
         }
-        if (updateDto.bobotSection ||
-            updateDto.bobotIndikator ||
-            updateDto.peringkat) {
-            const bobotSection = updateDto.bobotSection || indikator.bobotSection;
+        if (updateDto.bobotIndikator || updateDto.peringkat) {
             const bobotIndikator = updateDto.bobotIndikator || indikator.bobotIndikator;
             const peringkat = updateDto.peringkat || indikator.peringkat;
-            updateDto.weighted = this.calculateWeighted(bobotSection, bobotIndikator, peringkat);
+            updateDto.weighted = this.calculateWeighted(indikator.bobotSection, bobotIndikator, peringkat);
         }
         Object.keys(updateDto).forEach((key) => {
             if (updateDto[key] !== undefined) {
@@ -371,7 +366,9 @@ let PasarService = class PasarService {
         if (!indikator) {
             throw new common_1.NotFoundException(`Indikator dengan ID ${id} tidak ditemukan`);
         }
-        await this.pasarRepository.delete(id);
+        indikator.isDeleted = true;
+        indikator.deletedAt = new Date();
+        await this.pasarRepository.save(indikator);
         return {
             success: true,
             message: `Indikator "${indikator.indikator}" (${indikator.subNo}) berhasil dihapus`,
@@ -412,80 +409,9 @@ let PasarService = class PasarService {
             .getRawOne();
         return parseFloat(result?.total || 0) || 0;
     }
-    validateModeSpecificFields(dto) {
-        const mode = dto.mode;
-        if (mode === indikator_entity_1.CalculationMode.RASIO) {
-            if (dto.pembilangValue !== undefined && dto.pembilangValue < 0) {
-                throw new common_1.BadRequestException('Pembilang value tidak boleh negatif untuk mode RASIO');
-            }
-            if (dto.penyebutValue !== undefined && dto.penyebutValue <= 0) {
-                throw new common_1.BadRequestException('Penyebut value harus lebih besar dari 0 untuk mode RASIO');
-            }
-        }
-        else if (mode === indikator_entity_1.CalculationMode.NILAI_TUNGGAL) {
-            if (dto.penyebutValue !== undefined && dto.penyebutValue < 0) {
-                throw new common_1.BadRequestException('Nilai penyebut tidak boleh negatif untuk mode NILAI_TUNGGAL');
-            }
-        }
-        else if (mode === indikator_entity_1.CalculationMode.TEKS) {
-            if (!dto.hasilText && !dto.hasilText?.trim()) {
-                throw new common_1.BadRequestException('Hasil text wajib diisi untuk mode TEKS');
-            }
-        }
-    }
-    calculateWeighted(bobotSection, bobotIndikator, peringkat) {
-        return (bobotSection * bobotIndikator * peringkat) / 10000;
-    }
-    async duplicateIndikatorToNewPeriod(sourceId, targetYear, targetQuarter, createdBy) {
-        const source = await this.findIndikatorById(sourceId);
-        const existing = await this.pasarRepository.findOne({
-            where: {
-                year: targetYear,
-                quarter: targetQuarter,
-                sectionId: source.sectionId,
-                subNo: source.subNo,
-                isDeleted: false,
-            },
-        });
-        if (existing) {
-            throw new common_1.ConflictException(`Indikator dengan subNo "${source.subNo}" sudah ada pada periode ${targetYear}-${targetQuarter}`);
-        }
-        const newIndikatorData = {
-            ...source,
-            id: undefined,
-            year: targetYear,
-            quarter: targetQuarter,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-            version: 1,
-            revisionNotes: `Duplikasi dari periode ${source.year}-${source.quarter}`,
-            isDeleted: false,
-        };
-        if (createdBy) {
-            newIndikatorData.createdBy = createdBy;
-        }
-        const newIndikator = this.pasarRepository.create(newIndikatorData);
-        return await this.pasarRepository.save(newIndikator);
-    }
-    async getIndikatorCountByPeriod(year, quarter) {
-        try {
-            const result = await this.pasarRepository
-                .createQueryBuilder('pasar')
-                .select('COUNT(pasar.id)', 'count')
-                .where('pasar.year = :year', { year })
-                .andWhere('pasar.quarter = :quarter', { quarter })
-                .andWhere('pasar.is_deleted = false')
-                .getRawOne();
-            return parseInt(result?.count || 0) || 0;
-        }
-        catch (error) {
-            console.error('[PASAR] Error in getIndikatorCountByPeriod:', error);
-            return 0;
-        }
-    }
     async getSectionsWithIndicatorsByPeriod(year, quarter) {
         try {
-            console.log(`[PASAR] Loading sections with indicators for period: ${year}-${quarter}`);
+            console.log(`Loading sections with indicators for period: ${year}-${quarter}`);
             const sections = await this.pasarSectionRepository.find({
                 where: {
                     year,
@@ -495,7 +421,7 @@ let PasarService = class PasarService {
                 },
                 order: { sortOrder: 'ASC', no: 'ASC' },
             });
-            console.log(`[PASAR] Total sections for period ${year}-${quarter}: ${sections.length}`);
+            console.log(`Total sections for period ${year}-${quarter}: ${sections.length}`);
             const sectionsWithIndicators = await Promise.all(sections.map(async (section) => {
                 const indicators = await this.pasarRepository.find({
                     where: {
@@ -506,7 +432,7 @@ let PasarService = class PasarService {
                     },
                     order: { subNo: 'ASC' },
                 });
-                console.log(`[PASAR] Section ${section.no}: ${indicators.length} indicators`);
+                console.log(`Section ${section.no}: ${indicators.length} indicators`);
                 const totalWeighted = indicators.reduce((sum, indicator) => sum + (Number(indicator.weighted) || 0), 0);
                 return {
                     id: section.id,
@@ -562,7 +488,7 @@ let PasarService = class PasarService {
             };
         }
         catch (error) {
-            console.error('[PASAR] Error in getSectionsWithIndicatorsByPeriod:', error);
+            console.error('Error in getSectionsWithIndicatorsByPeriod:', error);
             throw error;
         }
     }
@@ -580,12 +506,83 @@ let PasarService = class PasarService {
             quarter: p.pasar_quarter,
         }));
     }
+    async getIndikatorCountByPeriod(year, quarter) {
+        try {
+            const result = await this.pasarRepository
+                .createQueryBuilder('pasar')
+                .select('COUNT(pasar.id)', 'count')
+                .where('pasar.year = :year', { year })
+                .andWhere('pasar.quarter = :quarter', { quarter })
+                .andWhere('pasar.is_deleted = false')
+                .getRawOne();
+            return parseInt(result?.count || 0) || 0;
+        }
+        catch (error) {
+            console.error('Error in getIndikatorCountByPeriod:', error);
+            return 0;
+        }
+    }
+    async duplicateIndikatorToNewPeriod(sourceId, targetYear, targetQuarter, createdBy) {
+        const source = await this.findIndikatorById(sourceId);
+        const existing = await this.pasarRepository.findOne({
+            where: {
+                year: targetYear,
+                quarter: targetQuarter,
+                sectionId: source.sectionId,
+                subNo: source.subNo,
+                isDeleted: false,
+            },
+        });
+        if (existing) {
+            throw new common_1.ConflictException(`Indikator dengan subNo "${source.subNo}" sudah ada pada periode ${targetYear}-${targetQuarter}`);
+        }
+        const newIndikatorData = {
+            ...source,
+            id: undefined,
+            year: targetYear,
+            quarter: targetQuarter,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            version: 1,
+            revisionNotes: `Duplikasi dari periode ${source.year}-${source.quarter}`,
+            isDeleted: false,
+        };
+        if (createdBy) {
+            newIndikatorData.createdBy = createdBy;
+        }
+        const newIndikator = this.pasarRepository.create(newIndikatorData);
+        return await this.pasarRepository.save(newIndikator);
+    }
+    validateModeSpecificFields(dto) {
+        const mode = dto.mode;
+        if (mode === pasar_entity_1.CalculationMode.RASIO) {
+            if (dto.pembilangValue !== undefined && dto.pembilangValue < 0) {
+                throw new common_1.BadRequestException('Pembilang value tidak boleh negatif untuk mode RASIO');
+            }
+            if (dto.penyebutValue !== undefined && dto.penyebutValue <= 0) {
+                throw new common_1.BadRequestException('Penyebut value harus lebih besar dari 0 untuk mode RASIO');
+            }
+        }
+        else if (mode === pasar_entity_1.CalculationMode.NILAI_TUNGGAL) {
+            if (dto.penyebutValue !== undefined && dto.penyebutValue < 0) {
+                throw new common_1.BadRequestException('Nilai penyebut tidak boleh negatif untuk mode NILAI_TUNGGAL');
+            }
+        }
+        else if (mode === pasar_entity_1.CalculationMode.TEKS) {
+            if (!dto.hasilText || !dto.hasilText.trim()) {
+                throw new common_1.BadRequestException('Hasil text wajib diisi untuk mode TEKS');
+            }
+        }
+    }
+    calculateWeighted(bobotSection, bobotIndikator, peringkat) {
+        return (bobotSection * bobotIndikator * peringkat) / 10000;
+    }
 };
 exports.PasarService = PasarService;
 exports.PasarService = PasarService = __decorate([
     (0, common_1.Injectable)(),
-    __param(0, (0, typeorm_1.InjectRepository)(section_entity_1.PasarSection)),
-    __param(1, (0, typeorm_1.InjectRepository)(indikator_entity_1.Pasar)),
+    __param(0, (0, typeorm_1.InjectRepository)(pasar_section_entity_1.PasarSection)),
+    __param(1, (0, typeorm_1.InjectRepository)(pasar_entity_1.Pasar)),
     __metadata("design:paramtypes", [typeorm_2.Repository,
         typeorm_2.Repository])
 ], PasarService);

@@ -437,17 +437,13 @@ class KpmrPasarApiService {
         throw new Error('Quarter tidak valid');
       }
 
-      const payload = {
-        year: data.year,
-        quarter: data.quarter,
-        isActive: data.isActive ?? true,
-        version: data.version || '1.0',
-        notes: data.notes || '',
-        summary: data.summary || {},
-        aspekList: data.aspekList || [],
+      const formattedPayload = {
+        ...data,
+        // Jika quarter masih number, konversi ke Q1-Q4
+        quarter: typeof data.quarter === 'number' ? `Q${data.quarter}` : data.quarter,
       };
 
-      const response = await api_pasar_produk.post(this.BASE_PATH, payload);
+      const response = await api_pasar_produk.post(this.BASE_PATH, formattedPayload);
       return response.data;
     } catch (error: any) {
       return this.handleApiError(error, 'Gagal membuat KPMR');

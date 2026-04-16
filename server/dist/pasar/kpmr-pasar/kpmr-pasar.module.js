@@ -9,18 +9,28 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.KpmrPasarModule = void 0;
 const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
-const kpmr_pasar_service_1 = require("./kpmr-pasar.service");
 const kpmr_pasar_controller_1 = require("./kpmr-pasar.controller");
-const kpmr_pasar_entity_1 = require("./entities/kpmr-pasar.entity");
+const kpmr_pasar_service_1 = require("./kpmr-pasar.service");
+const kpmr_pasar_definisi_entity_1 = require("./entities/kpmr-pasar-definisi.entity");
+const kpmr_pasar_skor_entity_1 = require("./entities/kpmr-pasar-skor.entity");
+const kpmr_pasar_aspek_entity_1 = require("./entities/kpmr-pasar-aspek.entity");
+const kpmr_pasar_pertanyaan_entity_1 = require("./entities/kpmr-pasar-pertanyaan.entity");
 let KpmrPasarModule = class KpmrPasarModule {
 };
 exports.KpmrPasarModule = KpmrPasarModule;
 exports.KpmrPasarModule = KpmrPasarModule = __decorate([
     (0, common_1.Module)({
-        imports: [typeorm_1.TypeOrmModule.forFeature([kpmr_pasar_entity_1.KpmrPasar])],
-        controllers: [kpmr_pasar_controller_1.KpmrPasarController],
-        providers: [kpmr_pasar_service_1.KpmrPasarService],
-        exports: [kpmr_pasar_service_1.KpmrPasarService],
+        imports: [
+            typeorm_1.TypeOrmModule.forFeature([
+                kpmr_pasar_definisi_entity_1.KPMRPasarDefinition,
+                kpmr_pasar_skor_entity_1.KPMRPasarScore,
+                kpmr_pasar_aspek_entity_1.KPMRPasarAspect,
+                kpmr_pasar_pertanyaan_entity_1.KPMRPasarQuestion,
+            ]),
+        ],
+        controllers: [kpmr_pasar_controller_1.KPMRPasarController],
+        providers: [kpmr_pasar_service_1.KPMRPasarService],
+        exports: [kpmr_pasar_service_1.KPMRPasarService],
     })
 ], KpmrPasarModule);
 //# sourceMappingURL=kpmr-pasar.module.js.map

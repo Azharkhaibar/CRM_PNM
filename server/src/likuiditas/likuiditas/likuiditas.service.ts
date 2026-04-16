@@ -1,4 +1,3 @@
-// src/features/Dashboard/pages/RiskProfile/pages/Strategik/services/strategik.service.ts
 import {
   Injectable,
   NotFoundException,
@@ -6,28 +5,17 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { LikuiditasSection } from './entities/section-likuiditas.entity';
-import { Repository, In, Like, Not } from 'typeorm';
-// import { CalculationMode, Likuiditas, Quarter } from './entities/likuiditas.entity';
+import { Repository, Like, Not } from 'typeorm';
+import { LikuiditasSection } from './entities/likuiditas-section.entity';
 import {
-  CalculationMode,
   Likuiditas,
+  CalculationMode,
   Quarter,
 } from './entities/likuiditas.entity';
-import { CreateLikuiditasSectionDto } from './dto/create-likuiditas-section.dto';
-import { UpdateLikuiditasSectionDto } from './dto/update-likuiditas-section.dto';
 import { CreateLikuiditasDto } from './dto/create-likuiditas.dto';
+import { UpdateLikuiditasSectionDto } from './dto/update-likuiditas-section.dto';
 import { UpdateLikuiditasDto } from './dto/update-likuiditas.dto';
-// import { StrategikSection } from './entities/stratejik-section.entity';
-// import {
-//   Strategik,
-//   CalculationMode,
-//   Quarter,
-// } from './entities/stratejik.entity';
-// import { CreateStrategikSectionDto } from './dto/create-stratejik-section.dto';
-// import { UpdateStrategikSectionDto } from './dto/update-stratejik-section.dto';
-// import { CreateStrategikDto } from './dto/create-stratejik.dto';
-// import { UpdateStrategikDto } from './dto/update-stratejik.dto';
+import { CreateLikuiditasSectionDto } from './dto/create-likuiditas-section.dto';
 
 @Injectable()
 export class LikuiditasService {
@@ -45,24 +33,21 @@ export class LikuiditasService {
     createDto: CreateLikuiditasSectionDto,
     createdBy?: string,
   ): Promise<LikuiditasSection> {
-    // 1. Cek apakah ada data yang sudah dihapus dengan no+parameter+year+quarter yang sama
     const deletedSection = await this.likuiditasSectionRepository.findOne({
       where: {
         no: createDto.no,
         parameter: createDto.parameter,
         year: createDto.year,
         quarter: createDto.quarter,
-        isDeleted: true, // Hanya cek yang sudah dihapus
+        isDeleted: true,
       },
     });
 
-    // 2. Jika ada data yang sudah dihapus, REACTIVATE data tersebut
     if (deletedSection) {
       console.log(
         `🔄 Reactivating deleted section: ${deletedSection.no} - ${deletedSection.parameter}`,
       );
 
-      // Reactivate section yang sudah dihapus
       deletedSection.isDeleted = false;
       deletedSection.isActive = createDto.isActive ?? true;
       deletedSection.bobotSection =
@@ -73,21 +58,19 @@ export class LikuiditasService {
         createDto.sortOrder || deletedSection.sortOrder;
 
       if (createdBy) {
-        deletedSection['updatedBy'] = createdBy;
-        deletedSection['updatedAt'] = new Date();
+        deletedSection.updatedBy = createdBy;
       }
 
       return await this.likuiditasSectionRepository.save(deletedSection);
     }
 
-    // 3. Cek duplikasi hanya untuk data yang TIDAK dihapus
     const existingSection = await this.likuiditasSectionRepository.findOne({
       where: {
         no: createDto.no,
         parameter: createDto.parameter,
         year: createDto.year,
         quarter: createDto.quarter,
-        isDeleted: false, // Hanya cek yang tidak dihapus
+        isDeleted: false,
       },
     });
 
@@ -97,7 +80,6 @@ export class LikuiditasService {
       );
     }
 
-    // 4. Jika tidak ada data sama sekali, buat baru
     const sectionData: Partial<LikuiditasSection> = {
       no: createDto.no,
       parameter: createDto.parameter,
@@ -111,7 +93,7 @@ export class LikuiditasService {
     };
 
     if (createdBy) {
-      sectionData['createdBy'] = createdBy;
+      sectionData.createdBy = createdBy;
     }
 
     const section = this.likuiditasSectionRepository.create(sectionData);
@@ -119,10 +101,9 @@ export class LikuiditasService {
   }
 
   async findAllSections(isActive?: boolean): Promise<LikuiditasSection[]> {
-    const where: any = { isDeleted: false }; // Hanya ambil yang tidak dihapus
+    const where: any = { isDeleted: false };
 
     if (isActive !== undefined) {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       where.isActive = isActive;
     }
 
@@ -132,19 +113,13 @@ export class LikuiditasService {
     });
   }
 
-  // PERBAIKAN: Tambahkan method findSectionById yang hilang
   async findSectionById(id: number): Promise<LikuiditasSection> {
     try {
-      console.log(`🔍 [SERVICE] Finding section by ID: ${id}`);
-
-      // Cari dengan query builder untuk menghindari naming issues
       const section = await this.likuiditasSectionRepository
         .createQueryBuilder('section')
         .where('section.id = :id', { id })
         .andWhere('section.is_deleted = false')
         .getOne();
-
-      console.log(`🔍 [SERVICE] Found section:`, section);
 
       if (!section) {
         throw new NotFoundException(`Section dengan ID ${id} tidak ditemukan`);
@@ -165,7 +140,7 @@ export class LikuiditasService {
       where: {
         year,
         quarter,
-        isDeleted: false, // Hanya ambil yang tidak dihapus
+        isDeleted: false,
         isActive: true,
       },
       order: { sortOrder: 'ASC', no: 'ASC' },
@@ -179,23 +154,19 @@ export class LikuiditasService {
   ): Promise<LikuiditasSection> {
     const section = await this.findSectionById(id);
 
-    // Jika ada perubahan no/parameter/year/quarter, cek duplikasi
     const checkNo = updateDto.no || section.no;
     const checkParam = updateDto.parameter || section.parameter;
     const checkYear = updateDto.year || section.year;
-
     const checkQuarter = updateDto.quarter || section.quarter;
 
-    // Cek apakah ada section lain dengan no+parameter+year+quarter yang sama
     const existing = await this.likuiditasSectionRepository.findOne({
       where: {
         no: checkNo,
         parameter: checkParam,
         year: checkYear,
-
         quarter: checkQuarter,
         isDeleted: false,
-        id: Not(id), // Exclude current section
+        id: Not(id),
       },
     });
 
@@ -205,7 +176,6 @@ export class LikuiditasService {
       );
     }
 
-    // Update field
     if (updateDto.no !== undefined) section.no = updateDto.no;
     if (updateDto.parameter !== undefined)
       section.parameter = updateDto.parameter;
@@ -220,70 +190,65 @@ export class LikuiditasService {
     if (updateDto.quarter !== undefined) section.quarter = updateDto.quarter;
 
     if (updatedBy) {
-      // Jika ada updatedBy field di entity
-      section['updatedBy'] = updatedBy;
+      section.updatedBy = updatedBy;
     }
 
     return await this.likuiditasSectionRepository.save(section);
   }
 
-  async deleteSection(id: number): Promise<void> {
+  async deleteSection(
+    id: number,
+  ): Promise<{ success: boolean; message: string }> {
     const section = await this.likuiditasSectionRepository.findOne({
       where: { id },
     });
-
-    // Cek apakah section digunakan di indikator aktif
-    // const hasActiveIndicators = await this.likuiditasRepository.count({
-    //   where: {
-    //     sectionId: id,
-    //   },
-    // });
 
     if (!section) {
       throw new NotFoundException(`Section dengan ID ${id} tidak ditemukan`);
     }
 
-    const indikatorCount = await this.likuiditasRepository.count({
-      where: { sectionId: id },
+    const countIndikator = await this.likuiditasRepository.count({
+      where: { sectionId: id, isDeleted: false },
     });
 
-    if (indikatorCount > 0) {
+    if (countIndikator > 0) {
       throw new ConflictException(
-        `Section tidak dapat dihapus karena masih digunakan oleh ${indikatorCount} indikator`,
+        `Section tidak dapat dihapus karena masih digunakan oleh ${countIndikator} indikator`,
       );
     }
 
     section.isDeleted = true;
-    await this.likuiditasSectionRepository.delete(id);
+    await this.likuiditasSectionRepository.save(section);
+
+    return {
+      success: true,
+      message: `Section "${section.parameter}" berhasil dihapus`,
+    };
   }
 
-  // ========== STRATEGIK (INDIKATOR) SERVICES ==========
+  // ========== INDIKATOR SERVICES ==========
 
   async createIndikator(
     createDto: CreateLikuiditasDto,
     createdBy?: string,
   ): Promise<Likuiditas> {
-    // 1. Validasi section exist
     const section = await this.findSectionById(createDto.sectionId);
 
-    // 2. Cek apakah ada indikator yang sudah dihapus dengan data yang sama
     const deletedIndikator = await this.likuiditasRepository.findOne({
       where: {
         year: createDto.year,
         quarter: createDto.quarter,
         sectionId: createDto.sectionId,
         subNo: createDto.subNo,
-        isDeleted: true, // Hanya cek yang sudah dihapus
+        isDeleted: true,
       },
     });
 
-    // 3. Jika ada data yang sudah dihapus, REACTIVATE
     if (deletedIndikator) {
       console.log(
         `🔄 Reactivating deleted indicator: ${deletedIndikator.subNo} - ${deletedIndikator.indikator}`,
       );
 
-      // Update data dengan nilai baru
       deletedIndikator.isDeleted = false;
       deletedIndikator.indikator = createDto.indikator;
       deletedIndikator.bobotIndikator = createDto.bobotIndikator;
@@ -300,7 +265,6 @@ export class LikuiditasService {
       deletedIndikator.hasilText = createDto.hasilText || null;
       deletedIndikator.peringkat = createDto.peringkat;
 
-      // Hitung weighted baru
       deletedIndikator.weighted =
         createDto.weighted ||
         this.calculateWeighted(
@@ -319,14 +283,13 @@ export class LikuiditasService {
       return await this.likuiditasRepository.save(deletedIndikator);
     }
 
-    // 4. Cek duplikasi hanya untuk data yang TIDAK dihapus
     const existingIndikator = await this.likuiditasRepository.findOne({
       where: {
         year: createDto.year,
         quarter: createDto.quarter,
         sectionId: createDto.sectionId,
         subNo: createDto.subNo,
-        isDeleted: false, // Hanya cek yang tidak dihapus
+        isDeleted: false,
       },
     });
 
@@ -336,10 +299,8 @@ export class LikuiditasService {
       );
     }
 
-    // 5. Validasi mode-specific fields
     this.validateModeSpecificFields(createDto);
 
-    // 6. Hitung weighted jika belum diisi
     const weighted =
       createDto.weighted ||
       this.calculateWeighted(
@@ -348,7 +309,6 @@ export class LikuiditasService {
         createDto.peringkat,
       );
 
-    // 7. Handle nullable fields
     const likuiditasData: Partial<Likuiditas> = {
       year: createDto.year,
       quarter: createDto.quarter,
@@ -442,17 +402,14 @@ export class LikuiditasService {
   ): Promise<Likuiditas> {
     const indikator = await this.findIndikatorById(id);
 
-    // 1. Validasi jika ada perubahan sectionId
     if (updateDto.sectionId && updateDto.sectionId !== indikator.sectionId) {
       const newSection = await this.findSectionById(updateDto.sectionId);
 
-      // Update data section yang denormalized
       updateDto.no = newSection.no;
       updateDto.sectionLabel = newSection.parameter;
       updateDto.bobotSection = newSection.bobotSection;
     }
 
-    // 2. Validasi jika ada perubahan periode atau subNo
     if (
       (updateDto.year && updateDto.year !== indikator.year) ||
       (updateDto.quarter && updateDto.quarter !== indikator.quarter) ||
@@ -470,7 +427,7 @@ export class LikuiditasService {
           sectionId,
           subNo,
           isDeleted: false,
-          id: Not(id), // Exclude current
+          id: Not(id),
         },
       });
 
@@ -481,7 +438,6 @@ export class LikuiditasService {
       }
     }
 
-    // 3. Validasi mode-specific fields
     if (updateDto.mode) {
       const validationDto: Partial<CreateLikuiditasDto> = {
         mode: updateDto.mode,
@@ -492,28 +448,20 @@ export class LikuiditasService {
       this.validateModeSpecificFields(validationDto);
     }
 
-    // 4. Hitung weighted baru jika ada perubahan bobot/peringkat
-    if (
-      updateDto.bobotSection ||
-      updateDto.bobotIndikator ||
-      updateDto.peringkat
-    ) {
-      const bobotSection = updateDto.bobotSection || indikator.bobotSection;
+    if (updateDto.bobotIndikator || updateDto.peringkat) {
       const bobotIndikator =
         updateDto.bobotIndikator || indikator.bobotIndikator;
       const peringkat = updateDto.peringkat || indikator.peringkat;
 
       updateDto.weighted = this.calculateWeighted(
-        bobotSection,
+        indikator.bobotSection,
         bobotIndikator,
         peringkat,
       );
     }
 
-    // 5. Update field yang ada di updateDto
     Object.keys(updateDto).forEach((key) => {
       if (updateDto[key] !== undefined) {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         indikator[key] = updateDto[key];
       }
     });
@@ -526,7 +474,9 @@ export class LikuiditasService {
     return await this.likuiditasRepository.save(indikator);
   }
 
-  async deleteIndikator(id: number): Promise<void> {
+  async deleteIndikator(
+    id: number,
+  ): Promise<{ success: boolean; message: string }> {
     const indikator = await this.likuiditasRepository.findOne({
       where: { id },
     });
@@ -535,7 +485,14 @@ export class LikuiditasService {
       throw new NotFoundException(`Indikator dengan ID ${id} tidak ditemukan`);
     }
 
-    await this.likuiditasRepository.delete(id);
+    indikator.isDeleted = true;
+    indikator.deletedAt = new Date();
+    await this.likuiditasRepository.save(indikator);
+
+    return {
+      success: true,
+      message: `Indikator "${indikator.indikator}" (${indikator.subNo}) berhasil dihapus`,
+    };
   }
 
   async searchIndikators(
@@ -545,9 +502,7 @@ export class LikuiditasService {
   ): Promise<Likuiditas[]> {
     const where: any = { isDeleted: false };
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     if (year) where.year = year;
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     if (quarter) where.quarter = quarter;
 
     if (query) {
@@ -576,7 +531,6 @@ export class LikuiditasService {
     year: number,
     quarter: Quarter,
   ): Promise<number> {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const result = await this.likuiditasRepository
       .createQueryBuilder('likuiditas')
       .select('SUM(likuiditas.weighted)', 'total')
@@ -588,114 +542,7 @@ export class LikuiditasService {
     return parseFloat(result?.total || 0) || 0;
   }
 
-  // ========== HELPER METHODS ==========
-
-  private validateModeSpecificFields(dto: Partial<CreateLikuiditasDto>): void {
-    const mode = dto.mode;
-
-    if (mode === CalculationMode.RASIO) {
-      if (dto.pembilangValue !== undefined && dto.pembilangValue < 0) {
-        throw new BadRequestException(
-          'Pembilang value tidak boleh negatif untuk mode RASIO',
-        );
-      }
-      if (dto.penyebutValue !== undefined && dto.penyebutValue <= 0) {
-        throw new BadRequestException(
-          'Penyebut value harus lebih besar dari 0 untuk mode RASIO',
-        );
-      }
-    } else if (mode === CalculationMode.NILAI_TUNGGAL) {
-      if (dto.penyebutValue !== undefined && dto.penyebutValue < 0) {
-        throw new BadRequestException(
-          'Nilai penyebut tidak boleh negatif untuk mode NILAI_TUNGGAL',
-        );
-      }
-    } else if (mode === CalculationMode.TEKS) {
-      // Untuk mode TEKS, hasil harus berupa text
-      if (!dto.hasilText && !dto.hasilText?.trim()) {
-        throw new BadRequestException('Hasil text wajib diisi untuk mode TEKS');
-      }
-    }
-  }
-
-  private calculateWeighted(
-    bobotSection: number,
-    bobotIndikator: number,
-    peringkat: number,
-  ): number {
-    // Formula: (bobotSection * bobotIndikator * peringkat) / 10000
-    return (bobotSection * bobotIndikator * peringkat) / 10000;
-  }
-
-  async duplicateIndikatorToNewPeriod(
-    sourceId: number,
-    targetYear: number,
-    targetQuarter: Quarter,
-    createdBy?: string,
-  ): Promise<Likuiditas> {
-    const source = await this.findIndikatorById(sourceId);
-
-    // Cek apakah sudah ada di periode target
-    const existing = await this.likuiditasRepository.findOne({
-      where: {
-        year: targetYear,
-        quarter: targetQuarter,
-        sectionId: source.sectionId,
-        subNo: source.subNo,
-        isDeleted: false,
-      },
-    });
-
-    if (existing) {
-      throw new ConflictException(
-        `Indikator dengan subNo "${source.subNo}" sudah ada pada periode ${targetYear}-${targetQuarter}`,
-      );
-    }
-
-    // Duplikasi dengan periode baru
-    const newIndikatorData: Partial<Likuiditas> = {
-      ...source,
-      id: undefined,
-      year: targetYear,
-      quarter: targetQuarter,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      version: 1,
-      revisionNotes: `Duplikasi dari periode ${source.year}-${source.quarter}`,
-      isDeleted: false,
-    };
-
-    if (createdBy) {
-      newIndikatorData.createdBy = createdBy;
-    }
-
-    const newIndikator = this.likuiditasRepository.create(newIndikatorData);
-    return await this.likuiditasRepository.save(newIndikator);
-  }
-
-  // ========== ADDITIONAL METHODS ==========
-
-  // PERBAIKAN: Hapus deklarasi duplikat dan implementasi method
-  async getIndikatorCountByPeriod(
-    year: number,
-    quarter: Quarter,
-  ): Promise<number> {
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-      const result = await this.likuiditasRepository
-        .createQueryBuilder('likuiditas')
-        .select('COUNT(likuiditas.id)', 'count')
-        .where('likuiditas.year = :year', { year })
-        .andWhere('likuiditas.quarter = :quarter', { quarter })
-        .andWhere('likuiditas.is_deleted = false')
-        .getRawOne();
-
-      return parseInt(result?.count || 0) || 0;
-    } catch (error) {
-      console.error('Error in getIndikatorCountByPeriod:', error);
-      return 0;
-    }
-  }
+  // ========== COMPLEX QUERIES ==========
 
   async getSectionsWithIndicatorsByPeriod(
     year: number,
@@ -706,7 +553,6 @@ export class LikuiditasService {
         `Loading sections with indicators for period: ${year}-${quarter}`,
       );
 
-      // 1. Ambil sections untuk periode ini saja
       const sections = await this.likuiditasSectionRepository.find({
         where: {
           year,
@@ -782,7 +628,6 @@ export class LikuiditasService {
         }),
       );
 
-      // Filter hanya sections yang punya indikator
       const sectionsWithData = sectionsWithIndicators.filter(
         (s) => s.indicators.length > 0,
       );
@@ -825,5 +670,106 @@ export class LikuiditasService {
       year: p.likuiditas_year,
       quarter: p.likuiditas_quarter,
     }));
+  }
+
+  async getIndikatorCountByPeriod(
+    year: number,
+    quarter: Quarter,
+  ): Promise<number> {
+    try {
+      const result = await this.likuiditasRepository
+        .createQueryBuilder('likuiditas')
+        .select('COUNT(likuiditas.id)', 'count')
+        .where('likuiditas.year = :year', { year })
+        .andWhere('likuiditas.quarter = :quarter', { quarter })
+        .andWhere('likuiditas.is_deleted = false')
+        .getRawOne();
+
+      return parseInt(result?.count || 0) || 0;
+    } catch (error) {
+      console.error('Error in getIndikatorCountByPeriod:', error);
+      return 0;
+    }
+  }
+
+  async duplicateIndikatorToNewPeriod(
+    sourceId: number,
+    targetYear: number,
+    targetQuarter: Quarter,
+    createdBy?: string,
+  ): Promise<Likuiditas> {
+    const source = await this.findIndikatorById(sourceId);
+
+    const existing = await this.likuiditasRepository.findOne({
+      where: {
+        year: targetYear,
+        quarter: targetQuarter,
+        sectionId: source.sectionId,
+        subNo: source.subNo,
+        isDeleted: false,
+      },
+    });
+
+    if (existing) {
+      throw new ConflictException(
+        `Indikator dengan subNo "${source.subNo}" sudah ada pada periode ${targetYear}-${targetQuarter}`,
+      );
+    }
+
+    const newIndikatorData: Partial<Likuiditas> = {
+      ...source,
+      id: undefined,
+      year: targetYear,
+      quarter: targetQuarter,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      version: 1,
+      revisionNotes: `Duplikasi dari periode ${source.year}-${source.quarter}`,
+      isDeleted: false,
+    };
+
+    if (createdBy) {
+      newIndikatorData.createdBy = createdBy;
+    }
+
+    const newIndikator = this.likuiditasRepository.create(newIndikatorData);
+    return await this.likuiditasRepository.save(newIndikator);
+  }
+
+  // ========== HELPER METHODS ==========
+
+  private validateModeSpecificFields(dto: Partial<CreateLikuiditasDto>): void {
+    const mode = dto.mode;
+
+    if (mode === CalculationMode.RASIO) {
+      if (dto.pembilangValue !== undefined && dto.pembilangValue < 0) {
+        throw new BadRequestException(
+          'Pembilang value tidak boleh negatif untuk mode RASIO',
+        );
+      }
+      if (dto.penyebutValue !== undefined && dto.penyebutValue <= 0) {
+        throw new BadRequestException(
+          'Penyebut value harus lebih besar dari 0 untuk mode RASIO',
+        );
+      }
+    } else if (mode === CalculationMode.NILAI_TUNGGAL) {
+      if (dto.penyebutValue !== undefined && dto.penyebutValue < 0) {
+        throw new BadRequestException(
+          'Nilai penyebut tidak boleh negatif untuk mode NILAI_TUNGGAL',
+        );
+      }
+    } else if (mode === CalculationMode.TEKS) {
+      if (!dto.hasilText || !dto.hasilText.trim()) {
+        throw new BadRequestException('Hasil text wajib diisi untuk mode TEKS');
+      }
+    }
+  }
+
+  private calculateWeighted(
+    bobotSection: number,
+    bobotIndikator: number,
+    peringkat: number,
+  ): number {
+    return (bobotSection * bobotIndikator * peringkat) / 10000;
   }
 }

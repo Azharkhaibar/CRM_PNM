@@ -17,7 +17,7 @@ const kepatuhan_entity_1 = require("../kepatuhan/kepatuhan/entities/kepatuhan.en
 const new_investasi_entity_1 = require("../investasi/new-investasi/entities/new-investasi.entity");
 const new_investasi_section_entity_1 = require("../investasi/new-investasi/entities/new-investasi-section.entity");
 const likuiditas_entity_1 = require("../likuiditas/likuiditas/entities/likuiditas.entity");
-const section_likuiditas_entity_1 = require("../likuiditas/likuiditas/entities/section-likuiditas.entity");
+const likuiditas_section_entity_1 = require("../likuiditas/likuiditas/entities/likuiditas-section.entity");
 const operasional_entity_1 = require("../operasional/operasional/entities/operasional.entity");
 const operasional_section_entity_1 = require("../operasional/operasional/entities/operasional-section.entity");
 const hukum_entity_1 = require("../hukum/hukum/entities/hukum.entity");
@@ -39,7 +39,7 @@ exports.ResikoProfileRepositoryModule = ResikoProfileRepositoryModule = __decora
                 new_investasi_entity_1.Investasi,
                 new_investasi_section_entity_1.InvestasiSection,
                 likuiditas_entity_1.Likuiditas,
-                section_likuiditas_entity_1.LikuiditasSection,
+                likuiditas_section_entity_1.LikuiditasSection,
                 operasional_entity_1.Operasional,
                 operasional_section_entity_1.OperasionalSection,
                 hukum_entity_1.Hukum,

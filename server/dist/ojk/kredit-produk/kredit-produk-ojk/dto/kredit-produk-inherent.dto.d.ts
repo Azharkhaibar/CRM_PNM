@@ -1,25 +1,25 @@
 export declare enum KategoriModel {
-    KONVENSIONAL = "konvensional",
-    SYARIAH = "syariah",
-    KOMBINASI = "kombinasi",
-    LAINNYA = "lainnya"
+    TANPA_MODEL = "tanpa_model",
+    OPEN_END = "open_end",
+    TERSTRUKTUR = "terstruktur"
+}
+export declare enum KategoriUnderlying {
+    INDEKS = "indeks",
+    EBA = "eba",
+    DINFRA = "dinfra",
+    OBLIGASI = "obligasi"
 }
 export declare enum KategoriPrinsip {
     SYARIAH = "syariah",
     KONVENSIONAL = "konvensional"
 }
 export declare enum KategoriJenis {
-    MODAL_KERJA = "modal_kerja",
-    INVESTASI = "investasi",
-    KONSUMSI = "konsumsi",
-    MULTIGUNA = "multiguna"
-}
-export declare enum KategoriUnderlying {
-    PIUTANG = "piutang",
-    PERSEDIAAN = "persediaan",
-    ASET_TETAP = "aset_tetap",
-    PROYEK = "proyek",
-    KOMODITAS = "komoditas"
+    PASAR_UANG = "pasar_uang",
+    PENDAPATAN_TETAP = "pendapatan_tetap",
+    CAMPURAN = "campuran",
+    SAHAM = "saham",
+    INDEKS = "indeks",
+    TERPROTEKSI = "terproteksi"
 }
 export declare enum JudulType {
     TANPA_FAKTOR = "Tanpa Faktor",
@@ -50,14 +50,14 @@ export declare class RiskindikatorDto {
     moderateToHigh?: string;
     high?: string;
 }
-export declare class CreateKreditProdukDto {
+export declare class CreateKreditProdukInherentDto {
     year: number;
     quarter: number;
     isActive?: boolean;
     createdBy?: string;
     version?: string;
 }
-export declare class UpdateKreditProdukDto {
+export declare class UpdateKreditProdukInherentDto {
     year?: number;
     quarter?: number;
     isActive?: boolean;

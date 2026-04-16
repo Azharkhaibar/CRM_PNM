@@ -1,4 +1,4 @@
-// src/entities/operasional/operasional-section.entity.ts
+// src/entities/strategik/operasional-section.entity.ts
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -7,24 +7,19 @@ import {
   UpdateDateColumn,
   OneToMany,
   Index,
-  Unique,
 } from 'typeorm';
-import { Operasional } from './operasional.entity';
+import { Quarter, Operasional } from './operasional.entity';
 
-export enum Quarter {
-  Q1 = 'Q1',
-  Q2 = 'Q2',
-  Q3 = 'Q3',
-  Q4 = 'Q4',
-}
-
-@Entity('sections_operasional')
-@Unique('UQ_OPERASIONAL_SECTION_PERIOD', ['year', 'quarter', 'no', 'parameter'])
+@Entity('sections_operasional_holding')
+@Index(
+  'IDX_OPERASIONAL_SECTION_PERIOD_UNIQUE',
+  ['year', 'quarter', 'no', 'parameter'],
+  { unique: true },
+)
 export class OperasionalSection {
   @PrimaryGeneratedColumn()
   id: number;
 
-  // Section HARUS punya periode
   @Column({ type: 'int' })
   year: number;
 
@@ -32,7 +27,7 @@ export class OperasionalSection {
   quarter: Quarter;
 
   @Column({ type: 'varchar', length: 50 })
-  no: string; // Contoh: "7.1"
+  no: string;
 
   @Column({
     name: 'bobot_section',
@@ -44,7 +39,7 @@ export class OperasionalSection {
   bobotSection: number;
 
   @Column({ type: 'varchar', length: 500 })
-  parameter: string; // Nama section
+  parameter: string;
 
   @Column({ type: 'text', nullable: true })
   description: string | null;

@@ -1,10 +1,4 @@
-import { Operasional } from './operasional.entity';
-export declare enum Quarter {
-    Q1 = "Q1",
-    Q2 = "Q2",
-    Q3 = "Q3",
-    Q4 = "Q4"
-}
+import { Quarter, Operasional } from './operasional.entity';
 export declare class OperasionalSection {
     id: number;
     year: number;

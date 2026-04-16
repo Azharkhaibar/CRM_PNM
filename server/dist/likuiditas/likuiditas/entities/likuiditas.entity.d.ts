@@ -1,4 +1,4 @@
-import { LikuiditasSection } from './section-likuiditas.entity';
+import { LikuiditasSection } from './likuiditas-section.entity';
 export declare enum CalculationMode {
     RASIO = "RASIO",
     NILAI_TUNGGAL = "NILAI_TUNGGAL",

@@ -19,10 +19,11 @@ async function bootstrap() {
     });
     app.setGlobalPrefix('api/v1');
     app.useGlobalPipes(new common_1.ValidationPipe({
-        transform: false,
-        whitelist: false,
-        forbidNonWhitelisted: true,
+        transform: true,
+        whitelist: true,
+        forbidNonWhitelisted: false,
         transformOptions: { enableImplicitConversion: true },
+        skipMissingProperties: true,
         exceptionFactory: (errors) => {
             console.log('❌ Validation Error:', errors);
             const messages = errors.map((error) => {

@@ -1,4 +1,4 @@
-// src/ojk/konsentrasi-produk/konsentrasi-produk-ojk/konsentrasi-produk-ojk.service.ts
+// src/ojk/konsentrasi-produk/konsentrasi-produk-ojk/konsentrasi-produk-inherent.jsx
 import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useHeaderStore } from '../../../../store/header';
@@ -2012,7 +2012,7 @@ function NilaiPanel({ param, nilaiList = [], activeNilaiIndex, setActiveNilaiInd
         );
       }
 
-      // PERBAIKAN: Keluar dari mode edit TANPA reset nilai aktif
+      // PERBAIKAN: Keluar dari edit mode TANPA reset nilai aktif
       setEditModeNilai(false);
       setOriginalNilai(null);
 
@@ -2054,7 +2054,7 @@ function NilaiPanel({ param, nilaiList = [], activeNilaiIndex, setActiveNilaiInd
       }
     }
 
-    // Keluar dari edit mode
+    // Keluar dari mode edit
     setEditModeNilai(false);
     setOriginalNilai(null);
 

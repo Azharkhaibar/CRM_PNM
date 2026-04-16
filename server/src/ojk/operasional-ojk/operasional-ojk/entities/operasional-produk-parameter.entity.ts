@@ -12,7 +12,7 @@ import {
 import { Operasional } from './operasional-ojk.entity';
 import { OperasionalNilai } from './operasional-produk-nilai.entity';
 
-@Entity('operasional_parameters')
+@Entity('operasional_parameters_ojk')
 @Index(['operasionalId', 'nomor'], { unique: false })
 export class OperasionalParameter {
   @PrimaryGeneratedColumn() 
@@ -35,13 +35,13 @@ export class OperasionalParameter {
     underlying?: string[];
   };
 
-  @Column({ name: 'operasional_id' })
+  @Column({ name: 'operasional_ojk_id' })
   operasionalId: number;
 
   @ManyToOne(() => Operasional, (operasional) => operasional.parameters, {
     onDelete: 'CASCADE',
   })
-  @JoinColumn({ name: 'operasional_id' })
+  @JoinColumn({ name: 'operasional_ojk_id' })
   operasional: Operasional;
 
   @OneToMany(() => OperasionalNilai, (nilai) => nilai.parameter, {

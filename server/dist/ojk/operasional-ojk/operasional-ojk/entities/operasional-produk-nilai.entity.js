@@ -79,7 +79,7 @@ __decorate([
     __metadata("design:type", Number)
 ], OperasionalNilai.prototype, "orderIndex", void 0);
 exports.OperasionalNilai = OperasionalNilai = __decorate([
-    (0, typeorm_1.Entity)('operasional_nilai'),
+    (0, typeorm_1.Entity)('operasional_nilai_ojk'),
     (0, typeorm_1.Index)(['parameterId', 'nomor'], { unique: false })
 ], OperasionalNilai);
 //# sourceMappingURL=operasional-produk-nilai.entity.js.map

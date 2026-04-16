@@ -18,33 +18,33 @@ const swagger_1 = require("@nestjs/swagger");
 const kredit_produk_ojk_service_1 = require("./kredit-produk-ojk.service");
 const kredit_produk_inherent_dto_1 = require("./dto/kredit-produk-inherent.dto");
 let KreditProdukOjkController = class KreditProdukOjkController {
-    kreditService;
-    constructor(kreditService) {
-        this.kreditService = kreditService;
+    inherentService;
+    constructor(inherentService) {
+        this.inherentService = inherentService;
     }
     async findAll(year, quarter) {
         if (year && quarter) {
-            const result = await this.kreditService.findByYearQuarter(year, quarter);
+            const result = await this.inherentService.findByYearQuarter(year, quarter);
             if (!result) {
                 throw new common_1.NotFoundException(`Data tidak ditemukan untuk tahun ${year} quarter ${quarter}`);
             }
             return result;
         }
-        return this.kreditService.getAll();
+        return this.inherentService.getAll();
     }
     async getActive() {
-        const result = await this.kreditService.findActive();
+        const result = await this.inherentService.findActive();
         if (!result) {
             throw new common_1.NotFoundException('Tidak ada data aktif ditemukan');
         }
         return result;
     }
     async findOne(id) {
-        const activeData = await this.kreditService.findActive();
+        const activeData = await this.inherentService.findActive();
         if (!activeData) {
             throw new common_1.NotFoundException('Tidak ada data aktif ditemukan');
         }
-        const result = await this.kreditService.findByYearQuarter(activeData.year, activeData.quarter);
+        const result = await this.inherentService.findByYearQuarter(activeData.year, activeData.quarter);
         if (!result) {
             throw new common_1.NotFoundException(`Data dengan ID ${id} tidak ditemukan`);
         }
@@ -52,106 +52,103 @@ let KreditProdukOjkController = class KreditProdukOjkController {
     }
     async create(createDto, req) {
         const userId = req.user?.id || 'system';
-        return this.kreditService.create(createDto, userId);
+        return this.inherentService.create(createDto, userId);
     }
     async update(id, updateDto, req) {
         const userId = req.user?.id || 'system';
-        return this.kreditService.update(id, updateDto, userId);
+        return this.inherentService.update(id, updateDto, userId);
     }
     async updateSummary(id, summaryDto, req) {
         const userId = req.user?.id || 'system';
-        return this.kreditService.updateSummary(id, summaryDto, userId);
+        return this.inherentService.updateSummary(id, summaryDto, userId);
     }
     async updateActiveStatus(id, isActive, req) {
         const userId = req.user?.id || 'system';
-        return this.kreditService.updateActiveStatus(id, isActive, userId);
+        return this.inherentService.updateActiveStatus(id, isActive, userId);
     }
     async remove(id) {
-        return this.kreditService.remove(id);
+        return this.inherentService.remove(id);
     }
-    async getParameters(kreditId) {
-        const kredit = await this.getKreditByIdOrThrow(kreditId);
-        return kredit.parameters || [];
+    async getParameters(inherentId) {
+        const inherent = await this.getInherentByIdOrThrow(inherentId);
+        return inherent.parameters || [];
     }
-    async addParameter(kreditId, createParamDto, req) {
+    async addParameter(inherentId, createParamDto, req) {
         const userId = req.user?.id || 'system';
-        return this.kreditService.addParameter(kreditId, createParamDto, userId);
+        return this.inherentService.addParameter(inherentId, createParamDto, userId);
     }
-    async updateParameter(kreditId, parameterId, updateParamDto, req) {
+    async updateParameter(inherentId, parameterId, updateParamDto, req) {
         const userId = req.user?.id || 'system';
-        return this.kreditService.updateParameter(kreditId, parameterId, updateParamDto, userId);
+        return this.inherentService.updateParameter(inherentId, parameterId, updateParamDto, userId);
     }
-    async reorderParameters(kreditId, reorderDto) {
-        return this.kreditService.reorderParameters(kreditId, reorderDto);
+    async reorderParameters(inherentId, reorderDto) {
+        return this.inherentService.reorderParameters(inherentId, reorderDto);
     }
-    async copyParameter(kreditId, parameterId, req) {
+    async copyParameter(inherentId, parameterId, req) {
         const userId = req.user?.id || 'system';
-        return this.kreditService.copyParameter(kreditId, parameterId, userId);
+        return this.inherentService.copyParameter(inherentId, parameterId, userId);
     }
-    async removeParameter(kreditId, parameterId, req) {
+    async removeParameter(inherentId, parameterId, req) {
         const userId = req.user?.id || 'system';
-        return this.kreditService.removeParameter(kreditId, parameterId, userId);
+        return this.inherentService.removeParameter(inherentId, parameterId, userId);
     }
-    async getNilai(kreditId, parameterId) {
-        const kredit = await this.getKreditByIdOrThrow(kreditId);
-        const parameter = kredit.parameters?.find((p) => p.id === parameterId);
+    async getNilai(inherentId, parameterId) {
+        const inherent = await this.getInherentByIdOrThrow(inherentId);
+        const parameter = inherent.parameters?.find((p) => p.id === parameterId);
         if (!parameter) {
             throw new common_1.NotFoundException(`Parameter dengan ID ${parameterId} tidak ditemukan`);
         }
         return parameter.nilaiList || [];
     }
-    async addNilai(kreditId, parameterId, createNilaiDto, req) {
+    async addNilai(inherentId, parameterId, createNilaiDto, req) {
         const userId = req.user?.id || 'system';
-        return this.kreditService.addNilai(kreditId, parameterId, createNilaiDto, userId);
+        return this.inherentService.addNilai(inherentId, parameterId, createNilaiDto, userId);
     }
-    async updateNilai(kreditId, parameterId, nilaiId, updateNilaiDto, req) {
+    async updateNilai(inherentId, parameterId, nilaiId, updateNilaiDto, req) {
         const userId = req.user?.id || 'system';
-        return this.kreditService.updateNilai(kreditId, parameterId, nilaiId, updateNilaiDto, userId);
+        return this.inherentService.updateNilai(inherentId, parameterId, nilaiId, updateNilaiDto, userId);
     }
-    async reorderNilai(kreditId, parameterId, reorderDto) {
-        return this.kreditService.reorderNilai(parameterId, reorderDto);
+    async reorderNilai(inherentId, parameterId, reorderDto) {
+        return this.inherentService.reorderNilai(parameterId, reorderDto);
     }
-    async copyNilai(kreditId, parameterId, nilaiId, req) {
+    async copyNilai(inherentId, parameterId, nilaiId, req) {
         const userId = req.user?.id || 'system';
-        return this.kreditService.copyNilai(kreditId, parameterId, nilaiId, userId);
+        return this.inherentService.copyNilai(inherentId, parameterId, nilaiId, userId);
     }
-    async removeNilai(kreditId, parameterId, nilaiId, req) {
+    async removeNilai(inherentId, parameterId, nilaiId, req) {
         const userId = req.user?.id || 'system';
-        return this.kreditService.removeNilai(kreditId, parameterId, nilaiId, userId);
+        return this.inherentService.removeNilai(inherentId, parameterId, nilaiId, userId);
     }
-    async exportToExcel(kreditId) {
-        return this.kreditService.exportToExcel(kreditId);
+    async exportToExcel(inherentId) {
+        return this.inherentService.exportToExcel(inherentId);
     }
     async importFromExcel(importData, req) {
         const userId = req.user?.id || 'system';
-        return this.kreditService.importFromExcel(importData, userId);
+        return this.inherentService.importFromExcel(importData, userId);
     }
     async getReferences(type) {
-        return this.kreditService.getReferences(type);
-    }
-    async validateModel(kreditId) {
-        return this.kreditService.validateModelKredit(kreditId);
+        return this.inherentService.getReferences(type);
     }
     async checkExists(year, quarter) {
-        const exists = await this.kreditService.findByYearQuarter(year, quarter);
+        const exists = await this.inherentService.findByYearQuarter(year, quarter);
         return { exists: !!exists, data: exists };
     }
-    async getKreditByIdOrThrow(kreditId) {
-        const activeData = await this.kreditService.findActive();
+    async getInherentByIdOrThrow(inherentId) {
+        const activeData = await this.inherentService.findActive();
         if (!activeData) {
             throw new common_1.NotFoundException('Tidak ada data aktif ditemukan');
         }
-        const kredit = await this.kreditService.findByYearQuarter(activeData.year, activeData.quarter);
-        if (!kredit) {
-            throw new common_1.NotFoundException(`Data dengan ID ${kreditId} tidak ditemukan`);
+        const inherent = await this.inherentService.findByYearQuarter(activeData.year, activeData.quarter);
+        if (!inherent) {
+            throw new common_1.NotFoundException(`Data dengan ID ${inherentId} tidak ditemukan`);
         }
-        if (kredit.id !== kreditId) {
-            throw new common_1.NotFoundException(`Data dengan ID ${kreditId} tidak ditemukan`);
+        if (inherent.id !== inherentId) {
+            throw new common_1.NotFoundException(`Data dengan ID ${inherentId} tidak ditemukan`);
         }
-        return kredit;
+        return inherent;
     }
-    async getKreditByIdDirect(kreditId) {
-        return this.getKreditByIdOrThrow(kreditId);
+    async getInherentByIdDirect(inherentId) {
+        return this.getInherentByIdOrThrow(inherentId);
     }
 };
 exports.KreditProdukOjkController = KreditProdukOjkController;
@@ -195,27 +192,27 @@ __decorate([
 __decorate([
     (0, common_1.Post)(),
     (0, swagger_1.ApiOperation)({ summary: 'Create new Kredit Produk OJK data' }),
-    (0, swagger_1.ApiBody)({ type: kredit_produk_inherent_dto_1.CreateKreditProdukDto }),
+    (0, swagger_1.ApiBody)({ type: kredit_produk_inherent_dto_1.CreateKreditProdukInherentDto }),
     (0, swagger_1.ApiResponse)({ status: 201, description: 'Data created successfully' }),
     (0, swagger_1.ApiResponse)({ status: 400, description: 'Bad request' }),
     __param(0, (0, common_1.Body)()),
     __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [kredit_produk_inherent_dto_1.CreateKreditProdukDto, Object]),
+    __metadata("design:paramtypes", [kredit_produk_inherent_dto_1.CreateKreditProdukInherentDto, Object]),
     __metadata("design:returntype", Promise)
 ], KreditProdukOjkController.prototype, "create", null);
 __decorate([
     (0, common_1.Put)(':id'),
     (0, swagger_1.ApiOperation)({ summary: 'Update Kredit Produk OJK data' }),
     (0, swagger_1.ApiParam)({ name: 'id', type: Number }),
-    (0, swagger_1.ApiBody)({ type: kredit_produk_inherent_dto_1.UpdateKreditProdukDto }),
+    (0, swagger_1.ApiBody)({ type: kredit_produk_inherent_dto_1.UpdateKreditProdukInherentDto }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Data updated successfully' }),
     (0, swagger_1.ApiResponse)({ status: 404, description: 'Data not found' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __param(1, (0, common_1.Body)()),
     __param(2, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number, kredit_produk_inherent_dto_1.UpdateKreditProdukDto, Object]),
+    __metadata("design:paramtypes", [Number, kredit_produk_inherent_dto_1.UpdateKreditProdukInherentDto, Object]),
     __metadata("design:returntype", Promise)
 ], KreditProdukOjkController.prototype, "update", null);
 __decorate([
@@ -473,16 +470,6 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], KreditProdukOjkController.prototype, "getReferences", null);
-__decorate([
-    (0, common_1.Get)('validate/:id'),
-    (0, swagger_1.ApiOperation)({ summary: 'Validate Kredit model data' }),
-    (0, swagger_1.ApiParam)({ name: 'id', type: Number }),
-    (0, swagger_1.ApiResponse)({ status: 200, description: 'Validation completed' }),
-    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number]),
-    __metadata("design:returntype", Promise)
-], KreditProdukOjkController.prototype, "validateModel", null);
 __decorate([
     (0, common_1.Get)('check/:year/:quarter'),
     (0, swagger_1.ApiOperation)({ summary: 'Check if data exists for year/quarter' }),

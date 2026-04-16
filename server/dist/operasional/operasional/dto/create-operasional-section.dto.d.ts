@@ -1,4 +1,4 @@
-import { Quarter } from '../entities/operasional-section.entity';
+import { Quarter } from '../entities/operasional.entity';
 export declare class CreateOperasionalSectionDto {
     no: string;
     parameter: string;

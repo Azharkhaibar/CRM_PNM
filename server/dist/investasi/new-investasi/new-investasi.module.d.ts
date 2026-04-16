@@ -1,2 +1,2 @@
-export declare class NewInvestasiModule {
+export declare class InvestasiModule {
 }

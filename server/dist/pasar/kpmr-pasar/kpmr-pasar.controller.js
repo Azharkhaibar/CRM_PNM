@@ -11,142 +11,371 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
-var KpmrPasarController_1;
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.KpmrPasarController = void 0;
+exports.KPMRPasarController = void 0;
 const common_1 = require("@nestjs/common");
+const swagger_1 = require("@nestjs/swagger");
 const kpmr_pasar_service_1 = require("./kpmr-pasar.service");
-const create_kpmr_pasar_dto_1 = require("./dto/create-kpmr-pasar.dto");
-const update_kpmr_pasar_dto_1 = require("./dto/update-kpmr-pasar.dto");
-const response_kpmr_pasar_dto_1 = require("./dto/response-kpmr-pasar.dto");
-let KpmrPasarController = KpmrPasarController_1 = class KpmrPasarController {
+const kpmr_pasar_dto_1 = require("./dto/kpmr-pasar.dto");
+let KPMRPasarController = class KPMRPasarController {
     kpmrPasarService;
-    logger = new common_1.Logger(KpmrPasarController_1.name);
     constructor(kpmrPasarService) {
         this.kpmrPasarService = kpmrPasarService;
     }
-    async create(createKpmrPasarDto) {
-        this.logger.log('Creating KPMR Pasar:', createKpmrPasarDto);
-        const data = await this.kpmrPasarService.create(createKpmrPasarDto);
-        return response_kpmr_pasar_dto_1.KpmrPasarResponseDto.success(data, 'Data KPMR Pasar berhasil dibuat');
+    async createAspect(createDto) {
+        return await this.kpmrPasarService.createAspect(createDto);
     }
-    async findAllByPeriod(year, quarter) {
-        this.logger.log(`Fetching data for period: ${year} ${quarter}`);
-        if (!['Q1', 'Q2', 'Q3', 'Q4'].includes(quarter)) {
-            throw new common_1.BadRequestException('Quarter harus Q1, Q2, Q3, atau Q4');
-        }
-        const data = await this.kpmrPasarService.findGroupedByAspek(year, quarter);
-        return response_kpmr_pasar_dto_1.KpmrPasarResponseDto.success(data);
+    async getAllAspects(year) {
+        const yearNum = year ? parseInt(year, 10) : undefined;
+        return await this.kpmrPasarService.findAllAspects(yearNum);
     }
-    async findAll() {
-        const data = await this.kpmrPasarService.findAllByPeriod(new Date().getFullYear(), 'Q1');
-        return response_kpmr_pasar_dto_1.KpmrPasarResponseDto.success(data);
+    async getAspect(id) {
+        return await this.kpmrPasarService.findAspectById(id);
+    }
+    async updateAspect(id, updateDto) {
+        return await this.kpmrPasarService.updateAspect(id, updateDto);
+    }
+    async deleteAspect(id) {
+        return await this.kpmrPasarService.deleteAspect(id);
+    }
+    async createQuestion(createDto) {
+        return await this.kpmrPasarService.createQuestion(createDto);
+    }
+    async getAllQuestions(year) {
+        const yearNum = year ? parseInt(year, 10) : undefined;
+        return await this.kpmrPasarService.findAllQuestions(yearNum);
+    }
+    async getQuestionsByAspect(aspekNo, year) {
+        const yearNum = year ? parseInt(year, 10) : undefined;
+        return await this.kpmrPasarService.findQuestionsByAspect(aspekNo, yearNum);
+    }
+    async getQuestion(id) {
+        return await this.kpmrPasarService.findQuestionById(id);
+    }
+    async updateQuestion(id, updateDto) {
+        return await this.kpmrPasarService.updateQuestion(id, updateDto);
+    }
+    async deleteQuestion(id) {
+        return await this.kpmrPasarService.deleteQuestion(id);
+    }
+    async createOrUpdateDefinition(createDto) {
+        return await this.kpmrPasarService.createOrUpdateDefinition(createDto);
+    }
+    async getAllDefinitions() {
+        return await this.kpmrPasarService.findAllDefinitions();
+    }
+    async getDefinitionsByYear(year) {
+        return await this.kpmrPasarService.findDefinitionsByYear(parseInt(year, 10));
+    }
+    async getDefinition(id) {
+        return await this.kpmrPasarService.findDefinitionById(id);
+    }
+    async updateDefinition(id, updateDto) {
+        return await this.kpmrPasarService.updateDefinition(id, updateDto);
+    }
+    async deleteDefinitionPermanent(definitionId, year) {
+        console.log('🗑️ DELETE DEFINITION REQUEST:', { definitionId, year });
+        const result = await this.kpmrPasarService.deleteDefinition(definitionId, year);
+        return result;
+    }
+    async createOrUpdateScore(createDto) {
+        return await this.kpmrPasarService.createOrUpdateScore(createDto);
+    }
+    async getAllScores() {
+        return await this.kpmrPasarService.findAllScores();
+    }
+    async getScoresByPeriod(year, quarter) {
+        return await this.kpmrPasarService.findScoresByPeriod(parseInt(year, 10), quarter);
+    }
+    async getScoresByDefinition(definitionId) {
+        return await this.kpmrPasarService.findScoresByDefinition(definitionId);
+    }
+    async getScore(id) {
+        return await this.kpmrPasarService.findScoreById(id);
+    }
+    async updateScore(id, updateDto) {
+        return await this.kpmrPasarService.updateScore(id, updateDto);
+    }
+    async deleteScore(id) {
+        return await this.kpmrPasarService.deleteScore(id);
+    }
+    async deleteScoreByTarget(body) {
+        return await this.kpmrPasarService.deleteScoreByTarget(body.definitionId, body.year, body.quarter);
+    }
+    async getFullData(year) {
+        return await this.kpmrPasarService.getKPMRFullData(parseInt(year, 10));
+    }
+    async searchKPMR(year, query, aspekNo) {
+        const yearNum = year ? parseInt(year, 10) : undefined;
+        return await this.kpmrPasarService.searchKPMR(yearNum, query, aspekNo);
+    }
+    async getAvailableYears() {
+        const years = await this.kpmrPasarService.getAvailableYears();
+        return { success: true, data: years };
     }
     async getPeriods() {
-        const data = await this.kpmrPasarService.getPeriods();
-        return response_kpmr_pasar_dto_1.KpmrPasarResponseDto.success(data);
-    }
-    async findOne(id) {
-        const data = await this.kpmrPasarService.findOne(id);
-        return response_kpmr_pasar_dto_1.KpmrPasarResponseDto.success(data);
-    }
-    async getTotalAverage(year, quarter) {
-        if (!['Q1', 'Q2', 'Q3', 'Q4'].includes(quarter)) {
-            throw new common_1.BadRequestException('Quarter harus Q1, Q2, Q3, atau Q4');
-        }
-        const average = await this.kpmrPasarService.getTotalAverage(year, quarter);
-        return response_kpmr_pasar_dto_1.KpmrPasarResponseDto.success({ average });
-    }
-    async update(id, updateKpmrPasarDto) {
-        this.logger.log(`Updating KPMR Pasar ${id}:`, updateKpmrPasarDto);
-        const data = await this.kpmrPasarService.update(id, updateKpmrPasarDto);
-        return response_kpmr_pasar_dto_1.KpmrPasarResponseDto.success(data, 'Data KPMR Pasar berhasil diupdate');
-    }
-    async remove(id) {
-        this.logger.log(`Deleting KPMR Pasar: ${id}`);
-        await this.kpmrPasarService.remove(id);
-    }
-    async searchByCriteria(year, quarter, aspekNo, sectionNo) {
-        const data = await this.kpmrPasarService.findByCriteria({
-            year: year ? parseInt(year) : undefined,
-            quarter,
-            aspekNo,
-            sectionNo,
-        });
-        return response_kpmr_pasar_dto_1.KpmrPasarResponseDto.success(data);
+        const periods = await this.kpmrPasarService.getPeriods();
+        return { success: true, data: periods };
     }
 };
-exports.KpmrPasarController = KpmrPasarController;
+exports.KPMRPasarController = KPMRPasarController;
 __decorate([
-    (0, common_1.Post)(),
+    (0, common_1.Post)('aspects'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
+    (0, swagger_1.ApiOperation)({ summary: 'Create new KPMR Pasar aspect' }),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [create_kpmr_pasar_dto_1.CreateKpmrPasarDto]),
+    __metadata("design:paramtypes", [kpmr_pasar_dto_1.CreateKPMRPasarAspectDto]),
     __metadata("design:returntype", Promise)
-], KpmrPasarController.prototype, "create", null);
+], KPMRPasarController.prototype, "createAspect", null);
 __decorate([
-    (0, common_1.Get)(),
-    __param(0, (0, common_1.Query)('year', common_1.ParseIntPipe)),
-    __param(1, (0, common_1.Query)('quarter')),
+    (0, common_1.Get)('aspects'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get all KPMR Pasar aspects' }),
+    (0, swagger_1.ApiQuery)({ name: 'year', required: false }),
+    __param(0, (0, common_1.Query)('year')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number, String]),
+    __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
-], KpmrPasarController.prototype, "findAllByPeriod", null);
+], KPMRPasarController.prototype, "getAllAspects", null);
 __decorate([
-    (0, common_1.Get)('all'),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
-    __metadata("design:returntype", Promise)
-], KpmrPasarController.prototype, "findAll", null);
-__decorate([
-    (0, common_1.Get)('periods'),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
-    __metadata("design:returntype", Promise)
-], KpmrPasarController.prototype, "getPeriods", null);
-__decorate([
-    (0, common_1.Get)(':id'),
+    (0, common_1.Get)('aspects/:id'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get KPMR Pasar aspect by ID' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
     __metadata("design:returntype", Promise)
-], KpmrPasarController.prototype, "findOne", null);
+], KPMRPasarController.prototype, "getAspect", null);
 __decorate([
-    (0, common_1.Get)('average/total'),
-    __param(0, (0, common_1.Query)('year', common_1.ParseIntPipe)),
-    __param(1, (0, common_1.Query)('quarter')),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number, String]),
-    __metadata("design:returntype", Promise)
-], KpmrPasarController.prototype, "getTotalAverage", null);
-__decorate([
-    (0, common_1.Patch)(':id'),
+    (0, common_1.Put)('aspects/:id'),
+    (0, swagger_1.ApiOperation)({ summary: 'Update KPMR Pasar aspect' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number, update_kpmr_pasar_dto_1.UpdateKpmrPasarDto]),
+    __metadata("design:paramtypes", [Number, kpmr_pasar_dto_1.UpdateKPMRPasarAspectDto]),
     __metadata("design:returntype", Promise)
-], KpmrPasarController.prototype, "update", null);
+], KPMRPasarController.prototype, "updateAspect", null);
 __decorate([
-    (0, common_1.Delete)(':id'),
-    (0, common_1.HttpCode)(common_1.HttpStatus.NO_CONTENT),
+    (0, common_1.Delete)('aspects/:id'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, swagger_1.ApiOperation)({ summary: 'Permanently delete KPMR Pasar aspect' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
     __metadata("design:returntype", Promise)
-], KpmrPasarController.prototype, "remove", null);
+], KPMRPasarController.prototype, "deleteAspect", null);
 __decorate([
-    (0, common_1.Get)('search/criteria'),
+    (0, common_1.Post)('questions'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
+    (0, swagger_1.ApiOperation)({ summary: 'Create new KPMR Pasar question' }),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [kpmr_pasar_dto_1.CreateKPMRPasarQuestionDto]),
+    __metadata("design:returntype", Promise)
+], KPMRPasarController.prototype, "createQuestion", null);
+__decorate([
+    (0, common_1.Get)('questions'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get all KPMR Pasar questions' }),
+    (0, swagger_1.ApiQuery)({ name: 'year', required: false }),
+    __param(0, (0, common_1.Query)('year')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], KPMRPasarController.prototype, "getAllQuestions", null);
+__decorate([
+    (0, common_1.Get)('questions/aspect/:aspekNo'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get questions by aspect' }),
+    (0, swagger_1.ApiQuery)({ name: 'year', required: false }),
+    __param(0, (0, common_1.Param)('aspekNo')),
+    __param(1, (0, common_1.Query)('year')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:returntype", Promise)
+], KPMRPasarController.prototype, "getQuestionsByAspect", null);
+__decorate([
+    (0, common_1.Get)('questions/:id'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get question by ID' }),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number]),
+    __metadata("design:returntype", Promise)
+], KPMRPasarController.prototype, "getQuestion", null);
+__decorate([
+    (0, common_1.Put)('questions/:id'),
+    (0, swagger_1.ApiOperation)({ summary: 'Update KPMR Pasar question' }),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, kpmr_pasar_dto_1.UpdateKPMRPasarQuestionDto]),
+    __metadata("design:returntype", Promise)
+], KPMRPasarController.prototype, "updateQuestion", null);
+__decorate([
+    (0, common_1.Delete)('questions/:id'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, swagger_1.ApiOperation)({ summary: 'Permanently delete KPMR Pasar question' }),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number]),
+    __metadata("design:returntype", Promise)
+], KPMRPasarController.prototype, "deleteQuestion", null);
+__decorate([
+    (0, common_1.Post)('definitions'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
+    (0, swagger_1.ApiOperation)({ summary: 'Create or update KPMR Pasar definition' }),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [kpmr_pasar_dto_1.CreateKPMRPasarDefinitionDto]),
+    __metadata("design:returntype", Promise)
+], KPMRPasarController.prototype, "createOrUpdateDefinition", null);
+__decorate([
+    (0, common_1.Get)('definitions'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get all KPMR Pasar definitions' }),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], KPMRPasarController.prototype, "getAllDefinitions", null);
+__decorate([
+    (0, common_1.Get)('definitions/year/:year'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get definitions by year' }),
+    __param(0, (0, common_1.Param)('year')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], KPMRPasarController.prototype, "getDefinitionsByYear", null);
+__decorate([
+    (0, common_1.Get)('definitions/:id'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get definition by ID' }),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number]),
+    __metadata("design:returntype", Promise)
+], KPMRPasarController.prototype, "getDefinition", null);
+__decorate([
+    (0, common_1.Put)('definitions/:id'),
+    (0, swagger_1.ApiOperation)({ summary: 'Update definition' }),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, kpmr_pasar_dto_1.UpdateKPMRPasarDefinitionDto]),
+    __metadata("design:returntype", Promise)
+], KPMRPasarController.prototype, "updateDefinition", null);
+__decorate([
+    (0, common_1.Delete)('definition/:definitionId/:year'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, swagger_1.ApiOperation)({ summary: 'Permanently delete definition with scores' }),
+    __param(0, (0, common_1.Param)('definitionId', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Param)('year', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, Number]),
+    __metadata("design:returntype", Promise)
+], KPMRPasarController.prototype, "deleteDefinitionPermanent", null);
+__decorate([
+    (0, common_1.Post)('scores'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
+    (0, swagger_1.ApiOperation)({ summary: 'Create or update KPMR Pasar score' }),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [kpmr_pasar_dto_1.CreateKPMRPasarScoreDto]),
+    __metadata("design:returntype", Promise)
+], KPMRPasarController.prototype, "createOrUpdateScore", null);
+__decorate([
+    (0, common_1.Get)('scores'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get all scores' }),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], KPMRPasarController.prototype, "getAllScores", null);
+__decorate([
+    (0, common_1.Get)('scores/period'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get scores by period' }),
+    (0, swagger_1.ApiQuery)({ name: 'year', required: true }),
+    (0, swagger_1.ApiQuery)({ name: 'quarter', required: false }),
     __param(0, (0, common_1.Query)('year')),
     __param(1, (0, common_1.Query)('quarter')),
-    __param(2, (0, common_1.Query)('aspekNo')),
-    __param(3, (0, common_1.Query)('sectionNo')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String, String, String]),
+    __metadata("design:paramtypes", [String, String]),
     __metadata("design:returntype", Promise)
-], KpmrPasarController.prototype, "searchByCriteria", null);
-exports.KpmrPasarController = KpmrPasarController = KpmrPasarController_1 = __decorate([
+], KPMRPasarController.prototype, "getScoresByPeriod", null);
+__decorate([
+    (0, common_1.Get)('scores/definition/:definitionId'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get scores by definition' }),
+    __param(0, (0, common_1.Param)('definitionId', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number]),
+    __metadata("design:returntype", Promise)
+], KPMRPasarController.prototype, "getScoresByDefinition", null);
+__decorate([
+    (0, common_1.Get)('scores/:id'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get score by ID' }),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number]),
+    __metadata("design:returntype", Promise)
+], KPMRPasarController.prototype, "getScore", null);
+__decorate([
+    (0, common_1.Put)('scores/:id'),
+    (0, swagger_1.ApiOperation)({ summary: 'Update score' }),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, kpmr_pasar_dto_1.UpdateKPMRPasarScoreDto]),
+    __metadata("design:returntype", Promise)
+], KPMRPasarController.prototype, "updateScore", null);
+__decorate([
+    (0, common_1.Delete)('scores/:id'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, swagger_1.ApiOperation)({ summary: 'Permanently delete score' }),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number]),
+    __metadata("design:returntype", Promise)
+], KPMRPasarController.prototype, "deleteScore", null);
+__decorate([
+    (0, common_1.Post)('scores/target/delete'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, swagger_1.ApiOperation)({ summary: 'Permanently delete score by target' }),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], KPMRPasarController.prototype, "deleteScoreByTarget", null);
+__decorate([
+    (0, common_1.Get)('full-data/:year'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get complete KPMR Pasar data with grouping' }),
+    __param(0, (0, common_1.Param)('year')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], KPMRPasarController.prototype, "getFullData", null);
+__decorate([
+    (0, common_1.Get)('search'),
+    (0, swagger_1.ApiOperation)({ summary: 'Search KPMR Pasar data' }),
+    (0, swagger_1.ApiQuery)({ name: 'year', required: false }),
+    (0, swagger_1.ApiQuery)({ name: 'query', required: false }),
+    (0, swagger_1.ApiQuery)({ name: 'aspekNo', required: false }),
+    __param(0, (0, common_1.Query)('year')),
+    __param(1, (0, common_1.Query)('query')),
+    __param(2, (0, common_1.Query)('aspekNo')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, String]),
+    __metadata("design:returntype", Promise)
+], KPMRPasarController.prototype, "searchKPMR", null);
+__decorate([
+    (0, common_1.Get)('years'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get available years' }),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], KPMRPasarController.prototype, "getAvailableYears", null);
+__decorate([
+    (0, common_1.Get)('periods'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get available periods' }),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], KPMRPasarController.prototype, "getPeriods", null);
+exports.KPMRPasarController = KPMRPasarController = __decorate([
+    (0, swagger_1.ApiTags)('KPMR Pasar'),
     (0, common_1.Controller)('kpmr-pasar'),
-    __metadata("design:paramtypes", [kpmr_pasar_service_1.KpmrPasarService])
-], KpmrPasarController);
+    __metadata("design:paramtypes", [kpmr_pasar_service_1.KPMRPasarService])
+], KPMRPasarController);
 //# sourceMappingURL=kpmr-pasar.controller.js.map

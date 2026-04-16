@@ -8,15 +8,29 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.KpmrOperasionalModule = void 0;
 const common_1 = require("@nestjs/common");
-const kpmr_operasional_service_1 = require("./kpmr-operasional.service");
+const typeorm_1 = require("@nestjs/typeorm");
 const kpmr_operasional_controller_1 = require("./kpmr-operasional.controller");
+const kpmr_operasional_service_1 = require("./kpmr-operasional.service");
+const kpmr_operasional_definisi_entity_1 = require("./entities/kpmr-operasional-definisi.entity");
+const kpmr_operasional_skor_entity_1 = require("./entities/kpmr-operasional-skor.entity");
+const kpmr_operasional_aspek_entity_1 = require("./entities/kpmr-operasional-aspek.entity");
+const kpmr_operasional_pertanyaan_entity_1 = require("./entities/kpmr-operasional-pertanyaan.entity");
 let KpmrOperasionalModule = class KpmrOperasionalModule {
 };
 exports.KpmrOperasionalModule = KpmrOperasionalModule;
 exports.KpmrOperasionalModule = KpmrOperasionalModule = __decorate([
     (0, common_1.Module)({
-        controllers: [kpmr_operasional_controller_1.KpmrOperasionalController],
-        providers: [kpmr_operasional_service_1.KpmrOperasionalService],
+        imports: [
+            typeorm_1.TypeOrmModule.forFeature([
+                kpmr_operasional_definisi_entity_1.KPMROperasionalDefinition,
+                kpmr_operasional_skor_entity_1.KPMROperasionalScore,
+                kpmr_operasional_aspek_entity_1.KPMROperasionalAspect,
+                kpmr_operasional_pertanyaan_entity_1.KPMROperasionalQuestion,
+            ]),
+        ],
+        controllers: [kpmr_operasional_controller_1.KPMROperasionalController],
+        providers: [kpmr_operasional_service_1.KPMROperasionalService],
+        exports: [kpmr_operasional_service_1.KPMROperasionalService],
     })
 ], KpmrOperasionalModule);
 //# sourceMappingURL=kpmr-operasional.module.js.map

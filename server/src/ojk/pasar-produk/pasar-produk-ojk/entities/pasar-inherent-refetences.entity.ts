@@ -1,3 +1,5 @@
+
+// pasar-inherent-references.entity.ts
 import {
   Entity,
   PrimaryGeneratedColumn,

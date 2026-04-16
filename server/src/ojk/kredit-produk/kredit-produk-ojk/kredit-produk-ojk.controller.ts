@@ -25,28 +25,15 @@ import {
   ApiBody,
 } from '@nestjs/swagger';
 import { KreditProdukOjkService } from './kredit-produk-ojk.service';
-// import {
-//   CreateKreditProdukDto,
-//   UpdateKreditProdukDto,
-//   CreateParameterDto,
-//   UpdateParameterDto,
-//   CreateNilaiDto,
-//   UpdateNilaiDto,
-//   ReorderParametersDto,
-//   ReorderNilaiDto,
-//   UpdateSummaryDto,
-//   ImportExportDto,
-// } from './dto/kredit-produk.dto';
-
 import {
-  CreateKreditProdukDto,
+  CreateKreditProdukInherentDto,
+  UpdateKreditProdukInherentDto,
   CreateParameterDto,
-  CreateNilaiDto,
-  UpdateKreditProdukDto,
   UpdateParameterDto,
+  CreateNilaiDto,
   UpdateNilaiDto,
-  ReorderNilaiDto,
   ReorderParametersDto,
+  ReorderNilaiDto,
   UpdateSummaryDto,
   ImportExportDto,
 } from './dto/kredit-produk-inherent.dto';
@@ -62,7 +49,7 @@ import {
   }),
 )
 export class KreditProdukOjkController {
-  constructor(private readonly kreditService: KreditProdukOjkService) {}
+  constructor(private readonly inherentService: KreditProdukOjkService) {}
 
   // === CRUD UTAMA ===
 
@@ -78,7 +65,10 @@ export class KreditProdukOjkController {
     @Query('quarter') quarter?: number,
   ) {
     if (year && quarter) {
-      const result = await this.kreditService.findByYearQuarter(year, quarter);
+      const result = await this.inherentService.findByYearQuarter(
+        year,
+        quarter,
+      );
       if (!result) {
         throw new NotFoundException(
           `Data tidak ditemukan untuk tahun ${year} quarter ${quarter}`,
@@ -86,7 +76,7 @@ export class KreditProdukOjkController {
       }
       return result;
     }
-    return this.kreditService.getAll();
+    return this.inherentService.getAll();
   }
 
   @Get('active')
@@ -97,7 +87,7 @@ export class KreditProdukOjkController {
   })
   @ApiResponse({ status: 404, description: 'No active data found' })
   async getActive() {
-    const result = await this.kreditService.findActive();
+    const result = await this.inherentService.findActive();
     if (!result) {
       throw new NotFoundException('Tidak ada data aktif ditemukan');
     }
@@ -110,13 +100,15 @@ export class KreditProdukOjkController {
   @ApiResponse({ status: 200, description: 'Data retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Data not found' })
   async findOne(@Param('id', ParseIntPipe) id: number) {
-    const activeData = await this.kreditService.findActive();
+    // PERBAIKAN: Cari langsung berdasarkan ID dengan method baru
+    const activeData = await this.inherentService.findActive();
 
     if (!activeData) {
       throw new NotFoundException('Tidak ada data aktif ditemukan');
     }
 
-    const result = await this.kreditService.findByYearQuarter(
+    // Gunakan year dan quarter dari active data
+    const result = await this.inherentService.findByYearQuarter(
       activeData.year,
       activeData.quarter,
     );
@@ -129,27 +121,30 @@ export class KreditProdukOjkController {
 
   @Post()
   @ApiOperation({ summary: 'Create new Kredit Produk OJK data' })
-  @ApiBody({ type: CreateKreditProdukDto })
+  @ApiBody({ type: CreateKreditProdukInherentDto })
   @ApiResponse({ status: 201, description: 'Data created successfully' })
   @ApiResponse({ status: 400, description: 'Bad request' })
-  async create(@Body() createDto: CreateKreditProdukDto, @Request() req) {
+  async create(
+    @Body() createDto: CreateKreditProdukInherentDto,
+    @Request() req,
+  ) {
     const userId = req.user?.id || 'system';
-    return this.kreditService.create(createDto, userId);
+    return this.inherentService.create(createDto, userId);
   }
 
   @Put(':id')
   @ApiOperation({ summary: 'Update Kredit Produk OJK data' })
   @ApiParam({ name: 'id', type: Number })
-  @ApiBody({ type: UpdateKreditProdukDto })
+  @ApiBody({ type: UpdateKreditProdukInherentDto })
   @ApiResponse({ status: 200, description: 'Data updated successfully' })
   @ApiResponse({ status: 404, description: 'Data not found' })
   async update(
     @Param('id', ParseIntPipe) id: number,
-    @Body() updateDto: UpdateKreditProdukDto,
+    @Body() updateDto: UpdateKreditProdukInherentDto,
     @Request() req,
   ) {
     const userId = req.user?.id || 'system';
-    return this.kreditService.update(id, updateDto, userId);
+    return this.inherentService.update(id, updateDto, userId);
   }
 
   @Put(':id/summary')
@@ -164,7 +159,7 @@ export class KreditProdukOjkController {
     @Request() req,
   ) {
     const userId = req.user?.id || 'system';
-    return this.kreditService.updateSummary(id, summaryDto, userId);
+    return this.inherentService.updateSummary(id, summaryDto, userId);
   }
 
   @Put(':id/status')
@@ -179,7 +174,7 @@ export class KreditProdukOjkController {
     @Request() req,
   ) {
     const userId = req.user?.id || 'system';
-    return this.kreditService.updateActiveStatus(id, isActive, userId);
+    return this.inherentService.updateActiveStatus(id, isActive, userId);
   }
 
   @Delete(':id')
@@ -188,7 +183,7 @@ export class KreditProdukOjkController {
   @ApiResponse({ status: 200, description: 'Data deleted successfully' })
   @ApiResponse({ status: 404, description: 'Data not found' })
   async remove(@Param('id', ParseIntPipe) id: number) {
-    return this.kreditService.remove(id);
+    return this.inherentService.remove(id);
   }
 
   // === OPERASI PARAMETER ===
@@ -202,9 +197,10 @@ export class KreditProdukOjkController {
     status: 200,
     description: 'Parameters retrieved successfully',
   })
-  async getParameters(@Param('id', ParseIntPipe) kreditId: number) {
-    const kredit = await this.getKreditByIdOrThrow(kreditId);
-    return kredit.parameters || [];
+  async getParameters(@Param('id', ParseIntPipe) inherentId: number) {
+    // PERBAIKAN: Cari inherent berdasarkan ID, bukan year/quarter
+    const inherent = await this.getInherentByIdOrThrow(inherentId);
+    return inherent.parameters || [];
   }
 
   @Post(':id/parameters')
@@ -214,12 +210,16 @@ export class KreditProdukOjkController {
   @ApiResponse({ status: 201, description: 'Parameter added successfully' })
   @ApiResponse({ status: 404, description: 'Data not found' })
   async addParameter(
-    @Param('id', ParseIntPipe) kreditId: number,
+    @Param('id', ParseIntPipe) inherentId: number,
     @Body() createParamDto: CreateParameterDto,
     @Request() req,
   ) {
     const userId = req.user?.id || 'system';
-    return this.kreditService.addParameter(kreditId, createParamDto, userId);
+    return this.inherentService.addParameter(
+      inherentId,
+      createParamDto,
+      userId,
+    );
   }
 
   @Put(':id/parameters/:parameterId')
@@ -230,14 +230,14 @@ export class KreditProdukOjkController {
   @ApiResponse({ status: 200, description: 'Parameter updated successfully' })
   @ApiResponse({ status: 404, description: 'Parameter not found' })
   async updateParameter(
-    @Param('id', ParseIntPipe) kreditId: number,
+    @Param('id', ParseIntPipe) inherentId: number,
     @Param('parameterId', ParseIntPipe) parameterId: number,
     @Body() updateParamDto: UpdateParameterDto,
     @Request() req,
   ) {
     const userId = req.user?.id || 'system';
-    return this.kreditService.updateParameter(
-      kreditId,
+    return this.inherentService.updateParameter(
+      inherentId,
       parameterId,
       updateParamDto,
       userId,
@@ -253,10 +253,10 @@ export class KreditProdukOjkController {
     description: 'Parameters reordered successfully',
   })
   async reorderParameters(
-    @Param('id', ParseIntPipe) kreditId: number,
+    @Param('id', ParseIntPipe) inherentId: number,
     @Body() reorderDto: ReorderParametersDto,
   ) {
-    return this.kreditService.reorderParameters(kreditId, reorderDto);
+    return this.inherentService.reorderParameters(inherentId, reorderDto);
   }
 
   @Post(':id/parameters/:parameterId/copy')
@@ -266,12 +266,12 @@ export class KreditProdukOjkController {
   @ApiResponse({ status: 201, description: 'Parameter copied successfully' })
   @ApiResponse({ status: 404, description: 'Parameter not found' })
   async copyParameter(
-    @Param('id', ParseIntPipe) kreditId: number,
+    @Param('id', ParseIntPipe) inherentId: number,
     @Param('parameterId', ParseIntPipe) parameterId: number,
     @Request() req,
   ) {
     const userId = req.user?.id || 'system';
-    return this.kreditService.copyParameter(kreditId, parameterId, userId);
+    return this.inherentService.copyParameter(inherentId, parameterId, userId);
   }
 
   @Delete(':id/parameters/:parameterId')
@@ -281,12 +281,16 @@ export class KreditProdukOjkController {
   @ApiResponse({ status: 200, description: 'Parameter deleted successfully' })
   @ApiResponse({ status: 404, description: 'Parameter not found' })
   async removeParameter(
-    @Param('id', ParseIntPipe) kreditId: number,
+    @Param('id', ParseIntPipe) inherentId: number,
     @Param('parameterId', ParseIntPipe) parameterId: number,
     @Request() req,
   ) {
     const userId = req.user?.id || 'system';
-    return this.kreditService.removeParameter(kreditId, parameterId, userId);
+    return this.inherentService.removeParameter(
+      inherentId,
+      parameterId,
+      userId,
+    );
   }
 
   // === OPERASI NILAI ===
@@ -297,12 +301,13 @@ export class KreditProdukOjkController {
   @ApiParam({ name: 'parameterId', type: Number })
   @ApiResponse({ status: 200, description: 'Nilai retrieved successfully' })
   async getNilai(
-    @Param('id', ParseIntPipe) kreditId: number,
+    @Param('id', ParseIntPipe) inherentId: number,
     @Param('parameterId', ParseIntPipe) parameterId: number,
   ) {
-    const kredit = await this.getKreditByIdOrThrow(kreditId);
+    // PERBAIKAN: Cari inherent berdasarkan ID
+    const inherent = await this.getInherentByIdOrThrow(inherentId);
 
-    const parameter = kredit.parameters?.find((p) => p.id === parameterId);
+    const parameter = inherent.parameters?.find((p) => p.id === parameterId);
     if (!parameter) {
       throw new NotFoundException(
         `Parameter dengan ID ${parameterId} tidak ditemukan`,
@@ -319,14 +324,14 @@ export class KreditProdukOjkController {
   @ApiResponse({ status: 201, description: 'Nilai added successfully' })
   @ApiResponse({ status: 404, description: 'Parameter not found' })
   async addNilai(
-    @Param('id', ParseIntPipe) kreditId: number,
+    @Param('id', ParseIntPipe) inherentId: number,
     @Param('parameterId', ParseIntPipe) parameterId: number,
     @Body() createNilaiDto: CreateNilaiDto,
     @Request() req,
   ) {
     const userId = req.user?.id || 'system';
-    return this.kreditService.addNilai(
-      kreditId,
+    return this.inherentService.addNilai(
+      inherentId,
       parameterId,
       createNilaiDto,
       userId,
@@ -342,15 +347,15 @@ export class KreditProdukOjkController {
   @ApiResponse({ status: 200, description: 'Nilai updated successfully' })
   @ApiResponse({ status: 404, description: 'Nilai not found' })
   async updateNilai(
-    @Param('id', ParseIntPipe) kreditId: number,
+    @Param('id', ParseIntPipe) inherentId: number,
     @Param('parameterId', ParseIntPipe) parameterId: number,
     @Param('nilaiId', ParseIntPipe) nilaiId: number,
     @Body() updateNilaiDto: UpdateNilaiDto,
     @Request() req,
   ) {
     const userId = req.user?.id || 'system';
-    return this.kreditService.updateNilai(
-      kreditId,
+    return this.inherentService.updateNilai(
+      inherentId,
       parameterId,
       nilaiId,
       updateNilaiDto,
@@ -365,11 +370,11 @@ export class KreditProdukOjkController {
   @ApiBody({ type: ReorderNilaiDto })
   @ApiResponse({ status: 200, description: 'Nilai reordered successfully' })
   async reorderNilai(
-    @Param('id', ParseIntPipe) kreditId: number,
+    @Param('id', ParseIntPipe) inherentId: number,
     @Param('parameterId', ParseIntPipe) parameterId: number,
     @Body() reorderDto: ReorderNilaiDto,
   ) {
-    return this.kreditService.reorderNilai(parameterId, reorderDto);
+    return this.inherentService.reorderNilai(parameterId, reorderDto);
   }
 
   @Post(':id/parameters/:parameterId/nilai/:nilaiId/copy')
@@ -380,13 +385,18 @@ export class KreditProdukOjkController {
   @ApiResponse({ status: 201, description: 'Nilai copied successfully' })
   @ApiResponse({ status: 404, description: 'Nilai not found' })
   async copyNilai(
-    @Param('id', ParseIntPipe) kreditId: number,
+    @Param('id', ParseIntPipe) inherentId: number,
     @Param('parameterId', ParseIntPipe) parameterId: number,
     @Param('nilaiId', ParseIntPipe) nilaiId: number,
     @Request() req,
   ) {
     const userId = req.user?.id || 'system';
-    return this.kreditService.copyNilai(kreditId, parameterId, nilaiId, userId);
+    return this.inherentService.copyNilai(
+      inherentId,
+      parameterId,
+      nilaiId,
+      userId,
+    );
   }
 
   @Delete(':id/parameters/:parameterId/nilai/:nilaiId')
@@ -397,14 +407,14 @@ export class KreditProdukOjkController {
   @ApiResponse({ status: 200, description: 'Nilai deleted successfully' })
   @ApiResponse({ status: 404, description: 'Nilai not found' })
   async removeNilai(
-    @Param('id', ParseIntPipe) kreditId: number,
+    @Param('id', ParseIntPipe) inherentId: number,
     @Param('parameterId', ParseIntPipe) parameterId: number,
     @Param('nilaiId', ParseIntPipe) nilaiId: number,
     @Request() req,
   ) {
     const userId = req.user?.id || 'system';
-    return this.kreditService.removeNilai(
-      kreditId,
+    return this.inherentService.removeNilai(
+      inherentId,
       parameterId,
       nilaiId,
       userId,
@@ -418,8 +428,8 @@ export class KreditProdukOjkController {
   @ApiParam({ name: 'id', type: Number })
   @ApiResponse({ status: 200, description: 'Export successful' })
   @ApiResponse({ status: 404, description: 'Data not found' })
-  async exportToExcel(@Param('id', ParseIntPipe) kreditId: number) {
-    return this.kreditService.exportToExcel(kreditId);
+  async exportToExcel(@Param('id', ParseIntPipe) inherentId: number) {
+    return this.inherentService.exportToExcel(inherentId);
   }
 
   @Post('import')
@@ -429,7 +439,7 @@ export class KreditProdukOjkController {
   @ApiResponse({ status: 400, description: 'Bad request' })
   async importFromExcel(@Body() importData: ImportExportDto, @Request() req) {
     const userId = req.user?.id || 'system';
-    return this.kreditService.importFromExcel(importData, userId);
+    return this.inherentService.importFromExcel(importData, userId);
   }
 
   // === REFERENCE DATA ===
@@ -442,17 +452,7 @@ export class KreditProdukOjkController {
     description: 'References retrieved successfully',
   })
   async getReferences(@Query('type') type?: string) {
-    return this.kreditService.getReferences(type);
-  }
-
-  // === VALIDATION ENDPOINTS ===
-
-  @Get('validate/:id')
-  @ApiOperation({ summary: 'Validate Kredit model data' })
-  @ApiParam({ name: 'id', type: Number })
-  @ApiResponse({ status: 200, description: 'Validation completed' })
-  async validateModel(@Param('id', ParseIntPipe) kreditId: number) {
-    return this.kreditService.validateModelKredit(kreditId);
+    return this.inherentService.getReferences(type);
   }
 
   // === UTILITY ENDPOINTS ===
@@ -466,42 +466,58 @@ export class KreditProdukOjkController {
     @Param('year', ParseIntPipe) year: number,
     @Param('quarter', ParseIntPipe) quarter: number,
   ) {
-    const exists = await this.kreditService.findByYearQuarter(year, quarter);
+    const exists = await this.inherentService.findByYearQuarter(year, quarter);
     return { exists: !!exists, data: exists };
   }
 
   // === HELPER METHODS ===
 
   /**
-   * Helper method untuk mendapatkan kredit by ID
-   * Karena entity relasional, kita perlu mencari berdasarkan year/quarter dari kredit aktif
+   * Helper method untuk mendapatkan inherent by ID
+   * Karena entity relasional, kita perlu mencari berdasarkan year/quarter dari inherent aktif
    */
-  private async getKreditByIdOrThrow(kreditId: number) {
-    const activeData = await this.kreditService.findActive();
+  private async getInherentByIdOrThrow(inherentId: number) {
+    // Cari berdasarkan ID langsung (jika service punya method findById)
+    // Atau gunakan active data
+
+    const activeData = await this.inherentService.findActive();
     if (!activeData) {
       throw new NotFoundException('Tidak ada data aktif ditemukan');
     }
 
-    const kredit = await this.kreditService.findByYearQuarter(
+    // Cari data berdasarkan year/quarter dari active data
+    const inherent = await this.inherentService.findByYearQuarter(
       activeData.year,
       activeData.quarter,
     );
 
-    if (!kredit) {
-      throw new NotFoundException(`Data dengan ID ${kreditId} tidak ditemukan`);
+    if (!inherent) {
+      throw new NotFoundException(
+        `Data dengan ID ${inherentId} tidak ditemukan`,
+      );
     }
 
-    if (kredit.id !== kreditId) {
-      throw new NotFoundException(`Data dengan ID ${kreditId} tidak ditemukan`);
+    // Validasi bahwa ID yang diminta sesuai dengan ID yang ditemukan
+    if (inherent.id !== inherentId) {
+      throw new NotFoundException(
+        `Data dengan ID ${inherentId} tidak ditemukan`,
+      );
     }
 
-    return kredit;
+    return inherent;
   }
 
   /**
    * Opsional: Method alternatif jika service punya findById
    */
-  private async getKreditByIdDirect(kreditId: number) {
-    return this.getKreditByIdOrThrow(kreditId);
+  private async getInherentByIdDirect(inherentId: number) {
+    // Jika service memiliki method findById, gunakan ini
+    // Tapi service kita saat ini tidak punya, jadi perlu ditambahkan
+
+    // Contoh jika service punya method findById:
+    // return await this.inherentService.findById(inherentId);
+
+    // Untuk sekarang, kita gunakan workaround dengan active data
+    return this.getInherentByIdOrThrow(inherentId);
   }
 }

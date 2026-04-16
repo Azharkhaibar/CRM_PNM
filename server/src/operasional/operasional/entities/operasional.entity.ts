@@ -1,4 +1,4 @@
-// src/entities/operasional/operasional.entity.ts
+// src/entities/strategik/operasional.entity.ts
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -10,14 +10,22 @@ import {
   Index,
   Unique,
 } from 'typeorm';
-import { OperasionalSection, Quarter } from './operasional-section.entity';
+import { OperasionalSection } from './operasional-section.entity';
+
 export enum CalculationMode {
   RASIO = 'RASIO',
   NILAI_TUNGGAL = 'NILAI_TUNGGAL',
   TEKS = 'TEKS',
 }
 
-@Entity('indikators_operasional')
+export enum Quarter {
+  Q1 = 'Q1',
+  Q2 = 'Q2',
+  Q3 = 'Q3',
+  Q4 = 'Q4',
+}
+
+@Entity('indikators_operasional_holding')
 @Unique('UQ_OPERASIONAL_PERIOD_SUBNO', [
   'year',
   'quarter',
@@ -26,7 +34,6 @@ export enum CalculationMode {
 ])
 @Index('IDX_OPERASIONAL_PERIOD', ['year', 'quarter'])
 @Index('IDX_OPERASIONAL_SECTION', ['sectionId'])
-@Index('IDX_OPERASIONAL_YEAR_QUARTER', ['year', 'quarter'])
 export class Operasional {
   @PrimaryGeneratedColumn()
   id: number;
@@ -35,7 +42,7 @@ export class Operasional {
   @Column({ type: 'int' })
   year: number;
 
-  @Column({ type: 'enum', enum: ['Q1', 'Q2', 'Q3', 'Q4'] })
+  @Column({ type: 'enum', enum: Quarter })
   quarter: Quarter;
 
   // ========== RELASI SECTION ==========
@@ -55,7 +62,7 @@ export class Operasional {
 
   // ========== DATA SECTION (Copy dari master) ==========
   @Column({ type: 'varchar', length: 50 })
-  no: string; // No section, contoh: "7.1"
+  no: string;
 
   @Column({
     type: 'varchar',
@@ -78,7 +85,7 @@ export class Operasional {
     length: 50,
     name: 'sub_no',
   })
-  subNo: string; // Contoh: "7.1.1" - UNIK per periode+section
+  subNo: string;
 
   @Column({ type: 'varchar', length: 1000 })
   indikator: string;

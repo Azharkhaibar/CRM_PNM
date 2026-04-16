@@ -146,24 +146,37 @@ export function useKpmrPasar(): UseKpmrPasarReturn {
       try {
         console.log(`🆕 [Hook] Creating KPMR for year ${year} Q${quarter}`);
 
-        const payload: CreateKpmrPasarOjkDto = {
+        const quarterMap: Record<number, string> = {
+          1: 'Q1',
+          2: 'Q2',
+          3: 'Q3',
+          4: 'Q4',
+        };
+
+        const payload: CreateKpmrLikuiditasOjkDto = {
           year,
-          quarter,
+          quarter: quarterMap[quarter] || `Q${quarter}`,
           isActive: true,
           version: '1.0',
           aspekList: [],
         };
 
-        const data = await kpmrPasarApiService.createKpmr(payload);
+        console.log('📦 [Hook] Sending payload:', payload);
+
+        const data = await kpmrLikuiditasApiService.createKpmr(payload);
 
         if (!mountedRef.current) return null;
 
+        // ✅ CEK APAKAH DATA VALID
+        if (!data || !data.id) {
+          throw new Error('Data KPMR tidak valid setelah dibuat');
+        }
+
         safeSet(setKpmr, data);
         safeSet(setCurrentKpmrId, data.id);
-        const frontendRows = kpmrPasarApiService.convertToFrontendFormat(data);
+        const frontendRows = kpmrLikuiditasApiService.convertToFrontendFormat(data);
         safeSet(setRows, frontendRows);
 
-        // ✅ Simpan parameter yang sudah dimuat
         lastLoadedYearRef.current = { year, quarter };
 
         toast({
@@ -175,9 +188,19 @@ export function useKpmrPasar(): UseKpmrPasarReturn {
       } catch (err: any) {
         if (!mountedRef.current) return null;
 
-        const errorMsg = err.message || 'Gagal membuat KPMR';
+        console.error('❌ [Hook] Create KPMR error:', {
+          message: err.message,
+          response: err.response?.data,
+          status: err.response?.status,
+        });
+
+        const errorMsg = err.response?.data?.message || err.message || 'Gagal membuat KPMR';
         safeSet(setError, errorMsg);
-        toast({ title: 'Error', description: errorMsg, variant: 'destructive' });
+        toast({
+          title: 'Error',
+          description: errorMsg,
+          variant: 'destructive',
+        });
         return null;
       } finally {
         loadingRef.current = false;

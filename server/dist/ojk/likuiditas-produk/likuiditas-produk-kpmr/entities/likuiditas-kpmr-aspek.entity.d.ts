@@ -1,4 +1,4 @@
-import { KpmrLikuiditas } from './likuiditas-produk-ojk.entity';
+import { KpmrLikuiditasOjk } from './likuiditas-produk-ojk.entity';
 import { KpmrPertanyaanLikuiditas } from './likuiditas-kpmr-pertanyaan.entity';
 export declare class KpmrAspekLikuiditas {
     id: number;
@@ -7,7 +7,7 @@ export declare class KpmrAspekLikuiditas {
     bobot: number;
     deskripsi?: string;
     kpmrOjkId: number;
-    kpmrOjk: KpmrLikuiditas;
+    kpmrOjk: KpmrLikuiditasOjk;
     pertanyaanList?: KpmrPertanyaanLikuiditas[];
     createdAt: Date;
     updatedAt: Date;

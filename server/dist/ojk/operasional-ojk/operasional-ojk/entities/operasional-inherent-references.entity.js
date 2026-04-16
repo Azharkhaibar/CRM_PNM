@@ -65,6 +65,6 @@ __decorate([
     __metadata("design:type", Date)
 ], OperasionalReference.prototype, "updatedAt", void 0);
 exports.OperasionalReference = OperasionalReference = __decorate([
-    (0, typeorm_1.Entity)('operasional_references')
+    (0, typeorm_1.Entity)('inherent_references_operasional_ojk')
 ], OperasionalReference);
 //# sourceMappingURL=operasional-inherent-references.entity.js.map

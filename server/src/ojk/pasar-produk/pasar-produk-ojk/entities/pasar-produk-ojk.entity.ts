@@ -1,3 +1,5 @@
+// pasar-produk-ojk.entity.ts
+
 import {
   Entity,
   PrimaryGeneratedColumn,

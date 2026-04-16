@@ -6,7 +6,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
-@Entity('operasional_references')
+@Entity('inherent_references_operasional_ojk')
 export class OperasionalReference {
   @PrimaryGeneratedColumn()
   id: number;

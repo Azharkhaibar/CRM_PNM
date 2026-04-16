@@ -1,5 +1,6 @@
 // src/features/Dashboard/pages/RiskProfile/pages/Investasi/services/investasi.service.ts
 import axios, { AxiosResponse } from 'axios';
+import { SectionsWithIndicatorsResponse } from '../../pasar/service/pasar/pasar.service';
 
 // ENUMS
 export enum CalculationMode {
@@ -197,6 +198,12 @@ export const computeHasil = (ind: any): number | null => {
   const pemb = parseNum(ind.pembilangValue);
   const peny = parseNum(ind.penyebutValue);
 
+  // 🔹 Validasi untuk mode RASIO
+  if (mode === 'RASIO' && peny === 0) {
+    console.warn('Penyebut value adalah 0 untuk mode RASIO');
+    return null; // Kembalikan null, jangan throw error
+  }
+
   if (ind.formula && ind.formula.trim() !== '') {
     try {
       const expr = ind.formula
@@ -240,6 +247,17 @@ export const computeWeightedAuto = (ind: any, sectionBobot: number): number => {
 export const transformIndicatorToBackend = (indicatorData: any, year: number, quarter: Quarter, sectionId: number, sectionData: any): CreateInvestasiData => {
   const hasilNum = computeHasil(indicatorData);
 
+  // Validasi khusus untuk mode RASIO
+  let penyebutValue = indicatorData.penyebutValue !== undefined && indicatorData.penyebutValue !== '' ? Number(indicatorData.penyebutValue) : undefined;
+
+  // Untuk mode RASIO, jika penyebut 0 atau undefined, set ke null agar backend menolak
+  if (indicatorData.mode === CalculationMode.RASIO) {
+    if (penyebutValue === 0 || penyebutValue === undefined || isNaN(penyebutValue)) {
+      console.warn('Penyebut value untuk mode RASIO tidak valid:', penyebutValue);
+      // Biarkan undefined, backend akan memberikan error validasi
+    }
+  }
+
   return {
     year,
     quarter,
@@ -263,7 +281,7 @@ export const transformIndicatorToBackend = (indicatorData: any, year: number, qu
     pembilangLabel: indicatorData.pembilangLabel?.trim() || undefined,
     pembilangValue: indicatorData.pembilangValue !== undefined && indicatorData.pembilangValue !== '' ? Number(indicatorData.pembilangValue) : undefined,
     penyebutLabel: indicatorData.penyebutLabel?.trim() || undefined,
-    penyebutValue: indicatorData.penyebutValue !== undefined && indicatorData.penyebutValue !== '' ? Number(indicatorData.penyebutValue) : undefined,
+    penyebutValue: penyebutValue, // Gunakan hasil validasi
     hasil: hasilNum !== null ? hasilNum : undefined,
     hasilText: indicatorData.mode === CalculationMode.TEKS ? indicatorData.hasilText || indicatorData.keterangan || '' : undefined,
     peringkat: Number(indicatorData.peringkat) || 1,
@@ -364,8 +382,26 @@ class InvestasiApiService {
     return this.request<InvestasiIndikator[]>('get', '/investasi/indikators/period', null, { year, quarter });
   }
 
-  async getSectionsWithIndicatorsByPeriod(year: number, quarter: Quarter): Promise<Array<InvestasiSection & { indicators: InvestasiIndikator[] }>> {
-    return this.request<Array<InvestasiSection & { indicators: InvestasiIndikator[] }>>('get', '/investasi/indikators/sections-by-period', null, { year, quarter });
+  async getSectionsWithIndicatorsByPeriod(year: number, quarter: Quarter): Promise<any> {
+    try {
+      console.log(`📡 Calling API: getSectionsWithIndicatorsByPeriod for ${year}-${quarter}`);
+
+      const params = new URLSearchParams();
+      params.append('year', String(year));
+      params.append('quarter', String(quarter));
+
+      const url = `${this.baseUrl}/investasi/data/with-indicators?${params.toString()}`;
+      console.log('🔍 Full URL:', url); // <-- TAMBAHKAN INI
+
+      const response = await axios.get(url);
+
+      console.log('✅ Response from backend:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error in getSectionsWithIndicatorsByPeriod:', error);
+      this.handleError(error);
+      throw error;
+    }
   }
 
   async searchIndikators(query?: string, year?: number, quarter?: Quarter): Promise<InvestasiIndikator[]> {
@@ -399,7 +435,10 @@ class InvestasiApiService {
   }
 
   async duplicateIndikator(sourceId: number, targetYear: number, targetQuarter: Quarter): Promise<InvestasiIndikator> {
-    return this.request<InvestasiIndikator>('post', `/investasi/indikators/${sourceId}/duplicate`, null, { year: targetYear, quarter: targetQuarter });
+    return this.request<InvestasiIndikator>('post', `/investasi/indikators/${sourceId}/duplicate`, null, {
+      year: targetYear,
+      quarter: targetQuarter,
+    });
   }
 
   // ========== HELPER METHODS ==========

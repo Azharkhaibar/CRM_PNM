@@ -120,7 +120,7 @@ export default function LikuiditasProdukInherentWrapper() {
     return () => {
       mounted = false;
     };
-  }, [year, quarter, changeYearQuarter]);
+  }, [year, quarter, changeYearQuarter]); // PERUBAHAN: ganti loadData dengan changeYearQuarter
 
   const backendHandlers = useMemo(
     () => ({
@@ -295,7 +295,7 @@ export default function LikuiditasProdukInherentWrapper() {
       handleCopyNilai,
       getParameterById,
       reloadData,
-      changeYearQuarter,
+      changeYearQuarter, // PERUBAHAN: tambah changeYearQuarter
       formatParameterJudul,
       formatNilaiJudul,
       formatBobot,
@@ -433,7 +433,7 @@ export default function LikuiditasProdukInherentWrapper() {
   );
 }
 
-// Komponen utama
+// Komponen utama - PERBAIKAN: Tambah prop isInitialLoading
 function LikuiditasProdukInherent({ rows, setRows, search, active, backendHandlers, isLoading, isLocked = false }) {
   const { activeQuarter } = useHeaderStore();
 
@@ -453,7 +453,7 @@ function LikuiditasProdukInherent({ rows, setRows, search, active, backendHandle
   );
 }
 
-// ParameterPanel dengan integrasi backend
+// ParameterPanel dengan integrasi backend - PERBAIKAN: Tambah reset state saat rows berubah
 function ParameterPanel({ rows, setRows, active, backendHandlers, isLoading: globalLoading, isLocked = false }) {
   const [activeParamIndex, setActiveParamIndex] = useState(null);
   const [activeNilaiIndex, setActiveNilaiIndex] = useState(0);
@@ -614,25 +614,25 @@ function ParameterPanel({ rows, setRows, active, backendHandlers, isLoading: glo
             jenis: '', // Jenis harus kosong
             underlying: [], // Underlying harus kosong
           };
-        } else if (newModel === 'standar') {
+        } else if (newModel === 'open_end') {
           next.kategori = {
-            model: 'standar',
+            model: 'open_end',
             prinsip: '', // Reset prinsip
             jenis: '', // Reset jenis
-            underlying: [], // Harus kosong untuk standar
+            underlying: [], // Harus kosong untuk open_end
           };
-        } else if (newModel === 'komprehensif') {
+        } else if (newModel === 'terstruktur') {
           next.kategori = {
-            model: 'komprehensif',
+            model: 'terstruktur',
             prinsip: '', // Reset prinsip
-            jenis: '', // Jenis harus kosong untuk komprehensif
+            jenis: '', // Jenis harus kosong untuk terstruktur
             underlying: [], // Bisa kosong - VALIDASI DIPERBOLEHKAN KOSONG
           };
         }
       }
 
-      // FIXED: Jika model bukan komprehensif, ensure underlying kosong
-      if (prev.kategori.model !== 'komprehensif' && key === 'underlying') {
+      // FIXED: Jika model bukan terstruktur, ensure underlying kosong
+      if (prev.kategori.model !== 'terstruktur' && key === 'underlying') {
         next.kategori.underlying = [];
       }
 
@@ -655,8 +655,8 @@ function ParameterPanel({ rows, setRows, active, backendHandlers, isLoading: glo
       return true;
     }
 
-    // Untuk standar dan komprehensif, prinsip wajib
-    if (k.model === 'standar' || k.model === 'komprehensif') {
+    // Untuk open_end dan terstruktur, prinsip wajib
+    if (k.model === 'open_end' || k.model === 'terstruktur') {
       if (!k.prinsip) {
         console.log('🔍 [DEBUG] Incomplete: Prinsip required for', k.model);
         return true;
@@ -669,44 +669,44 @@ function ParameterPanel({ rows, setRows, active, backendHandlers, isLoading: glo
       }
     }
 
-    // Validasi untuk standar
-    if (k.model === 'standar') {
+    // Validasi untuk open_end
+    if (k.model === 'open_end') {
       if (!k.jenis) {
-        console.log('🔍 [DEBUG] Incomplete: standar but jenis missing');
+        console.log('🔍 [DEBUG] Incomplete: open_end but jenis missing');
         return true;
       }
 
       // Validasi jenis harus sesuai enum
-      const validJenis = ['jangka_pendek', 'jangka_menengah', 'jangka_panjang'];
+      const validJenis = ['pasar_uang', 'pendapatan_tetap', 'campuran', 'saham', 'indeks', 'terproteksi'];
       if (!validJenis.includes(k.jenis)) {
-        console.log('🔍 [DEBUG] Incomplete: Invalid jenis for standar:', k.jenis);
+        console.log('🔍 [DEBUG] Incomplete: Invalid jenis for open_end:', k.jenis);
         return true;
       }
 
-      // Untuk standar, underlying harus kosong
+      // Untuk open_end, underlying harus kosong
       if (k.underlying && k.underlying.length > 0) {
-        console.log('🔍 [DEBUG] Incomplete: standar but has underlying');
+        console.log('🔍 [DEBUG] Incomplete: open_end but has underlying');
         return true;
       }
     }
 
-    // PERBAIKAN: Untuk komprehensif - UNDERLYING BOLEH KOSONG
-    if (k.model === 'komprehensif') {
+    // PERBAIKAN: Untuk terstruktur - UNDERLYING BOLEH KOSONG
+    if (k.model === 'terstruktur') {
       // Jenis harus kosong
       if (k.jenis) {
-        console.log('🔍 [DEBUG] Incomplete: komprehensif should not have jenis');
+        console.log('🔍 [DEBUG] Incomplete: terstruktur should not have jenis');
         return true;
       }
 
       // PERBAIKAN: Underlying boleh kosong, hanya perlu array
       if (!Array.isArray(k.underlying)) {
-        console.log('🔍 [DEBUG] Incomplete: komprehensif but underlying is not array');
+        console.log('🔍 [DEBUG] Incomplete: terstruktur but underlying is not array');
         return true;
       }
 
       // Validasi underlying values jika ada isinya (optional)
       if (k.underlying.length > 0) {
-        const validUnderlying = ['kewajiban', 'aset_lancar', 'arus_kas', 'rasio'];
+        const validUnderlying = ['indeks', 'eba', 'dinfra', 'obligasi'];
         const invalidValues = k.underlying.filter((value) => !validUnderlying.includes(value));
         if (invalidValues.length > 0) {
           console.log('🔍 [DEBUG] Incomplete: Invalid underlying values:', invalidValues);
@@ -809,9 +809,9 @@ function ParameterPanel({ rows, setRows, active, backendHandlers, isLoading: glo
         cleanKategori.prinsip = '';
         cleanKategori.jenis = '';
         cleanKategori.underlying = [];
-      } else if (cleanKategori.model === 'standar') {
+      } else if (cleanKategori.model === 'open_end') {
         cleanKategori.underlying = [];
-      } else if (cleanKategori.model === 'komprehensif') {
+      } else if (cleanKategori.model === 'terstruktur') {
         cleanKategori.jenis = '';
         // PERBAIKAN: Underlying boleh kosong atau berisi array
         if (!Array.isArray(cleanKategori.underlying)) {
@@ -888,7 +888,7 @@ function ParameterPanel({ rows, setRows, active, backendHandlers, isLoading: glo
       return;
     }
 
-    // VALIDASI KATEGORI - PERBAIKAN: KOMPREHENSIF BOLEH UNDERLYING KOSONG
+    // VALIDASI KATEGORI - PERBAIKAN: TERSTRUKTUR BOLEH UNDERLYING KOSONG
     if (isKategoriIncomplete(draftParameter)) {
       alert('Lengkapi kategori sebelum menambah parameter.');
       return;
@@ -914,9 +914,9 @@ function ParameterPanel({ rows, setRows, active, backendHandlers, isLoading: glo
       console.log('🔵 [COMPONENT] Kategori yang akan dikirim:', kategori);
 
       // PERBAIKAN: Pastikan nilainya lowercase dan valid
-      const validModels = ['tanpa_model', 'standar', 'komprehensif'];
+      const validModels = ['tanpa_model', 'open_end', 'terstruktur'];
       const validPrinsip = ['syariah', 'konvensional'];
-      const validJenis = ['jangka_pendek', 'jangka_menengah', 'jangka_panjang'];
+      const validJenis = ['pasar_uang', 'pendapatan_tetap', 'campuran', 'saham', 'indeks', 'terproteksi'];
 
       // Validasi model
       if (kategori.model && !validModels.includes(kategori.model)) {
@@ -933,43 +933,43 @@ function ParameterPanel({ rows, setRows, active, backendHandlers, isLoading: glo
         }
       }
 
-      // Validasi jenis untuk standar
-      if (kategori.model === 'standar') {
+      // Validasi jenis untuk open_end
+      if (kategori.model === 'open_end') {
         if (!kategori.jenis) {
-          throw new Error('Jenis likuiditas wajib dipilih untuk model "standar"');
+          throw new Error('Jenis reksa dana wajib dipilih untuk model "open_end"');
         }
         if (kategori.jenis && !validJenis.includes(kategori.jenis)) {
-          throw new Error(`Jenis tidak valid untuk standar: ${kategori.jenis}. Harus salah satu dari: ${validJenis.join(', ')}`);
+          throw new Error(`Jenis tidak valid untuk open_end: ${kategori.jenis}. Harus salah satu dari: ${validJenis.join(', ')}`);
         }
       }
 
-      // Untuk komprehensif dan tanpa_model, jenis harus null
-      if (kategori.model === 'komprehensif' || kategori.model === 'tanpa_model') {
+      // Untuk terstruktur dan tanpa_model, jenis harus null
+      if (kategori.model === 'terstruktur' || kategori.model === 'tanpa_model') {
         kategori.jenis = null;
       }
 
-      // PERBAIKAN: Validasi underlying untuk komprehensif - BOLEH KOSONG
-      if (kategori.model === 'komprehensif' && Array.isArray(kategori.underlying)) {
-        const validUnderlying = ['kewajiban', 'aset_lancar', 'arus_kas', 'rasio'];
+      // PERBAIKAN: Validasi underlying untuk terstruktur - BOLEH KOSONG
+      if (kategori.model === 'terstruktur' && Array.isArray(kategori.underlying)) {
+        const validUnderlying = ['indeks', 'eba', 'dinfra', 'obligasi'];
         const invalidValues = kategori.underlying.filter((v) => !validUnderlying.includes(v));
         if (invalidValues.length > 0) {
-          throw new Error(`Underlying tidak valid: ${invalidValues.join(', ')}. Harus salah satu dari: ${validUnderlying.join(', ')}`);
+          throw new Error(`Aset dasar tidak valid: ${invalidValues.join(', ')}. Harus salah satu dari: ${validUnderlying.join(', ')}`);
         }
       }
 
-      // PERBAIKAN: Untuk standar, underlying harus kosong
-      if (kategori.model === 'standar' && kategori.underlying && kategori.underlying.length > 0) {
-        throw new Error('Untuk model "standar", underlying harus kosong');
+      // PERBAIKAN: Untuk open_end, underlying harus kosong
+      if (kategori.model === 'open_end' && kategori.underlying && kategori.underlying.length > 0) {
+        throw new Error('Untuk model "open_end", aset dasar harus kosong');
       }
 
       // PERBAIKAN: Untuk tanpa_model, semua field lain harus kosong
       if (kategori.model === 'tanpa_model') {
         if (kategori.prinsip || kategori.jenis || (kategori.underlying && kategori.underlying.length > 0)) {
-          throw new Error('Untuk model "tanpa_model", prinsip, jenis, dan underlying harus kosong');
+          throw new Error('Untuk model "tanpa_model", prinsip, jenis, dan aset dasar harus kosong');
         }
       }
 
-      // PAYLOAD untuk backend
+      // PAYLOAD untuk backend - PERBAIKAN: Kosongkan field yang tidak perlu
       const createParamDto = {
         nomor: draftParameter.nomor || '',
         judul: judul,
@@ -1046,9 +1046,9 @@ function ParameterPanel({ rows, setRows, active, backendHandlers, isLoading: glo
         errorMessage =
           'Validasi gagal. Periksa data yang Anda masukkan:\n' +
           '1. Pastikan model produk dipilih\n' +
-          '2. Untuk standar: pilih jenis dan prinsip\n' +
-          '3. Untuk komprehensif: pilih prinsip (underlying boleh kosong)\n' +
-          '4. Untuk tanpa_model: jangan pilih prinsip/jenis/underlying\n' +
+          '2. Untuk open_end: pilih jenis dan prinsip\n' +
+          '3. Untuk terstruktur: pilih prinsip (aset dasar boleh kosong)\n' +
+          '4. Untuk tanpa_model: jangan pilih prinsip/jenis/aset dasar\n' +
           '5. Bobot harus antara 0-100\n' +
           '6. Judul tidak boleh kosong';
       }
@@ -1382,32 +1382,35 @@ function ParameterPanel({ rows, setRows, active, backendHandlers, isLoading: glo
                 >
                   <option value="">Pilih Model</option>
                   <option value="tanpa_model">Tanpa Model</option>
-                  <option value="standar">Standar</option>
-                  <option value="komprehensif">Komprehensif</option>
+                  <option value="open_end">Open-End</option>
+                  <option value="terstruktur">Terstruktur</option>
                 </select>
               </div>
 
-              {parameter.kategori.model === 'standar' && (
+              {parameter.kategori.model === 'open_end' && (
                 <div className="w-[50%] flex flex-col">
-                  <label className="font-semibold text-sm ml-1 mb-1 text-slate-200">Jenis Likuiditas</label>
+                  <label className="font-semibold text-sm ml-1 mb-1 text-slate-200">Jenis Reksa Dana</label>
                   <select
                     className="bg-white text-slate-800 text-sm rounded px-2 py-1 border border-slate-300"
                     value={parameter.kategori.jenis}
                     onChange={(e) => handleChangeKategori('jenis', e.target.value)}
                     disabled={isDisabled || (safeActiveParamIndex !== null && !editMode) || isLocked}
-                    required={parameter.kategori.model === 'standar'}
+                    required={parameter.kategori.model === 'open_end'}
                   >
                     <option value="">Pilih Jenis</option>
-                    <option value="jangka_pendek">Jangka Pendek</option>
-                    <option value="jangka_menengah">Jangka Menengah</option>
-                    <option value="jangka_panjang">Jangka Panjang</option>
+                    <option value="pasar_uang">Pasar Uang</option>
+                    <option value="pendapatan_tetap">Pendapatan Tetap</option>
+                    <option value="campuran">Campuran</option>
+                    <option value="saham">Saham</option>
+                    <option value="indeks">Indeks</option>
+                    <option value="terproteksi">Terproteksi</option>
                   </select>
                 </div>
               )}
 
-              {parameter.kategori.model === 'komprehensif' && (
+              {parameter.kategori.model === 'terstruktur' && (
                 <div className="w-[50%] flex flex-col">
-                  <label className="font-semibold text-sm ml-1 mb-1 text-slate-200">Underlying</label>
+                  <label className="font-semibold text-sm ml-1 mb-1 text-slate-200">Aset Dasar</label>
 
                   <div className="relative">
                     <button
@@ -1421,27 +1424,28 @@ function ParameterPanel({ rows, setRows, active, backendHandlers, isLoading: glo
                           ? parameter.kategori.underlying
                               .map((key) => {
                                 const map = {
-                                  kewajiban: 'Kewajiban',
-                                  aset_lancar: 'Aset Lancar',
-                                  arus_kas: 'Arus Kas',
-                                  rasio: 'Rasio',
+                                  indeks: 'Indeks',
+                                  eba: 'Efek Beragun Aset (EBA)',
+                                  dinfra: 'DinFra',
+                                  obligasi: 'Obligasi',
                                 };
                                 return map[key] || key;
                               })
                               .join(', ')
-                          : 'Pilih Underlying (Opsional)'}
+                          : 'Pilih Aset Dasar (Opsional)'}{' '}
+                        {/* PERBAIKAN: TAMBAH OPSIONAL */}
                       </span>
                       <span>▾</span>
                     </button>
 
                     {openUnderlying && (
                       <div className="absolute z-50 mt-1 w-full bg-white rounded shadow-lg text-sm text-slate-800 border border-slate-200">
-                        <div className="px-3 py-2 text-xs text-gray-500 border-b">Pilih underlying (boleh kosong untuk model komprehensif)</div>
+                        <div className="px-3 py-2 text-xs text-gray-500 border-b">Pilih aset dasar (boleh kosong untuk model terstruktur)</div>
                         {[
-                          { key: 'kewajiban', label: 'Kewajiban' },
-                          { key: 'aset_lancar', label: 'Aset Lancar' },
-                          { key: 'arus_kas', label: 'Arus Kas' },
-                          { key: 'rasio', label: 'Rasio' },
+                          { key: 'indeks', label: 'Indeks' },
+                          { key: 'eba', label: 'Efek Beragun Aset (EBA)' },
+                          { key: 'dinfra', label: 'DinFra' },
+                          { key: 'obligasi', label: 'Obligasi' },
                         ].map((u) => {
                           const underlyingArray = Array.isArray(parameter.kategori.underlying) ? parameter.kategori.underlying : [];
 
@@ -1458,10 +1462,11 @@ function ParameterPanel({ rows, setRows, active, backendHandlers, isLoading: glo
 
                                   const next = e.target.checked ? [...currentUnderlying, u.key] : currentUnderlying.filter((x) => x !== u.key);
 
-                                  // Panggil handleChangeKategori dengan key yang benar
+                                  // FIXED: Panggil handleChangeKategori dengan key yang benar
                                   handleChangeKategori('underlying', next);
                                 }}
                                 disabled={isDisabled || (safeActiveParamIndex !== null && !editMode) || isLocked}
+                                // PERBAIKAN: Hapus required karena boleh kosong
                               />
                               <span>{u.label}</span>
                             </label>
@@ -1534,7 +1539,7 @@ function ParameterPanel({ rows, setRows, active, backendHandlers, isLoading: glo
               <div className="w-[80%]">
                 <label className="font-semibold text-sm ml-2 text-slate-200">Parameter</label>
                 <Input
-                  placeholder="Likuiditas Parameter"
+                  placeholder="Reksa Dana"
                   value={parameter.judul}
                   disabled={(parameter.kategori.model !== 'tanpa_model' && isKategoriIncomplete(parameter)) || isDisabled || (safeActiveParamIndex !== null && !editMode) || isLocked}
                   onChange={(e) => handleChangeParameter('judul', e.target.value)}
@@ -1638,7 +1643,7 @@ function ParameterPanel({ rows, setRows, active, backendHandlers, isLoading: glo
   );
 }
 
-// NilaiPanel
+// NilaiPanel - PERBAIKAN: Tambah reset state saat param berubah
 function NilaiPanel({ param, nilaiList = [], activeNilaiIndex, setActiveNilaiIndex, loading = false, paramIndex, setRows, rows, onOpenDeleteDialog, backendHandlers, isLocked = false }) {
   const hasNilai = Array.isArray(nilaiList) && nilaiList.length > 0;
   const [showForm, setShowForm] = useState(true);
@@ -2630,7 +2635,7 @@ function NilaiJudulInput({ judul, onChange, onTypeChange, loading = false, editM
   );
 }
 
-// TableInherent
+// TableInherent - PERBAIKAN: Tampilkan pesan kosong jika rows kosong
 function TableInherent({ rows = [], activeQuarter }) {
   const [zoom, setZoom] = useState(100);
   const [currentPage, setCurrentPage] = useState(1);

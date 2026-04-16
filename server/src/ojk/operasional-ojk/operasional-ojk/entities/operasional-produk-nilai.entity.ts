@@ -10,7 +10,7 @@ import {
 } from 'typeorm';
 import { OperasionalParameter } from './operasional-produk-parameter.entity';
 
-@Entity('operasional_nilai')
+@Entity('operasional_nilai_ojk')
 @Index(['parameterId', 'nomor'], { unique: false })
 export class OperasionalNilai {
   @PrimaryGeneratedColumn()

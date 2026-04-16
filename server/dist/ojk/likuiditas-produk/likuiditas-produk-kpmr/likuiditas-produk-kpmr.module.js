@@ -21,11 +21,10 @@ exports.LikuiditasKpmrModule = LikuiditasKpmrModule = __decorate([
     (0, common_1.Module)({
         imports: [
             typeorm_1.TypeOrmModule.forFeature([
-                likuiditas_produk_ojk_entity_1.KpmrLikuiditas,
+                likuiditas_produk_ojk_entity_1.KpmrLikuiditasOjk,
                 likuiditas_kpmr_aspek_entity_1.KpmrAspekLikuiditas,
                 likuiditas_kpmr_pertanyaan_entity_1.KpmrPertanyaanLikuiditas,
             ]),
-            LikuiditasKpmrModule,
         ],
         controllers: [likuiditas_produk_kpmr_controller_1.KpmrLikuiditasController],
         providers: [likuiditas_produk_kpmr_service_1.KpmrLikuiditasService],

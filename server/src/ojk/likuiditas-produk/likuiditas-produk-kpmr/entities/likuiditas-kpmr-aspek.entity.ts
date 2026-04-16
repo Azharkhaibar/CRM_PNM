@@ -9,12 +9,11 @@ import {
   JoinColumn,
   Index,
 } from 'typeorm';
-import { KpmrLikuiditas } from './likuiditas-produk-ojk.entity';
+import { KpmrLikuiditasOjk } from './likuiditas-produk-ojk.entity';
 import { KpmrPertanyaanLikuiditas } from './likuiditas-kpmr-pertanyaan.entity';
-
 @Entity('kpmr_aspek_likuiditas')
-@Index(['kpmrOjkId', 'nomor'], { unique: false })
-@Index(['kpmrOjkId', 'orderIndex'], { unique: false })
+@Index(['kpmrOjkId', 'nomor'])
+@Index(['kpmrOjkId', 'orderIndex'])
 @Index(['kpmrOjkId', 'bobot'])
 @Index(['kpmrOjkId', 'createdAt'])
 export class KpmrAspekLikuiditas {
@@ -24,32 +23,26 @@ export class KpmrAspekLikuiditas {
   @Column({ nullable: true })
   nomor?: string;
 
-  @Column({ nullable: false })
+  @Column()
   judul: string;
 
-  @Column('decimal', {
-    precision: 10,
-    scale: 2,
-    nullable: false,
-    default: 0,
-  })
+  @Column('decimal', { precision: 10, scale: 2, default: 0 })
   bobot: number;
 
-  @Column({ type: 'varchar', length: 500, nullable: true })
+  @Column({ type: 'text', nullable: true })
   deskripsi?: string;
 
   @Column({ name: 'kpmr_ojk_id' })
   kpmrOjkId: number;
 
-  @ManyToOne(() => KpmrLikuiditas, (kpmr) => kpmr.aspekList, {
+  @ManyToOne(() => KpmrLikuiditasOjk, (kpmr) => kpmr.aspekList, {
     onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'kpmr_ojk_id' })
-  kpmrOjk: KpmrLikuiditas;
+  kpmrOjk: KpmrLikuiditasOjk;
 
   @OneToMany(() => KpmrPertanyaanLikuiditas, (pertanyaan) => pertanyaan.aspek, {
     cascade: true,
-    eager: false,
   })
   pertanyaanList?: KpmrPertanyaanLikuiditas[];
 
@@ -76,6 +69,6 @@ export class KpmrAspekLikuiditas {
   @Column({ nullable: true, name: 'updated_by' })
   updatedBy?: string;
 
-  @Column({ nullable: true, type: 'text' })
+  @Column({ type: 'text', nullable: true })
   notes?: string;
 }

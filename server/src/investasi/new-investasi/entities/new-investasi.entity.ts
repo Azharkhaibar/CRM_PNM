@@ -1,4 +1,4 @@
-// src/entities/strategik/strategik.entity.ts
+// src/entities/strategik/new-investasi.entity.ts
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -11,6 +11,7 @@ import {
   Unique,
 } from 'typeorm';
 import { InvestasiSection } from './new-investasi-section.entity';
+
 export enum CalculationMode {
   RASIO = 'RASIO',
   NILAI_TUNGGAL = 'NILAI_TUNGGAL',
@@ -24,11 +25,11 @@ export enum Quarter {
   Q4 = 'Q4',
 }
 
-@Entity('indikators_investasi')
+@Entity('indikators_investasi_holding')
 @Unique('UQ_INVESTASI_PERIOD_SUBNO', ['year', 'quarter', 'subNo', 'sectionId'])
-@Index('IDX_INVESTASI_PERIOD', ['year', 'quarter'])
+@Index('IDX_INVESTASI_PERIOD', ['year', 'quarter']) // SATU indeks untuk year, quarter
 @Index('IDX_INVESTASI_SECTION', ['sectionId'])
-@Index('IDX_INVESTASI_YEAR_QUARTER', ['year', 'quarter'])
+// HAPUS @Index('IDX_INVESTASI_YEAR_QUARTER', ['year', 'quarter']) karena duplikat
 export class Investasi {
   @PrimaryGeneratedColumn()
   id: number;
@@ -53,7 +54,7 @@ export class Investasi {
 
   // ========== DATA SECTION (Copy dari master) ==========
   @Column({ type: 'varchar', length: 50 })
-  no: string; // No section, contoh: "6.1"
+  no: string;
 
   @Column({
     type: 'varchar',
@@ -76,7 +77,7 @@ export class Investasi {
     length: 50,
     name: 'sub_no',
   })
-  subNo: string; // Contoh: "6.1.1" - UNIK per periode+section
+  subNo: string;
 
   @Column({ type: 'varchar', length: 1000 })
   indikator: string;

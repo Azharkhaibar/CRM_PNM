@@ -305,7 +305,7 @@ let KpmrLikuiditasService = KpmrLikuiditasService_1 = class KpmrLikuiditasServic
             isLocked: false,
             version: createDto.version || '1.0.0',
             notes: createDto.notes ||
-                `KPMR Likuiditas ${createDto.year} Q${createDto.quarter}`,
+                `KPMR Likuiditas Produk ${createDto.year} Q${createDto.quarter}`,
             createdBy: createdBy,
             summary: createDto.summary || {
                 totalScore: 0,
@@ -1189,7 +1189,7 @@ let KpmrLikuiditasService = KpmrLikuiditasService_1 = class KpmrLikuiditasServic
 exports.KpmrLikuiditasService = KpmrLikuiditasService;
 exports.KpmrLikuiditasService = KpmrLikuiditasService = KpmrLikuiditasService_1 = __decorate([
     (0, common_1.Injectable)(),
-    __param(0, (0, typeorm_1.InjectRepository)(likuiditas_produk_ojk_entity_1.KpmrLikuiditas)),
+    __param(0, (0, typeorm_1.InjectRepository)(likuiditas_produk_ojk_entity_1.KpmrLikuiditasOjk)),
     __param(1, (0, typeorm_1.InjectRepository)(likuiditas_kpmr_aspek_entity_1.KpmrAspekLikuiditas)),
     __param(2, (0, typeorm_1.InjectRepository)(likuiditas_kpmr_pertanyaan_entity_1.KpmrPertanyaanLikuiditas)),
     __metadata("design:paramtypes", [typeorm_2.Repository,

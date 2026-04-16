@@ -1,9 +1,21 @@
 import { Module } from '@nestjs/common';
-import { ReputasiKpmrOjkService } from './reputasi-kpmr-ojk.service';
-import { ReputasiKpmrOjkController } from './reputasi-kpmr-ojk.controller';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { KpmrReputasiService } from './reputasi-kpmr-ojk.service';
+import { KpmrReputasiController } from './reputasi-kpmr-ojk.controller';
+import { KpmrAspekReputasi } from './entities/reputasi-kpmr-aspek.entity';
+import { KpmrPertanyaanReputasi } from './entities/reputasi-kpmr-pertanyaan.entity';
+import { KpmrReputasiOjk } from './entities/reputasi-kpmr-ojk.entity';
 
 @Module({
-  controllers: [ReputasiKpmrOjkController],
-  providers: [ReputasiKpmrOjkService],
+  imports: [
+    TypeOrmModule.forFeature([
+      KpmrAspekReputasi,
+      KpmrPertanyaanReputasi,
+      KpmrReputasiOjk,
+    ]),
+  ],
+  controllers: [KpmrReputasiController],
+  providers: [KpmrReputasiService],
+  exports: [KpmrReputasiService],
 })
-export class ReputasiKpmrOjkModule {}
+export class ReputasiProdukKpmrModule {}
