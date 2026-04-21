@@ -13,10 +13,10 @@ import { KpmrHukum } from './hukum-kpmr-ojk.entity';
 import { KpmrPertanyaanHukum } from './hukum-kpmr-pertanyaan.entity';
 
 @Entity('kpmr_aspek_hukum')
-@Index(['kpmrId', 'nomor'])
-@Index(['kpmrId', 'orderIndex'])
-@Index(['kpmrId', 'bobot'])
-@Index(['kpmrId', 'createdAt'])
+@Index(['kpmrHukumId', 'nomor'])
+@Index(['kpmrHukumId', 'orderIndex'])
+@Index(['kpmrHukumId', 'bobot'])
+@Index(['kpmrHukumId', 'createdAt'])
 export class KpmrAspekHukum {
   @PrimaryGeneratedColumn()
   id: number;
@@ -33,14 +33,14 @@ export class KpmrAspekHukum {
   @Column({ type: 'text', nullable: true })
   deskripsi?: string;
 
-  @Column({ name: 'kpmr_id' })
-  kpmrId: number;
+  @Column({ name: 'kpmr_hukum_id' })
+  kpmrHukumId: number;
 
   @ManyToOne(() => KpmrHukum, (kpmr) => kpmr.aspekList, {
     onDelete: 'CASCADE',
   })
-  @JoinColumn({ name: 'kpmr_id' })
-  kpmr: KpmrHukum;
+  @JoinColumn({ name: 'kpmr_hukum_id' })
+  kpmrHukum: KpmrHukum;
 
   @OneToMany(() => KpmrPertanyaanHukum, (pertanyaan) => pertanyaan.aspek, {
     cascade: true,

@@ -9,10 +9,10 @@ import { Repository, DataSource } from 'typeorm';
 import { HukumOjk } from './entities/hukum-ojk.entity';
 import { HukumParameter } from './entities/hukum-paramater.entity';
 import { HukumNilai } from './entities/hukum-nilai.entity';
-import { InherentReferenceHukum } from './entities/hukum-inherent-references.entity';
+import { HukumReference } from './entities/hukum-inherent-references.entity';
 import {
-  CreateHukumInherentDto,
-  UpdateHukumInherentDto,
+  CreateHukumDto,
+  UpdateHukumDto,
   CreateParameterDto,
   UpdateParameterDto,
   CreateNilaiDto,
@@ -32,21 +32,21 @@ export class HukumOjkService {
 
   constructor(
     @InjectRepository(HukumOjk)
-    private inherentRepository: Repository<HukumOjk>,
+    private hukumRepository: Repository<HukumOjk>,
     @InjectRepository(HukumParameter)
     private parameterRepository: Repository<HukumParameter>,
     @InjectRepository(HukumNilai)
     private nilaiRepository: Repository<HukumNilai>,
-    @InjectRepository(InherentReferenceHukum)
-    private referenceRepository: Repository<InherentReferenceHukum>,
+    @InjectRepository(HukumReference)
+    private referenceRepository: Repository<HukumReference>,
     private dataSource: DataSource,
   ) {}
 
   // === CRUD UTAMA (HukumOjk) ===
 
-  async create(createDto: CreateHukumInherentDto, userId: string) {
+  async create(createDto: CreateHukumDto, userId: string) {
     try {
-      const existing = await this.inherentRepository.findOne({
+      const existing = await this.hukumRepository.findOne({
         where: { year: createDto.year, quarter: createDto.quarter },
       });
 
@@ -57,7 +57,7 @@ export class HukumOjkService {
         return existing;
       }
 
-      const inherent = this.inherentRepository.create({
+      const hukum = this.hukumRepository.create({
         year: createDto.year,
         quarter: createDto.quarter,
         isActive: createDto.isActive ?? true,
@@ -66,7 +66,7 @@ export class HukumOjkService {
         version: createDto.version || '1.0.0',
       });
 
-      const saved = await this.inherentRepository.save(inherent);
+      const saved = await this.hukumRepository.save(hukum);
       this.logger.log(`create: Data berhasil dibuat - ID: ${saved.id}`);
 
       return saved;
@@ -83,7 +83,7 @@ export class HukumOjkService {
     this.logger.debug('findActive: Mencari data aktif');
 
     try {
-      const inherent = await this.inherentRepository.findOne({
+      const hukum = await this.hukumRepository.findOne({
         where: { isActive: true },
         relations: ['parameters', 'parameters.nilaiList'],
         order: {
@@ -96,13 +96,13 @@ export class HukumOjkService {
         },
       });
 
-      if (!inherent) {
+      if (!hukum) {
         this.logger.warn('findActive: Tidak ada data aktif ditemukan');
         return null;
       }
 
-      this.logger.log(`findActive: Data ditemukan - ID: ${inherent.id}`);
-      return inherent;
+      this.logger.log(`findActive: Data ditemukan - ID: ${hukum.id}`);
+      return hukum;
     } catch (error) {
       this.logger.error(`findActive: Error - ${error.message}`, error.stack);
       throw error;
@@ -118,7 +118,7 @@ export class HukumOjkService {
     );
 
     try {
-      const inherent = await this.inherentRepository.findOne({
+      const hukum = await this.hukumRepository.findOne({
         where: { year, quarter },
         relations: ['parameters', 'parameters.nilaiList'],
         order: {
@@ -131,15 +131,15 @@ export class HukumOjkService {
         },
       });
 
-      if (!inherent) {
+      if (!hukum) {
         this.logger.warn(
           `findByYearQuarter: Data tidak ditemukan untuk Year: ${year}, Quarter: ${quarter}`,
         );
         return null;
       }
 
-      this.logger.log(`findByYearQuarter: Data ditemukan - ID: ${inherent.id}`);
-      return inherent;
+      this.logger.log(`findByYearQuarter: Data ditemukan - ID: ${hukum.id}`);
+      return hukum;
     } catch (error) {
       this.logger.error(
         `findByYearQuarter: Error - ${error.message}`,
@@ -151,41 +151,41 @@ export class HukumOjkService {
 
   async getAll() {
     this.logger.debug('getAll: Mendapatkan semua data');
-    return this.inherentRepository.find({
+    return this.hukumRepository.find({
       relations: ['parameters'],
       order: { year: 'DESC', quarter: 'DESC' },
     });
   }
 
-  async update(id: number, updateDto: UpdateHukumInherentDto, userId: string) {
+  async update(id: number, updateDto: UpdateHukumDto, userId: string) {
     this.logger.log(`update: Mengupdate data - ID: ${id}`);
 
-    const inherent = await this.inherentRepository.findOne({
+    const hukum = await this.hukumRepository.findOne({
       where: { id },
     });
 
-    if (!inherent) {
+    if (!hukum) {
       this.logger.error(`update: Data dengan ID ${id} tidak ditemukan`);
       throw new NotFoundException(`Data dengan ID ${id} tidak ditemukan`);
     }
 
     // Update field yang ada
-    if (updateDto.year !== undefined) inherent.year = updateDto.year;
-    if (updateDto.quarter !== undefined) inherent.quarter = updateDto.quarter;
+    if (updateDto.year !== undefined) hukum.year = updateDto.year;
+    if (updateDto.quarter !== undefined) hukum.quarter = updateDto.quarter;
     if (updateDto.isActive !== undefined)
-      inherent.isActive = updateDto.isActive;
-    if (updateDto.summary !== undefined) inherent.summary = updateDto.summary;
+      hukum.isActive = updateDto.isActive;
+    if (updateDto.summary !== undefined) hukum.summary = updateDto.summary;
     if (updateDto.isLocked !== undefined)
-      inherent.isLocked = updateDto.isLocked;
+      hukum.isLocked = updateDto.isLocked;
     if (updateDto.lockedBy !== undefined)
-      inherent.lockedBy = updateDto.lockedBy;
+      hukum.lockedBy = updateDto.lockedBy;
     if (updateDto.lockedAt !== undefined)
-      inherent.lockedAt = updateDto.lockedAt;
-    if (updateDto.notes !== undefined) inherent.notes = updateDto.notes;
+      hukum.lockedAt = updateDto.lockedAt;
+    if (updateDto.notes !== undefined) hukum.notes = updateDto.notes;
 
-    inherent.updatedBy = userId;
+    hukum.updatedBy = userId;
 
-    const result = await this.inherentRepository.save(inherent);
+    const result = await this.hukumRepository.save(hukum);
     this.logger.log(`update: Data berhasil diupdate - ID: ${result.id}`);
 
     return result;
@@ -198,22 +198,22 @@ export class HukumOjkService {
   ) {
     this.logger.log(`updateSummary: Mengupdate summary - ID: ${id}`);
 
-    const inherent = await this.inherentRepository.findOne({
+    const hukum = await this.hukumRepository.findOne({
       where: { id },
     });
 
-    if (!inherent) {
+    if (!hukum) {
       throw new NotFoundException(`Data dengan ID ${id} tidak ditemukan`);
     }
 
-    inherent.summary = {
-      ...inherent.summary,
+    hukum.summary = {
+      ...hukum.summary,
       ...summaryDto,
       computedAt: new Date(),
     };
-    inherent.updatedBy = userId;
+    hukum.updatedBy = userId;
 
-    const result = await this.inherentRepository.save(inherent);
+    const result = await this.hukumRepository.save(hukum);
     this.logger.log(
       `updateSummary: Summary berhasil diupdate - ID: ${result.id}`,
     );
@@ -225,11 +225,11 @@ export class HukumOjkService {
       `updateActiveStatus: Mengupdate status aktif - ID: ${id}, isActive: ${isActive}`,
     );
 
-    const inherent = await this.inherentRepository.findOne({
+    const hukum = await this.hukumRepository.findOne({
       where: { id },
     });
 
-    if (!inherent) {
+    if (!hukum) {
       this.logger.error(
         `updateActiveStatus: Data dengan ID ${id} tidak ditemukan`,
       );
@@ -239,17 +239,17 @@ export class HukumOjkService {
     // Jika mengaktifkan satu, nonaktifkan yang lain
     if (isActive) {
       this.logger.debug('updateActiveStatus: Menonaktifkan data lain');
-      await this.inherentRepository
+      await this.hukumRepository
         .createQueryBuilder()
         .update(HukumOjk)
         .set({ isActive: false })
         .execute();
     }
 
-    inherent.isActive = isActive;
-    inherent.updatedBy = userId;
+    hukum.isActive = isActive;
+    hukum.updatedBy = userId;
 
-    const result = await this.inherentRepository.save(inherent);
+    const result = await this.hukumRepository.save(hukum);
     this.logger.log(
       `updateActiveStatus: Status berhasil diupdate - ID: ${result.id}`,
     );
@@ -260,12 +260,12 @@ export class HukumOjkService {
   async remove(id: number) {
     this.logger.log(`remove: Menghapus data - ID: ${id}`);
 
-    const inherent = await this.inherentRepository.findOne({
+    const hukum = await this.hukumRepository.findOne({
       where: { id },
       relations: ['parameters', 'parameters.nilaiList'],
     });
 
-    if (!inherent) {
+    if (!hukum) {
       this.logger.error(`remove: Data dengan ID ${id} tidak ditemukan`);
       throw new NotFoundException(`Data dengan ID ${id} tidak ditemukan`);
     }
@@ -277,7 +277,7 @@ export class HukumOjkService {
 
     try {
       // Hapus semua nilai terlebih dahulu
-      for (const parameter of inherent.parameters || []) {
+      for (const parameter of hukumOjk.parameters || []) {
         await queryRunner.manager.delete(HukumNilai, {
           parameterId: parameter.id,
         });
@@ -285,10 +285,10 @@ export class HukumOjkService {
 
       // Hapus semua parameter
       await queryRunner.manager.delete(HukumParameter, {
-        hukumOjkId: id,
+        hukumId: id,
       });
 
-      // Hapus inherent
+      // Hapus hukumOjk
       await queryRunner.manager.delete(HukumOjk, { id });
 
       await queryRunner.commitTransaction();
@@ -307,21 +307,21 @@ export class HukumOjkService {
   // === OPERASI PARAMETER ===
 
   async addParameter(
-    inherentId: number,
+    hukumId: number,
     createParamDto: CreateParameterDto,
     userId: string,
   ) {
     this.logger.log(
-      `addParameter: Menambahkan parameter - Inherent ID: ${inherentId}`,
+      `addParameter: Menambahkan parameter - hukum ID: ${hukumId}`,
     );
 
-    const inherent = await this.inherentRepository.findOne({
-      where: { id: inherentId },
+    const hukum = await this.hukumRepository.findOne({
+      where: { id: hukumId },
     });
 
-    if (!inherent) {
+    if (!hukum) {
       throw new NotFoundException(
-        `Data dengan ID ${inherentId} tidak ditemukan`,
+        `Data dengan ID ${hukumId} tidak ditemukan`,
       );
     }
 
@@ -388,7 +388,7 @@ export class HukumOjkService {
 
     // Cari orderIndex terakhir
     const lastParam = await this.parameterRepository.findOne({
-      where: { hukumOjkId: inherentId },
+      where: { hukumOjkId: hukumOjkId },
       order: { orderIndex: 'DESC' },
     });
 
@@ -419,7 +419,7 @@ export class HukumOjkService {
         judul: createParamDto.judul.trim(),
         bobot: createParamDto.bobot,
         kategori: kategoriFormatted,
-        hukumOjkId: inherentId,
+        hukumId: hukumId,
         orderIndex: createParamDto.orderIndex ?? orderIndex,
       });
 
@@ -429,8 +429,8 @@ export class HukumOjkService {
         `addParameter: Parameter berhasil ditambahkan - ID: ${savedParam.id}`,
       );
 
-      // Update timestamp inherent
-      await this.inherentRepository.update(inherentId, {
+      // Update timestamp hukum
+      await this.hukumRepository.update(hukumId, {
         updatedBy: userId,
         updatedAt: new Date(),
       });
@@ -450,7 +450,7 @@ export class HukumOjkService {
   }
 
   async updateParameter(
-    inherentId: number,
+    hukumId: number,
     parameterId: number,
     updateParamDto: UpdateParameterDto,
     userId: string,
@@ -460,7 +460,7 @@ export class HukumOjkService {
     );
 
     const parameter = await this.parameterRepository.findOne({
-      where: { id: parameterId, hukumOjkId: inherentId },
+      where: { id: parameterId, hukumId: hukumId },
     });
 
     if (!parameter) {
@@ -555,8 +555,8 @@ export class HukumOjkService {
     try {
       const updated = await this.parameterRepository.save(parameter);
 
-      // Update timestamp inherent
-      await this.inherentRepository.update(inherentId, {
+      // Update timestamp hukumOjk
+      await this.hukumOjkRepository.update(hukumOjkId, {
         updatedBy: userId,
         updatedAt: new Date(),
       });
@@ -572,11 +572,11 @@ export class HukumOjkService {
   }
 
   async reorderParameters(
-    inherentId: number,
+    hukumId: number,
     reorderDto: ReorderParametersDto,
   ) {
     this.logger.log(
-      `reorderParameters: Mengurutkan parameter - Inherent ID: ${inherentId}`,
+      `reorderParameters: Mengurutkan parameter - hukum ID: ${hukumId}`,
     );
 
     const queryRunner = this.dataSource.createQueryRunner();
@@ -588,14 +588,14 @@ export class HukumOjkService {
         const parameterId = reorderDto.parameterIds[i];
         await queryRunner.manager.update(
           HukumParameter,
-          { id: parameterId, hukumOjkId: inherentId },
+          { id: parameterId, hukumId: hukumId },
           { orderIndex: i },
         );
       }
 
       await queryRunner.commitTransaction();
       this.logger.log(
-        `reorderParameters: Parameter berhasil diurutkan - Inherent ID: ${inherentId}`,
+        `reorderParameters: Parameter berhasil diurutkan - hukum ID: ${hukumId}`,
       );
 
       return { message: 'Parameter berhasil diurutkan' };
@@ -611,11 +611,11 @@ export class HukumOjkService {
     }
   }
 
-  async copyParameter(inherentId: number, parameterId: number, userId: string) {
+  async copyParameter(hukumOjkId: number, parameterId: number, userId: string) {
     this.logger.log(`copyParameter: Menyalin parameter - ID: ${parameterId}`);
 
     const originalParam = await this.parameterRepository.findOne({
-      where: { id: parameterId, hukumOjkId: inherentId },
+      where: { id: parameterId, hukumId: hukumId },
       relations: ['nilaiList'],
     });
 
@@ -627,7 +627,7 @@ export class HukumOjkService {
 
     // Cari orderIndex terakhir
     const lastParam = await this.parameterRepository.findOne({
-      where: { hukumOjkId: inherentId },
+      where: { hukumOjkId: hukumOjkId },
       order: { orderIndex: 'DESC' },
     });
 
@@ -644,7 +644,7 @@ export class HukumOjkService {
         judul: `${originalParam.judul} (Copy)`,
         bobot: originalParam.bobot,
         kategori: originalParam.kategori,
-        hukumOjkId: inherentId,
+        hukumId: hukumId,
         orderIndex,
       });
 
@@ -674,8 +674,8 @@ export class HukumOjkService {
 
       await queryRunner.commitTransaction();
 
-      // Update timestamp inherent
-      await this.inherentRepository.update(inherentId, {
+      // Update timestamp hukum
+      await this.hukumRepository.update(hukumId, {
         updatedBy: userId,
         updatedAt: new Date(),
       });
@@ -694,7 +694,7 @@ export class HukumOjkService {
   }
 
   async removeParameter(
-    inherentId: number,
+    hukumOjkId: number,
     parameterId: number,
     userId: string,
   ) {
@@ -703,7 +703,7 @@ export class HukumOjkService {
     );
 
     const parameter = await this.parameterRepository.findOne({
-      where: { id: parameterId, hukumOjkId: inherentId },
+      where: { id: parameterId, hukumId: hukumId },
       relations: ['nilaiList'],
     });
 
@@ -730,8 +730,8 @@ export class HukumOjkService {
 
       await queryRunner.commitTransaction();
 
-      // Update timestamp inherent
-      await this.inherentRepository.update(inherentId, {
+      // Update timestamp hukum
+      await this.hukumRepository.update(hukumId, {
         updatedBy: userId,
         updatedAt: new Date(),
       });
@@ -755,7 +755,7 @@ export class HukumOjkService {
   // === OPERASI NILAI ===
 
   async addNilai(
-    inherentId: number,
+    hukumOjkId: number,
     parameterId: number,
     createNilaiDto: CreateNilaiDto,
     userId: string,
@@ -765,7 +765,7 @@ export class HukumOjkService {
     );
 
     const parameter = await this.parameterRepository.findOne({
-      where: { id: parameterId, hukumOjkId: inherentId },
+      where: { id: parameterId, hukumOjkId: hukumOjkId },
     });
 
     if (!parameter) {
@@ -816,8 +816,8 @@ export class HukumOjkService {
 
     const savedNilai = await this.nilaiRepository.save(nilai);
 
-    // Update timestamp inherent
-    await this.inherentRepository.update(inherentId, {
+    // Update timestamp hukum
+    await this.hukumRepository.update(hukumId, {
       updatedBy: userId,
       updatedAt: new Date(),
     });
@@ -829,7 +829,7 @@ export class HukumOjkService {
   }
 
   async updateNilai(
-    inherentId: number,
+    hukumId: number,
     parameterId: number,
     nilaiId: number,
     updateNilaiDto: UpdateNilaiDto,
@@ -846,10 +846,10 @@ export class HukumOjkService {
       throw new NotFoundException(`Nilai dengan ID ${nilaiId} tidak ditemukan`);
     }
 
-    // Cek apakah parameter milik inherent yang benar
-    if (nilai.parameter.hukumOjkId !== inherentId) {
+    // Cek apakah parameter milik hukum yang benar
+    if (nilai.parameter.hukumId !== hukumId) {
       throw new BadRequestException(
-        'Nilai tidak termasuk dalam inherent yang dimaksud',
+        'Nilai tidak termasuk dalam hukum yang dimaksud',
       );
     }
 
@@ -884,8 +884,8 @@ export class HukumOjkService {
 
     const updated = await this.nilaiRepository.save(nilai);
 
-    // Update timestamp inherent
-    await this.inherentRepository.update(inherentId, {
+    // Update timestamp hukum
+    await this.hukumRepository.update(hukumId, {
       updatedBy: userId,
       updatedAt: new Date(),
     });
@@ -929,7 +929,7 @@ export class HukumOjkService {
   }
 
   async copyNilai(
-    inherentId: number,
+    hukumId: number,
     parameterId: number,
     nilaiId: number,
     userId: string,
@@ -967,8 +967,8 @@ export class HukumOjkService {
 
     const savedNilai = await this.nilaiRepository.save(newNilai);
 
-    // Update timestamp inherent
-    await this.inherentRepository.update(inherentId, {
+    // Update timestamp hukum
+    await this.hukumRepository.update(hukumId, {
       updatedBy: userId,
       updatedAt: new Date(),
     });
@@ -980,7 +980,7 @@ export class HukumOjkService {
   }
 
   async removeNilai(
-    inherentId: number,
+    hukumId: number,
     parameterId: number,
     nilaiId: number,
     userId: string,
@@ -996,17 +996,17 @@ export class HukumOjkService {
       throw new NotFoundException(`Nilai dengan ID ${nilaiId} tidak ditemukan`);
     }
 
-    // Cek apakah parameter milik inherent yang benar
-    if (nilai.parameter.hukumOjkId !== inherentId) {
+    // Cek apakah parameter milik hukum yang benar
+    if (nilai.parameter.hukumId !== hukumId) {
       throw new BadRequestException(
-        'Nilai tidak termasuk dalam inherent yang dimaksud',
+        'Nilai tidak termasuk dalam hukum yang dimaksud',
       );
     }
 
     await this.nilaiRepository.delete({ id: nilaiId });
 
-    // Update timestamp inherent
-    await this.inherentRepository.update(inherentId, {
+    // Update timestamp hukum
+    await this.hukumRepository.update(hukumId, {
       updatedBy: userId,
       updatedAt: new Date(),
     });
@@ -1036,7 +1036,7 @@ export class HukumOjkService {
   }
 
   // === VALIDASI TAMBAHAN UNTUK MODEL TERSTRUKTUR ===
-  async validateModelTerstruktur(inherentId: number): Promise<{
+  async validateModelTerstruktur(hukumId: number): Promise<{
     isValid: boolean;
     warnings: string[];
     errors: string[];
@@ -1047,20 +1047,20 @@ export class HukumOjkService {
       errors: [] as string[],
     };
 
-    const inherent = await this.inherentRepository.findOne({
-      where: { id: inherentId },
+    const hukum = await this.hukumRepository.findOne({
+      where: { id: hukumId },
       relations: ['parameters'],
     });
 
-    if (!inherent) {
-      result.errors.push(`Data dengan ID ${inherentId} tidak ditemukan`);
+    if (!hukum) {
+      result.errors.push(`Data dengan ID ${hukumId} tidak ditemukan`);
       result.isValid = false;
       return result;
     }
 
     // Cek parameter dengan model terstruktur
     const terstrukturParams =
-      inherent.parameters?.filter(
+      hukum.parameters?.filter(
         (param) => param.kategori?.model === KategoriModel.TERSTRUKTUR,
       ) || [];
 
@@ -1101,11 +1101,11 @@ export class HukumOjkService {
 
   // === IMPORT/EXPORT ===
 
-  async exportToExcel(inherentId: number) {
-    this.logger.log(`exportToExcel: Mengekspor ke Excel - ID: ${inherentId}`);
+  async exportToExcel(hukumId: number) {
+    this.logger.log(`exportToExcel: Mengekspor ke Excel - ID: ${hukumId}`);
 
-    const inherent = await this.inherentRepository.findOne({
-      where: { id: inherentId },
+    const hukum = await this.hukumRepository.findOne({
+      where: { id: hukumId },
       relations: ['parameters', 'parameters.nilaiList'],
       order: {
         parameters: {
@@ -1117,26 +1117,26 @@ export class HukumOjkService {
       },
     });
 
-    if (!inherent) {
+    if (!hukum) {
       throw new NotFoundException(
-        `Data dengan ID ${inherentId} tidak ditemukan`,
+        `Data dengan ID ${hukumId} tidak ditemukan`,
       );
     }
 
     const exportData = {
       metadata: {
-        year: inherent.year,
-        quarter: inherent.quarter,
+        year: hukum.year,
+        quarter: hukum.quarter,
         exportedAt: new Date().toISOString(),
-        totalParameters: inherent.parameters?.length || 0,
+        totalParameters: hukum.parameters?.length || 0,
         totalNilai:
-          inherent.parameters?.reduce(
+          hukum.parameters?.reduce(
             (total, param) => total + (param.nilaiList?.length || 0),
             0,
           ) || 0,
       },
       parameters:
-        inherent.parameters?.map((param) => ({
+        hukum.parameters?.map((param) => ({
           id: param.id,
           nomor: param.nomor,
           judul: param.judul,
@@ -1182,8 +1182,8 @@ export class HukumOjkService {
         { isActive: false },
       );
 
-      // Buat inherent baru
-      const inherent = {
+      // Buat hukum baru
+      const hukum = {
         year: importData.metadata?.year || new Date().getFullYear(),
         quarter: importData.metadata?.quarter || 1,
         summary: importData.summary,
@@ -1192,7 +1192,7 @@ export class HukumOjkService {
         updatedBy: userId,
       };
 
-      const savedInherent = await queryRunner.manager.save(HukumOjk, inherent);
+      const savedHukum = await queryRunner.manager.save(HukumOjk, hukum);
 
       // Import parameters
       for (let i = 0; i < importData.parameters.length; i++) {
@@ -1208,7 +1208,7 @@ export class HukumOjkService {
             jenis: '' as KategoriJenis,
             underlying: [],
           },
-          hukumOjkId: savedInherent.id,
+          hukumId: savedHukum.id,
           orderIndex: paramData.orderIndex || i,
         };
 
@@ -1257,9 +1257,9 @@ export class HukumOjkService {
       await queryRunner.commitTransaction();
 
       this.logger.log(
-        `importFromExcel: Data berhasil diimpor - ID: ${savedInherent.id}, Jumlah parameter: ${importData.parameters.length}`,
+        `importFromExcel: Data berhasil diimpor - ID: ${savedHukum.id}, Jumlah parameter: ${importData.parameters.length}`,
       );
-      return savedInherent;
+      return savedHukum;
     } catch (error) {
       await queryRunner.rollbackTransaction();
       this.logger.error(

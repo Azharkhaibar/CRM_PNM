@@ -123,7 +123,7 @@ export class KpmrHukumService {
   private async getAspekWithRelations(id: number): Promise<KpmrAspekHukum> {
     const aspek = await this.aspekRepository.findOne({
       where: { id },
-      relations: ['kpmr', 'pertanyaanList'],
+      relations: ['kpmrHukum', 'pertanyaanList'],
     });
 
     if (!aspek) {
@@ -150,7 +150,7 @@ export class KpmrHukumService {
   ): Promise<KpmrPertanyaanHukum> {
     const pertanyaan = await this.pertanyaanRepository.findOne({
       where: { id },
-      relations: ['aspek', 'aspek.kpmr'],
+      relations: ['aspek', 'aspek.kpmrHukum'],
     });
 
     if (!pertanyaan) {
@@ -186,7 +186,7 @@ export class KpmrHukumService {
     const query = this.aspekRepository
       .createQueryBuilder('aspek')
       .select('SUM(aspek.bobot)', 'total')
-      .where('aspek.kpmrId = :kpmrId', { kpmrId });
+      .where('aspek.kpmrHukumId = :kpmrId', { kpmrId });
 
     if (excludeAspekId) {
       query.andWhere('aspek.id != :excludeId', { excludeId: excludeAspekId });
@@ -207,7 +207,7 @@ export class KpmrHukumService {
 
   private async reorderRemainingAspek(kpmrId: number): Promise<void> {
     const aspekList = await this.aspekRepository.find({
-      where: { kpmrId },
+      where: { kpmrHukumId: kpmrId },
       order: { orderIndex: 'ASC' },
     });
 
@@ -241,7 +241,7 @@ export class KpmrHukumService {
 
   private async getLastAspekOrderIndex(kpmrId: number): Promise<number> {
     const lastAspek = await this.aspekRepository.findOne({
-      where: { kpmrId },
+      where: { kpmrHukumId: kpmrId },
       order: { orderIndex: 'DESC' },
     });
     return lastAspek?.orderIndex ?? -1;
@@ -303,9 +303,6 @@ export class KpmrHukumService {
     }
 
     this.logger.debug(`🔄 Converting KPMR ID ${kpmr.id} to frontend format`);
-    this.logger.debug(`   aspekList type: ${typeof kpmr.aspekList}`);
-    this.logger.debug(`   aspekList isArray: ${Array.isArray(kpmr.aspekList)}`);
-    this.logger.debug(`   aspekList length: ${kpmr.aspekList?.length || 0}`);
 
     const frontendKpmr: any = {
       id: kpmr.id.toString(),
@@ -531,9 +528,6 @@ export class KpmrHukumService {
     }
 
     this.logger.log(`✅ KPMR found: ID ${kpmr.id}`);
-    this.logger.log(`📊 aspekList type: ${typeof kpmr.aspekList}`);
-    this.logger.log(`📊 aspekList isArray: ${Array.isArray(kpmr.aspekList)}`);
-    this.logger.log(`📊 aspekList length: ${kpmr.aspekList?.length || 0}`);
 
     if (kpmr.aspekList && kpmr.aspekList.length > 0) {
       this.logger.log(
@@ -740,7 +734,7 @@ export class KpmrHukumService {
             judul: aspek.judul,
             bobot: aspek.bobot,
             deskripsi: aspek.deskripsi,
-            kpmrId: savedKpmr.id,
+            kpmrHukumId: savedKpmr.id,
             orderIndex: aspek.orderIndex,
             averageScore: undefined,
             rating: undefined,
@@ -818,7 +812,7 @@ export class KpmrHukumService {
         judul: createDto.judul.trim(),
         bobot: createDto.bobot,
         deskripsi: createDto.deskripsi || undefined,
-        kpmrId: kpmrId,
+        kpmrHukumId: kpmrId,
         orderIndex: createDto.orderIndex ?? 0,
         averageScore: createDto.averageScore ?? undefined,
         rating: createDto.rating || undefined,
@@ -910,11 +904,11 @@ export class KpmrHukumService {
     this.logger.log(`📝 Update aspek ID: ${id}`);
 
     const aspek = await this.getAspekWithRelations(id);
-    this.checkKpmrLocked(aspek.kpmr, 'mengupdate aspek');
+    this.checkKpmrLocked(aspek.kpmrHukum, 'mengupdate aspek');
 
     if (updateDto.bobot !== undefined) {
       this.validateBobot(updateDto.bobot);
-      await this.validateTotalBobot(aspek.kpmrId, updateDto.bobot, id);
+      await this.validateTotalBobot(aspek.kpmrHukumId, updateDto.bobot, id);
     }
 
     if (updateDto.nomor !== undefined) aspek.nomor = updateDto.nomor;
@@ -960,11 +954,11 @@ export class KpmrHukumService {
     this.logger.log(`🗑️ Delete aspek ID: ${id}`);
 
     const aspek = await this.getAspekWithRelations(id);
-    this.checkKpmrLocked(aspek.kpmr, 'menghapus aspek');
+    this.checkKpmrLocked(aspek.kpmrHukum, 'menghapus aspek');
 
     try {
       await this.aspekRepository.remove(aspek);
-      await this.reorderRemainingAspek(aspek.kpmrId);
+      await this.reorderRemainingAspek(aspek.kpmrHukumId);
       this.logger.log(`✅ Aspek deleted: ID ${id}`);
     } catch (error) {
       this.logger.error(
@@ -991,7 +985,7 @@ export class KpmrHukumService {
     const aspekCount = await this.aspekRepository.count({
       where: {
         id: In(reorderDto.aspekIds),
-        kpmrId: kpmrId,
+        kpmrHukumId: kpmrId,
       },
     });
 
@@ -1097,7 +1091,7 @@ export class KpmrHukumService {
     this.logger.log(`📝 Update pertanyaan ID: ${id}`);
 
     const pertanyaan = await this.getPertanyaanWithRelations(id);
-    this.checkKpmrLocked(pertanyaan.aspek.kpmr, 'mengupdate pertanyaan');
+    this.checkKpmrLocked(pertanyaan.aspek.kpmrHukum, 'mengupdate pertanyaan');
 
     if (updateDto.skor) {
       if (updateDto.skor.Q1 !== undefined) this.validateSkor(updateDto.skor.Q1);
@@ -1161,7 +1155,7 @@ export class KpmrHukumService {
     );
 
     const pertanyaan = await this.getPertanyaanWithRelations(id);
-    this.checkKpmrLocked(pertanyaan.aspek.kpmr, 'mengupdate skor');
+    this.checkKpmrLocked(pertanyaan.aspek.kpmrHukum, 'mengupdate skor');
 
     if (!['Q1', 'Q2', 'Q3', 'Q4'].includes(updateSkorDto.quarter)) {
       throw new BadRequestException('Quarter harus Q1, Q2, Q3, atau Q4');
@@ -1218,7 +1212,7 @@ export class KpmrHukumService {
           .getRepository(KpmrPertanyaanHukum)
           .findOne({
             where: { id: update.pertanyaanId },
-            relations: ['aspek', 'aspek.kpmr'],
+            relations: ['aspek', 'aspek.kpmrHukum'],
           });
 
         if (!pertanyaan) {
@@ -1227,7 +1221,7 @@ export class KpmrHukumService {
           );
         }
 
-        if (pertanyaan.aspek.kpmr.isLocked) {
+        if (pertanyaan.aspek.kpmrHukum.isLocked) {
           throw new BadRequestException(
             `KPMR terkunci, tidak dapat mengupdate skor untuk pertanyaan ID ${update.pertanyaanId}`,
           );
@@ -1269,7 +1263,7 @@ export class KpmrHukumService {
     this.logger.log(`🗑️ Delete pertanyaan ID: ${id}`);
 
     const pertanyaan = await this.getPertanyaanWithRelations(id);
-    this.checkKpmrLocked(pertanyaan.aspek.kpmr, 'menghapus pertanyaan');
+    this.checkKpmrLocked(pertanyaan.aspek.kpmrHukum, 'menghapus pertanyaan');
 
     try {
       await this.pertanyaanRepository.remove(pertanyaan);
@@ -1291,7 +1285,7 @@ export class KpmrHukumService {
     this.logger.log(`🔄 Reorder pertanyaan for aspek ID: ${aspekId}`);
 
     const aspek = await this.getAspekWithRelations(aspekId);
-    this.checkKpmrLocked(aspek.kpmr, 'mengubah urutan pertanyaan');
+    this.checkKpmrLocked(aspek.kpmrHukum, 'mengubah urutan pertanyaan');
 
     if (!reorderDto.pertanyaanIds?.length) {
       throw new BadRequestException('Daftar ID pertanyaan tidak boleh kosong');
@@ -1386,7 +1380,7 @@ export class KpmrHukumService {
     await this.getKpmrEntity(kpmrId);
 
     const aspekList = await this.aspekRepository.find({
-      where: { kpmrId },
+      where: { kpmrHukumId: kpmrId },
       relations: ['pertanyaanList'],
       order: { orderIndex: 'ASC' },
     });
@@ -1435,7 +1429,7 @@ export class KpmrHukumService {
 
     const aspek = await this.aspekRepository.findOne({
       where: { id },
-      relations: ['kpmr', 'pertanyaanList'],
+      relations: ['kpmrHukum', 'pertanyaanList'],
     });
 
     if (!aspek) {

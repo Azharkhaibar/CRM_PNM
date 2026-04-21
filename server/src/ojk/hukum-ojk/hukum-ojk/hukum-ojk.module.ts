@@ -5,7 +5,7 @@ import { HukumOjkController } from './hukum-ojk.controller';
 import { HukumOjk } from './entities/hukum-ojk.entity';
 import { HukumParameter } from './entities/hukum-paramater.entity';
 import { HukumNilai } from './entities/hukum-nilai.entity';
-import { InherentReferenceHukum } from './entities/hukum-inherent-references.entity';
+import { HukumReference } from './entities/hukum-inherent-references.entity';
 
 @Module({
   imports: [
@@ -13,7 +13,7 @@ import { InherentReferenceHukum } from './entities/hukum-inherent-references.ent
       HukumOjk,
       HukumParameter,
       HukumNilai,
-      InherentReferenceHukum,
+      HukumReference,
     ]),
   ],
   controllers: [HukumOjkController],

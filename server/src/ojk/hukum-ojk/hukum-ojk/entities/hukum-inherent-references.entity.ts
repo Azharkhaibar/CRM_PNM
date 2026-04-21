@@ -7,7 +7,7 @@ import {
 } from 'typeorm';
 
 @Entity('inherent_references_hukum')
-export class InherentReferenceHukum {
+export class HukumReference {
   @PrimaryGeneratedColumn()
   id: number;
 

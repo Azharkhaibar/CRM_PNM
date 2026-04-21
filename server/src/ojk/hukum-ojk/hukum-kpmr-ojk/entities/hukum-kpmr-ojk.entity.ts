@@ -26,7 +26,7 @@ export class KpmrHukum {
   @Column({ default: true, name: 'is_active' })
   isActive: boolean;
 
-  @OneToMany(() => KpmrAspekHukum, (aspek) => aspek.kpmr, {
+  @OneToMany(() => KpmrAspekHukum, (aspek) => aspek.kpmrHukum, {
     cascade: true,
     eager: false,
   })

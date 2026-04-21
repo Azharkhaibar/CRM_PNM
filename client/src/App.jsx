@@ -180,6 +180,12 @@ import KreditProdukOJK from './features/Dashboard/pages/OJK/pages/produk/kredit-
 import KonsentrasiProdukOJK from './features/Dashboard/pages/OJK/pages/produk/konsentrasi-produk/tabs/konsentrasi-produk';
 import KepatuhanOJK from './features/Dashboard/pages/OJK/pages/regulatory/kepatuhan/tabs/kepatuhan';
 import HukumOJK from './features/Dashboard/pages/OJK/pages/regulatory/hukum/tabs/hukum';
+import ReputasiOJK from './features/Dashboard/pages/OJK/pages/regulatory/reputasi/tabs/reputasi';
+import StrategisOJK from './features/Dashboard/pages/OJK/pages/regulatory/strategis/tabs/strategis';
+import InvestasiOJK from './features/Dashboard/pages/OJK/pages/regulatory/investasi/tabs/investasi';
+import RentabilitasOJK from './features/Dashboard/pages/OJK/pages/regulatory/rentabilitas/tabs/rentabilitas';
+import PermodalanOJK from './features/Dashboard/pages/OJK/pages/regulatory/permodalan/tabs/permodalan';
+import TataKelolaOJK from './features/Dashboard/pages/OJK/pages/regulatory/tatakelola/tabs/tatakelola';
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -279,6 +285,12 @@ function App() {
               <Route path='ojk/operasional' element={<OperasionalOJK />} />
               <Route path='ojk/hukum' element={<HukumOJK />} />
               <Route path='ojk/kepatuhan' element={<KepatuhanOJK />} />
+              <Route path='ojk/reputasi' element={<ReputasiOJK />} />
+              <Route path='ojk/strategis' element={<StrategisOJK />} />
+              <Route path='ojk/investasi' element={<InvestasiOJK />} />
+              <Route path='ojk/rentabilitas' element={<RentabilitasOJK />} />
+              <Route path='ojk/permodalan' element={<PermodalanOJK />} />
+              <Route path='ojk/tata-kelola' element={<TataKelolaOJK />} />
 
               {/* <Route path='ojk/likuiditas-produk' element={<LikuiditasProdukOJK />} />
               <Route path='ojk/kredit-produk' element={<KreditProdukOJK />} />

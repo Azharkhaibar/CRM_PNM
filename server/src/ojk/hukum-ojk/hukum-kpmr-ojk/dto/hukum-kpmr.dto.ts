@@ -345,7 +345,7 @@ export class CreateKpmrAspekHukumDto {
   @IsOptional()
   @IsInt()
   @IsPositive()
-  kpmrId?: number;
+  kpmrOjkId?: number;
 
   @ApiPropertyOptional({ description: 'Index urutan', example: 0 })
   @IsOptional()

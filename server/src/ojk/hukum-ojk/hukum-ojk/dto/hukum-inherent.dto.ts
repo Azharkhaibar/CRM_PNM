@@ -151,7 +151,7 @@ export class RiskindikatorDto {
 // === MAIN DTOs ===
 
 // DTO untuk membuat HukumOjk (header)
-export class CreateHukumInherentDto {
+export class CreateHukumDto {
   @IsInt()
   @Min(2000)
   year: number;
@@ -175,7 +175,7 @@ export class CreateHukumInherentDto {
 }
 
 // DTO untuk update HukumOjk
-export class UpdateHukumInherentDto {
+export class UpdateHukumDto {
   @IsOptional()
   @IsInt()
   @Min(2000)
