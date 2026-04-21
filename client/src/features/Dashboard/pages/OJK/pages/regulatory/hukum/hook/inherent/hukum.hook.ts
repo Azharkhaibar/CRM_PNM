@@ -45,6 +45,70 @@ export const useHukumIntegration = (initialYear?: number, initialQuarter?: numbe
     if (mountedRef.current) setter(value);
   };
 
+  /* =======================
+     HELPER: Cache management
+  ======================= */
+
+  const getCacheKey = useCallback((y: number, q: number) => {
+    return `${y}-Q${q}`;
+  }, []);
+
+  const getCurrentCacheKey = useCallback(() => {
+    if (!year || !quarter) return null;
+    return getCacheKey(year, quarter);
+  }, [year, quarter, getCacheKey]);
+
+  const updateCache = useCallback(
+    (y: number, q: number, data: { rows: any[]; hukumId: number | null; entity: HukumEntity | null }) => {
+      const key = getCacheKey(y, q);
+      const cacheEntry = {
+        rows: data.rows,
+        hukumId: data.hukumId,
+        entity: data.entity,
+        timestamp: Date.now(),
+      };
+      cacheRef.current.set(key, cacheEntry);
+      console.log(`[Hook] 💾 Cache updated for ${key}:`, {
+        rowsCount: data.rows.length,
+        hukumId: data.hukumId,
+        hasEntity: !!data.entity,
+      });
+    },
+    [getCacheKey],
+  );
+
+  const getFromCache = useCallback(
+    (y: number, q: number) => {
+      const key = getCacheKey(y, q);
+      const cached = cacheRef.current.get(key);
+      if (cached) {
+        console.log(`[Hook] 🎯 Cache hit for ${key}:`, {
+          rowsCount: cached.rows.length,
+          age: Date.now() - cached.timestamp,
+        });
+      } else {
+        console.log(`[Hook] ❌ Cache miss for ${key}`);
+      }
+      return cached;
+    },
+    [getCacheKey],
+  );
+
+  const clearCache = useCallback(
+    (y?: number, q?: number) => {
+      if (y !== undefined && q !== undefined) {
+        const key = getCacheKey(y, q);
+        const deleted = cacheRef.current.delete(key);
+        console.log(`[Hook] 🧹 Cache cleared for ${key}: ${deleted ? 'success' : 'not found'}`);
+      } else {
+        const size = cacheRef.current.size;
+        cacheRef.current.clear();
+        console.log(`[Hook] 🧹 All cache cleared (${size} entries)`);
+      }
+    },
+    [getCacheKey],
+  );
+
   // ==============================
   // FUNGSI getOrCreateData - PERBAIKAN DENGAN LOGGING DETAIL
   // ==============================
@@ -124,69 +188,7 @@ export const useHukumIntegration = (initialYear?: number, initialQuarter?: numbe
     [updateCache, getCacheKey],
   );
 
-  /* =======================
-     HELPER: Cache management
-  ======================= */
 
-  const getCacheKey = useCallback((y: number, q: number) => {
-    return `${y}-Q${q}`;
-  }, []);
-
-  const getCurrentCacheKey = useCallback(() => {
-    if (!year || !quarter) return null;
-    return getCacheKey(year, quarter);
-  }, [year, quarter, getCacheKey]);
-
-  const updateCache = useCallback(
-    (y: number, q: number, data: { rows: any[]; hukumId: number | null; entity: HukumEntity | null }) => {
-      const key = getCacheKey(y, q);
-      const cacheEntry = {
-        rows: data.rows,
-        hukumId: data.hukumId,
-        entity: data.entity,
-        timestamp: Date.now(),
-      };
-      cacheRef.current.set(key, cacheEntry);
-      console.log(`[Hook] 💾 Cache updated for ${key}:`, {
-        rowsCount: data.rows.length,
-        hukumId: data.hukumId,
-        hasEntity: !!data.entity,
-      });
-    },
-    [getCacheKey],
-  );
-
-  const getFromCache = useCallback(
-    (y: number, q: number) => {
-      const key = getCacheKey(y, q);
-      const cached = cacheRef.current.get(key);
-      if (cached) {
-        console.log(`[Hook] 🎯 Cache hit for ${key}:`, {
-          rowsCount: cached.rows.length,
-          age: Date.now() - cached.timestamp,
-        });
-      } else {
-        console.log(`[Hook] ❌ Cache miss for ${key}`);
-      }
-      return cached;
-    },
-    [getCacheKey],
-  );
-
-  const clearCache = useCallback(
-    (y?: number, q?: number) => {
-      if (y !== undefined && q !== undefined) {
-        const key = getCacheKey(y, q);
-        const deleted = cacheRef.current.delete(key);
-        console.log(`[Hook] 🧹 Cache cleared for ${key}: ${deleted ? 'success' : 'not found'}`);
-      } else {
-        const size = cacheRef.current.size;
-        cacheRef.current.clear();
-        console.log(`[Hook] 🧹 All cache cleared (${size} entries)`);
-      }
-    },
-    [getCacheKey],
-  );
 
   /* =======================
      VALIDATION HELPERS
