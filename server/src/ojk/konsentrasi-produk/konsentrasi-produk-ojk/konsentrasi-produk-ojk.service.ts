@@ -90,7 +90,7 @@ export class KonsentrasiService {
   // ============================================
   private async recalculateSummary(konsentrasiId: number): Promise<void> {
     this.logger.log(
-      `📊 Recalculating summary for Konsentrasi ID: ${konsentrasiId}`,
+      `📊 Recalculating summary for KONSENTRASI ID: ${konsentrasiId}`,
     );
     try {
       const konsentrasi = await this.konsentrasiRepository.findOne({
@@ -98,16 +98,20 @@ export class KonsentrasiService {
         relations: ['parameters', 'parameters.nilaiList'],
       });
       if (!konsentrasi) {
-        this.logger.warn(`⚠️ Konsentrasi with ID ${konsentrasiId} not found`);
+        this.logger.warn(`⚠️ KONSENTRASI with ID ${konsentrasiId} not found`);
         return;
       }
 
       let totalWeighted = 0;
+      let totalParameterBobot = 0;
       if (konsentrasi.parameters && konsentrasi.parameters.length > 0) {
         for (const param of konsentrasi.parameters) {
-          const paramBobotFraction = (Number(param.bobot) || 0) / 100;
+          const paramBobot = (Number(param.bobot) || 0) / 100;
+          totalParameterBobot += paramBobot;
+
           if (param.nilaiList && param.nilaiList.length > 0) {
             for (const nilai of param.nilaiList) {
+              const paramBobotFraction = paramBobot;
               const nilaiBobotFraction = (Number(nilai.bobot) || 0) / 100;
 
               // 1. Dapatkan Raw Value dari Judul Nilai
@@ -172,10 +176,10 @@ export class KonsentrasiService {
                     if (hasPercent) n = n / 100;
                     if (/≤|<=/.test(rawText)) max = n;
                     else if (/≥|>=/.test(rawText)) min = n;
-                    else if (/^[xX]?\s*>|>\s*\d+/i.test(rawText)) {
+                    else if (/^\s*(?:[xX]?\s*>|≥?>)\s*-?\d+(?:\.\d+)?/i.test(rawText)) {
                       min = n;
                       max = Infinity;
-                    } else if (/^[xX]?\s*<|<\s*\d+/i.test(rawText)) {
+                    } else if (/^\s*(?:[xX]?\s*<|≤?<)\s*-?\d+(?:\.\d+)?/i.test(rawText)) {
                       min = -Infinity;
                       max = n;
                     } else {
@@ -200,6 +204,14 @@ export class KonsentrasiService {
                 }
               }
 
+              if (peringkat === null && !isNaN(rawValue)) {
+                if (rawValue <= 1.5) peringkat = 1;
+                else if (rawValue <= 2.5) peringkat = 2;
+                else if (rawValue <= 3.5) peringkat = 3;
+                else if (rawValue <= 4.5) peringkat = 4;
+                else peringkat = 5;
+              }
+
               if (isNaN(rawValue) && rawString) {
                 for (const { key, rank } of ranges) {
                   const riValue = String(ri[key] ?? '').trim().toLowerCase();
@@ -219,25 +231,29 @@ export class KonsentrasiService {
         }
       }
 
+      let finalWeighted = totalParameterBobot > 0 ? totalWeighted / totalParameterBobot : totalWeighted;
+      finalWeighted = Math.min(5, Math.max(0, finalWeighted));
+      const roundedTotal = Number(finalWeighted.toFixed(2));
+
       let summaryBg: string;
-      if (totalWeighted <= 1.67) summaryBg = 'bg-green-400 text-black';
-      else if (totalWeighted <= 2.33) summaryBg = 'bg-lime-300 text-black';
-      else if (totalWeighted <= 3.00) summaryBg = 'bg-yellow-400 text-black';
-      else if (totalWeighted <= 3.67) summaryBg = 'bg-orange-400 text-black';
+      if (roundedTotal <= 1.67) summaryBg = 'bg-green-400 text-black';
+      else if (roundedTotal <= 2.33) summaryBg = 'bg-lime-300 text-black';
+      else if (roundedTotal <= 3.00) summaryBg = 'bg-yellow-400 text-black';
+      else if (roundedTotal <= 3.67) summaryBg = 'bg-orange-400 text-black';
       else summaryBg = 'bg-red-500 text-white';
 
       konsentrasi.summary = {
-        totalWeighted: Number(totalWeighted.toFixed(2)),
+        totalWeighted: roundedTotal,
         summaryBg,
         computedAt: new Date(),
       };
       await this.konsentrasiRepository.save(konsentrasi);
       this.logger.log(
-        `✅ Summary recalculated for Konsentrasi ID ${konsentrasiId}: totalWeighted=${totalWeighted.toFixed(2)}`,
+        `✅ Summary recalculated for KONSENTRASI ID ${konsentrasiId}: totalWeighted=${roundedTotal}`,
       );
     } catch (error) {
       this.logger.error(
-        `❌ Error recalculating summary for Konsentrasi ${konsentrasiId}: ${error.message}`,
+        `❌ Error recalculating summary for KONSENTRASI ${konsentrasiId}: ${error.message}`,
         error.stack,
       );
     }
@@ -838,6 +854,8 @@ export class KonsentrasiService {
         percent: createNilaiDto.judul?.percent || false,
       },
       bobot: createNilaiDto.bobot,
+      kodeEmiten: createNilaiDto.kodeEmiten || '',
+      kepemilikan: createNilaiDto.kepemilikan || '',
       portofolio: createNilaiDto.portofolio || '',
       keterangan: createNilaiDto.keterangan || '',
       riskindikator: createNilaiDto.riskindikator || {
@@ -877,6 +895,10 @@ export class KonsentrasiService {
 
     if (updateNilaiDto.nomor !== undefined) nilai.nomor = updateNilaiDto.nomor;
     if (updateNilaiDto.bobot !== undefined) nilai.bobot = updateNilaiDto.bobot;
+    if (updateNilaiDto.kodeEmiten !== undefined)
+      nilai.kodeEmiten = updateNilaiDto.kodeEmiten;
+    if (updateNilaiDto.kepemilikan !== undefined)
+      nilai.kepemilikan = updateNilaiDto.kepemilikan;
     if (updateNilaiDto.portofolio !== undefined)
       nilai.portofolio = updateNilaiDto.portofolio;
     if (updateNilaiDto.keterangan !== undefined)
@@ -1086,6 +1108,8 @@ export class KonsentrasiService {
               nomor: nilai.nomor,
               judul: nilai.judul,
               bobot: Number(nilai.bobot),
+              kodeEmiten: nilai.kodeEmiten,
+              kepemilikan: nilai.kepemilikan,
               portofolio: nilai.portofolio,
               keterangan: nilai.keterangan,
               riskindikator: nilai.riskindikator,
@@ -1163,6 +1187,8 @@ export class KonsentrasiService {
                 percent: false,
               },
               bobot: nilaiData.bobot || 0,
+              kodeEmiten: nilaiData.kodeEmiten || '',
+              kepemilikan: nilaiData.kepemilikan || '',
               portofolio: nilaiData.portofolio || '',
               keterangan: nilaiData.keterangan || '',
               riskindikator: nilaiData.riskindikator || {

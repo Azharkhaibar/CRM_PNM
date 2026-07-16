@@ -739,20 +739,9 @@ export class ReputasiService {
     const mode = dto.mode;
 
     if (mode === CalculationMode.RASIO) {
-      if (dto.pembilangValue !== undefined && dto.pembilangValue < 0) {
+      if (dto.penyebutValue !== undefined && dto.penyebutValue === 0) {
         throw new BadRequestException(
-          'Pembilang value tidak boleh negatif untuk mode RASIO',
-        );
-      }
-      if (dto.penyebutValue !== undefined && dto.penyebutValue <= 0) {
-        throw new BadRequestException(
-          'Penyebut value harus lebih besar dari 0 untuk mode RASIO',
-        );
-      }
-    } else if (mode === CalculationMode.NILAI_TUNGGAL) {
-      if (dto.penyebutValue !== undefined && dto.penyebutValue < 0) {
-        throw new BadRequestException(
-          'Nilai penyebut tidak boleh negatif untuk mode NILAI_TUNGGAL',
+          'Penyebut value tidak boleh 0 untuk mode RASIO',
         );
       }
     } else if (mode === CalculationMode.TEKS) {

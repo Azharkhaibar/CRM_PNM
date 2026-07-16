@@ -28,19 +28,19 @@ export default function DataTable({ rows, totalWeighted, viewYear, viewQuarter, 
               <th rowSpan={2} className="px-3 py-2 border border-gray-400 bg-[#1f4e79] text-left">
                 Dampak
               </th>
-              <th rowSpan={2} className="px-3 py-2 border border-gray-400 bg-[#b7d7a8] text-left text-black">
+              <th rowSpan={2} className="px-3 py-2 border border-gray-400 bg-[#2e7d32] text-left text-white font-bold">
                 Low
               </th>
-              <th rowSpan={2} className="px-3 py-2 border border-gray-400 bg-[#c9daf8] text-left text-black">
+              <th rowSpan={2} className="px-3 py-2 border border-gray-400 bg-[#92D050] text-left text-black font-bold">
                 Low to Moderate
               </th>
-              <th rowSpan={2} className="px-3 py-2 border border-gray-400 bg-[#fff2cc] text-left text-black">
+              <th rowSpan={2} className="px-3 py-2 border border-gray-400 bg-[#ffff00] text-left text-black font-bold">
                 Moderate
               </th>
-              <th rowSpan={2} className="px-3 py-2 border border-gray-400 bg-[#f9cb9c] text-left text-black">
+              <th rowSpan={2} className="px-3 py-2 border border-gray-400 bg-[#ffc000] text-left text-black font-bold">
                 Moderate to High
               </th>
-              <th rowSpan={2} className="px-3 py-2 border border-gray-400 bg-[#e06666] text-left">
+              <th rowSpan={2} className="px-3 py-2 border border-gray-400 bg-[#ff0000] text-left text-white font-bold">
                 High
               </th>
               <th rowSpan={2} className="px-3 py-2 border border-gray-400 bg-[#2e75b6] text-left">

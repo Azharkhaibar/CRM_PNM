@@ -260,38 +260,38 @@ export default function DataTable({ rows, totalWeighted, viewYear, viewQuarter, 
                             <div style={{ minHeight: 70, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{r.bobotIndikator}%</div>
                           </td>
                           <td className="border px-3 py-0 align-top bg-[#d9eefb]">
-                            <div className="custom-scrollbar" style={{ height: 70, overflowY: 'auto', padding: '12px 0' }}>
+                            <div style={{ minHeight: 70, padding: '12px 0' }}>
                               {r.sumberRisiko}
                             </div>
                           </td>
                           <td className="border px-3 py-0 align-top bg-[#d9eefb]">
-                            <div className="custom-scrollbar" style={{ height: 70, overflowY: 'auto', padding: '12px 0' }}>
+                            <div style={{ minHeight: 70, padding: '12px 0' }}>
                               {r.dampak}
                             </div>
                           </td>
 
-                          <td className="border px-3 py-0 text-center bg-green-700/10">
-                            <div className="custom-scrollbar" style={{ height: 70, overflowY: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px' }}>
+                          <td className="border px-3 py-0 text-center">
+                            <div style={{ minHeight: 70, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px' }}>
                               {r.low}
                             </div>
                           </td>
-                          <td className="border px-3 py-0 text-center bg-green-700/10">
-                            <div className="custom-scrollbar" style={{ height: 70, overflowY: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px' }}>
+                          <td className="border px-3 py-0 text-center">
+                            <div style={{ minHeight: 70, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px' }}>
                               {r.lowToModerate}
                             </div>
                           </td>
-                          <td className="border px-3 py-0 text-center bg-green-700/10">
-                            <div className="custom-scrollbar" style={{ height: 70, overflowY: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px' }}>
+                          <td className="border px-3 py-0 text-center">
+                            <div style={{ minHeight: 70, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px' }}>
                               {r.moderate}
                             </div>
                           </td>
-                          <td className="border px-3 py-0 text-center bg-green-700/10">
-                            <div className="custom-scrollbar" style={{ height: 70, overflowY: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px' }}>
+                          <td className="border px-3 py-0 text-center">
+                            <div style={{ minHeight: 70, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px' }}>
                               {r.moderateToHigh}
                             </div>
                           </td>
-                          <td className="border px-3 py-0 text-center bg-green-700/10">
-                            <div className="custom-scrollbar" style={{ height: 70, overflowY: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px' }}>
+                          <td className="border px-3 py-0 text-center">
+                            <div style={{ minHeight: 70, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px' }}>
                               {r.high}
                             </div>
                           </td>
@@ -363,7 +363,7 @@ export default function DataTable({ rows, totalWeighted, viewYear, viewQuarter, 
                             <div style={{ minHeight: 70, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: '12px' }}>{weightedDisplay}</div>
                           </td>
                           <td className="border px-3 py-0">
-                            <div className="custom-scrollbar" style={{ height: 70, overflowY: 'auto', padding: '12px 0' }}>
+                            <div style={{ minHeight: 70, padding: '12px 0' }}>
                               {r.keterangan}
                             </div>
                           </td>

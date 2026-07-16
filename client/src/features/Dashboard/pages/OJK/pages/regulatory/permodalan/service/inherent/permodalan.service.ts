@@ -62,6 +62,8 @@ export interface PermodalanNilaiEntity {
   bobot: number;
   portofolio?: string;
   keterangan?: string;
+  sumberRisiko?: string;
+  dampak?: string;
   riskindikator?: {
     low?: string;
     lowToModerate?: string;
@@ -145,6 +147,8 @@ export interface CreateNilaiDto {
   bobot: number;
   portofolio?: string;
   keterangan?: string;
+  sumberRisiko?: string;
+  dampak?: string;
   riskindikator?: {
     low?: string;
     lowToModerate?: string;
@@ -171,6 +175,8 @@ export interface UpdateNilaiDto {
   bobot?: number;
   portofolio?: string;
   keterangan?: string;
+  sumberRisiko?: string;
+  dampak?: string;
   riskindikator?: {
     low?: string;
     lowToModerate?: string;
@@ -343,6 +349,8 @@ export class PermodalanProdukService {
           bobot: nilai.bobot || 0,
           portofolio: nilai.portofolio || '',
           keterangan: nilai.keterangan || '',
+          sumberRisiko: nilai.sumberRisiko || '',
+          dampak: nilai.dampak || '',
           riskindikator: nilai.riskindikator || {
             low: '',
             lowToModerate: '',

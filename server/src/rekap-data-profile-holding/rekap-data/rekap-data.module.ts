@@ -6,8 +6,11 @@ import { RekapDataService } from './rekap-data.service';
 
 // Import semua entity dari 8 modul
 import { Investasi } from 'src/investasi/new-investasi/entities/new-investasi.entity';
+import { InvestasiSection } from 'src/investasi/new-investasi/entities/new-investasi-section.entity';
 import { Pasar } from 'src/pasar/pasar/entities/pasar.entity';
+import { PasarSection } from 'src/pasar/pasar/entities/pasar-section.entity';
 import { Likuiditas } from 'src/likuiditas/likuiditas/entities/likuiditas.entity';
+import { LikuiditasSection } from 'src/likuiditas/likuiditas/entities/likuiditas-section.entity';
 import { Operasional } from 'src/operasional/operasional/entities/operasional.entity';
 import { OperasionalSection } from 'src/operasional/operasional/entities/operasional-section.entity';
 import { Hukum } from 'src/hukum/hukum/entities/hukum.entity';
@@ -23,8 +26,11 @@ import { ReputasiSection } from 'src/reputasi/reputasi/entities/reputasi-section
   imports: [
     TypeOrmModule.forFeature([
       Investasi,
+      InvestasiSection,
       Pasar,
+      PasarSection,
       Likuiditas,
+      LikuiditasSection,
       Operasional,
       OperasionalSection,
       Hukum,

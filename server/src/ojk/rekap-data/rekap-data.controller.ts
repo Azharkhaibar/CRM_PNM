@@ -3,14 +3,21 @@ import {
   Controller,
   Get,
   Put,
+  Post,
+  Delete,
   Body,
   Param,
   Query,
   UseInterceptors,
+  UploadedFile,
   ClassSerializerInterceptor,
   BadRequestException,
   ParseIntPipe,
+  HttpCode,
+  HttpStatus,
+  ValidationPipe,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import {
   ApiTags,
   ApiOperation,
@@ -25,7 +32,18 @@ import {
   UpdateNilaiValueDto,
   RekapDataResponseDto,
   UpdateNilaiResponseDto,
+  CloneOjkRekapDataDto,
+  UndoCloneOjkRekapDataDto,
+  CloneOjkKpmrDataDto,
+  UndoCloneOjkKpmrDataDto,
 } from './dto/rekap-data.dto';
+
+interface MulterFile {
+  buffer: Buffer;
+  originalname: string;
+  mimetype: string;
+  size: number;
+}
 
 @ApiTags('Rekap Data')
 @Controller('rekap')
@@ -130,5 +148,78 @@ export class RekapController {
     }
 
     return this.rekapService.updateNilaiValue(dto);
+  }
+
+  // ========== CLONE PERIOD DATA ==========
+  @Post('clone')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Clone OJK inherent risk profile data from one period to another' })
+  @ApiBody({ type: CloneOjkRekapDataDto })
+  @ApiResponse({ status: 200, description: 'Data cloned successfully' })
+  async clonePeriodData(
+    @Body(new ValidationPipe({ transform: true })) dto: CloneOjkRekapDataDto,
+  ) {
+    return this.rekapService.clonePeriodData(dto);
+  }
+
+  // ========== UNDO CLONE PERIOD DATA ==========
+  @Post('undo-clone')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Undo clone OJK inherent risk profile data' })
+  @ApiBody({ type: UndoCloneOjkRekapDataDto })
+  @ApiResponse({ status: 200, description: 'Data clone undone successfully' })
+  async undoClonePeriodData(
+    @Body(new ValidationPipe({ transform: true })) dto: UndoCloneOjkRekapDataDto,
+  ) {
+    return this.rekapService.undoClonePeriodData(dto);
+  }
+
+  // ========== CLONE KPMR DATA ==========
+  @Post('clone-kpmr')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Clone OJK KPMR data from one year to another' })
+  @ApiBody({ type: CloneOjkKpmrDataDto })
+  @ApiResponse({ status: 200, description: 'KPMR data cloned successfully' })
+  async cloneKpmrPeriodData(
+    @Body(new ValidationPipe({ transform: true })) dto: CloneOjkKpmrDataDto,
+  ) {
+    return this.rekapService.cloneKpmrPeriodData(dto);
+  }
+
+  // ========== UNDO CLONE KPMR DATA ==========
+  @Post('undo-clone-kpmr')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Undo clone OJK KPMR data' })
+  @ApiBody({ type: UndoCloneOjkKpmrDataDto })
+  @ApiResponse({ status: 200, description: 'KPMR data clone undone successfully' })
+  async undoCloneKpmrPeriodData(
+    @Body(new ValidationPipe({ transform: true })) dto: UndoCloneOjkKpmrDataDto,
+  ) {
+    return this.rekapService.undoCloneKpmrPeriodData(dto);
+  }
+
+  // ========== RESET KPMR PERIOD DATA ==========
+  @Delete('reset-kpmr')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Reset OJK KPMR data for a specific year and category' })
+  @ApiQuery({ name: 'year', required: true, type: Number })
+  @ApiQuery({ name: 'category', required: true, type: String })
+  async resetKpmrPeriodData(
+    @Query('year') year: string,
+    @Query('category') category: string,
+  ): Promise<{ success: boolean; message: string }> {
+    return this.rekapService.resetKpmrPeriodData(parseInt(year), category);
+  }
+
+  // ========== IMPORT EXCEL ==========
+  @Post('import')
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiOperation({ summary: 'Import OJK rekap data from Excel' })
+  async importExcel(
+    @UploadedFile() file: MulterFile,
+    @Body('year') year: string,
+    @Body('quarter') quarter: string,
+  ): Promise<any> {
+    return this.rekapService.importExcel(file, parseInt(year), parseInt(quarter));
   }
 }

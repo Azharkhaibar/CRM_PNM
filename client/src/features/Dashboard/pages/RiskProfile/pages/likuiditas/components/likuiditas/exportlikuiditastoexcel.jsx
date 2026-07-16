@@ -61,11 +61,11 @@ export const exportLikuiditasToExcel = async ({ year, quarter, sections = [], fi
     // ===================== PALET WARNA SESUAI FILE EXCEL YANG DIBERIKAN =====================
     const COLORS = {
       HEADER: '4472C4',
-      HEADER_LOW: 'C6E0B4',
-      HEADER_LOW_TO_MODERATE: 'BDD7EE',
-      HEADER_MODERATE: 'FFE699',
-      HEADER_MODERATE_TO_HIGH: 'F4B084',
-      HEADER_HIGH: 'C00000',
+      HEADER_LOW: '2E7D32',
+      HEADER_LOW_TO_MODERATE: '92D050',
+      HEADER_MODERATE: 'FFFF00',
+      HEADER_MODERATE_TO_HIGH: 'FFC000',
+      HEADER_HIGH: 'FF0000',
       SECTION_BG: 'D9E1F2',
       INDICATOR_BG: 'FFFFFF',
       FACTOR_BG: 'F2F2F2',
@@ -201,7 +201,7 @@ export const exportLikuiditasToExcel = async ({ year, quarter, sections = [], fi
         if (r === 0) {
           if (c === 8) {
             bgColor = COLORS.HEADER_LOW;
-            textColor = '000000';
+            textColor = 'FFFFFF';
           } else if (c === 9) {
             bgColor = COLORS.HEADER_LOW_TO_MODERATE;
             textColor = '000000';
@@ -289,10 +289,13 @@ export const exportLikuiditasToExcel = async ({ year, quarter, sections = [], fi
 
             if (peringkat === 1) {
               ratingColor = COLORS.HEADER_LOW;
+              textColor = 'FFFFFF';
             } else if (peringkat === 2) {
               ratingColor = COLORS.HEADER_LOW_TO_MODERATE;
+              textColor = '000000';
             } else if (peringkat === 3) {
               ratingColor = COLORS.HEADER_MODERATE;
+              textColor = '000000';
             } else if (peringkat === 4) {
               ratingColor = COLORS.HEADER_MODERATE_TO_HIGH;
               textColor = '000000';

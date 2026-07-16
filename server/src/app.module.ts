@@ -77,6 +77,8 @@ import { PeringkatKompositOjkModule } from './ojk/peringkat-komposit/peringkat-k
 import { DashboardHoldingModule } from './main-dashboard/dashboard-holding/dashboard-holding.module';
 import { DashboardOjkModule } from './main-dashboard/dashboard-ojk/dashboard-ojk.module';
 import { ResikoProfileRepositoryOjkModule } from './resiko-profile-repository-ojk/resiko-profile-repository-ojk.module';
+import { KompositModule } from './rekap-data-profile-holding/komposit/komposit.module';
+import { SystemSettingsModule } from './system-settings/system-settings.module';
 
 @Module({
   imports: [
@@ -89,6 +91,7 @@ import { ResikoProfileRepositoryOjkModule } from './resiko-profile-repository-oj
 
     AuthModule,
     UsersModule,
+    SystemSettingsModule,
     PasarModule,
     LikuiditasModule,
     OperasionalModule,
@@ -155,6 +158,7 @@ import { ResikoProfileRepositoryOjkModule } from './resiko-profile-repository-oj
     DashboardHoldingModule,
     DashboardOjkModule,
     ResikoProfileRepositoryOjkModule,
+    KompositModule,
 
     
    

@@ -124,80 +124,52 @@ export const RiskTable = ({ data, skorProfil, quarter, year }) => {
 };
 
 // ===================== RiskMatrix =====================
-export const RiskMatrix = ({ inherentLevel, kpmrLevel, showLegend = true, className = '' }) => {
-  // Validasi level
-  const validInherent = inherentLevel > 0 && inherentLevel <= 5 ? inherentLevel : null;
-  const validKpmr = kpmrLevel > 0 && kpmrLevel <= 5 ? kpmrLevel : null;
-  const hasData = validInherent !== null && validKpmr !== null;
+export const RiskMatrix = ({ inherentLevel, kpmrLevel, showLegend = true, className = '', year = new Date().getFullYear(), quarter = 'Q4' }) => {
+  // Helper to map float score to integer level (1 to 5)
+  const scoreToLevel = (score) => {
+    const num = Number(score);
+    if (isNaN(num) || num <= 0) return null;
+    if (num < 1.5) return 1;
+    if (num < 2.5) return 2;
+    if (num < 3.5) return 3;
+    if (num < 4.5) return 4;
+    return 5;
+  };
 
-  // Warna matrix (heatmap) - sesuai original
-  const getCellColor = (inherent, kpmr) => {
-    // Kombinasi warna berdasarkan posisi
+  const validInherent = scoreToLevel(inherentLevel);
+  const validKpmr = scoreToLevel(kpmrLevel);
+
+  const getCellDetails = (inherent, kpmr) => {
     const key = `${inherent},${kpmr}`;
-    const colorMap = {
-      // Level 1 (Low) - Hijau
-      '1,1': '#2e7d32',
-      '1,2': '#2e7d32',
-      // Level 1-2 - Hijau ke Hijau Muda
-      '1,3': '#92D050',
-      '1,4': '#92D050',
-      // Level 1-3 - Kuning
-      '1,5': '#ffff00',
-
-      // Level 2
-      '2,1': '#2e7d32',
-      '2,2': '#92D050',
-      '2,3': '#92D050',
-      '2,4': '#ffff00',
-      '2,5': '#ffff00',
-
-      // Level 3
-      '3,1': '#92D050',
-      '3,2': '#92D050',
-      '3,3': '#ffff00',
-      '3,4': '#ffc000',
-      '3,5': '#ffc000',
-
-      // Level 4
-      '4,1': '#ffff00',
-      '4,2': '#ffff00',
-      '4,3': '#ffc000',
-      '4,4': '#ffc000',
-      '4,5': '#ff0000',
-
-      // Level 5
-      '5,1': '#ffff00',
-      '5,2': '#ffc000',
-      '5,3': '#ffc000',
-      '5,4': '#ff0000',
-      '5,5': '#ff0000',
+    
+    // Values from the screenshot table
+    const matrixValues = {
+      '1,1': 1, '1,2': 1, '1,3': 2, '1,4': 3, '1,5': 3,
+      '2,1': 1, '2,2': 2, '2,3': 2, '2,4': 3, '2,5': 4,
+      '3,1': 2, '3,2': 2, '3,3': 3, '3,4': 4, '3,5': 4,
+      '4,1': 2, '4,2': 3, '4,3': 4, '4,4': 4, '4,5': 5,
+      '5,1': 3, '5,2': 3, '5,3': 4, '5,4': 5, '5,5': 5,
     };
-    return colorMap[key] || '#e5e7eb';
+    
+    const val = matrixValues[key] || 0;
+    
+    const colors = {
+      1: '#00b050', // Dark Green
+      2: '#92d050', // Light Green
+      3: '#ffff00', // Yellow
+      4: '#ffc000', // Orange
+      5: '#ff0000', // Red
+    };
+    
+    return {
+      val,
+      bg: colors[val] || '#ffffff',
+      text: '#000000',
+    };
   };
 
-  const getTextColor = (bgColor) => {
-    // Warna gelap pakai text putih, warna terang pakai text gelap
-    const darkColors = ['#2e7d32', '#92D050', '#ff0000'];
-    return darkColors.includes(bgColor) ? '#ffffff' : '#1f2937';
-  };
-
-  if (!hasData) {
-    return (
-      <div className={`bg-white rounded-xl shadow-lg overflow-hidden ${className}`}>
-        <div className="bg-[#1e3a8a] text-white px-5 py-4">
-          <h3 className="text-lg font-bold">Risk Matrix</h3>
-          <p className="text-sm opacity-80">Inherent Risk vs KPMR</p>
-        </div>
-        <div className="p-5 flex items-center justify-center min-h-[300px]">
-          <p className="text-gray-500 text-center">
-            Data belum tersedia untuk periode ini.
-            <br />
-            <span className="text-sm">Silakan isi data di Rekap 1 terlebih dahulu.</span>
-          </p>
-        </div>
-      </div>
-    );
-  }
+  const monthMap = { Q1: 'Mar', Q2: 'Jun', Q3: 'Sep', Q4: 'Des' };
+  const periodStr = `${monthMap[quarter] || quarter}-${String(year).slice(2)}`;
 
   return (
     <div className={`bg-white rounded-xl shadow-lg overflow-hidden ${className}`}>
@@ -205,74 +177,184 @@ export const RiskMatrix = ({ inherentLevel, kpmrLevel, showLegend = true, classN
         <h3 className="text-lg font-bold">Risk Matrix</h3>
         <p className="text-sm opacity-80">Inherent Risk vs KPMR</p>
       </div>
-      <div className="p-5">
-        {/* Matrix Grid */}
-        <div className="grid grid-cols-6 gap-1.5">
-          {/* Header - KPMR */}
-          <div className="col-span-1"></div>
-          {[1, 2, 3, 4, 5].map((k) => (
-            <div key={k} className="text-center text-xs font-semibold text-gray-600 py-2">
-              KPMR {k}
-            </div>
-          ))}
+      <div className="p-5 flex flex-col items-center justify-center">
+        <div className="w-full overflow-x-auto">
+          <table className="w-full border-collapse" style={{ minWidth: '400px' }}>
+            <colgroup>
+              <col style={{ width: '22%' }} />
+              <col style={{ width: '15.6%' }} />
+              <col style={{ width: '15.6%' }} />
+              <col style={{ width: '15.6%' }} />
+              <col style={{ width: '15.6%' }} />
+              <col style={{ width: '15.6%' }} />
+            </colgroup>
+            <tbody>
+              {/* Period Header Row (Brown Bar) */}
+              <tr>
+                <td
+                  colSpan={6}
+                  style={{
+                    backgroundColor: '#7A2A2A',
+                    color: 'white',
+                    fontWeight: 'bold',
+                    textAlign: 'center',
+                    padding: '8px 4px',
+                    border: '1.5px solid black',
+                    fontSize: '14px',
+                  }}
+                >
+                  {periodStr}
+                </td>
+              </tr>
 
-          {/* Matrix Rows - Inherent 5 sampai 1 (dari atas ke bawah) */}
-          {[5, 4, 3, 2, 1].map((i) => (
-            <React.Fragment key={i}>
-              <div className="flex items-center justify-end pr-3 text-xs font-semibold text-gray-600">Inherent {i}</div>
-              {[1, 2, 3, 4, 5].map((k) => {
-                const bgColor = getCellColor(i, k);
-                const textColor = getTextColor(bgColor);
-                const isActive = validInherent === i && validKpmr === k;
+              {/* Main Headers Row */}
+              <tr>
+                <td
+                  rowSpan={2}
+                  style={{
+                    backgroundColor: '#0070C0',
+                    color: 'white',
+                    fontWeight: 'bold',
+                    textAlign: 'center',
+                    verticalAlign: 'middle',
+                    padding: '10px 4px',
+                    border: '1.5px solid black',
+                    fontSize: '13px',
+                    lineHeight: '1.2',
+                  }}
+                >
+                  Risiko Inheren
+                </td>
+                <td
+                  colSpan={5}
+                  style={{
+                    backgroundColor: '#0070C0',
+                    color: 'white',
+                    fontWeight: 'bold',
+                    textAlign: 'center',
+                    padding: '8px 4px',
+                    border: '1.5px solid black',
+                    fontSize: '13px',
+                  }}
+                >
+                  Kualitas Penerapan Manajemen Risiko (KPMR)
+                </td>
+              </tr>
 
-                return (
-                  <div
-                    key={k}
-                    className={`
-                      aspect-square flex items-center justify-center rounded-md
-                      ${isActive ? 'ring-4 ring-blue-400 ring-offset-1' : ''}
-                      text-lg font-black shadow-sm transition-all duration-200
-                    `}
+              {/* Column Labels Row */}
+              <tr>
+                {[
+                  { name: 'Strong', num: 1 },
+                  { name: 'Satisfactory', num: 2 },
+                  { name: 'Fair', num: 3 },
+                  { name: 'Marginal', num: 4 },
+                  { name: 'Unsatisfactory', num: 5 }
+                ].map((col, idx) => (
+                  <td
+                    key={idx}
                     style={{
-                      backgroundColor: bgColor,
-                      color: textColor,
+                      backgroundColor: '#F2F2F2',
+                      color: 'black',
+                      fontWeight: 'bold',
+                      textAlign: 'center',
+                      verticalAlign: 'middle',
+                      padding: '8px 4px',
+                      border: '1.5px solid black',
+                      fontSize: '11px',
+                      lineHeight: '1.2',
                     }}
                   >
-                    {isActive && '●'}
-                  </div>
-                );
-              })}
-            </React.Fragment>
-          ))}
+                    {col.name}
+                    <br />
+                    ({col.num})
+                  </td>
+                ))}
+              </tr>
+
+              {/* Matrix Data Rows (1 to 5) */}
+              {[
+                { name: 'Low', num: 1 },
+                { name: 'Low to Moderate', num: 2 },
+                { name: 'Moderate', num: 3 },
+                { name: 'Moderate to High', num: 4 },
+                { name: 'High', num: 5 }
+              ].map((row) => (
+                <tr key={row.num}>
+                  {/* Row Header */}
+                  <td
+                    style={{
+                      backgroundColor: '#D9D9D9',
+                      color: 'black',
+                      fontWeight: 'bold',
+                      textAlign: 'center',
+                      verticalAlign: 'middle',
+                      padding: '10px 4px',
+                      border: '1.5px solid black',
+                      fontSize: '11px',
+                      lineHeight: '1.2',
+                    }}
+                  >
+                    {row.name}
+                    <br />
+                    ({row.num})
+                  </td>
+
+                  {/* Columns */}
+                  {[1, 2, 3, 4, 5].map((kpmrVal) => {
+                    const { val, bg, text } = getCellDetails(row.num, kpmrVal);
+                    const isActive = validInherent === row.num && validKpmr === kpmrVal;
+
+                    return (
+                      <td
+                        key={kpmrVal}
+                        style={{
+                          backgroundColor: bg,
+                          color: text,
+                          fontWeight: 'bold',
+                          textAlign: 'center',
+                          verticalAlign: 'middle',
+                          border: '1.5px solid black',
+                          padding: '4px',
+                          height: '54px',
+                          fontSize: '15px',
+                        }}
+                      >
+                        {isActive ? (
+                          <div className="flex items-center justify-center">
+                            <span
+                              className="inline-flex items-center justify-center rounded-full border-2 border-black font-black"
+                              style={{
+                                width: '28px',
+                                height: '28px',
+                                lineHeight: '1',
+                              }}
+                            >
+                              {val}
+                            </span>
+                          </div>
+                        ) : (
+                          val
+                        )}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
 
-        {/* Legend - hanya jika showLegend true */}
-        {showLegend && (
-          <div className="mt-6 pt-4 border-t border-gray-200">
-            <div className="grid grid-cols-5 gap-2 text-center text-xs">
-              <div className="flex items-center justify-center gap-1.5">
-                <span className="w-4 h-4 rounded shadow-sm" style={{ backgroundColor: '#2e7d32' }}></span>
-                <span className="font-medium">Low</span>
-              </div>
-              <div className="flex items-center justify-center gap-1.5">
-                <span className="w-4 h-4 rounded shadow-sm" style={{ backgroundColor: '#92D050' }}></span>
-                <span className="font-medium">Low-Mod</span>
-              </div>
-              <div className="flex items-center justify-center gap-1.5">
-                <span className="w-4 h-4 rounded shadow-sm" style={{ backgroundColor: '#ffff00' }}></span>
-                <span className="font-medium">Moderate</span>
-              </div>
-              <div className="flex items-center justify-center gap-1.5">
-                <span className="w-4 h-4 rounded shadow-sm" style={{ backgroundColor: '#ffc000' }}></span>
-                <span className="font-medium">Mod-High</span>
-              </div>
-              <div className="flex items-center justify-center gap-1.5">
-                <span className="w-4 h-4 rounded shadow-sm" style={{ backgroundColor: '#ff0000' }}></span>
-                <span className="font-medium">High</span>
-              </div>
+        {/* Info box at the bottom */}
+        <div className="mt-4 w-full pt-3 border-t border-gray-200">
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full bg-blue-600 flex items-center justify-center">
+              <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
             </div>
+            <span className="text-sm font-semibold text-gray-800">
+              Posisi risiko saat ini (Inherent: {inherentLevel || '-'}, KPMR: {kpmrLevel || '-'})
+            </span>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
@@ -332,9 +414,9 @@ export const RekapData2Header = ({ year, setYear, quarter, setQuarter, query, se
           <Upload size={18} /> {importing ? 'Mengimpor...' : 'Import Excel'}
         </button>
         {onCleanup && (
-          <button onClick={onCleanup} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 border border-orange-600 text-orange-600 hover:bg-orange-50" title="Hapus data duplikat" disabled={importing}>
+          <button onClick={onCleanup} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 border border-red-600 text-red-600 hover:bg-red-50" title="Reset/Hapus data periode" disabled={importing}>
             <Trash2 size={18} />
-            Clean Duplicates
+            Reset Data
           </button>
         )}
       </div>
@@ -463,7 +545,18 @@ const NumberInput = ({ value, onChange, placeholder = '0', className = '' }) => 
       onChange('');
       return;
     }
-    const cleaned = String(localValue).replace(/\./g, '').replace(/,/g, '.');
+    
+    let cleaned = String(localValue).trim();
+    if (cleaned.includes('.') && cleaned.includes(',')) {
+      if (cleaned.lastIndexOf(',') > cleaned.lastIndexOf('.')) {
+        cleaned = cleaned.replace(/\./g, '').replace(/,/g, '.');
+      } else {
+        cleaned = cleaned.replace(/,/g, '');
+      }
+    } else if (cleaned.includes(',') && !cleaned.includes('.')) {
+      cleaned = cleaned.replace(/,/g, '.');
+    }
+    
     const num = parseFloat(cleaned);
     if (!isNaN(num)) {
       onChange(String(num));

@@ -1,9 +1,9 @@
 // src/features/Dashboard/pages/RiskProfile/pages/Stratejik/components/StratejikInherent.jsx
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Download, Trash2, Edit3, Search, Plus, ChevronDown } from 'lucide-react';
+import { Download, Trash2, Edit3, Search, Plus, ChevronDown, Copy } from 'lucide-react';
 // import { calculatePeringkat, calculatePeringkatFromText, isNumericRiskLevels } from './utils/stratejik/riskcalculator';
 
-import { calculatePeringkat, calculatePeringkatFromText, isNumericRiskLevels } from './utils/riskcalculator';
+import { calculatePeringkat, calculatePeringkatFromText, isNumericRiskLevels, parseRiskValue } from './utils/riskcalculator';
 // ==== Komponen & Utils ====
 // import DataTable from './components/stratejik/datatable-stratejiki';
 import DataTable from './components/stratejik/datatable-stratejik';
@@ -21,6 +21,8 @@ import ToastNotification from './components/kpmr-stratejik/ToastNotification';
 import { useStratejik } from './hook/stratejik/stratejik.hook';
 import { useAuditLog } from '../../../audit-log/hooks/audit-log.hooks';
 import { useAuth } from '@/features/auth/hooks/useAuth.hook';
+import { rekapDataAPI } from '../rekapdata/services/rekap-data-api';
+import HoldingCloneDialog from '../../components/HoldingCloneDialog';
 // ==== Section Inheritance Utils ====
 import { getSectionsForPeriod, addSectionToPeriod, updateSectionInPeriod, deleteSectionFromPeriod, autoCloneSectionsIfNeeded, hasDirectSectionsInPeriod, getImmediatePreviousQuarter, isInheritedSection } from './utils/sectioninheritance';
 
@@ -232,6 +234,14 @@ const computeStratejikHasil = (row) => {
     }
   }
 
+  // Mode PERTUMBUHAN: (sekarang - sebelumnya) / sebelumnya
+  if (mode === 'PERTUMBUHAN') {
+    if (peny === 0 || peny == null || !isFinite(peny)) return '';
+    const growth = (pemb - peny) / peny;
+    if (!isFinite(growth) || isNaN(growth)) return '';
+    return Number(growth);
+  }
+
   if (mode === 'NILAI_TUNGGAL') {
     const raw = row.denominatorValue;
     if (raw === '' || raw == null) return '';
@@ -290,6 +300,7 @@ export default function StratejikInherent({ viewYear, viewQuarter, onViewYearCha
     setViewYear: setHookYear,
     setViewQuarter: setHookQuarter,
     clearError,
+    getSections,
     createSection,
     updateSection,
     deleteSection,
@@ -297,11 +308,15 @@ export default function StratejikInherent({ viewYear, viewQuarter, onViewYearCha
     updateIndikator,
     deleteIndikator,
     transformToBackend,
+    getSectionsWithIndicatorsByPeriod,
   } = useStratejik({
     initialYear: Number(viewYear),
     initialQuarter: viewQuarter,
     autoLoad: true,
   });
+
+  // ========== CLONING STATES ==========
+  const [cloneDialogOpen, setCloneDialogOpen] = useState(false);
 
   // Sync hook dengan props
   useEffect(() => {
@@ -488,17 +503,66 @@ export default function StratejikInherent({ viewYear, viewQuarter, onViewYearCha
     if (!inheritInfo) return;
 
     try {
-      const clonedSections = sections.filter((s) => s.year === viewYear && s.quarter === viewQuarter && s.inheritedFrom);
+      const clonedSections = sections.filter((s) => s.year === viewYear && s.quarter === viewQuarter && (s.inheritedFrom || inheritInfo?.isManual));
 
+      // 1. Hapus indikator terlebih dahulu untuk menghindari constraint
       for (const section of clonedSections) {
-        await deleteSection(section.id);
+        const sectionWithInds = sectionsWithIndicators.find((swi) => swi.id === section.id);
+        if (sectionWithInds && sectionWithInds.indicators) {
+          for (const ind of sectionWithInds.indicators) {
+            try {
+              await deleteIndikator(ind.id);
+            } catch (indErr) {
+              const isNotFound = indErr?.response?.status === 404 || 
+                                 String(indErr).includes('404') || 
+                                 String(indErr).includes('Not Found');
+              if (!isNotFound) throw indErr;
+            }
+          }
+        }
+      }
+
+      // 2. Hapus sections yang sudah kosong
+      for (const section of clonedSections) {
+        try {
+          await deleteSection(section.id);
+        } catch (secErr) {
+          const isNotFound = secErr?.response?.status === 404 || 
+                             String(secErr).includes('404') || 
+                             String(secErr).includes('Not Found');
+          if (!isNotFound) throw secErr;
+        }
       }
 
       setInheritInfo(null);
-      showToast('Clone berhasil dibatalkan', 'success');
+      showToast('Kloning berhasil dibatalkan', 'success');
+
+      // 3. Refresh state agar UI sinkron
+      if (getSections) {
+        await getSections();
+      }
+      if (getSectionsWithIndicatorsByPeriod) {
+        await getSectionsWithIndicatorsByPeriod(viewYear, viewQuarter);
+      }
     } catch (err) {
       console.error('Error undoing clone:', err);
       showToast('Gagal membatalkan clone', 'error');
+    }
+  };
+
+  const handleResetData = async () => {
+    if (!confirm('Apakah Anda yakin ingin menghapus/reset semua data Stratejik untuk periode ini? Semua indikator dan section akan terhapus secara permanen.')) {
+      return;
+    }
+    try {
+      await rekapDataAPI.resetPeriodData(viewYear, viewQuarter, 'STRATEJIK');
+      showToast('Data berhasil di-reset', 'success');
+      if (getSections) await getSections();
+      if (getSectionsWithIndicatorsByPeriod) await getSectionsWithIndicatorsByPeriod(viewYear, viewQuarter);
+      setInheritInfo(null);
+    } catch (err) {
+      console.error('Error resetting data:', err);
+      showToast('Gagal me-reset data', 'error');
     }
   };
 
@@ -551,6 +615,7 @@ export default function StratejikInherent({ viewYear, viewQuarter, onViewYearCha
             high: STRATEJIK_form.high || '',
           },
           STRATEJIK_form.isPercent || false,
+          STRATEJIK_form.mode || 'RASIO',
         );
         if (STRATEJIK_form.peringkat !== newPeringkat) {
           setSTRATEJIK_form((prev) => ({ ...prev, peringkat: newPeringkat }));
@@ -589,9 +654,9 @@ export default function StratejikInherent({ viewYear, viewQuarter, onViewYearCha
       let newPeringkat = 0;
 
       if (isNumericRiskLevels(riskLevels)) {
-        const hasilNum = parseFloat(STRATEJIK_form.hasilText);
-        if (!isNaN(hasilNum)) {
-          newPeringkat = calculatePeringkat(hasilNum, riskLevels, true);
+        const parsed = parseRiskValue(STRATEJIK_form.hasilText || '');
+        if (parsed) {
+          newPeringkat = calculatePeringkat(parsed.value, riskLevels, true, 'TEKS');
         }
       } else {
         newPeringkat = calculatePeringkatFromText(STRATEJIK_form.hasilText || '', riskLevels);
@@ -757,37 +822,53 @@ export default function StratejikInherent({ viewYear, viewQuarter, onViewYearCha
     if (!STRATEJIK_editingRow) return;
 
     const baseRow = buildBaseRow();
-    const pembilangValue = baseRow.mode === 'RASIO' ? parseNum(baseRow.numeratorValue) : undefined;
+    const pembilangValue = (baseRow.mode === 'RASIO' || baseRow.mode === 'PERTUMBUHAN') ? parseNum(baseRow.numeratorValue) : undefined;
     const penyebutValue = baseRow.mode !== 'TEKS' ? parseNum(baseRow.denominatorValue) : undefined;
 
     if (baseRow.mode === 'RASIO') {
       if (penyebutValue === 0) {
-        showToast('Untuk mode RASIO, nilai penyebut harus lebih besar dari 0', 'error');
-        return;
-      }
-      if (penyebutValue < 0) {
-        showToast('Untuk mode RASIO, nilai penyebut tidak boleh negatif', 'error');
+        showToast('Untuk mode RASIO, nilai penyebut tidak boleh 0 (pembagian dengan nol)', 'error');
         return;
       }
     }
 
-    if (baseRow.mode === 'NILAI_TUNGGAL' && penyebutValue < 0) {
-      showToast('Untuk mode NILAI_TUNGGAL, nilai penyebut tidak boleh negatif', 'error');
-      return;
+    if (baseRow.mode === 'PERTUMBUHAN') {
+      if (penyebutValue === 0) {
+        showToast('Untuk mode PERTUMBUHAN, nilai sebelumnya (penyebut) harus lebih besar dari 0', 'error');
+        return;
+      }
     }
 
     const rawHasil = computeStratejikHasil(baseRow);
-    const newPeringkat = calculatePeringkat(
-      rawHasil,
-      {
+    let newPeringkat = 1;
+    if (baseRow.mode === 'TEKS') {
+      const riskLevels = {
         low: baseRow.low || '',
         lowToModerate: baseRow.lowToModerate || '',
         moderate: baseRow.moderate || '',
         moderateToHigh: baseRow.moderateToHigh || '',
         high: baseRow.high || '',
-      },
-      baseRow.isPercent || false,
-    );
+      };
+      if (isNumericRiskLevels(riskLevels)) {
+        const parsed = parseRiskValue(baseRow.hasilText || '');
+        newPeringkat = parsed ? calculatePeringkat(parsed.value, riskLevels, true, 'TEKS') : 1;
+      } else {
+        newPeringkat = calculatePeringkatFromText(baseRow.hasilText || '', riskLevels) || 1;
+      }
+    } else {
+      newPeringkat = calculatePeringkat(
+        rawHasil,
+        {
+          low: baseRow.low || '',
+          lowToModerate: baseRow.lowToModerate || '',
+          moderate: baseRow.moderate || '',
+          moderateToHigh: baseRow.moderateToHigh || '',
+          high: baseRow.high || '',
+        },
+        baseRow.isPercent || false,
+        baseRow.mode || 'RASIO',
+      );
+    }
 
     const weightedAuto = computeWeightedLocal(baseRow.bobotSection, baseRow.bobotIndikator, newPeringkat);
     const hasilValue = baseRow.mode === 'TEKS' ? undefined : rawHasil === '' || rawHasil == null ? 0 : rawHasil;
@@ -809,7 +890,7 @@ export default function StratejikInherent({ viewYear, viewQuarter, onViewYearCha
       mode: baseRow.mode,
       formula: baseRow.formula || undefined,
       isPercent: baseRow.isPercent || false,
-      pembilangLabel: baseRow.mode === 'RASIO' ? baseRow.numeratorLabel : undefined,
+      pembilangLabel: (baseRow.mode === 'RASIO' || baseRow.mode === 'PERTUMBUHAN') ? baseRow.numeratorLabel : undefined,
       penyebutLabel: baseRow.mode !== 'TEKS' ? baseRow.denominatorLabel : undefined,
       pembilangValue: pembilangValue,
       penyebutValue: penyebutValue,
@@ -912,6 +993,14 @@ export default function StratejikInherent({ viewYear, viewQuarter, onViewYearCha
           </div>
 
           <div className="flex items-end gap-2">
+            <button onClick={handleResetData} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 bg-red-600 text-white hover:bg-red-700 font-semibold">
+              <Trash2 size={16} /> Reset Data
+            </button>
+
+            <button onClick={() => setCloneDialogOpen(true)} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 bg-purple-600 text-white hover:bg-purple-700 font-semibold">
+              <Copy size={16} /> Salin Data
+            </button>
+
             <button onClick={() => setShowStratejikForm(true)} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 font-semibold">
               + Tambah Data
             </button>
@@ -928,20 +1017,31 @@ export default function StratejikInherent({ viewYear, viewQuarter, onViewYearCha
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-1">
               <span className="inline-block w-2 h-2 rounded-full bg-yellow-500"></span>
-              <strong>Auto-Clone Berhasil!</strong>
+              <strong>{inheritInfo.isManual ? 'Kloning Berhasil' : 'Auto-Clone Berhasil'}</strong>
             </div>
             <p className="text-gray-700">
               Section untuk{' '}
               <strong>
                 {viewYear}-{viewQuarter}
               </strong>{' '}
-              telah di-clone otomatis dari <strong>{inheritInfo.from}</strong> ({inheritInfo.count} section).
+              telah {inheritInfo.isManual ? 'berhasil disalin' : 'di-clone otomatis'} dari <strong>{inheritInfo.from}</strong> ({inheritInfo.count} section).
             </p>
             <p className="text-xs text-gray-500 mt-1">💡 Anda dapat mengedit atau menghapus section sesuai kebutuhan.</p>
           </div>
-          <button onClick={handleUndoClone} className="px-3 py-1.5 rounded border bg-white hover:bg-gray-50 text-sm font-medium whitespace-nowrap">
-            Undo Clone
-          </button>
+          <div className="flex flex-col gap-2">
+            <button 
+              onClick={handleUndoClone} 
+              className="px-3 py-1.5 rounded border border-red-200 bg-white hover:bg-red-50 text-red-600 text-sm font-medium whitespace-nowrap"
+            >
+              Undo Clone
+            </button>
+            <button 
+              onClick={() => setInheritInfo(null)} 
+              className="px-3 py-1.5 rounded border border-blue-600 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium whitespace-nowrap"
+            >
+              Confirm Clone
+            </button>
+          </div>
         </div>
       )}
 
@@ -1108,10 +1208,13 @@ export default function StratejikInherent({ viewYear, viewQuarter, onViewYearCha
                       mode: v,
                       ...(v === 'NILAI_TUNGGAL' || v === 'TEKS' ? { numeratorLabel: '', numeratorValue: '' } : {}),
                       ...(v === 'TEKS' ? { denominatorLabel: '', denominatorValue: '', formula: '', isPercent: false, hasil: '' } : {}),
+                      // Mode PERTUMBUHAN: otomatis set isPercent = true
+                      ...(v === 'PERTUMBUHAN' ? { isPercent: true, formula: '' } : {}),
                     }));
                   }}
                 >
                   <option value="RASIO">Rasio (Pembilang / Penyebut)</option>
+                  <option value="PERTUMBUHAN">Pertumbuhan (Nilai Sekarang &amp; Nilai Sebelumnya)</option>
                   <option value="NILAI_TUNGGAL">Nilai tunggal (hanya penyebut)</option>
                   <option value="TEKS">Kualitatif (hasil berupa teks)</option>
                 </select>
@@ -1155,19 +1258,23 @@ export default function StratejikInherent({ viewYear, viewQuarter, onViewYearCha
               </div>
             </div>
 
-            {STRATEJIK_form.mode === 'RASIO' && (
+            {(STRATEJIK_form.mode === 'RASIO' || STRATEJIK_form.mode === 'PERTUMBUHAN') && (
               <div className="grid grid-cols-2 gap-4 mb-4">
                 <div>
-                  <label className="text-sm font-medium mb-2 block text-white">Faktor Pembilang</label>
+                  <label className="text-sm font-medium mb-2 block text-white">
+                    {STRATEJIK_form.mode === 'PERTUMBUHAN' ? 'Label Nilai Sekarang' : 'Faktor Pembilang'}
+                  </label>
                   <input
                     className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-sm bg-white"
                     value={STRATEJIK_form.numeratorLabel}
                     onChange={(e) => setSTRATEJIK_form((f) => ({ ...f, numeratorLabel: e.target.value }))}
-                    placeholder="Misal: Total Outstanding (OS) Non-Investment Grade"
+                    placeholder={STRATEJIK_form.mode === 'PERTUMBUHAN' ? 'Misal: Total Nasabah Maret 2025' : 'Misal: Total Outstanding (OS) Non-Investment Grade'}
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium mb-2 block text-white">Nilai Pembilang</label>
+                  <label className="text-sm font-medium mb-2 block text-white">
+                    {STRATEJIK_form.mode === 'PERTUMBUHAN' ? 'Nilai Sekarang' : 'Nilai Pembilang'}
+                  </label>
                   <input
                     className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-sm bg-white"
                     value={rawNumeratorInput}
@@ -1194,12 +1301,14 @@ export default function StratejikInherent({ viewYear, viewQuarter, onViewYearCha
             {STRATEJIK_form.mode !== 'TEKS' && (
               <div className="grid grid-cols-2 gap-4 mb-4">
                 <div>
-                  <label className="text-sm font-medium mb-2 block text-white">Faktor Penyebut</label>
+                  <label className="text-sm font-medium mb-2 block text-white">
+                    {STRATEJIK_form.mode === 'PERTUMBUHAN' ? 'Label Nilai Sebelumnya' : 'Faktor Penyebut'}
+                  </label>
                   <input
                     className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-sm bg-white"
                     value={STRATEJIK_form.denominatorLabel}
                     onChange={(e) => setSTRATEJIK_form((f) => ({ ...f, denominatorLabel: e.target.value }))}
-                    placeholder={STRATEJIK_form.mode === 'RASIO' ? 'Total Asset (Jutaan)' : 'Jumlah kejadian, jumlah kasus, dll.'}
+                    placeholder={STRATEJIK_form.mode === 'PERTUMBUHAN' ? 'Misal: Total Nasabah Maret 2024' : STRATEJIK_form.mode === 'RASIO' ? 'Total Asset (Jutaan)' : 'Jumlah kejadian, jumlah kasus, dll.'}
                   />
                 </div>
                 <div>
@@ -1373,13 +1482,54 @@ export default function StratejikInherent({ viewYear, viewQuarter, onViewYearCha
       {/* Data Table */}
       <section className="mt-4">
         <div className="bg-white rounded-2xl shadow overflow-hidden border border-gray-200">
-          <div className="relative h-[350px]">
-            <div className="absolute inset-0 overflow-x-auto overflow-y-auto">
-              <DataTable rows={STRATEJIK_filtered} totalWeighted={STRATEJIK_totalWeighted} viewYear={viewYear} viewQuarter={viewQuarter} startEdit={STRATEJIK_startEdit} removeRow={STRATEJIK_removeRow} />
-            </div>
+          <div className="w-full overflow-x-auto">
+            <DataTable rows={STRATEJIK_filtered} totalWeighted={STRATEJIK_totalWeighted} viewYear={viewYear} viewQuarter={viewQuarter} startEdit={STRATEJIK_startEdit} removeRow={STRATEJIK_removeRow} />
           </div>
         </div>
       </section>
+
+      {cloneDialogOpen && (
+        <HoldingCloneDialog
+          isOpen={cloneDialogOpen}
+          onClose={() => setCloneDialogOpen(false)}
+          defaultCategory="STRATEJIK"
+          currentYear={viewYear}
+          currentQuarter={viewQuarter}
+          onSuccess={async (info) => {
+            showToast('Data berhasil disalin', 'success');
+            setInheritInfo({
+              from: info.from,
+              isManual: true,
+              count: info.count,
+            });
+
+            if (onViewYearChange) onViewYearChange(info.targetYear);
+            if (onViewQuarterChange) onViewQuarterChange(info.targetQuarter);
+
+            if (getSectionsWithIndicatorsByPeriod) {
+              await getSectionsWithIndicatorsByPeriod(info.targetYear, info.targetQuarter);
+            } else if (getSections) {
+              await getSections(Number(info.targetYear), info.targetQuarter);
+            }
+
+            await logCreate(
+              'STRATEJIK',
+              `Kloning data Profil Risiko Holding dari periode ${info.from} ke ${info.targetYear} ${info.targetQuarter} (Modul: ${info.categories.join(', ')})`,
+              {
+                userId: currentUser?.id,
+                isSuccess: true,
+                metadata: {
+                  sourceYear: info.from.split('-')[0],
+                  sourceQuarter: info.from.split('-')[1],
+                  targetYear: info.targetYear,
+                  targetQuarter: info.targetQuarter,
+                  categories: info.categories,
+                }
+              }
+            );
+          }}
+        />
+      )}
     </>
   );
 }

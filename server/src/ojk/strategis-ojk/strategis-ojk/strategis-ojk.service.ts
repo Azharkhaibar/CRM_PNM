@@ -90,7 +90,7 @@ export class StrategisService {
   // ============================================
   private async recalculateSummary(strategisId: number): Promise<void> {
     this.logger.log(
-      `📊 Recalculating summary for Strategis ID: ${strategisId}`,
+      `📊 Recalculating summary for STRATEGIS ID: ${strategisId}`,
     );
     try {
       const strategis = await this.strategisRepository.findOne({
@@ -98,16 +98,20 @@ export class StrategisService {
         relations: ['parameters', 'parameters.nilaiList'],
       });
       if (!strategis) {
-        this.logger.warn(`⚠️ Strategis with ID ${strategisId} not found`);
+        this.logger.warn(`⚠️ STRATEGIS with ID ${strategisId} not found`);
         return;
       }
 
       let totalWeighted = 0;
+      let totalParameterBobot = 0;
       if (strategis.parameters && strategis.parameters.length > 0) {
         for (const param of strategis.parameters) {
-          const paramBobotFraction = (Number(param.bobot) || 0) / 100;
+          const paramBobot = (Number(param.bobot) || 0) / 100;
+          totalParameterBobot += paramBobot;
+
           if (param.nilaiList && param.nilaiList.length > 0) {
             for (const nilai of param.nilaiList) {
+              const paramBobotFraction = paramBobot;
               const nilaiBobotFraction = (Number(nilai.bobot) || 0) / 100;
 
               // 1. Dapatkan Raw Value dari Judul Nilai
@@ -172,10 +176,10 @@ export class StrategisService {
                     if (hasPercent) n = n / 100;
                     if (/≤|<=/.test(rawText)) max = n;
                     else if (/≥|>=/.test(rawText)) min = n;
-                    else if (/^[xX]?\s*>|>\s*\d+/i.test(rawText)) {
+                    else if (/^\s*(?:[xX]?\s*>|≥?>)\s*-?\d+(?:\.\d+)?/i.test(rawText)) {
                       min = n;
                       max = Infinity;
-                    } else if (/^[xX]?\s*<|<\s*\d+/i.test(rawText)) {
+                    } else if (/^\s*(?:[xX]?\s*<|≤?<)\s*-?\d+(?:\.\d+)?/i.test(rawText)) {
                       min = -Infinity;
                       max = n;
                     } else {
@@ -200,6 +204,14 @@ export class StrategisService {
                 }
               }
 
+              if (peringkat === null && !isNaN(rawValue)) {
+                if (rawValue <= 1.5) peringkat = 1;
+                else if (rawValue <= 2.5) peringkat = 2;
+                else if (rawValue <= 3.5) peringkat = 3;
+                else if (rawValue <= 4.5) peringkat = 4;
+                else peringkat = 5;
+              }
+
               if (isNaN(rawValue) && rawString) {
                 for (const { key, rank } of ranges) {
                   const riValue = String(ri[key] ?? '').trim().toLowerCase();
@@ -219,25 +231,29 @@ export class StrategisService {
         }
       }
 
+      let finalWeighted = totalParameterBobot > 0 ? totalWeighted / totalParameterBobot : totalWeighted;
+      finalWeighted = Math.min(5, Math.max(0, finalWeighted));
+      const roundedTotal = Number(finalWeighted.toFixed(2));
+
       let summaryBg: string;
-      if (totalWeighted <= 1.67) summaryBg = 'bg-green-400 text-black';
-      else if (totalWeighted <= 2.33) summaryBg = 'bg-lime-300 text-black';
-      else if (totalWeighted <= 3.00) summaryBg = 'bg-yellow-400 text-black';
-      else if (totalWeighted <= 3.67) summaryBg = 'bg-orange-400 text-black';
+      if (roundedTotal <= 1.67) summaryBg = 'bg-green-400 text-black';
+      else if (roundedTotal <= 2.33) summaryBg = 'bg-lime-300 text-black';
+      else if (roundedTotal <= 3.00) summaryBg = 'bg-yellow-400 text-black';
+      else if (roundedTotal <= 3.67) summaryBg = 'bg-orange-400 text-black';
       else summaryBg = 'bg-red-500 text-white';
 
       strategis.summary = {
-        totalWeighted: Number(totalWeighted.toFixed(2)),
+        totalWeighted: roundedTotal,
         summaryBg,
         computedAt: new Date(),
       };
       await this.strategisRepository.save(strategis);
       this.logger.log(
-        `✅ Summary recalculated for Strategis ID ${strategisId}: totalWeighted=${totalWeighted.toFixed(2)}`,
+        `✅ Summary recalculated for STRATEGIS ID ${strategisId}: totalWeighted=${roundedTotal}`,
       );
     } catch (error) {
       this.logger.error(
-        `❌ Error recalculating summary for Strategis ${strategisId}: ${error.message}`,
+        `❌ Error recalculating summary for STRATEGIS ${strategisId}: ${error.message}`,
         error.stack,
       );
     }
@@ -838,6 +854,8 @@ export class StrategisService {
       bobot: createNilaiDto.bobot,
       portofolio: createNilaiDto.portofolio || '',
       keterangan: createNilaiDto.keterangan || '',
+      sumberRisiko: createNilaiDto.sumberRisiko || '',
+      dampak: createNilaiDto.dampak || '',
       riskindikator: createNilaiDto.riskindikator || {
         low: '',
         lowToModerate: '',
@@ -879,6 +897,10 @@ export class StrategisService {
       nilai.portofolio = updateNilaiDto.portofolio;
     if (updateNilaiDto.keterangan !== undefined)
       nilai.keterangan = updateNilaiDto.keterangan;
+    if (updateNilaiDto.sumberRisiko !== undefined)
+      nilai.sumberRisiko = updateNilaiDto.sumberRisiko;
+    if (updateNilaiDto.dampak !== undefined)
+      nilai.dampak = updateNilaiDto.dampak;
     if (updateNilaiDto.orderIndex !== undefined)
       nilai.orderIndex = updateNilaiDto.orderIndex;
     if (updateNilaiDto.riskindikator)

@@ -456,7 +456,7 @@ export class RekapData2Service {
       row.hasil = this.computeHasil(row);
       row.peringkat = this.computePeringkat(row);
       if (row.bobotIndikator) {
-        row.weighted = (row.peringkat * row.bobotIndikator) / 100;
+        row.weighted = ((row.bobotSection || 0) * row.bobotIndikator * row.peringkat) / 10000;
       }
     }
 
@@ -530,45 +530,171 @@ export class RekapData2Service {
   }
 
   // ===================== COMPUTE PERINGKAT =====================
+  private parseNumber(str: string): number {
+    const cleaned = str.replace('%', '').replace(',', '.');
+    return parseFloat(cleaned);
+  }
+
+  private evaluateRiskCondition(hasilPercent: number, condition: string): boolean {
+    if (hasilPercent === null || hasilPercent === undefined) return false;
+    if (!condition || typeof condition !== 'string') return false;
+
+    try {
+      let normalized = condition.replace(/\s+/g, '');
+      normalized = normalized
+        .replace(/≥/g, '>=')
+        .replace(/≤/g, '<=')
+        .replace(/＞/g, '>')
+        .replace(/＜/g, '<')
+        .replace(/＝/g, '=');
+
+      // Pattern 1: REVERSED RANGE "20% >= x > 17.5%" or "0 >= x > -3%"
+      const reversedRangePattern = /^(-?[\d.,]+)%?([><=]+)x([><=]+)(-?[\d.,]+)%?$/;
+      const reversedMatch = normalized.match(reversedRangePattern);
+
+      if (reversedMatch) {
+        const upperBound = this.parseNumber(reversedMatch[1]);
+        const upperOp = reversedMatch[2];
+        const lowerOp = reversedMatch[3];
+        const lowerBound = this.parseNumber(reversedMatch[4]);
+
+        if (upperBound > lowerBound || (upperBound >= 0 && lowerBound < 0)) {
+          let upperCheck = false;
+          let lowerCheck = false;
+
+          if (upperOp === '>=') upperCheck = hasilPercent <= upperBound;
+          else if (upperOp === '>') upperCheck = hasilPercent < upperBound;
+          else if (upperOp === '<=') upperCheck = hasilPercent >= upperBound;
+          else if (upperOp === '<') upperCheck = hasilPercent > upperBound;
+
+          if (lowerOp === '>') lowerCheck = hasilPercent > lowerBound;
+          else if (lowerOp === '>=') lowerCheck = hasilPercent >= lowerBound;
+          else if (lowerOp === '<') lowerCheck = hasilPercent < lowerBound;
+          else if (lowerOp === '<=') lowerCheck = hasilPercent <= lowerBound;
+
+          return upperCheck && lowerCheck;
+        }
+      }
+
+      // Pattern 2: NORMAL RANGE "1% < x <= 2%" or "-5% < x < -3%"
+      const normalRangePattern = /^(-?[\d.,]+)%?([<>=]+)x([<>=]+)(-?[\d.,]+)%?$/;
+      const normalMatch = normalized.match(normalRangePattern);
+
+      if (normalMatch) {
+        const lowerBound = this.parseNumber(normalMatch[1]);
+        const lowerOp = normalMatch[2];
+        const upperOp = normalMatch[3];
+        const upperBound = this.parseNumber(normalMatch[4]);
+
+        if (lowerBound < upperBound) {
+          let lowerCheck = false;
+          let upperCheck = false;
+
+          if (lowerOp === '<') lowerCheck = lowerBound < hasilPercent;
+          else if (lowerOp === '<=') lowerCheck = lowerBound <= hasilPercent;
+
+          if (upperOp === '<') upperCheck = hasilPercent < upperBound;
+          else if (upperOp === '<=') upperCheck = hasilPercent <= upperBound;
+
+          return lowerCheck && upperCheck;
+        }
+      }
+
+      // Pattern 3: SINGLE COMPARISON (x first) "x > 15%" or "x < -7%"
+      const singleXFirstPattern = /^x([><=]+)(-?[\d.,]+)%?$/;
+      const singleXFirstMatch = normalized.match(singleXFirstPattern);
+
+      if (singleXFirstMatch) {
+        const operator = singleXFirstMatch[1];
+        const threshold = this.parseNumber(singleXFirstMatch[2]);
+        let result = false;
+        if (operator === '>') result = hasilPercent > threshold;
+        else if (operator === '<') result = hasilPercent < threshold;
+        else if (operator === '>=') result = hasilPercent >= threshold;
+        else if (operator === '<=') result = hasilPercent <= threshold;
+        else if (operator === '=' || operator === '==') result = Math.abs(hasilPercent - threshold) < 0.0001;
+        return result;
+      }
+
+      // Pattern 4: SINGLE COMPARISON (value first - REVERSED) "15% < x" or "-7% > x"
+      const singleValueFirstPattern = /^(-?[\d.,]+)%?([><=]+)x$/;
+      const singleValueFirstMatch = normalized.match(singleValueFirstPattern);
+
+      if (singleValueFirstMatch) {
+        const threshold = this.parseNumber(singleValueFirstMatch[1]);
+        const operator = singleValueFirstMatch[2];
+        let result = false;
+        if (operator === '>') result = hasilPercent < threshold;
+        else if (operator === '<') result = hasilPercent > threshold;
+        else if (operator === '>=') result = hasilPercent <= threshold;
+        else if (operator === '<=') result = hasilPercent >= threshold;
+        else if (operator === '=' || operator === '==') result = Math.abs(hasilPercent - threshold) < 0.0001;
+        return result;
+      }
+
+      return false;
+    } catch (err) {
+      console.error('[EVAL] ✗ ERROR:', err);
+      return false;
+    }
+  }
+
+  private isPercentRiskLevels(row: any): boolean {
+    const levelKeys = ['low', 'lowToModerate', 'moderate', 'moderateToHigh', 'high'];
+    for (const key of levelKeys) {
+      const value = row[key];
+      if (value && typeof value === 'string' && value.includes('%')) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  // ===================== COMPUTE PERINGKAT =====================
   private computePeringkat(row: any): number {
     const hasil = row.hasil;
     if (hasil === null || hasil === undefined) return 0;
 
-    const thresholds = {
-      low: parseFloat(row.low || '0'),
-      lowToModerate: parseFloat(row.lowToModerate || '0'),
-      moderate: parseFloat(row.moderate || '0'),
-      moderateToHigh: parseFloat(row.moderateToHigh || '0'),
-      high: parseFloat(row.high || '0'),
-    };
+    const vRaw = Number(hasil);
+    if (!isFinite(vRaw) || isNaN(vRaw)) return 0;
 
-    const defaultThresholds = {
-      low: 1,
-      lowToModerate: 2,
-      moderate: 3,
-      moderateToHigh: 4,
-      high: 5,
-    };
+    const usesPercentageFormat = this.isPercentRiskLevels(row);
 
-    const t = {
-      low: isNaN(thresholds.low) ? defaultThresholds.low : thresholds.low,
-      lowToModerate: isNaN(thresholds.lowToModerate)
-        ? defaultThresholds.lowToModerate
-        : thresholds.lowToModerate,
-      moderate: isNaN(thresholds.moderate)
-        ? defaultThresholds.moderate
-        : thresholds.moderate,
-      moderateToHigh: isNaN(thresholds.moderateToHigh)
-        ? defaultThresholds.moderateToHigh
-        : thresholds.moderateToHigh,
-      high: isNaN(thresholds.high) ? defaultThresholds.high : thresholds.high,
-    };
+    let hasilPercent: number;
+    if (usesPercentageFormat) {
+      if (row.mode === 'TEKS' || row.mode === 'KUALITATIF') {
+        hasilPercent = vRaw;
+      } else {
+        if (vRaw < 0) {
+          hasilPercent = vRaw;
+        } else {
+          hasilPercent = vRaw * 100;
+        }
+      }
+    } else {
+      hasilPercent = vRaw;
+    }
 
-    const nilai = Number(hasil);
-    if (nilai <= t.low) return 1;
-    if (nilai <= t.lowToModerate) return 2;
-    if (nilai <= t.moderate) return 3;
-    if (nilai <= t.moderateToHigh) return 4;
+    const riskFields = ['low', 'lowToModerate', 'moderate', 'moderateToHigh', 'high'];
+
+    for (let i = riskFields.length - 1; i >= 0; i--) {
+      const field = riskFields[i];
+      const condition = row[field];
+
+      if (!condition || String(condition).trim() === '') continue;
+
+      const conditionMet = this.evaluateRiskCondition(hasilPercent, String(condition).trim());
+      if (conditionMet) {
+        return i + 1;
+      }
+    }
+
+    // Fallback
+    if (hasilPercent <= 0) return 1;
+    if (hasilPercent <= 5) return 1;
+    if (hasilPercent <= 10) return 2;
+    if (hasilPercent <= 15) return 3;
+    if (hasilPercent <= 20) return 4;
     return 5;
   }
 
@@ -673,7 +799,7 @@ export class RekapData2Service {
 
     newRow.hasil = this.computeHasil(newRow);
     newRow.peringkat = this.computePeringkat(newRow);
-    newRow.weighted = (newRow.peringkat * newRow.bobotIndikator) / 100;
+    newRow.weighted = ((newRow.bobotSection || 0) * newRow.bobotIndikator * newRow.peringkat) / 10000;
 
     return newRow;
   }

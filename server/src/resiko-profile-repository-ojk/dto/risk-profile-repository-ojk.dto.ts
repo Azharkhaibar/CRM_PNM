@@ -89,13 +89,13 @@ export class RiskProfileRepositoryOjkDto {
   pembilangLabel: string | null;
 
   @ApiProperty({ required: false })
-  pembilangValue: number | null;
+  pembilangValue: number | string | null;
 
   @ApiProperty({ required: false })
   penyebutLabel: string | null;
 
   @ApiProperty({ required: false })
-  penyebutValue: number | null;
+  penyebutValue: number | string | null;
 
   // Hasil
   @ApiProperty({ required: false })

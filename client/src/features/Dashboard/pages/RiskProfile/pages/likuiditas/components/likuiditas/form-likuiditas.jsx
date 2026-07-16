@@ -372,7 +372,6 @@ export default function FormSection({ form: incomingForm, setForm = () => {}, on
                     className="w-full rounded-lg border border-gray-300 px-3 py-2 mt-2 bg-white focus:ring-1 focus:ring-purple-500 focus:border-purple-500 transition-all duration-200"
                     placeholder="Nilai pembilang"
                     step="0.01"
-                    min="0"
                   />
                 </div>
                 <div>
@@ -391,7 +390,6 @@ export default function FormSection({ form: incomingForm, setForm = () => {}, on
                     className="w-full rounded-lg border border-gray-300 px-3 py-2 mt-2 bg-white focus:ring-1 focus:ring-purple-500 focus:border-purple-500 transition-all duration-200"
                     placeholder="Nilai penyebut"
                     step="0.01"
-                    min="0"
                   />
                 </div>
               </div>

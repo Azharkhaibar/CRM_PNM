@@ -49,7 +49,7 @@ function useDragScroll() {
       scrollRef.current.scrollLeft = scrollLeft - (x - startX) * 2;
     };
     const handleMouseUp = () => {
-      setIsDragging(false);
+      setIsDragging(false)
       if (scrollRef.current) {
         scrollRef.current.style.cursor = 'grab';
         scrollRef.current.style.removeProperty('user-select');
@@ -217,27 +217,89 @@ export function SummaryTable({ summaryData, isLoading }) {
     if (isLoading || summaryData.length === 0) return [];
 
     const rows = [];
+    const filteredPages = [];
 
     summaryData.forEach((pageData) => {
       const { no, categoryLabel, categoryCode, rows: pageRows } = pageData;
-
       if (!Array.isArray(pageRows) || pageRows.length === 0) {
+        const isCategoryMatch = !searchLower || categoryLabel.toLowerCase().includes(searchLower);
+        if (isCategoryMatch) {
+          filteredPages.push({
+            no,
+            categoryLabel,
+            categoryCode,
+            params: []
+          });
+        }
+        return;
+      }
+
+      const filteredParams = [];
+      pageRows.forEach((param, paramIndex) => {
+        const paramName = param.judul || 'Parameter';
+        const paramNumber = param.nomor || (paramIndex + 1).toString();
+
+        const isParamMatch = !searchLower ||
+          categoryLabel.toLowerCase().includes(searchLower) ||
+          paramName.toLowerCase().includes(searchLower) ||
+          `R.${categoryCode}.${paramNumber}`.toLowerCase().includes(searchLower);
+
+        let filteredNilaiList = [];
+        if (!searchLower) {
+          filteredNilaiList = param.nilaiList || [];
+        } else {
+          if (isParamMatch) {
+            filteredNilaiList = param.nilaiList || [];
+          } else if (Array.isArray(param.nilaiList)) {
+            filteredNilaiList = param.nilaiList.filter((item) => {
+              const indicatorText = (item?.judul?.text || '').toLowerCase();
+              const itemIndexStr = `R.${categoryCode}.${item?.nomor || paramNumber}`.toLowerCase();
+              return indicatorText.includes(searchLower) || itemIndexStr.includes(searchLower);
+            });
+          }
+        }
+
+        const shouldInclude = !searchLower || isParamMatch || filteredNilaiList.length > 0;
+        if (shouldInclude) {
+          filteredParams.push({
+            param,
+            paramName,
+            paramNumber,
+            nilaiList: filteredNilaiList
+          });
+        }
+      });
+
+      if (filteredParams.length > 0 || (!searchLower && filteredParams.length === 0)) {
+        filteredPages.push({
+          no,
+          categoryLabel,
+          categoryCode,
+          params: filteredParams
+        });
+      }
+    });
+
+    filteredPages.forEach((pageData) => {
+      const { no, categoryLabel, categoryCode, params } = pageData;
+
+      if (params.length === 0) {
         rows.push({ type: 'no-data', categoryLabel });
         return;
       }
 
-      // Hitung total rowSpan untuk kategori ini
+      // Calculate total category rowSpan
       let totalCategoryRowSpan = 0;
-      pageRows.forEach((param) => {
-        totalCategoryRowSpan += param.nilaiList?.length || 0;
+      params.forEach((p) => {
+        const count = p.nilaiList.length;
+        totalCategoryRowSpan += count === 0 ? 1 : count;
       });
 
       let isFirstParamInCategory = true;
 
-      pageRows.forEach((param, paramIndex) => {
-        const paramName = param.judul || 'Parameter';
-        const paramNumber = param.nomor || (paramIndex + 1).toString();
-        const nilaiCount = param.nilaiList?.length || 0;
+      params.forEach((p) => {
+        const { param, paramName, paramNumber, nilaiList } = p;
+        const nilaiCount = nilaiList.length;
 
         if (nilaiCount === 0) {
           rows.push({
@@ -254,18 +316,7 @@ export function SummaryTable({ summaryData, isLoading }) {
           return;
         }
 
-        param.nilaiList.forEach((item, itemIndex) => {
-          // Filter search
-          if (searchLower) {
-            const indikator = (item?.judul?.text || '').toLowerCase();
-            const indeks = `R.${categoryCode}.${item?.nomor || ''}`.toLowerCase();
-            const pName = paramName.toLowerCase();
-            const cLabel = categoryLabel.toLowerCase();
-            if (!indikator.includes(searchLower) && !pName.includes(searchLower) && !cLabel.includes(searchLower) && !indeks.includes(searchLower)) {
-              return;
-            }
-          }
-
+        nilaiList.forEach((item, itemIndex) => {
           const derived = item?.derived || {};
           const hasilAssessment = derived.hasilDisplay ?? derived.weighted ?? 0;
           const riskLevel = derived.riskLevel ?? derived.weighted ?? 0;
@@ -297,13 +348,13 @@ export function SummaryTable({ summaryData, isLoading }) {
   // Render
   if (isLoading) {
     return (
-      <div className="mt-6 overflow-x-auto">
-        <TableHeader />
-        <table className="w-full border-collapse border border-gray-400 text-sm">
+      <div className="mt-6 overflow-x-auto rounded-xl border border-slate-200 shadow-sm animate-pulse">
+        <table className="w-full border-collapse text-sm bg-white">
+          <TableHeader />
           <tbody>
             <tr>
-              <td colSpan={11} className="border px-4 py-8 text-center">
-                Memuat data...
+              <td colSpan={10} className="px-4 py-12 text-center text-slate-500 font-medium">
+                Memuat data ringkasan...
               </td>
             </tr>
           </tbody>
@@ -314,12 +365,12 @@ export function SummaryTable({ summaryData, isLoading }) {
 
   if (summaryData.length === 0) {
     return (
-      <div className="mt-6 overflow-x-auto">
-        <TableHeader />
-        <table className="w-full border-collapse border border-gray-400 text-sm">
+      <div className="mt-6 overflow-x-auto rounded-xl border border-slate-200 shadow-sm">
+        <table className="w-full border-collapse text-sm bg-white">
+          <TableHeader />
           <tbody>
             <tr>
-              <td colSpan={11} className="border px-4 py-8 text-center text-red-500">
+              <td colSpan={10} className="px-4 py-12 text-center text-slate-500 font-medium">
                 Pilih kategori halaman untuk menampilkan data ringkasan
               </td>
             </tr>
@@ -330,22 +381,22 @@ export function SummaryTable({ summaryData, isLoading }) {
   }
 
   return (
-    <div className="mt-6 overflow-x-auto">
-      <table className="w-full border-collapse border border-gray-400 text-sm">
+    <div className="mt-6 overflow-x-auto rounded-xl border border-slate-200 shadow-sm">
+      <table className="w-full border-collapse text-sm bg-white">
         <TableHeader />
         <tbody>
           {allRows.length === 0 ? (
             <tr>
-              <td colSpan={11} className="border px-4 py-8 text-center text-red-500">
-                {searchLower ? `Tidak ditemukan: "${search}"` : 'Data tidak ditemukan'}
+              <td colSpan={10} className="px-4 py-12 text-center text-slate-500 font-medium border border-slate-200">
+                {searchLower ? `Tidak ditemukan hasil pencarian untuk: "${search}"` : 'Data tidak ditemukan'}
               </td>
             </tr>
           ) : (
             allRows.map((row, idx) => {
               if (row.type === 'no-data') {
                 return (
-                  <tr key={idx}>
-                    <td colSpan={11} className="border px-2 py-4 text-center text-red-500">
+                  <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
+                    <td colSpan={10} className="px-4 py-6 text-center text-red-500 font-medium border border-slate-200">
                       Data tidak ditemukan untuk Risiko {row.categoryLabel}
                     </td>
                   </tr>
@@ -354,25 +405,29 @@ export function SummaryTable({ summaryData, isLoading }) {
 
               if (row.type === 'empty-param') {
                 return (
-                  <tr key={idx}>
+                  <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
                     {row.isFirstParamInCategory && (
-                      <td rowSpan={row.totalCategoryRowSpan} className="border px-2 py-2 text-center bg-[#E8F5FA] align-top">
+                      <td rowSpan={row.totalCategoryRowSpan} className="border border-slate-200 px-3 py-3 text-center bg-slate-50/90 text-slate-800 font-semibold text-sm align-top shadow-sm">
                         {row.no}
                       </td>
                     )}
                     {row.isFirstParamInCategory && (
-                      <td rowSpan={row.totalCategoryRowSpan} className="border px-2 py-2 bg-[#E8F5FA] align-top">
+                      <td rowSpan={row.totalCategoryRowSpan} className="border border-slate-200 px-3 py-3 bg-slate-50/90 text-slate-800 font-semibold text-sm align-top shadow-sm">
                         Risiko {row.categoryLabel}
                       </td>
                     )}
-                    <td className="border px-2 py-2 text-center bg-[#E8F5FA]">{formatPercent(row.param.bobot)}</td>
-                    <td className="border px-2 py-2 bg-[#E8F5FA]">{row.paramName}</td>
-                    <td className="border px-2 py-2 text-center font-mono bg-[#E8F5FA]">{row.indeks}</td>
-                    <td className="border px-2 py-2 text-center bg-[#E8F5FA]">-</td>
-                    <td className="border px-2 py-2 text-center">-</td>
-                    <td className="border px-2 py-2 text-center">-</td>
-                    <td className="border px-2 py-2 text-center">-</td>
-                    <td className="border px-2 py-2 text-center">-</td>
+                    <td className="border border-slate-200 px-3 py-3 text-center bg-white text-slate-600 text-sm align-top">{formatPercent(row.param.bobot)}</td>
+                    <td className="border border-slate-200 px-3 py-3 bg-white text-slate-700 text-sm font-medium align-top">{row.paramName}</td>
+                    <td className="border border-slate-200 px-3 py-3 text-center font-mono text-xs text-slate-600 bg-white">{row.indeks}</td>
+                    <td className="border border-slate-200 px-3 py-3 bg-white text-slate-400 text-sm italic">Belum ada indikator</td>
+                    <td className="border border-slate-200 px-3 py-3 text-center font-mono text-xs text-slate-400 bg-white">-</td>
+                    <td className="border border-slate-200 px-3 py-3 text-center font-mono text-xs text-slate-400 bg-white">-</td>
+                    <td className="border border-slate-200 px-3 py-3 text-center font-mono text-xs text-slate-400 bg-white">-</td>
+                    <td className="border border-slate-200 px-3 py-3 text-center bg-white">
+                      <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-400">
+                        N/A
+                      </span>
+                    </td>
                   </tr>
                 );
               }
@@ -381,33 +436,37 @@ export function SummaryTable({ summaryData, isLoading }) {
               const { no, categoryLabel, totalCategoryRowSpan, isFirstParamInCategory, isFirstItemInParam, param, paramName, nilaiCount, item, indeks, hasilAssessment, riskLevel } = row;
 
               return (
-                <tr key={idx}>
+                <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
                   {isFirstParamInCategory && (
-                    <td rowSpan={totalCategoryRowSpan} className="border px-2 py-2 text-center bg-[#E8F5FA] align-top">
+                    <td rowSpan={totalCategoryRowSpan} className="border border-slate-200 px-3 py-3 text-center bg-slate-50/90 text-slate-800 font-semibold text-sm align-top shadow-sm">
                       {no}
                     </td>
                   )}
                   {isFirstParamInCategory && (
-                    <td rowSpan={totalCategoryRowSpan} className="border px-2 py-2 bg-[#E8F5FA] align-top">
+                    <td rowSpan={totalCategoryRowSpan} className="border border-slate-200 px-3 py-3 bg-slate-50/90 text-slate-800 font-semibold text-sm align-top shadow-sm">
                       Risiko {categoryLabel}
                     </td>
                   )}
                   {isFirstItemInParam && (
-                    <td rowSpan={nilaiCount} className="border px-2 py-2 text-center bg-[#E8F5FA] align-top">
+                    <td rowSpan={nilaiCount} className="border border-slate-200 px-3 py-3 text-center bg-white text-slate-600 text-sm align-top">
                       {formatPercent(param.bobot)}
                     </td>
                   )}
                   {isFirstItemInParam && (
-                    <td rowSpan={nilaiCount} className="border px-2 py-2 bg-[#E8F5FA] align-top">
+                    <td rowSpan={nilaiCount} className="border border-slate-200 px-3 py-3 bg-white text-slate-700 text-sm font-medium align-top">
                       {paramName}
                     </td>
                   )}
-                  <td className="border px-2 py-2 text-center font-mono bg-[#E8F5FA]">{indeks}</td>
-                  <td className="border px-2 py-2 bg-[#E8F5FA] break-words max-w-[500px]">{item?.judul?.text || '-'}</td>
-                  <td className="border px-2 py-2 text-center">{formatPercent(item.bobot)}</td>
-                  <td className="border px-2 py-2 text-center font-bold">{formatNumber(hasilAssessment)}</td>
-                  <td className={`border px-2 py-2 text-center font-bold ${getRiskColor(riskLevel)}`}>{formatNumber(riskLevel)}</td>
-                  <td className={`border px-2 py-2 text-center font-bold ${getRiskColor(riskLevel)}`}>{getRiskIndicator(riskLevel)}</td>
+                  <td className="border border-slate-200 px-3 py-3 text-center font-mono text-xs text-slate-600 bg-white">{indeks}</td>
+                  <td className="border border-slate-200 px-3 py-3 bg-white text-slate-800 text-sm break-words max-w-[400px]">{item?.judul?.text || '-'}</td>
+                  <td className="border border-slate-200 px-3 py-3 text-center font-mono text-xs text-slate-600 bg-white">{formatPercent(item.bobot)}</td>
+                  <td className="border border-slate-200 px-3 py-3 text-center font-mono font-semibold text-slate-800 bg-white">{formatNumber(hasilAssessment)}</td>
+                  <td className="border border-slate-200 px-3 py-3 text-center font-mono font-bold text-slate-900 bg-white">{formatNumber(riskLevel)}</td>
+                  <td className="border border-slate-200 px-3 py-3 text-center bg-white">
+                    <span className={`inline-flex items-center justify-center px-2.5 py-1 rounded-full text-xs font-semibold shadow-sm ${getRiskColor(riskLevel)}`}>
+                      {getRiskIndicator(riskLevel)}
+                    </span>
+                  </td>
                 </tr>
               );
             })
@@ -420,42 +479,44 @@ export function SummaryTable({ summaryData, isLoading }) {
 
 // ==================== TABLE HEADER (DIPISAH) ====================
 function TableHeader() {
+  const { activeQuarter } = useHeaderStore();
   return (
     <thead>
-      <tr>
-        <th rowSpan={3} className="border border-gray-400 px-2 py-2 bg-blue-800 text-white min-w-[50px]">
+      <tr className="bg-gradient-to-r from-blue-900 to-sky-900 text-white">
+        <th rowSpan={3} className="border border-slate-700/50 px-3 py-3 text-center font-semibold text-xs uppercase tracking-wider min-w-[50px]">
           No
         </th>
-        <th rowSpan={3} className="border border-gray-400 px-2 py-2 bg-blue-800 text-white min-w-[110px]">
+        <th rowSpan={3} className="border border-slate-700/50 px-3 py-3 text-left font-semibold text-xs uppercase tracking-wider min-w-[120px]">
           Jenis Resiko
         </th>
-        <th rowSpan={3} className="border border-gray-400 px-2 py-2 bg-blue-800 text-white min-w-[30px]">
+        <th rowSpan={3} className="border border-slate-700/50 px-3 py-3 text-center font-semibold text-xs uppercase tracking-wider min-w-[60px]">
           Bobot
         </th>
-        <th rowSpan={3} className="border border-gray-400 px-2 py-2 bg-blue-800 text-white min-w-[250px]">
+        <th rowSpan={3} className="border border-slate-700/50 px-3 py-3 text-left font-semibold text-xs uppercase tracking-wider min-w-[220px]">
           Parameter
         </th>
-        <th rowSpan={3} className="border border-gray-400 px-2 py-2 bg-blue-800 text-white min-w-[100px]">
+        <th rowSpan={3} className="border border-slate-700/50 px-3 py-3 text-center font-semibold text-xs uppercase tracking-wider min-w-[90px]">
           Indeks
         </th>
-        <th rowSpan={3} className="border border-gray-400 px-2 py-2 bg-blue-800 text-white min-w-[250px]">
+        <th rowSpan={3} className="border border-slate-700/50 px-3 py-3 text-left font-semibold text-xs uppercase tracking-wider min-w-[280px]">
           Indikator/Risiko Inheren
         </th>
-        <th colSpan={4} className="border border-gray-400 px-2 py-2 bg-slate-700 text-white text-center">
+        <th colSpan={4} className="border border-slate-700/50 px-3 py-2 bg-slate-800 text-white text-center font-semibold text-xs uppercase tracking-wider">
           Hasil Risk Assessment
         </th>
       </tr>
-      <tr>
-        <th colSpan={4} className="border border-gray-400 px-2 py-2 bg-slate-700 text-white text-center">
-          Active Quarter
+      <tr className="bg-slate-850 text-white">
+        <th colSpan={4} className="border border-slate-700/50 px-3 py-2 bg-slate-800 text-white text-center font-semibold text-xs tracking-wider">
+          Active Quarter: {activeQuarter || '-'}
         </th>
       </tr>
-      <tr>
-        <th className="border border-gray-400 px-2 py-2 bg-slate-700 text-white min-w-[40px]">Bobot</th>
-        <th className="border border-gray-400 px-2 py-2 bg-slate-700 text-white min-w-[80px]">Hasil Assessment</th>
-        <th className="border border-gray-400 px-2 py-2 bg-slate-700 text-white min-w-[80px]">Risk Level</th>
-        <th className="border border-gray-400 px-2 py-2 bg-slate-700 text-white min-w-[80px]">Risk Indicator</th>
+      <tr className="bg-slate-800 text-slate-200">
+        <th className="border border-slate-700/50 px-3 py-2 text-center font-semibold text-xs uppercase tracking-wider min-w-[50px]">Bobot</th>
+        <th className="border border-slate-700/50 px-3 py-2 text-center font-semibold text-xs uppercase tracking-wider min-w-[90px]">Hasil Assessment</th>
+        <th className="border border-slate-700/50 px-3 py-2 text-center font-semibold text-xs uppercase tracking-wider min-w-[90px]">Risk Level</th>
+        <th className="border border-slate-700/50 px-3 py-2 text-center font-semibold text-xs uppercase tracking-wider min-w-[110px]">Risk Indicator</th>
       </tr>
     </thead>
   );
 }
+

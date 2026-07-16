@@ -13,6 +13,7 @@ import { UpdateRasDto } from './dto/update-ra.dto';
 import { UpdateMonthlyValuesDto } from './dto/update-monthly-values.dto';
 import { FilterRasDto } from './dto/filter-ras.dto';
 import { ImportRasDto } from './dto/import-ras.dto';
+import { CloneMonthlyValuesDto, CloneYearlyParametersDto, UndoCloneMonthlyDto, UndoCloneYearlyDto } from './dto/clone-ras.dto';
 
 @Injectable()
 export class RasService {
@@ -329,6 +330,8 @@ export class RasService {
       }
 
       // Update fields if provided - PERBAIKAN: assign string kosong
+      if (updateRasDto.no !== undefined)
+        rasData.no = updateRasDto.no;
       if (updateRasDto.parameter !== undefined)
         rasData.parameter = updateRasDto.parameter.trim();
       if (updateRasDto.riskCategory !== undefined)
@@ -831,5 +834,196 @@ export class RasService {
         timestamp: new Date().toISOString(),
       };
     }
+  }
+
+  /**
+   * Clone monthly values from source month to target month
+   */
+  async cloneMonthlyValues(dto: CloneMonthlyValuesDto): Promise<{ success: boolean; count: number }> {
+    const { year, sourceMonth, targetMonth, overrideExisting = false, parameterIds } = dto;
+    this.logger.log(`Cloning monthly values from month ${sourceMonth} to ${targetMonth} for year ${year}`);
+
+    const query = this.rasRepository.createQueryBuilder('ras')
+      .where('ras.year = :year', { year });
+
+    if (parameterIds && parameterIds.length > 0) {
+      query.andWhere('ras.id IN (:...ids)', { ids: parameterIds });
+    }
+
+    const items = await query.getMany();
+    let count = 0;
+
+    for (const item of items) {
+      if (!item.monthlyValues) {
+        item.monthlyValues = {};
+      }
+
+      const sourceVal = item.monthlyValues[sourceMonth];
+      if (!sourceVal) continue; // Skip jika bulan asal tidak ada data
+
+      const targetVal = item.monthlyValues[targetMonth];
+      const targetHasData = targetVal && (targetVal.num != null || targetVal.den != null || targetVal.man != null);
+
+      if (targetHasData && !overrideExisting) {
+        continue; // Skip jika sudah ada data dan tidak boleh ditimpa
+      }
+
+      item.monthlyValues[targetMonth] = {
+        num: sourceVal.num ?? null,
+        den: sourceVal.den ?? null,
+        man: sourceVal.man ?? null,
+      };
+
+      await this.rasRepository.save(item);
+      count++;
+    }
+
+    return { success: true, count };
+  }
+
+  /**
+   * Clone yearly parameters from source year to target year
+   */
+  async cloneYearlyParameters(dto: CloneYearlyParametersDto): Promise<{ success: boolean; createdCount: number; updatedCount: number }> {
+    const { sourceYear, targetYear, copyMonthlyValues = false, overrideExisting = false } = dto;
+    this.logger.log(`Cloning yearly parameters from year ${sourceYear} to ${targetYear}`);
+
+    if (sourceYear === targetYear) {
+      throw new BadRequestException('Tahun asal dan tujuan tidak boleh sama');
+    }
+
+    const sourceItems = await this.rasRepository.find({ where: { year: sourceYear } });
+    if (sourceItems.length === 0) {
+      throw new NotFoundException(`Tidak ada data RAS untuk tahun ${sourceYear}`);
+    }
+
+    let createdCount = 0;
+    let updatedCount = 0;
+
+    for (const sourceItem of sourceItems) {
+      // Cek apakah parameter sudah ada di tahun tujuan
+      const existing = await this.rasRepository.findOne({
+        where: {
+          year: targetYear,
+          parameter: ILike(sourceItem.parameter.trim()),
+        },
+      });
+
+      if (existing) {
+        if (!overrideExisting) {
+          continue; // Lewati jika parameter sudah ada dan tidak di-override
+        }
+
+        // Override/Update parameter yang sudah ada
+        existing.riskCategory = sourceItem.riskCategory;
+        existing.statement = sourceItem.statement || '';
+        existing.formulasi = sourceItem.formulasi || '';
+        existing.riskStance = sourceItem.riskStance || 'Moderat';
+        existing.unitType = sourceItem.unitType || 'PERCENTAGE';
+        existing.dataTypeExplanation = sourceItem.dataTypeExplanation || '';
+        existing.notes = sourceItem.notes || '';
+        existing.rkapTarget = sourceItem.rkapTarget || '';
+        existing.rasLimit = sourceItem.rasLimit || '';
+        existing.hasNumeratorDenominator = sourceItem.hasNumeratorDenominator;
+        existing.numeratorLabel = sourceItem.numeratorLabel || '';
+        existing.denominatorLabel = sourceItem.denominatorLabel || '';
+        existing.groupId = sourceItem.groupId;
+
+        if (copyMonthlyValues) {
+          existing.monthlyValues = sourceItem.monthlyValues ? { ...sourceItem.monthlyValues } : {};
+        }
+
+        await this.rasRepository.save(existing);
+        updatedCount++;
+      } else {
+        // Buat baru di tahun tujuan
+        const newItem = new RasData();
+        newItem.year = targetYear;
+        newItem.riskCategory = sourceItem.riskCategory;
+        newItem.parameter = sourceItem.parameter;
+        newItem.no = sourceItem.no;
+        newItem.statement = sourceItem.statement || '';
+        newItem.formulasi = sourceItem.formulasi || '';
+        newItem.riskStance = sourceItem.riskStance || 'Moderat';
+        newItem.unitType = sourceItem.unitType || 'PERCENTAGE';
+        newItem.dataTypeExplanation = sourceItem.dataTypeExplanation || '';
+        newItem.notes = sourceItem.notes || '';
+        newItem.rkapTarget = sourceItem.rkapTarget || '';
+        newItem.rasLimit = sourceItem.rasLimit || '';
+        newItem.hasNumeratorDenominator = sourceItem.hasNumeratorDenominator;
+        newItem.numeratorLabel = sourceItem.numeratorLabel || '';
+        newItem.denominatorLabel = sourceItem.denominatorLabel || '';
+        newItem.groupId = sourceItem.groupId || `GID-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+        
+        if (copyMonthlyValues) {
+          newItem.monthlyValues = sourceItem.monthlyValues ? { ...sourceItem.monthlyValues } : {};
+        } else {
+          newItem.monthlyValues = {};
+        }
+
+        await this.rasRepository.save(newItem);
+        createdCount++;
+      }
+    }
+
+    return { success: true, createdCount, updatedCount };
+  }
+
+  /**
+   * Undo clone monthly values
+   */
+  async undoCloneMonthly(dto: UndoCloneMonthlyDto): Promise<{ success: boolean; count: number }> {
+    const { year, targetMonth, parameterIds } = dto;
+    this.logger.log(`🔄 Undo clone monthly values for year ${year}, targetMonth ${targetMonth}`);
+
+    const query = this.rasRepository.createQueryBuilder('ras')
+      .where('ras.year = :year', { year });
+
+    if (parameterIds && parameterIds.length > 0) {
+      query.andWhere('ras.id IN (:...ids)', { ids: parameterIds });
+    }
+
+    const items = await query.getMany();
+    let count = 0;
+
+    for (const item of items) {
+      if (item.monthlyValues && item.monthlyValues[targetMonth]) {
+        delete item.monthlyValues[targetMonth];
+        await this.rasRepository.save(item);
+        count++;
+      }
+    }
+
+    return { success: true, count };
+  }
+
+  /**
+   * Undo clone yearly parameters
+   */
+  async undoCloneYearly(dto: UndoCloneYearlyDto): Promise<{ success: boolean; deletedCount: number }> {
+    const { sourceYear, targetYear } = dto;
+    this.logger.log(`🔄 Undo clone yearly parameters from year ${sourceYear} to ${targetYear}`);
+
+    // Cari parameter di tahun asal
+    const sourceItems = await this.rasRepository.find({ where: { year: sourceYear } });
+    let deletedCount = 0;
+
+    for (const sourceItem of sourceItems) {
+      // Cari parameter dengan nama yang sama di tahun target
+      const existing = await this.rasRepository.findOne({
+        where: {
+          year: targetYear,
+          parameter: ILike(sourceItem.parameter.trim()),
+        },
+      });
+
+      if (existing) {
+        // Hapus parameter tersebut dari tahun target
+        await this.rasRepository.delete(existing.id);
+        deletedCount++;
+      }
+    }
+
+    return { success: true, deletedCount };
   }
 }

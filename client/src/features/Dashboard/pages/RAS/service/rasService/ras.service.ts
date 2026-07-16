@@ -295,6 +295,62 @@ export const rasApi = {
   },
 
   /**
+   * Clone monthly values
+   */
+  async cloneMonth(payload: { year: number; sourceMonth: number; targetMonth: number; overrideExisting: boolean; parameterIds?: number[] }) {
+    try {
+      console.log(`📤 Cloning month: from ${payload.sourceMonth} to ${payload.targetMonth}`);
+      const response = await api_ras.post('/clone/month', payload);
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ Error cloning month:', error.message);
+      throw error;
+    }
+  },
+
+  /**
+   * Clone yearly parameters
+   */
+  async cloneYear(payload: { sourceYear: number; targetYear: number; copyMonthlyValues: boolean; overrideExisting: boolean }) {
+    try {
+      console.log(`📤 Cloning year: from ${payload.sourceYear} to ${payload.targetYear}`);
+      const response = await api_ras.post('/clone/year', payload);
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ Error cloning year:', error.message);
+      throw error;
+    }
+  },
+
+  /**
+   * Undo clone monthly values
+   */
+  async undoCloneMonth(payload: { year: number; targetMonth: number }) {
+    try {
+      console.log(`📤 Undoing clone month: target month ${payload.targetMonth}`);
+      const response = await api_ras.post('/undo-clone/month', payload);
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ Error undoing clone month:', error.message);
+      throw error;
+    }
+  },
+
+  /**
+   * Undo clone yearly parameters
+   */
+  async undoCloneYear(payload: { sourceYear: number; targetYear: number }) {
+    try {
+      console.log(`📤 Undoing clone year: target year ${payload.targetYear}`);
+      const response = await api_ras.post('/undo-clone/year', payload);
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ Error undoing clone year:', error.message);
+      throw error;
+    }
+  },
+
+  /**
    * Inline update field (untuk yearly table)
    */
   async inlineUpdate(id: string, field: string, value: any): Promise<RasData> {

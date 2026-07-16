@@ -6,7 +6,6 @@ import { DarkModeProvider } from './shared/components/Darkmodecontext.jsx';
 import DarkModeToggle from './shared/components/Toggledarkmode.jsx';
 import ProtectedRoute from './features/Dashboard/routes/ProtectedAuthRoute.routes.jsx';
 import PublicRoute from './features/Dashboard/routes/PublicRoute.jsx';
-import Mainpage from './pages/mainpage/home';
 import LoginPage from './features/auth/pages/loginform';
 import RegisterPage from './features/auth/pages/registform.jsx';
 import ForgotPassword from './features/auth/pages/forgot-password.jsx';
@@ -45,6 +44,7 @@ import Ringkasan from './features/Dashboard/pages/RiskProfile/pages/ringkasan/ri
 import Rekap1Page from './features/Dashboard/pages/RiskProfile/pages/rekapdata1/rekap1page';
 import RekapData2 from './features/Dashboard/pages/RiskProfile/pages/rekapdata2/rekapdata2';
 import RekapData from './features/Dashboard/pages/RiskProfile/pages/rekapdata/rekapdata';
+import Komposit from './features/Dashboard/pages/RiskProfile/pages/komposit/komposit';
 import ReputasiOJK from './features/Dashboard/pages/OJK/pages/regulatory/reputasi/tabs/reputasi';
 import StrategisOJK from './features/Dashboard/pages/OJK/pages/regulatory/strategis/tabs/strategis';
 import InvestasiOJK from './features/Dashboard/pages/OJK/pages/regulatory/investasi/tabs/investasi';
@@ -56,6 +56,8 @@ import RekapData1Ojk from './features/Dashboard/pages/OJK/pages/rekap-data-1/rek
 import RingkasanOjk from './features/Dashboard/pages/OJK/pages/ringkasan/ringkasan';
 import RekapData2Ojk from './features/Dashboard/pages/OJK/pages/rekap-data-2/rekap-data-2';
 import PeringkatKompositOjk from './features/Dashboard/pages/OJK/pages/peringkat-komposit/peringkat-komposit';
+// import PeringkatKompositOjk from './features/Dashboard/pages/OJK/pages/peringkat-komposit/peringkat-komposit';
+// import InvestasiInherent from './features/Dashboard/pages/RiskProfile/pages/investasi/investasi-page';
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -141,6 +143,7 @@ function App() {
               <Route path="rekapdata2" element={<RekapData2 />} />
               <Route path="rekap-data" element={<RekapData />} />
               <Route path="ringkasan" element={<Ringkasan />} />
+              <Route path="peringkat-komposit" element={<Komposit />} />
               {/* RAS ASLI - Sistem Terintegrasi */}
               <Route path="ras" element={<Ras />} />
               {/* RAS DUMMY - Halaman Testing Terpisah */}
@@ -169,7 +172,7 @@ function App() {
               <Route path="ojk/peringkat-komposit" element={<PeringkatKompositOjk />} />
             </Route>
 
-            <Route path="/" element={user ? <Navigate to="/dashboard" replace /> : <Mainpage />} />
+            <Route path="/" element={user ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />} />
 
             <Route path="*" element={<Navigate to={user ? '/dashboard' : '/login'} replace />} />
           </Routes>

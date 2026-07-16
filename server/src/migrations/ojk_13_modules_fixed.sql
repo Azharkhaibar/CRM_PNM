@@ -301,6 +301,8 @@ CREATE TABLE konsentrasi_nilai_ojk (
     nomor         VARCHAR(255)   NULL,
     judul         JSON           NULL,
     bobot         DECIMAL(10, 2) NOT NULL,
+    kode_emiten   VARCHAR(255)   NULL,
+    kepemilikan   VARCHAR(255)   NULL,
     portofolio    VARCHAR(255)   NULL,
     keterangan    TEXT           NULL,
     riskindikator JSON           NULL,

@@ -64,11 +64,11 @@ export const exportHukumToExcel = async ({ year, quarter, sections = [], filenam
       HEADER: '4472C4', // Biru Excel untuk header utama (kolom A-H, N-Q)
 
       // ===== HEADER RISK LEVEL =====
-      HEADER_LOW: 'C6E0B4', // Hijau muda untuk header Low
-      HEADER_LOW_TO_MODERATE: 'BDD7EE', // Biru muda untuk header Low to Moderate
-      HEADER_MODERATE: 'FFE699', // Kuning pastel untuk header Moderate
-      HEADER_MODERATE_TO_HIGH: 'F4B084', // Oranye kemerahan untuk header Moderate to High
-      HEADER_HIGH: 'C00000', // Merah tua untuk header High
+      HEADER_LOW: '2E7D32', // Hijau untuk header Low
+      HEADER_LOW_TO_MODERATE: '92D050', // Lime untuk header Low to Moderate
+      HEADER_MODERATE: 'FFFF00', // Kuning untuk header Moderate
+      HEADER_MODERATE_TO_HIGH: 'FFC000', // Oranye untuk header Moderate to High
+      HEADER_HIGH: 'FF0000', // Merah untuk header High
 
       // ===== SECTION =====
       SECTION_BG: 'D9E1F2', // Biru sangat muda (section title)
@@ -261,7 +261,7 @@ export const exportHukumToExcel = async ({ year, quarter, sections = [], filenam
           if (c === 8) {
             // Kolom I - Low
             bgColor = COLORS.HEADER_LOW;
-            textColor = '000000'; // Teks hitam
+            textColor = 'FFFFFF'; // Teks putih untuk kontras
           } else if (c === 9) {
             // Kolom J - Low to Moderate
             bgColor = COLORS.HEADER_LOW_TO_MODERATE;
@@ -277,7 +277,7 @@ export const exportHukumToExcel = async ({ year, quarter, sections = [], filenam
           } else if (c === 12) {
             // Kolom M - High
             bgColor = COLORS.HEADER_HIGH;
-            textColor = 'FFFFFF'; // Teks putih untuk kontras dengan merah tua
+            textColor = 'FFFFFF'; // Teks putih untuk kontras dengan merah
           }
         }
 
@@ -361,17 +361,20 @@ export const exportHukumToExcel = async ({ year, quarter, sections = [], filenam
 
             // Tentukan warna berdasarkan nilai peringkat - SESUAI HEADER RISK LEVEL
             if (peringkat === 1) {
-              ratingColor = COLORS.HEADER_LOW; // Hijau muda (C6E0B4)
+              ratingColor = COLORS.HEADER_LOW; // Hijau (2E7D32)
+              textColor = 'FFFFFF';
             } else if (peringkat === 2) {
-              ratingColor = COLORS.HEADER_LOW_TO_MODERATE; // Biru muda (BDD7EE)
+              ratingColor = COLORS.HEADER_LOW_TO_MODERATE; // Lime (92D050)
+              textColor = '000000';
             } else if (peringkat === 3) {
-              ratingColor = COLORS.HEADER_MODERATE; // Kuning pastel (FFE699)
+              ratingColor = COLORS.HEADER_MODERATE; // Kuning (FFFF00)
+              textColor = '000000';
             } else if (peringkat === 4) {
-              ratingColor = COLORS.HEADER_MODERATE_TO_HIGH; // Oranye kemerahan (F4B084)
+              ratingColor = COLORS.HEADER_MODERATE_TO_HIGH; // Oranye (FFC000)
               textColor = '000000'; // Hitam
             } else if (peringkat >= 5) {
-              ratingColor = COLORS.HEADER_HIGH; // Merah tua (C00000)
-              textColor = 'FFFFFF'; // Putih untuk kontras dengan merah tua
+              ratingColor = COLORS.HEADER_HIGH; // Merah (FF0000)
+              textColor = 'FFFFFF'; // Putih untuk kontras
             }
 
             applyStyle(cell, {

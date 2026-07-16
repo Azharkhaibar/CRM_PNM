@@ -36,4 +36,22 @@ export const rekapDataAPI = {
     axios.delete(`${API_BASE_URL}/rekap-data/cleanup`, {
       params: { year, quarter },
     }),
+
+  // POST clone period data
+  clonePeriod: (payload) => axios.post(`${API_BASE_URL}/rekap-data/clone`, payload),
+
+  // POST clone KPMR data
+  cloneKpmrPeriodData: (payload) => axios.post(`${API_BASE_URL}/rekap-data/clone-kpmr`, payload),
+
+  // DELETE reset period data
+  resetPeriodData: (year, quarter, source) =>
+    axios.delete(`${API_BASE_URL}/rekap-data/reset`, {
+      params: { year, quarter, source },
+    }),
+
+  // DELETE reset KPMR period data
+  resetKpmrPeriodData: (year, category) =>
+    axios.delete(`${API_BASE_URL}/rekap-data/reset-kpmr`, {
+      params: { year, category },
+    }),
 };

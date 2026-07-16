@@ -1,6 +1,6 @@
 // src/features/Dashboard/pages/RiskProfile/pages/Likuiditas/components/LikuiditasInherent.jsx
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Download, Trash2, Edit3, Search, Plus, ChevronDown } from 'lucide-react';
+import { Download, Trash2, Edit3, Search, Plus, ChevronDown, Copy } from 'lucide-react';
 import { calculatePeringkat, calculatePeringkatFromText, isNumericRiskLevels } from './utils/likuiditas/riskcalculator';
 
 // ==== Komponen & Utils ====
@@ -15,6 +15,8 @@ import ToastNotification from './components/kpmr-likuiditas/ToastNotification';
 import { useLikuiditas } from './hooks/likuiditas/likuiditas.hook';
 import { useAuditLog } from '../../../audit-log/hooks/audit-log.hooks';
 import { useAuth } from '@/features/auth/hooks/useAuth.hook';
+import { rekapDataAPI } from '../rekapdata/services/rekap-data-api';
+import HoldingCloneDialog from '../../components/HoldingCloneDialog';
 // ==== Section Inheritance Utils ====
 import {
   getSectionsForPeriod,
@@ -299,12 +301,17 @@ export default function LikuiditasInherent({ viewYear, viewQuarter, onViewYearCh
     createIndikator,
     updateIndikator,
     deleteIndikator,
+    getSections,
     transformToBackend,
+    getSectionsWithIndicatorsByPeriod,
   } = useLikuiditas({
     initialYear: Number(viewYear),
     initialQuarter: viewQuarter,
     autoLoad: true,
   });
+
+  // ========== CLONING STATES ==========
+  const [cloneDialogOpen, setCloneDialogOpen] = useState(false);
 
   // Sync hook dengan props
   useEffect(() => {
@@ -503,17 +510,33 @@ export default function LikuiditasInherent({ viewYear, viewQuarter, onViewYearCh
     if (!inheritInfo) return;
 
     try {
-      const clonedSections = sections.filter((s) => s.year === viewYear && s.quarter === viewQuarter && s.inheritedFrom);
+      const clonedSections = sections.filter((s) => s.year === viewYear && s.quarter === viewQuarter && (s.inheritedFrom || inheritInfo?.isManual));
 
       for (const section of clonedSections) {
         await deleteSection(section.id);
       }
 
       setInheritInfo(null);
-      showToast('Clone berhasil dibatalkan', 'success');
+      showToast('Kloning berhasil dibatalkan', 'success');
     } catch (err) {
       console.error('Error undoing clone:', err);
       showToast('Gagal membatalkan clone', 'error');
+    }
+  };
+
+  const handleResetData = async () => {
+    if (!confirm('Apakah Anda yakin ingin menghapus/reset semua data Likuiditas untuk periode ini? Semua indikator dan section akan terhapus secara permanen.')) {
+      return;
+    }
+    try {
+      await rekapDataAPI.resetPeriodData(viewYear, viewQuarter, 'LIKUIDITAS');
+      showToast('Data berhasil di-reset', 'success');
+      if (getSections) await getSections();
+      if (getSectionsWithIndicatorsByPeriod) await getSectionsWithIndicatorsByPeriod(viewYear, viewQuarter);
+      setInheritInfo(null);
+    } catch (err) {
+      console.error('Error resetting data:', err);
+      showToast('Gagal me-reset data', 'error');
     }
   };
 
@@ -781,18 +804,9 @@ export default function LikuiditasInherent({ viewYear, viewQuarter, onViewYearCh
 
     if (baseRow.mode === 'RASIO') {
       if (penyebutValue === 0) {
-        showToast('Untuk mode RASIO, nilai penyebut harus lebih besar dari 0', 'error');
+        showToast('Untuk mode RASIO, nilai penyebut tidak boleh 0 (pembagian dengan nol)', 'error');
         return;
       }
-      if (penyebutValue < 0) {
-        showToast('Untuk mode RASIO, nilai penyebut tidak boleh negatif', 'error');
-        return;
-      }
-    }
-
-    if (baseRow.mode === 'NILAI_TUNGGAL' && penyebutValue < 0) {
-      showToast('Untuk mode NILAI_TUNGGAL, nilai penyebut tidak boleh negatif', 'error');
-      return;
     }
 
     const rawHasil = computeLikuiditasHasil(baseRow);
@@ -947,6 +961,14 @@ export default function LikuiditasInherent({ viewYear, viewQuarter, onViewYearCh
           </div>
 
           <div className="flex items-end gap-2">
+            <button onClick={handleResetData} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 bg-red-600 text-white hover:bg-red-700 font-semibold">
+              <Trash2 size={16} /> Reset Data
+            </button>
+
+            <button onClick={() => setCloneDialogOpen(true)} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 bg-purple-600 text-white hover:bg-purple-700 font-semibold">
+              <Copy size={16} /> Salin Data
+            </button>
+
             <button onClick={() => setShowLikuiditasForm(true)} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 font-semibold">
               + Tambah Data
             </button>
@@ -963,20 +985,31 @@ export default function LikuiditasInherent({ viewYear, viewQuarter, onViewYearCh
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-1">
               <span className="inline-block w-2 h-2 rounded-full bg-yellow-500"></span>
-              <strong>Auto-Clone Berhasil!</strong>
+              <strong>{inheritInfo.isManual ? 'Kloning Berhasil' : 'Auto-Clone Berhasil'}</strong>
             </div>
             <p className="text-gray-700">
               Section untuk{' '}
               <strong>
                 {viewYear}-{viewQuarter}
               </strong>{' '}
-              telah di-clone otomatis dari <strong>{inheritInfo.from}</strong> ({inheritInfo.count} section).
+              telah {inheritInfo.isManual ? 'berhasil disalin' : 'di-clone otomatis'} dari <strong>{inheritInfo.from}</strong> ({inheritInfo.count} section).
             </p>
             <p className="text-xs text-gray-500 mt-1">💡 Anda dapat mengedit atau menghapus section sesuai kebutuhan.</p>
           </div>
-          <button onClick={handleUndoClone} className="px-3 py-1.5 rounded border bg-white hover:bg-gray-50 text-sm font-medium whitespace-nowrap">
-            Undo Clone
-          </button>
+          <div className="flex flex-col gap-2">
+            <button 
+              onClick={handleUndoClone} 
+              className="px-3 py-1.5 rounded border border-red-200 bg-white hover:bg-red-50 text-red-600 text-sm font-medium whitespace-nowrap"
+            >
+              Undo Clone
+            </button>
+            <button 
+              onClick={() => setInheritInfo(null)} 
+              className="px-3 py-1.5 rounded border border-blue-600 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium whitespace-nowrap"
+            >
+              Confirm Clone
+            </button>
+          </div>
         </div>
       )}
 
@@ -1413,13 +1446,54 @@ export default function LikuiditasInherent({ viewYear, viewQuarter, onViewYearCh
       {/* Data Table */}
       <section className="mt-4">
         <div className="bg-white rounded-2xl shadow overflow-hidden border border-gray-200">
-          <div className="relative h-[350px]">
-            <div className="absolute inset-0 overflow-x-auto overflow-y-auto">
-              <DataTable rows={LIKUIDITAS_filtered} totalWeighted={LIKUIDITAS_totalWeighted} viewYear={viewYear} viewQuarter={viewQuarter} startEdit={LIKUIDITAS_startEdit} removeRow={LIKUIDITAS_removeRow} />
-            </div>
+          <div className="w-full overflow-x-auto">
+            <DataTable rows={LIKUIDITAS_filtered} totalWeighted={LIKUIDITAS_totalWeighted} viewYear={viewYear} viewQuarter={viewQuarter} startEdit={LIKUIDITAS_startEdit} removeRow={LIKUIDITAS_removeRow} />
           </div>
         </div>
       </section>
+
+      {cloneDialogOpen && (
+        <HoldingCloneDialog
+          isOpen={cloneDialogOpen}
+          onClose={() => setCloneDialogOpen(false)}
+          defaultCategory="LIKUIDITAS"
+          currentYear={viewYear}
+          currentQuarter={viewQuarter}
+          onSuccess={async (info) => {
+            showToast('Data berhasil disalin', 'success');
+            setInheritInfo({
+              from: info.from,
+              isManual: true,
+              count: info.count,
+            });
+
+            if (onViewYearChange) onViewYearChange(info.targetYear);
+            if (onViewQuarterChange) onViewQuarterChange(info.targetQuarter);
+
+            if (getSectionsWithIndicatorsByPeriod) {
+              await getSectionsWithIndicatorsByPeriod(info.targetYear, info.targetQuarter);
+            } else if (getSections) {
+              await getSections(Number(info.targetYear), info.targetQuarter);
+            }
+
+            await logCreate(
+              'LIKUIDITAS',
+              `Kloning data Profil Risiko Holding dari periode ${info.from} ke ${info.targetYear} ${info.targetQuarter} (Modul: ${info.categories.join(', ')})`,
+              {
+                userId: currentUser?.id,
+                isSuccess: true,
+                metadata: {
+                  sourceYear: info.from.split('-')[0],
+                  sourceQuarter: info.from.split('-')[1],
+                  targetYear: info.targetYear,
+                  targetQuarter: info.targetQuarter,
+                  categories: info.categories,
+                }
+              }
+            );
+          }}
+        />
+      )}
     </>
   );
 }

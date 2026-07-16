@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useDarkMode } from '../../../shared/components/Darkmodecontext';
+import RIMS_API from '../api/auth.api';
 
 const PinDialog = ({ isOpen, onClose, onPinVerified }) => {
   const [pin, setPin] = useState('');
@@ -14,15 +15,20 @@ const PinDialog = ({ isOpen, onClose, onPinVerified }) => {
     setTimeout(() => setShowToast(false), 3000);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const validPin = '123456';
-
-    if (pin === validPin) {
-      onPinVerified();
-      setPin('');
-    } else {
-      showErrorToast('PIN tidak valid. Inget2 Pak/Bu');
+    try {
+      const response = await RIMS_API.post('/system-settings/verify-pin', { pin });
+      if (response.data.success) {
+        onPinVerified();
+        setPin('');
+      } else {
+        showErrorToast('PIN tidak valid. Inget2 Pak/Bu');
+        setPin('');
+      }
+    } catch (error) {
+      console.error('Verify PIN error:', error);
+      showErrorToast('Gagal memverifikasi PIN. Silakan coba lagi.');
       setPin('');
     }
   };

@@ -1,6 +1,24 @@
 // src/features/Dashboard/pages/RAS/ras.jsx
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Download, Search, ShieldAlert, Plus, Check, X, Info, Upload, Calendar, BarChart3, Layers, LayoutList, Trash2, ChevronDown, ChevronUp, RotateCcw, AlertTriangle, Loader2 } from 'lucide-react';
+import { 
+  Check, 
+  ShieldAlert, 
+  Calendar, 
+  BarChart3, 
+  Search, 
+  Trash2, 
+  Copy, 
+  Download, 
+  Upload, 
+  ChevronUp, 
+  Info, 
+  Plus, 
+  Layers, 
+  LayoutList, 
+  AlertTriangle, 
+  X,
+  Loader2
+} from 'lucide-react';
 
 // Import komponen
 import RiskAttitude from '../components/risk-attitude.jsx';
@@ -14,7 +32,6 @@ import useRas from '../hook/useRas.hook.js';
 import { useAuth } from '../../../../auth/hooks/useAuth.hook.js';
 // Import utils
 import { exportRasMonthly, exportRasYearly } from '../utils/export-excel.js';
-import { parseExcelFile } from '../utils/import-excel.js';
 import { MONTH_OPTIONS } from '../utils/ras-constant.js';
 
 const getCurrentYear = () => new Date().getFullYear();
@@ -41,6 +58,17 @@ export default function Ras() {
   const [showDetailColumns, setShowDetailColumns] = useState(true);
   const [showFollowUp, setShowFollowUp] = useState(false);
   const [followUpData, setFollowUpData] = useState(null);
+
+  // State untuk Salin/Clone Data
+  const [showCloneModal, setShowCloneModal] = useState(false);
+  const [inheritInfo, setInheritInfo] = useState(null);
+  const [cloneType, setCloneType] = useState('month'); // 'month' or 'year'
+  const [cloneSourceMonth, setCloneSourceMonth] = useState(0);
+  const [cloneTargetMonth, setCloneTargetMonth] = useState(1);
+  const [cloneSourceYear, setCloneSourceYear] = useState(getCurrentYear() - 1);
+  const [cloneTargetYear, setCloneTargetYear] = useState(getCurrentYear());
+  const [cloneCopyMonthlyValues, setCloneCopyMonthlyValues] = useState(false);
+  const [cloneOverrideExisting, setCloneOverrideExisting] = useState(false);
 
   // Auth dan Audit Log
   const { user: authUser } = useAuth();
@@ -84,7 +112,7 @@ export default function Ras() {
 
   const currentUser = getCurrentUser();
 
-  const { data, loading, error, categories, fetchByYear, fetchByYearAndMonth, createData, updateData, updateMonthlyValues, updateTindakLanjut, deleteData, importData, testConnection, clearError } = useRas();
+  const { data, loading, error, categories, fetchByYear, fetchByYearAndMonth, createData, updateData, updateMonthlyValues, updateTindakLanjut, deleteData, importData, testConnection, clearError, cloneMonth, cloneYear } = useRas();
 
   // Fetch data berdasarkan tab aktif
   useEffect(() => {
@@ -115,7 +143,7 @@ export default function Ras() {
   const handleSubmit = async (formData) => {
     try {
       let result;
-      let isUpdate = !!editingData;
+      let isUpdate = !!editingData && !editingData.isClone;
 
       console.log('Data dari form:', {
         formMonthlyValues: formData.monthlyValues,
@@ -123,7 +151,7 @@ export default function Ras() {
         activeTab: activeTab,
       });
 
-      if (editingData) {
+      if (isUpdate) {
         // UPDATE DATA - gabungkan monthlyValues dengan data existing
         const beforeData = { ...editingData };
 
@@ -225,8 +253,11 @@ export default function Ras() {
 
         // Log CREATE ke audit log
         const filledMonths = Object.keys(cleanedMonthlyValues).map((m) => MONTH_OPTIONS[parseInt(m)]?.label || `Bulan ${parseInt(m) + 1}`);
+        const logMsg = editingData?.isClone
+          ? `Tambah data RAS baru (Clone dari: ${editingData.parameter.replace(' - Copy', '')})`
+          : `Tambah data RAS baru: ${formData.parameter}`;
 
-        await logCreate('RAS', `Tambah data RAS baru: ${formData.parameter}`, {
+        await logCreate('RAS', logMsg, {
           userId: currentUser.id,
           isSuccess: true,
           metadata: {
@@ -238,6 +269,7 @@ export default function Ras() {
             hasNumeratorDenominator: formData.hasNumeratorDenominator,
             rkapTarget: formData.rkapTarget,
             rasLimit: formData.rasLimit,
+            clonedFrom: editingData?.isClone ? editingData.parameter.replace(' - Copy', '') : undefined,
           },
         });
       }
@@ -281,6 +313,21 @@ export default function Ras() {
 
   const handleEdit = (item) => {
     setEditingData(item);
+    setShowForm(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleClone = (item) => {
+    if (!window.confirm('Yakin ingin meng-clone parameter ini?')) {
+      return;
+    }
+    const clonedItem = {
+      ...item,
+      id: undefined,
+      parameter: `${item.parameter} - Copy`,
+      isClone: true,
+    };
+    setEditingData(clonedItem);
     setShowForm(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -336,6 +383,50 @@ export default function Ras() {
       });
 
       alert(err.message || 'Gagal menghapus data');
+    }
+  };
+
+  const handleDeleteMonthData = async (id, monthIndex) => {
+    try {
+      const itemToUpdate = data?.find((x) => x.id === id);
+      if (!itemToUpdate) {
+        throw new Error('Data tidak ditemukan');
+      }
+
+      const monthLabel = MONTH_OPTIONS[monthIndex]?.label || `Bulan ${monthIndex + 1}`;
+
+      // Log ke audit log sebelum delete
+      await logUpdate('RAS', `Hapus data realisasi bulan ${monthLabel} untuk: ${itemToUpdate.parameter}`, {
+        userId: currentUser.id,
+        isSuccess: true,
+        metadata: {
+          id: id,
+          parameter: itemToUpdate.parameter,
+          month: monthIndex,
+          monthLabel,
+          action: 'DELETE_MONTHLY_VALUES',
+          before: itemToUpdate.monthlyValues?.[monthIndex] || null,
+        },
+      });
+
+      // Panggil updateMonthlyValues untuk mereset data bulan tersebut
+      await updateMonthlyValues(id, monthIndex, {
+        num: null,
+        den: null,
+        man: null,
+      });
+
+      alert(`Data realisasi bulan ${monthLabel} berhasil dihapus`);
+
+      // Refresh data
+      if (activeTab === 'monthly') {
+        await fetchByYearAndMonth(viewYear);
+      } else {
+        await fetchByYear(viewYear);
+      }
+    } catch (err) {
+      console.error('Delete month data error:', err);
+      alert(err.message || 'Gagal menghapus data realisasi bulanan');
     }
   };
 
@@ -412,6 +503,70 @@ export default function Ras() {
       });
 
       alert(err.message || 'Gagal menyimpan tindak lanjut');
+    }
+  };
+
+  const handleExecuteClone = async () => {
+    try {
+      if (cloneType === 'month') {
+        if (cloneSourceMonth === cloneTargetMonth) {
+          alert('Bulan asal dan bulan tujuan tidak boleh sama');
+          return;
+        }
+        if (!window.confirm(`Yakin ingin menyalin realisasi dari bulan ${MONTH_OPTIONS[cloneSourceMonth]?.label} ke bulan ${MONTH_OPTIONS[cloneTargetMonth]?.label} untuk tahun ${viewYear}?`)) {
+          return;
+        }
+        const result = await cloneMonth({
+          year: viewYear,
+          sourceMonth: cloneSourceMonth,
+          targetMonth: cloneTargetMonth,
+          overrideExisting: cloneOverrideExisting,
+        });
+        setInheritInfo({
+          type: 'month',
+          from: MONTH_OPTIONS[cloneSourceMonth]?.label,
+          target: MONTH_OPTIONS[cloneTargetMonth]?.label,
+          year: viewYear,
+          sourceMonth: cloneSourceMonth,
+          targetMonth: cloneTargetMonth,
+          count: result.count,
+        });
+      } else {
+        if (cloneSourceYear === cloneTargetYear) {
+          alert('Tahun asal dan tahun tujuan tidak boleh sama');
+          return;
+        }
+        if (!window.confirm(`Yakin ingin menyalin seluruh parameter dari tahun ${cloneSourceYear} ke tahun ${cloneTargetYear}?`)) {
+          return;
+        }
+        const result = await cloneYear({
+          sourceYear: cloneSourceYear,
+          targetYear: cloneTargetYear,
+          copyMonthlyValues: cloneCopyMonthlyValues,
+          overrideExisting: cloneOverrideExisting,
+        });
+        setInheritInfo({
+          type: 'year',
+          from: cloneSourceYear,
+          target: cloneTargetYear,
+          createdCount: result.createdCount,
+          updatedCount: result.updatedCount,
+          sourceYear: cloneSourceYear,
+          targetYear: cloneTargetYear,
+        });
+      }
+
+      setShowCloneModal(false);
+
+      // Refresh data
+      if (activeTab === 'monthly') {
+        await fetchByYearAndMonth(viewYear);
+      } else {
+        await fetchByYear(viewYear);
+      }
+    } catch (err) {
+      console.error('Clone error:', err);
+      alert(err.message || 'Gagal menyalin data');
     }
   };
 
@@ -533,53 +688,108 @@ export default function Ras() {
   };
 
   const handleResetData = async () => {
-    if (!window.confirm(`PERINGATAN: Apakah Anda yakin ingin menghapus SELURUH data RAS untuk tahun ${viewYear}? Tindakan ini tidak dapat dibatalkan.`)) {
-      return;
-    }
+    if (activeTab === 'monthly') {
+      const selectedMonthLabels = selectedMonths.map((m) => MONTH_OPTIONS[m]?.label).join(', ');
+      const confirmMsg = `PERINGATAN: Apakah Anda yakin ingin me-reset (mengosongkan) data realisasi bulanan untuk bulan: ${selectedMonthLabels} di tahun ${viewYear}? Tindakan ini tidak dapat dibatalkan.`;
 
-    try {
-      const itemsToDelete = data.filter((item) => item.year === viewYear);
-
-      if (itemsToDelete.length === 0) {
-        alert('Tidak ada data untuk tahun ini');
+      if (!window.confirm(confirmMsg)) {
         return;
       }
 
-      // Log batch delete
-      await logDelete('RAS', `Reset data RAS tahun ${viewYear} - ${itemsToDelete.length} data`, {
-        userId: currentUser.id,
-        isSuccess: true,
-        metadata: {
-          year: viewYear,
-          totalItems: itemsToDelete.length,
-          items: itemsToDelete.map((item) => ({
-            id: item.id,
-            parameter: item.parameter,
-            riskCategory: item.riskCategory,
-          })),
-        },
-      });
+      try {
+        const itemsToReset = data.filter((item) => item.year === viewYear);
 
-      // Hapus semua data untuk tahun ini
-      for (const item of itemsToDelete) {
-        try {
-          await deleteData(item.id);
-        } catch (err) {
-          console.error(`Error deleting item ${item.id}:`, err);
+        if (itemsToReset.length === 0) {
+          alert('Tidak ada data untuk tahun ini');
+          return;
         }
+
+        // Log batch reset
+        await logDelete('RAS', `Reset data bulanan RAS tahun ${viewYear} untuk bulan ${selectedMonthLabels} - ${itemsToReset.length} data`, {
+          userId: currentUser.id,
+          isSuccess: true,
+          metadata: {
+            year: viewYear,
+            months: selectedMonths,
+            monthLabels: selectedMonthLabels,
+            totalItems: itemsToReset.length,
+          },
+        });
+
+        // Reset monthly values untuk masing-masing item
+        for (const item of itemsToReset) {
+          const updatedMonthlyValues = { ...item.monthlyValues };
+          selectedMonths.forEach((monthIndex) => {
+            updatedMonthlyValues[monthIndex] = {
+              num: null,
+              den: null,
+              man: null,
+              calculatedValue: null,
+            };
+          });
+
+          await updateData(item.id, { monthlyValues: updatedMonthlyValues });
+        }
+
+        alert(`Data realisasi bulan ${selectedMonthLabels} berhasil di-reset untuk tahun ${viewYear}`);
+
+        // Refresh data
+        await fetchByYearAndMonth(viewYear);
+      } catch (err) {
+        console.error('Reset error:', err);
+        alert('Gagal me-reset data: ' + err.message);
+      }
+    } else {
+      // Perilaku default untuk Yearly tab: hapus semua baris parameter tahun tersebut
+      if (!window.confirm(`PERINGATAN: Apakah Anda yakin ingin menghapus SELURUH data target tahunan RAS untuk tahun ${viewYear}? Tindakan ini tidak dapat dibatalkan.`)) {
+        return;
       }
 
-      alert(`${itemsToDelete.length} data berhasil dihapus dari tahun ${viewYear}`);
-    } catch (err) {
-      console.error('Reset error:', err);
+      try {
+        const itemsToDelete = data.filter((item) => item.year === viewYear);
 
-      await logDelete('RAS', `Gagal reset data RAS tahun ${viewYear}`, {
-        userId: currentUser.id,
-        isSuccess: false,
-        metadata: { error: err.message, year: viewYear },
-      });
+        if (itemsToDelete.length === 0) {
+          alert('Tidak ada data untuk tahun ini');
+          return;
+        }
 
-      alert('Gagal menghapus data: ' + err.message);
+        // Log batch delete
+        await logDelete('RAS', `Reset data RAS tahun ${viewYear} - ${itemsToDelete.length} data`, {
+          userId: currentUser.id,
+          isSuccess: true,
+          metadata: {
+            year: viewYear,
+            totalItems: itemsToDelete.length,
+            items: itemsToDelete.map((item) => ({
+              id: item.id,
+              parameter: item.parameter,
+              riskCategory: item.riskCategory,
+            })),
+          },
+        });
+
+        // Hapus semua data untuk tahun ini
+        for (const item of itemsToDelete) {
+          try {
+            await deleteData(item.id);
+          } catch (err) {
+            console.error(`Error deleting item ${item.id}:`, err);
+          }
+        }
+
+        alert(`${itemsToDelete.length} data berhasil dihapus dari tahun ${viewYear}`);
+        await fetchByYear(viewYear);
+      } catch (err) {
+        console.error('Reset error:', err);
+
+        await logDelete('RAS', `Gagal reset data RAS tahun ${viewYear}`, {
+          userId: currentUser.id,
+          isSuccess: false,
+          metadata: { error: err.message, year: viewYear },
+        });
+
+        alert('Gagal menghapus data: ' + err.message);
+      }
     }
   };
 
@@ -616,8 +826,80 @@ export default function Ras() {
     );
   }
 
+  const handleUndoClone = async () => {
+    if (!inheritInfo) return;
+    try {
+      if (inheritInfo.type === 'month') {
+        await rasApi.undoCloneMonth({
+          year: inheritInfo.year,
+          targetMonth: inheritInfo.targetMonth,
+        });
+      } else {
+        await rasApi.undoCloneYear({
+          sourceYear: inheritInfo.sourceYear,
+          targetYear: inheritInfo.targetYear,
+        });
+      }
+      setInheritInfo(null);
+      // Refresh data
+      if (activeTab === 'monthly') {
+        await fetchByYearAndMonth(viewYear);
+      } else {
+        await fetchByYear(viewYear);
+      }
+      alert('Kloning berhasil dibatalkan');
+    } catch (err) {
+      console.error(err);
+      alert('Gagal membatalkan clone');
+    }
+  };
+
   return (
-    <div className="space-y-6 mx-auto pb-12">
+    <div className="space-y-6 mx-auto pb-12 text-black">
+      {inheritInfo && (
+        <div className="mb-6 rounded-2xl bg-yellow-50 border border-yellow-300 px-6 py-4 text-sm flex justify-between items-start gap-4 text-black shadow-sm">
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="inline-block w-2 h-2 rounded-full bg-yellow-500"></span>
+              <strong>Kloning Berhasil</strong>
+            </div>
+            <p className="text-gray-700">
+              {inheritInfo.type === 'month' ? (
+                <>
+                  Data realisasi bulanan untuk{' '}
+                  <strong>
+                    {viewYear} - {inheritInfo.target}
+                  </strong>{' '}
+                  telah berhasil disalin dari <strong>{inheritInfo.from}</strong> ({inheritInfo.count} parameter).
+                </>
+              ) : (
+                <>
+                  Parameter tahunan untuk tahun{' '}
+                  <strong>
+                    {inheritInfo.targetYear}
+                  </strong>{' '}
+                  telah berhasil disalin dari tahun <strong>{inheritInfo.sourceYear}</strong> ({inheritInfo.createdCount} parameter dibuat baru, {inheritInfo.updatedCount} diperbarui).
+                </>
+              )}
+            </p>
+          </div>
+          <div className="flex flex-col gap-2">
+            <button 
+              onClick={handleUndoClone} 
+              className="px-3 py-1.5 rounded border border-red-200 bg-white hover:bg-red-50 text-red-600 text-sm font-medium whitespace-nowrap"
+            >
+              Undo Clone
+            </button>
+            <button 
+              onClick={() => setInheritInfo(null)} 
+              className="px-3 py-1.5 rounded border border-blue-600 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium whitespace-nowrap"
+            >
+              Confirm Clone
+            </button>
+          </div>
+        </div>
+      )}
+
       <header className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl shadow-lg text-white p-6">
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
           <div className="flex items-center gap-3">
@@ -675,18 +957,22 @@ export default function Ras() {
             </button>
 
             <button
+              onClick={() => setShowCloneModal(true)}
+              className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 bg-amber-500 text-white font-semibold hover:bg-amber-600 transition-all shadow-lg h-[46px]"
+              title="Salin/Duplikasi Data"
+              disabled={loading}
+            >
+              <Copy className="w-5 h-5" />
+              <span className="hidden sm:inline">Salin Data</span>
+            </button>
+
+            <button
               onClick={handleExport}
               className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 bg-white text-blue-600 font-semibold hover:bg-gray-100 transition-all shadow-lg h-[46px]"
               disabled={loading || filteredData.length === 0}
             >
               <Download className="w-5 h-5" />
               <span className="hidden sm:inline">Export {activeTab === 'monthly' ? 'Bulanan' : 'Tahunan'}</span>
-            </button>
-
-            <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".xlsx, .xls" className="hidden" />
-            <button onClick={handleImportClick} className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 bg-green-500 text-white font-semibold hover:bg-green-600 transition-all shadow-lg h-[46px]" disabled={loading}>
-              <Upload className="w-5 h-5" />
-              <span className="hidden sm:inline">Import</span>
             </button>
           </div>
         </div>
@@ -779,7 +1065,9 @@ export default function Ras() {
                 year={viewYear}
                 selectedMonths={selectedMonths}
                 onEdit={handleEdit}
+                onClone={handleClone}
                 onDelete={handleDelete}
+                onDeleteMonthData={handleDeleteMonthData}
                 onCellClick={handleCellClick}
                 showNumDenom={showNumDenom}
                 showDetailColumns={showDetailColumns}
@@ -816,6 +1104,170 @@ export default function Ras() {
               <RasYearlyTable rows={filteredData} allData={data} year={viewYear} onUpdate={handleInlineUpdate} loading={loading} />
             </div>
           </section>
+        </div>
+      )}
+
+      {/* CLONE MODAL */}
+      {showCloneModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border border-gray-100 animate-fade-in text-gray-800">
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-5 flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <Copy className="w-5 h-5 text-blue-100" />
+                <h3 className="font-bold text-lg">Salin / Duplikasi Data RAS</h3>
+              </div>
+              <button
+                onClick={() => setShowCloneModal(false)}
+                className="text-white/80 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-all"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Modal Tabs */}
+            <div className="flex border-b border-gray-200 bg-gray-50">
+              <button
+                onClick={() => setCloneType('month')}
+                className={`flex-1 py-3 text-center text-sm font-semibold border-b-2 transition-all ${
+                  cloneType === 'month'
+                    ? 'border-blue-600 text-blue-700 bg-white'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-100/50'
+                }`}
+              >
+                Salin Bulanan
+              </button>
+              <button
+                onClick={() => setCloneType('year')}
+                className={`flex-1 py-3 text-center text-sm font-semibold border-b-2 transition-all ${
+                  cloneType === 'year'
+                    ? 'border-blue-600 text-blue-700 bg-white'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-100/50'
+                }`}
+              >
+                Salin Parameter Tahunan
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6 space-y-4">
+              {cloneType === 'month' ? (
+                <>
+                  <p className="text-xs text-gray-500 bg-blue-50 border border-blue-100 rounded-lg p-2.5 leading-relaxed">
+                    Fitur ini menyalin data realisasi (pembilang, penyebut, atau nilai manual) seluruh parameter pada Tahun <b>{viewYear}</b> dari Bulan Asal ke Bulan Tujuan.
+                  </p>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Bulan Asal (Source)</label>
+                      <select
+                        value={cloneSourceMonth}
+                        onChange={(e) => setCloneSourceMonth(Number(e.target.value))}
+                        className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-800 text-sm focus:ring-2 focus:ring-blue-500 shadow-sm"
+                      >
+                        {MONTH_OPTIONS.map((m) => (
+                          <option key={m.value} value={m.value}>
+                            {m.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Bulan Tujuan (Target)</label>
+                      <select
+                        value={cloneTargetMonth}
+                        onChange={(e) => setCloneTargetMonth(Number(e.target.value))}
+                        className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-800 text-sm focus:ring-2 focus:ring-blue-500 shadow-sm"
+                      >
+                        {MONTH_OPTIONS.map((m) => (
+                          <option key={m.value} value={m.value}>
+                            {m.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="text-xs text-gray-500 bg-blue-50 border border-blue-100 rounded-lg p-2.5 leading-relaxed">
+                    Fitur ini menduplikasi seluruh daftar parameter dari Tahun Asal ke Tahun Tujuan. Parameter yang sudah ada di tahun tujuan dapat ditimpa atau dilewati.
+                  </p>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Tahun Asal (Source)</label>
+                      <input
+                        type="number"
+                        value={cloneSourceYear}
+                        onChange={(e) => setCloneSourceYear(parseInt(e.target.value) || '')}
+                        className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-800 text-sm focus:ring-2 focus:ring-blue-500 shadow-sm font-semibold"
+                        min="2000"
+                        max="2100"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Tahun Tujuan (Target)</label>
+                      <input
+                        type="number"
+                        value={cloneTargetYear}
+                        onChange={(e) => setCloneTargetYear(parseInt(e.target.value) || '')}
+                        className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-800 text-sm focus:ring-2 focus:ring-blue-500 shadow-sm font-semibold"
+                        min="2000"
+                        max="2100"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2.5 bg-gray-50 p-3 rounded-xl border border-gray-200">
+                    <input
+                      type="checkbox"
+                      id="copyMonthlyValues"
+                      checked={cloneCopyMonthlyValues}
+                      onChange={(e) => setCloneCopyMonthlyValues(e.target.checked)}
+                      className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                    />
+                    <label htmlFor="copyMonthlyValues" className="text-xs text-gray-700 font-medium select-none cursor-pointer">
+                      Ikut Salin Nilai Realisasi Bulanan (Januari - Desember)
+                    </label>
+                  </div>
+                </>
+              )}
+
+              {/* OVERWRITE OPTION */}
+              <div className="flex items-center gap-2.5 bg-red-50/50 p-3 rounded-xl border border-red-100 mt-2">
+                <input
+                  type="checkbox"
+                  id="overrideExisting"
+                  checked={cloneOverrideExisting}
+                  onChange={(e) => setCloneOverrideExisting(e.target.checked)}
+                  className="w-4 h-4 text-red-600 rounded focus:ring-red-500"
+                />
+                <label htmlFor="overrideExisting" className="text-xs text-red-900 font-semibold select-none cursor-pointer">
+                  Tulis Ulang (Overwrite) jika data/parameter sudah ada
+                </label>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="bg-gray-50 p-4 border-t border-gray-100 flex justify-end gap-3">
+              <button
+                onClick={() => setShowCloneModal(false)}
+                className="px-4 py-2 bg-white border border-gray-300 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-all shadow-sm"
+              >
+                Batal
+              </button>
+              <button
+                onClick={handleExecuteClone}
+                className="px-5 py-2 bg-gradient-to-r from-blue-600 to-indigo-700 text-white rounded-xl text-sm font-bold hover:from-blue-700 transition-all shadow-md flex items-center gap-1.5"
+              >
+                <Check size={16} />
+                Eksekusi Salin
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

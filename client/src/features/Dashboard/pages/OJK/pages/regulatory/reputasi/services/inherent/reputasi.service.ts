@@ -62,6 +62,8 @@ export interface ReputasiNilaiEntity {
   bobot: number;
   portofolio?: string;
   keterangan?: string;
+  sumberRisiko?: string;
+  dampak?: string;
   riskindikator?: {
     low?: string;
     lowToModerate?: string;
@@ -145,6 +147,8 @@ export interface CreateReputasiNilaiDto {
   bobot: number;
   portofolio?: string;
   keterangan?: string;
+  sumberRisiko?: string;
+  dampak?: string;
   riskindikator?: {
     low?: string;
     lowToModerate?: string;
@@ -171,6 +175,8 @@ export interface UpdateReputasiNilaiDto {
   bobot?: number;
   portofolio?: string;
   keterangan?: string;
+  sumberRisiko?: string;
+  dampak?: string;
   riskindikator?: {
     low?: string;
     lowToModerate?: string;
@@ -370,6 +376,8 @@ export class ReputasiProdukService {
           bobot: nilai.bobot || 0,
           portofolio: nilai.portofolio || '',
           keterangan: nilai.keterangan || '',
+          sumberRisiko: nilai.sumberRisiko || '',
+          dampak: nilai.dampak || '',
           riskindikator: nilai.riskindikator || {
             low: '',
             lowToModerate: '',

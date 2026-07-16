@@ -239,3 +239,108 @@ export class UpdateNilaiResponseDto {
   @ApiProperty({ description: 'Message' })
   message: string;
 }
+
+export class CloneOjkRekapDataDto {
+  @ApiProperty({ description: 'Source Year', example: 2024 })
+  @IsInt()
+  @Min(2000)
+  @Max(2100)
+  @Type(() => Number)
+  sourceYear: number;
+
+  @ApiProperty({ description: 'Source Quarter', example: 1 })
+  @IsInt()
+  @Min(1)
+  @Max(4)
+  @Type(() => Number)
+  sourceQuarter: number;
+
+  @ApiProperty({ description: 'Target Year', example: 2024 })
+  @IsInt()
+  @Min(2000)
+  @Max(2100)
+  @Type(() => Number)
+  targetYear: number;
+
+  @ApiProperty({ description: 'Target Quarter', example: 2 })
+  @IsInt()
+  @Min(1)
+  @Max(4)
+  @Type(() => Number)
+  targetQuarter: number;
+
+  @ApiPropertyOptional({ description: 'Override target data if exists', example: false })
+  @IsOptional()
+  overrideExisting?: boolean;
+
+  @ApiPropertyOptional({ description: 'Optional list of categories to clone' })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  categories?: string[];
+}
+
+export class UndoCloneOjkRekapDataDto {
+  @ApiProperty({ description: 'Target Year', example: 2024 })
+  @IsInt()
+  @Min(2000)
+  @Max(2100)
+  @Type(() => Number)
+  targetYear: number;
+
+  @ApiProperty({ description: 'Target Quarter', example: 2 })
+  @IsInt()
+  @Min(1)
+  @Max(4)
+  @Type(() => Number)
+  targetQuarter: number;
+
+  @ApiPropertyOptional({ description: 'Optional list of categories to undo clone' })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  categories?: string[];
+}
+
+export class CloneOjkKpmrDataDto {
+  @ApiProperty({ description: 'Source Year', example: 2024 })
+  @IsInt()
+  @Min(2000)
+  @Max(2100)
+  @Type(() => Number)
+  sourceYear: number;
+
+  @ApiProperty({ description: 'Target Year', example: 2025 })
+  @IsInt()
+  @Min(2000)
+  @Max(2100)
+  @Type(() => Number)
+  targetYear: number;
+
+  @ApiPropertyOptional({ description: 'Override target data if exists', example: false })
+  @IsOptional()
+  overrideExisting?: boolean;
+
+  @ApiPropertyOptional({ description: 'Optional list of categories to clone' })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  categories?: string[];
+}
+
+export class UndoCloneOjkKpmrDataDto {
+  @ApiProperty({ description: 'Target Year', example: 2025 })
+  @IsInt()
+  @Min(2000)
+  @Max(2100)
+  @Type(() => Number)
+  targetYear: number;
+
+  @ApiPropertyOptional({ description: 'Optional list of categories to undo clone' })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  categories?: string[];
+}
+
+

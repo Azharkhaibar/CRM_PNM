@@ -15,7 +15,7 @@ export default function MultiMonthSelector({ selectedMonths, onChange }) {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
-
+  
   const toggleMonth = (monthValue) => {
     let newSelection;
     if (selectedMonths.includes(monthValue)) {

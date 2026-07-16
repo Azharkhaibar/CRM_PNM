@@ -1,6 +1,7 @@
 // src/features/Dashboard/pages/RiskProfile/pages/Stratejik/kpmr-stratejik-page.jsx
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
-import { Download, Trash2, Edit3, Search, X } from 'lucide-react';
+import { Download, Trash2, Edit3, Search, X, Copy } from 'lucide-react';
+import HoldingKpmrCloneDialog from '../../components/HoldingKpmrCloneDialog';
 // import { getCurrentYear } from './utils/stratejik/time';
 // import { exportKPMRStratejikToExcel } from './utils/stratejik/exportexcelkpmrstratejik';
 // import { useKpmrStratejik } from './hooks/KPMR/kpmr-stratejik.hook';
@@ -15,6 +16,7 @@ import { useKpmrStratejik } from './hook/kpmr-stratejik/kpmr-stratejik.hook';
 import ToastNotification from './components/kpmr-stratejik/ToastNotification';
 import { useAuditLog } from '../../../audit-log/hooks/audit-log.hooks';
 import { useAuth } from '@/features/auth/hooks/useAuth.hook';
+import { rekapDataAPI } from '../rekapdata/services/rekap-data-api';
 // ===================== Brand =====================
 const PNM_BRAND = {
   primary: '#0068B3',
@@ -151,6 +153,15 @@ export default function StratejikKPMR({ viewYear: propViewYear, viewQuarter: pro
   const [KPMR_isAddingNewQuestion, setKPMR_isAddingNewQuestion] = useState(false);
   const [selectedQuarters, setSelectedQuarters] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [cloneDialogOpen, setCloneDialogOpen] = useState(false);
+
+  const handleCloneSuccess = (info) => {
+    showToast(`Berhasil menyalin data dari tahun ${info.from} ke tahun ${info.targetYear}`, 'success');
+    fetchAspects(viewYear);
+    fetchQuestions(viewYear);
+    fetchFullData(viewYear);
+  };
+
 
   // ========== STATE UNTUK EDIT ASPEK ==========
   const [showEditAspectModal, setShowEditAspectModal] = useState(false);
@@ -207,14 +218,10 @@ export default function StratejikKPMR({ viewYear: propViewYear, viewQuarter: pro
         showToast(`Aspek "${editingAspectData.aspekTitle}" berhasil diupdate`, 'success');
         try {
           const user = getCurrentUser();
-          await logUpdate({
-            module: 'KPMR Stratejik',
-            action: 'UPDATE',
-            description: `Mengupdate Aspek KPMR Stratejik: No. ${editingAspectData.aspekNo} - "${editingAspectData.aspekTitle}", Tahun: ${viewYear}`,
+          await logUpdate('STRATEJIK', `Mengupdate Aspek KPMR Stratejik: No. ${editingAspectData.aspekNo} - "${editingAspectData.aspekTitle}", Tahun: ${viewYear}`, {
             userId: user.userId,
-            userName: user.userName,
-            userRole: user.userRole,
-            metadata: { aspekId: editingAspectData.id, aspekNo: editingAspectData.aspekNo, year: viewYear },
+            isSuccess: true,
+            metadata: { type: 'kpmr', aspekId: editingAspectData.id, aspekNo: editingAspectData.aspekNo, year: viewYear },
           });
         } catch (logErr) { console.warn('Audit log gagal (update aspek):', logErr); }
         setShowEditAspectModal(false);
@@ -252,14 +259,10 @@ export default function StratejikKPMR({ viewYear: propViewYear, viewQuarter: pro
         showToast(result.message || 'Pertanyaan berhasil dihapus', 'success');
         try {
           const user = getCurrentUser();
-          await logDelete({
-            module: 'KPMR Stratejik',
-            action: 'DELETE',
-            description: `Menghapus Pertanyaan KPMR Stratejik: "${sectionTitle}" (No: ${sectionNo}) dari Aspek: ${aspekNo} - ${aspekTitle}`,
+          await logDelete('STRATEJIK', `Menghapus Pertanyaan KPMR Stratejik: "${sectionTitle}" (No: ${sectionNo}) dari Aspek: ${aspekNo} - ${aspekTitle}`, {
             userId: user.userId,
-            userName: user.userName,
-            userRole: user.userRole,
-            metadata: { questionId, aspekNo, sectionNo, year: viewYear },
+            isSuccess: true,
+            metadata: { type: 'kpmr', questionId, aspekNo, sectionNo, year: viewYear },
           });
         } catch (logErr) { console.warn('Audit log gagal (delete question):', logErr); }
 
@@ -526,14 +529,10 @@ export default function StratejikKPMR({ viewYear: propViewYear, viewQuarter: pro
       showToast('Data berhasil disimpan!', 'success');
       try {
         const user = getCurrentUser();
-        await logCreate({
-          module: 'KPMR Stratejik',
-          action: 'CREATE',
-          description: `Menambah data KPMR Stratejik - Aspek: ${KPMR_form.aspekNo} ${KPMR_form.aspekTitle}, Pertanyaan: ${KPMR_form.sectionNo}, Tahun: ${KPMR_form.year}, Triwulan: ${KPMR_form.quarter}`,
+        await logCreate('STRATEJIK', `Menambah data KPMR Stratejik - Aspek: ${KPMR_form.aspekNo} ${KPMR_form.aspekTitle}, Pertanyaan: ${KPMR_form.sectionNo}, Tahun: ${KPMR_form.year}, Triwulan: ${KPMR_form.quarter}`, {
           userId: user.userId,
-          userName: user.userName,
-          userRole: user.userRole,
-          metadata: { aspekNo: KPMR_form.aspekNo, sectionNo: KPMR_form.sectionNo, year: KPMR_form.year, quarter: KPMR_form.quarter },
+          isSuccess: true,
+          metadata: { type: 'kpmr', aspekNo: KPMR_form.aspekNo, sectionNo: KPMR_form.sectionNo, year: KPMR_form.year, quarter: KPMR_form.quarter },
         });
       } catch (logErr) { console.warn('Audit log gagal (create):', logErr); }
     } catch (err) {
@@ -795,14 +794,10 @@ export default function StratejikKPMR({ viewYear: propViewYear, viewQuarter: pro
       showToast('Data berhasil diupdate!', 'success');
       try {
         const user = getCurrentUser();
-        await logUpdate({
-          module: 'KPMR Stratejik',
-          action: 'UPDATE',
-          description: `Mengupdate data KPMR Stratejik - Aspek: ${KPMR_form.aspekNo}, Pertanyaan: ${KPMR_form.sectionNo}, Tahun: ${KPMR_form.year}, Triwulan: ${KPMR_form.quarter}`,
+        await logUpdate('STRATEJIK', `Mengupdate data KPMR Stratejik - Aspek: ${KPMR_form.aspekNo}, Pertanyaan: ${KPMR_form.sectionNo}, Tahun: ${KPMR_form.year}, Triwulan: ${KPMR_form.quarter}`, {
           userId: user.userId,
-          userName: user.userName,
-          userRole: user.userRole,
-          metadata: { aspekNo: KPMR_form.aspekNo, sectionNo: KPMR_form.sectionNo, year: KPMR_form.year, quarter: KPMR_form.quarter },
+          isSuccess: true,
+          metadata: { type: 'kpmr', aspekNo: KPMR_form.aspekNo, sectionNo: KPMR_form.sectionNo, year: KPMR_form.year, quarter: KPMR_form.quarter },
         });
       } catch (logErr) { console.warn('Audit log gagal (update):', logErr); }
     } catch (err) {
@@ -828,14 +823,10 @@ export default function StratejikKPMR({ viewYear: propViewYear, viewQuarter: pro
         showToast(result.message || `Aspek "${aspectName}" berhasil dihapus`, 'success');
         try {
           const user = getCurrentUser();
-          await logDelete({
-            module: 'KPMR Stratejik',
-            action: 'DELETE',
-            description: `Menghapus Aspek KPMR Stratejik: "${aspectName}" (ID: ${aspectId}), Tahun: ${viewYear}`,
+          await logDelete('STRATEJIK', `Menghapus Aspek KPMR Stratejik: "${aspectName}" (ID: ${aspectId}), Tahun: ${viewYear}`, {
             userId: user.userId,
-            userName: user.userName,
-            userRole: user.userRole,
-            metadata: { aspectId, aspectName, year: viewYear },
+            isSuccess: true,
+            metadata: { type: 'kpmr', aspectId, aspectName, year: viewYear },
           });
         } catch (logErr) { console.warn('Audit log gagal (delete aspek):', logErr); }
         await Promise.all([fetchAspects(viewYear), fetchQuestions(viewYear), fetchFullData(viewYear)]);
@@ -879,19 +870,31 @@ export default function StratejikKPMR({ viewYear: propViewYear, viewQuarter: pro
       showToast(`Data KPMR tahun ${viewYear} berhasil diexport`, 'success');
       try {
         const user = getCurrentUser();
-        await logExport({
-          module: 'KPMR Stratejik',
-          action: 'EXPORT',
-          description: `Export Excel KPMR Stratejik tahun ${viewYear}`,
+        await logExport('STRATEJIK', `Export Excel KPMR Stratejik tahun ${viewYear}`, {
           userId: user.userId,
-          userName: user.userName,
-          userRole: user.userRole,
-          metadata: { year: viewYear, totalRows: allRows.length, format: 'Excel' },
+          isSuccess: true,
+          metadata: { type: 'kpmr', year: viewYear, totalRows: allRows.length, format: 'Excel' },
         });
       } catch (logErr) { console.warn('Audit log gagal (export):', logErr); }
     } catch (err) {
       console.error('Export error:', err);
       showToast('Gagal mengexport data', 'error');
+    }
+  };
+
+  const handleResetData = async () => {
+    if (!confirm(`Apakah Anda yakin ingin menghapus/reset semua data KPMR Stratejik untuk tahun ${viewYear}? Semua data aspek, pertanyaan, definisi, dan skor akan terhapus secara permanen.`)) {
+      return;
+    }
+    try {
+      await rekapDataAPI.resetKpmrPeriodData(viewYear, 'STRATEJIK');
+      showToast('Data berhasil di-reset', 'success');
+      isDataLoadedRef.current = false;
+      await fetchFullData(Number(viewYear));
+      await Promise.all([fetchAspects(viewYear), fetchQuestions(viewYear)]);
+    } catch (err) {
+      console.error('Error resetting data:', err);
+      showToast('Gagal me-reset data', 'error');
     }
   };
 
@@ -979,8 +982,22 @@ export default function StratejikKPMR({ viewYear: propViewYear, viewQuarter: pro
             <button onClick={() => setShowKPMRForm(true)} disabled={loading || isSubmitting} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 font-semibold disabled:opacity-50">
               + Tambah Data
             </button>
-            <button onClick={KPMR_exportExcel} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 border bg-gray-900 text-white hover:bg-black">
+            <button
+              onClick={() => setCloneDialogOpen(true)}
+              disabled={loading || isSubmitting}
+              className="inline-flex items-center gap-2 rounded-xl px-4 py-2 bg-purple-600 text-white hover:bg-purple-700 font-semibold disabled:opacity-50"
+            >
+              <Copy size={18} /> Salin Periode
+            </button>
+            <button onClick={KPMR_exportExcel} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 border bg-gray-900 text-white hover:bg-black font-semibold">
               <Download size={18} /> Export {viewYear}
+            </button>
+            <button
+              onClick={handleResetData}
+              disabled={loading || isSubmitting}
+              className="inline-flex items-center gap-2 rounded-xl px-4 py-2 bg-red-600 text-white hover:bg-red-700 font-semibold disabled:opacity-50"
+            >
+              <Trash2 size={18} /> Reset Data
             </button>
           </div>
         </div>
@@ -1404,6 +1421,14 @@ export default function StratejikKPMR({ viewYear: propViewYear, viewQuarter: pro
           </table>
         </div>
       </section>
+
+      <HoldingKpmrCloneDialog
+        isOpen={cloneDialogOpen}
+        onClose={() => setCloneDialogOpen(false)}
+        onSuccess={handleCloneSuccess}
+        defaultCategory="stratejik"
+        currentYear={viewYear}
+      />
     </div>
   );
 }

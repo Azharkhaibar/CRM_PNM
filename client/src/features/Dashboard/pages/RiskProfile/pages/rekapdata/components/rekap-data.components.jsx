@@ -1,6 +1,6 @@
 // components/rekap-data.components.jsx
 import React, { useEffect } from 'react';
-import { Search, ChevronDown, Download, Upload } from 'lucide-react';
+import { Search, ChevronDown, Download, Upload, Copy } from 'lucide-react';
 import { SOURCE_ORDER, QUARTER_ORDER, QUARTER_LABEL, fmtNumber, fmtInputNumber, normalizeHasilDisplay, makeRowKey, makeStableKey, calculateTotalRowsForSource, calculateTotalRowsForSection } from '../utils/rekap-data.utils';
 
 // ===================== YearSelect =====================
@@ -17,7 +17,7 @@ export const QuarterSelect = ({ value, onChange }) => (
 );
 
 // ===================== RekapDataHeader =====================
-export const RekapDataHeader = ({ year, setYear, quarter, setQuarter, query, setQuery, onExport, onImport, importing, mode, onCleanup }) => (
+export const RekapDataHeader = ({ year, setYear, quarter, setQuarter, query, setQuery, onExport, onImport, importing, mode, onCleanup, onClone }) => (
   <header className="px-4 py-4 flex items-center justify-between gap-3">
     <h2 className="text-xl sm:text-2xl font-semibold">{mode === 'triwulan' ? 'Rekap Data' : 'Rekap Data Tahunan'}</h2>
     <div className="flex items-end gap-4">
@@ -38,6 +38,11 @@ export const RekapDataHeader = ({ year, setYear, quarter, setQuarter, query, set
           <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Cari section / indikator…" className="pl-9 pr-3 py-2 rounded-xl border w-64" />
           <Search size={16} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
         </div>
+        {onClone && (
+          <button onClick={onClone} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 border border-purple-600 text-purple-600 hover:bg-purple-50" title="Salin data periode">
+            <Copy size={18} /> Salin Periode
+          </button>
+        )}
         <button onClick={onExport} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 border bg-gray-900 text-white hover:bg-black" disabled={importing}>
           <Download size={18} /> Export {year}
           {mode === 'triwulan' ? `-${quarter}` : ''}
@@ -46,8 +51,8 @@ export const RekapDataHeader = ({ year, setYear, quarter, setQuarter, query, set
           <Upload size={18} /> {importing ? 'Mengimpor...' : 'Import Excel'}
         </button>
         {onCleanup && (
-          <button onClick={onCleanup} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 border border-orange-600 text-orange-600 hover:bg-orange-50" title="Hapus data duplikat">
-            🧹 Clean Duplicates
+          <button onClick={onCleanup} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 border border-red-600 text-red-600 hover:bg-red-50" title="Reset/Hapus data periode">
+            🗑️ Reset Data
           </button>
         )}
       </div>
@@ -176,8 +181,18 @@ const NumberInput = ({ value, onChange, placeholder = '0', className = '' }) => 
       onChange('');
       return;
     }
-    // Parse dan format
-    const cleaned = String(localValue).replace(/\./g, '').replace(/,/g, '.');
+    
+    let cleaned = String(localValue).trim();
+    if (cleaned.includes('.') && cleaned.includes(',')) {
+      if (cleaned.lastIndexOf(',') > cleaned.lastIndexOf('.')) {
+        cleaned = cleaned.replace(/\./g, '').replace(/,/g, '.');
+      } else {
+        cleaned = cleaned.replace(/,/g, '');
+      }
+    } else if (cleaned.includes(',') && !cleaned.includes('.')) {
+      cleaned = cleaned.replace(/,/g, '.');
+    }
+    
     const num = parseFloat(cleaned);
     if (!isNaN(num)) {
       onChange(String(num));

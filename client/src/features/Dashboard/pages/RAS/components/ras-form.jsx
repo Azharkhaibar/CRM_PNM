@@ -59,11 +59,21 @@ export default function RasForm({ existingCategories = [], onSubmit, onCancel, i
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [historicalParams, setHistoricalParams] = useState([]);
+  const [propagateToNextMonths, setPropagateToNextMonths] = useState(false);
 
   const availableCategories = useMemo(() => {
     const combined = new Set([...DEFAULT_RISK_CATEGORIES, ...existingCategories]);
     return Array.from(combined);
   }, [existingCategories, DEFAULT_RISK_CATEGORIES]);
+
+  const filteredTemplates = useMemo(() => {
+    const existingParams = new Set(
+      allData.map((item) => item.parameter?.trim().toLowerCase()).filter(Boolean)
+    );
+    return historicalParams.filter(
+      (p) => p.parameter && !existingParams.has(p.parameter.trim().toLowerCase())
+    );
+  }, [historicalParams, allData]);
 
   // Fetch historical data dari API
   useEffect(() => {
@@ -128,6 +138,7 @@ export default function RasForm({ existingCategories = [], onSubmit, onCancel, i
   };
 
   useEffect(() => {
+    console.log('🔄 RasForm - initialData changed:', initialData);
     if (initialData) {
       setForm({
         ...initialFormState,
@@ -180,6 +191,7 @@ export default function RasForm({ existingCategories = [], onSubmit, onCancel, i
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log('💾 RasForm - Submitting form:', form);
     if (!form.parameter || !form.riskCategory) {
       alert('Parameter dan Kategori Risiko wajib diisi!');
       return;
@@ -188,19 +200,46 @@ export default function RasForm({ existingCategories = [], onSubmit, onCancel, i
     setLoading(true);
     setError(null);
 
+    // Frontend validation: Check for duplicate parameter in the same year
+    const trimmedParam = form.parameter?.trim().toLowerCase();
+    const isDuplicate = allData.some((item) => {
+      if (initialData && item.id === initialData.id) {
+        return false;
+      }
+      return item.parameter?.trim().toLowerCase() === trimmedParam;
+    });
+
+    if (isDuplicate) {
+      setError(`Parameter "${form.parameter}" sudah ada di tahun ini`);
+      setLoading(false);
+      return;
+    }
+
     try {
       const finalMonthVal = {
-        num: currentNum || null,
-        den: currentDen || null,
-        man: calculatedResult || currentMan || null,
+        num: currentNum === '' || currentNum === undefined ? null : currentNum,
+        den: currentDen === '' || currentDen === undefined ? null : currentDen,
+        man: calculatedResult || (currentMan === '' || currentMan === undefined ? null : currentMan),
       };
+
+      const updatedMonthlyValues = {
+        ...form.monthlyValues,
+        [activeMonth]: finalMonthVal,
+      };
+
+      if (propagateToNextMonths) {
+        for (let m = activeMonth + 1; m <= 11; m++) {
+          updatedMonthlyValues[m] = {
+            num: finalMonthVal.num,
+            den: finalMonthVal.den,
+            man: finalMonthVal.man,
+          };
+        }
+      }
 
       const finalData = {
         ...form,
-        monthlyValues: {
-          ...form.monthlyValues,
-          [activeMonth]: finalMonthVal,
-        },
+        monthlyValues: updatedMonthlyValues,
       };
 
       await onSubmit(finalData);
@@ -217,7 +256,7 @@ export default function RasForm({ existingCategories = [], onSubmit, onCancel, i
     <section className="bg-gradient-to-r from-[#0076C6]/95 via-[#00A3DA]/95 to-[#33C2B5]/95 rounded-2xl shadow-xl overflow-hidden mb-8 animate-fade-in">
       <div className="p-6 sm:p-8">
         <h2 className="text-white font-bold text-xl mb-6 border-b border-white/20 pb-4 flex items-center gap-2">
-          {initialData ? 'Edit Data RAS' : 'Input Data RAS Baru'}
+          {initialData && !initialData.isClone ? 'Edit Data RAS' : (initialData?.isClone ? 'Clone Data RAS (Simpan Sebagai Baru)' : 'Input Data RAS Baru')}
           {loading && <Loader2 className="animate-spin ml-2" size={20} />}
         </h2>
 
@@ -259,7 +298,7 @@ export default function RasForm({ existingCategories = [], onSubmit, onCancel, i
                 </FormGroup>
 
                 {/* Template Selection */}
-                {!initialData && historicalParams.length > 0 && (
+                {!initialData && filteredTemplates.length > 0 && (
                   <div className="mb-4 bg-white/20 p-3 rounded-xl border border-white/20">
                     <div className="flex items-center gap-2 mb-2 text-white font-semibold text-sm">
                       <History size={16} />
@@ -269,7 +308,7 @@ export default function RasForm({ existingCategories = [], onSubmit, onCancel, i
                       <option value="" disabled>
                         -- Pilih Parameter Lama --
                       </option>
-                      {historicalParams.map((p) => (
+                      {filteredTemplates.map((p) => (
                         <option key={p.id} value={p.parameter}>
                           {p.parameter} (Tahun {p.year})
                         </option>
@@ -358,6 +397,18 @@ export default function RasForm({ existingCategories = [], onSubmit, onCancel, i
                     )}
                   </FormGroup>
                 </div>
+                <div className="flex items-center gap-2.5 bg-white/10 p-3 rounded-lg mt-3">
+                  <input
+                    type="checkbox"
+                    id="propagateToNextMonths"
+                    checked={propagateToNextMonths}
+                    onChange={(e) => setPropagateToNextMonths(e.target.checked)}
+                    className="w-4 h-4 text-blue-600 rounded focus:ring-yellow-400"
+                  />
+                  <label htmlFor="propagateToNextMonths" className="text-white text-xs font-semibold select-none cursor-pointer">
+                    Salin nilai ini ke semua bulan berikutnya (hingga Desember)
+                  </label>
+                </div>
               </div>
 
               {/* Risk Stance & Notes Section */}
@@ -388,11 +439,11 @@ export default function RasForm({ existingCategories = [], onSubmit, onCancel, i
                   type="submit"
                   disabled={loading}
                   className={`px-8 py-3 rounded-xl text-white font-bold shadow-lg transition-all flex items-center gap-2 ${
-                    initialData ? 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 disabled:opacity-70' : 'bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 disabled:opacity-70'
+                    initialData && !initialData.isClone ? 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 disabled:opacity-70' : 'bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 disabled:opacity-70'
                   }`}
                 >
                   {loading && <Loader2 className="animate-spin" size={18} />}
-                  {initialData ? 'Edit Data' : 'Tambah Data'}
+                  {initialData && !initialData.isClone ? 'Edit Data' : (initialData?.isClone ? 'Simpan Clone' : 'Tambah Data')}
                 </button>
               </div>
             </div>

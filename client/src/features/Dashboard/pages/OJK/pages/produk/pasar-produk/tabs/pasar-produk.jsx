@@ -207,10 +207,25 @@ export default function PasarProdukOJK() {
     }
   }, [kpmr]); // eslint-disable-line
 
-  // ========== HANDLERS ==========
-  const handleKpmrRefresh = useCallback(async () => {
-    if (!kpmrId) return [];
+  const handleKpmrRefresh = useCallback(async (customData) => {
+    if (customData === null) {
+      setKpmrId(null);
+      setKpmrRows([]);
+      return [];
+    }
     try {
+      if (!kpmrId) {
+        setIsKpmrLoading(true);
+        await loadKpmrByYearQuarter(9999, 1);
+        const data = await loadKpmrByYearQuarter(year, 1);
+        if (data) {
+          setKpmrId(data.id);
+          const formatted = formatKpmrRowsFromBackend(data.aspekList || []);
+          setKpmrRows(formatted);
+          return data.aspekList || [];
+        }
+        return [];
+      }
       const refreshedRows = await refreshKpmrData();
       if (refreshedRows?.length > 0) {
         setKpmrRows(formatKpmrRowsFromBackend(refreshedRows));
@@ -219,8 +234,10 @@ export default function PasarProdukOJK() {
     } catch (error) {
       console.error('❌ [PasarProdukOJK] Error refreshing KPMR:', error);
       return [];
+    } finally {
+      setIsKpmrLoading(false);
     }
-  }, [kpmrId, refreshKpmrData]);
+  }, [kpmrId, refreshKpmrData, loadKpmrByYearQuarter, year]);
 
   const handleTabChange = useCallback((tab) => setActiveTab(tab), []);
 

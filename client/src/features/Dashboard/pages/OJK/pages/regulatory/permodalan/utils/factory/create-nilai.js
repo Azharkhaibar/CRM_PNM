@@ -5,6 +5,8 @@ export function createNilai(mode = 'Tanpa Faktor') {
     bobot: '',
     portofolio: '',
     keterangan: '',
+    sumberRisiko: '',
+    dampak: '',
     riskindikator: {
       low: '',
       lowToModerate: '',

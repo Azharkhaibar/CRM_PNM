@@ -7,6 +7,7 @@ export enum CalculationMode {
   RASIO = 'RASIO',
   NILAI_TUNGGAL = 'NILAI_TUNGGAL',
   TEKS = 'TEKS',
+  PERTUMBUHAN = 'PERTUMBUHAN',
 }
 
 export enum Quarter {
@@ -227,6 +228,14 @@ export const computeHasil = (ind: any): number | null => {
     }
   }
 
+  // 🔹 PERTUMBUHAN → (sekarang - sebelumnya) / sebelumnya
+  if (mode === 'PERTUMBUHAN') {
+    if (peny === 0) return null;
+    const growth = (pemb - peny) / peny;
+    if (!isFinite(growth) || isNaN(growth)) return null;
+    return Number(growth);
+  }
+
   // 🔹 NILAI_TUNGGAL → langsung pakai nilai penyebut
   if (mode === 'NILAI_TUNGGAL') {
     if (ind.penyebutValue === '' || ind.penyebutValue == null) return null;
@@ -284,7 +293,10 @@ export const transformIndicatorToBackend = (indicatorData: any, year: number, qu
     formula: indicatorData.formula?.trim() || undefined,
     isPercent: Boolean(indicatorData.isPercent || false),
     pembilangLabel: indicatorData.pembilangLabel?.trim() || undefined,
-    pembilangValue: indicatorData.pembilangValue !== undefined && indicatorData.pembilangValue !== '' ? Number(indicatorData.pembilangValue) : undefined,
+    // Simpan pembilangValue untuk mode RASIO dan PERTUMBUHAN
+    pembilangValue: (indicatorData.mode === CalculationMode.RASIO || indicatorData.mode === 'PERTUMBUHAN') &&
+      indicatorData.pembilangValue !== undefined && indicatorData.pembilangValue !== ''
+      ? Number(indicatorData.pembilangValue) : undefined,
     penyebutLabel: indicatorData.penyebutLabel?.trim() || undefined,
     penyebutValue: penyebutValue, // Gunakan hasil validasi
     hasil: hasilNum !== null ? hasilNum : undefined,

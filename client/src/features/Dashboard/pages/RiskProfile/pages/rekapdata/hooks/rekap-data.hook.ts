@@ -132,6 +132,7 @@ interface RekapDataPersistReturn {
   updateRowAPI: (source: string, rowKey: string, field: string, value: unknown, year: number, quarter: string) => Promise<NormalizedRow>;
   importExcelAPI: (file: File, year: number, quarter: string) => Promise<{ totalImported: number }>;
   cleanupDuplicatesAPI: (year: number, quarter: string) => Promise<{ removed: number }>;
+  clonePeriodAPI: (payload: { sourceYear: number; sourceQuarter: string; targetYear: number; targetQuarter: string; overrideExisting: boolean; sources: string[] }) => Promise<{ success: boolean; sectionsCloned: number; indicatorsCloned: number }>;
   saving: boolean;
 }
 
@@ -370,6 +371,24 @@ export const useRekapDataPersist = (setters: Setters, refresh: () => void): Reka
     [refresh],
   );
 
+  const clonePeriodAPI = useCallback(
+    async (payload: { sourceYear: number; sourceQuarter: string; targetYear: number; targetQuarter: string; overrideExisting: boolean; sources: string[] }): Promise<{ success: boolean; sectionsCloned: number; indicatorsCloned: number }> => {
+      setSaving(true);
+      try {
+        const response = await rekapDataAPI.clonePeriod(payload);
+        refresh();
+        return response.data;
+      } catch (err: any) {
+        console.error('Error cloning period data:', err);
+        const errMsg = err.response?.data?.message || err.message || 'Gagal menduplikasi data periode';
+        throw new Error(errMsg);
+      } finally {
+        setSaving(false);
+      }
+    },
+    [refresh],
+  );
+
   const reloadSections = useCallback(() => {
     refresh();
   }, [refresh]);
@@ -379,6 +398,7 @@ export const useRekapDataPersist = (setters: Setters, refresh: () => void): Reka
     updateRowAPI,
     importExcelAPI,
     cleanupDuplicatesAPI,
+    clonePeriodAPI,
     saving,
   };
 };

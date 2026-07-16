@@ -62,6 +62,10 @@ export interface KonsentrasiNilaiEntity {
   bobot: number;
   portofolio?: string;
   keterangan?: string;
+  sumberRisiko?: string;
+  dampak?: string;
+  kodeEmiten?: string;
+  kepemilikan?: string;
   riskindikator?: {
     low?: string;
     lowToModerate?: string;
@@ -145,6 +149,10 @@ export interface CreateNilaiDto {
   bobot: number;
   portofolio?: string;
   keterangan?: string;
+  sumberRisiko?: string;
+  dampak?: string;
+  kodeEmiten?: string;
+  kepemilikan?: string;
   riskindikator?: {
     low?: string;
     lowToModerate?: string;
@@ -171,6 +179,10 @@ export interface UpdateNilaiDto {
   bobot?: number;
   portofolio?: string;
   keterangan?: string;
+  sumberRisiko?: string;
+  dampak?: string;
+  kodeEmiten?: string;
+  kepemilikan?: string;
   riskindikator?: {
     low?: string;
     lowToModerate?: string;
@@ -343,6 +355,10 @@ export class KonsentrasiProdukService {
           bobot: nilai.bobot || 0,
           portofolio: nilai.portofolio || '',
           keterangan: nilai.keterangan || '',
+          sumberRisiko: nilai.sumberRisiko || '',
+          dampak: nilai.dampak || '',
+          kodeEmiten: (nilai as any).kodeEmiten || '',
+          kepemilikan: (nilai as any).kepemilikan || '',
           riskindikator: nilai.riskindikator || {
             low: '',
             lowToModerate: '',

@@ -1,6 +1,7 @@
 // src/features/Dashboard/pages/RiskProfile/pages/Kepatuhan/kpmr-kepatuhan-page.jsx
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
-import { Download, Trash2, Edit3, Search, X } from 'lucide-react';
+import { Download, Trash2, Edit3, Search, X, Copy } from 'lucide-react';
+import HoldingKpmrCloneDialog from '../../components/HoldingKpmrCloneDialog';
 // import { getCurrentYear } from './utils/kepatuhan/time';
 // import { exportKPMRKepatuhanToExcel } from './utils/kepatuhan/exportexcelkpmrkepatuhan';
 // import { useKpmrKepatuhan } from './hooks/KPMR/kpmr-kepatuhan.hook';
@@ -11,6 +12,7 @@ import { useKpmrKepatuhan } from '../kepatuhan/hooks/kpmr-kepatuhan/kpmr-kepatuh
 import ToastNotification from './components/kpmr-kepatuhan/ToastNotification';
 import { useAuditLog } from '../../../audit-log/hooks/audit-log.hooks';
 import { useAuth } from '@/features/auth/hooks/useAuth.hook';
+import { rekapDataAPI } from '../rekapdata/services/rekap-data-api';
 // ===================== Brand =====================
 const PNM_BRAND = {
   primary: '#0068B3',
@@ -145,6 +147,15 @@ export default function KepatuhanKPMR({ viewYear: propViewYear, viewQuarter: pro
   const [KPMR_isAddingNewQuestion, setKPMR_isAddingNewQuestion] = useState(false);
   const [selectedQuarters, setSelectedQuarters] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [cloneDialogOpen, setCloneDialogOpen] = useState(false);
+
+  const handleCloneSuccess = (info) => {
+    showToast(`Berhasil menyalin data dari tahun ${info.from} ke tahun ${info.targetYear}`, 'success');
+    fetchAspects(viewYear);
+    fetchQuestions(viewYear);
+    fetchFullData(viewYear);
+  };
+
 
   // ========== STATE UNTUK EDIT ASPEK ==========
   const [showEditAspectModal, setShowEditAspectModal] = useState(false);
@@ -865,6 +876,22 @@ export default function KepatuhanKPMR({ viewYear: propViewYear, viewQuarter: pro
     }
   };
 
+  const handleResetData = async () => {
+    if (!confirm(`Apakah Anda yakin ingin menghapus/reset semua data KPMR Kepatuhan untuk tahun ${viewYear}? Semua data aspek, pertanyaan, definisi, dan skor akan terhapus secara permanen.`)) {
+      return;
+    }
+    try {
+      await rekapDataAPI.resetKpmrPeriodData(viewYear, 'KEPATUHAN');
+      showToast('Data berhasil di-reset', 'success');
+      isDataLoadedRef.current = false;
+      await fetchFullData(Number(viewYear));
+      await Promise.all([fetchAspects(viewYear), fetchQuestions(viewYear)]);
+    } catch (err) {
+      console.error('Error resetting data:', err);
+      showToast('Gagal me-reset data', 'error');
+    }
+  };
+
   const filteredGroups = useMemo(() => {
     if (!query?.trim()) return groups;
 
@@ -949,8 +976,22 @@ export default function KepatuhanKPMR({ viewYear: propViewYear, viewQuarter: pro
             <button onClick={() => setShowKPMRForm(true)} disabled={loading || isSubmitting} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 font-semibold disabled:opacity-50">
               + Tambah Data
             </button>
-            <button onClick={KPMR_exportExcel} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 border bg-gray-900 text-white hover:bg-black">
+            <button
+              onClick={() => setCloneDialogOpen(true)}
+              disabled={loading || isSubmitting}
+              className="inline-flex items-center gap-2 rounded-xl px-4 py-2 bg-purple-600 text-white hover:bg-purple-700 font-semibold disabled:opacity-50"
+            >
+              <Copy size={18} /> Salin Periode
+            </button>
+            <button onClick={KPMR_exportExcel} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 border bg-gray-900 text-white hover:bg-black font-semibold">
               <Download size={18} /> Export {viewYear}
+            </button>
+            <button
+              onClick={handleResetData}
+              disabled={loading || isSubmitting}
+              className="inline-flex items-center gap-2 rounded-xl px-4 py-2 bg-red-600 text-white hover:bg-red-700 font-semibold disabled:opacity-50"
+            >
+              <Trash2 size={18} /> Reset Data
             </button>
           </div>
         </div>
@@ -1374,6 +1415,14 @@ export default function KepatuhanKPMR({ viewYear: propViewYear, viewQuarter: pro
           </table>
         </div>
       </section>
+
+      <HoldingKpmrCloneDialog
+        isOpen={cloneDialogOpen}
+        onClose={() => setCloneDialogOpen(false)}
+        onSuccess={handleCloneSuccess}
+        defaultCategory="kepatuhan"
+        currentYear={viewYear}
+      />
     </div>
   );
 }

@@ -47,18 +47,18 @@ const setStyle = (ws, r, c, style) => {
 const COLORS = {
   headerDarkBlue: '#1f4e79',
   headerWeighted: '#d9d9d9',
-  headerLow: '#b7d7a8',
-  headerLTM: '#c9daf8',
-  headerMod: '#fff2cc',
-  headerMTH: '#f9cb9c',
-  headerHigh: '#e06666',
+  headerLow: '#2E7D32',
+  headerLTM: '#92D050',
+  headerMod: '#FFFF00',
+  headerMTH: '#FFC000',
+  headerHigh: '#FF0000',
   blueFill: '#cfe2f3',
-  lightGreen: '#d9ead3',
-  darkGreen: '#38761d',
+  lightGreen: '#92D050',
+  darkGreen: '#2E7D32',
   oliveAccent40: '#c4d79b',
-  yellow: '#fff2cc',
-  orange: '#f9cb9c',
-  red: '#e06666',
+  yellow: '#FFFF00',
+  orange: '#FFC000',
+  red: '#FF0000',
   grey: '#d9d9d9',
   subBg: '#d9eefb',
   summaryBlue: '#0b3861',
@@ -213,7 +213,7 @@ export function exportHukumToExcel(filteredRows, viewYear, viewQuarter, options 
   const H = COLORS.headerDarkBlue;
   [0, 1, 5, 6, 7, 13, 14, 16].forEach((c) => setStyle(ws, 0, c, headerStyle(H)));
   [2, 3, 4].forEach((c) => setStyle(ws, 0, c, headerStyle(H)));
-  setStyle(ws, 0, 8, headerStyle(COLORS.headerLow, '#000'));
+  setStyle(ws, 0, 8, headerStyle(COLORS.headerLow, '#fff'));
   setStyle(ws, 0, 9, headerStyle(COLORS.headerLTM, '#000'));
   setStyle(ws, 0, 10, headerStyle(COLORS.headerMod, '#000'));
   setStyle(ws, 0, 11, headerStyle(COLORS.headerMTH, '#000'));
@@ -239,7 +239,6 @@ export function exportHukumToExcel(filteredRows, viewYear, viewQuarter, options 
       }
 
       if (c >= 8 && c <= 12) {
-        if (hasValue) cell.s = withFill(cell.s, COLORS.lightGreen);
         cell.s.alignment = {
           ...(cell.s.alignment || {}),
           horizontal: 'center',

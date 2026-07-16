@@ -106,7 +106,7 @@ export default function DataTablePasar({ rows, totalWeighted, viewYear, viewQuar
   return (
     <div className="w-full h-full">
       <style>{scrollbarStyles}</style>
-      <table className="text-sm border border-gray-300 border-collapse" style={{ tableLayout: 'fixed', minWidth: '2550px' }}>
+      <table className="text-sm border border-gray-300 border-collapse" style={{ tableLayout: 'fixed', minWidth: '2630px' }}>
         <thead>
           <tr className="bg-[#1f4e79] text-white">
             <th className="border border-black px-3 py-2 text-left" style={{ width: 50 }}>
@@ -117,6 +117,9 @@ export default function DataTablePasar({ rows, totalWeighted, viewYear, viewQuar
             </th>
             <th className="border border-black px-3 py-2 text-left" style={{ width: 220 }}>
               Parameter / Section
+            </th>
+            <th className="border border-black px-3 py-2 text-center" style={{ width: 80 }}>
+              Sub No
             </th>
             <th className="border border-black px-3 py-2 text-left" style={{ width: 230 }}>
               Indikator & Pembilang/Penyebut
@@ -166,7 +169,7 @@ export default function DataTablePasar({ rows, totalWeighted, viewYear, viewQuar
         <tbody>
           {groups.length === 0 ? (
             <tr>
-              <td className="border px-3 py-6 text-center text-gray-500" colSpan={17}>
+              <td className="border px-3 py-6 text-center text-gray-500" colSpan={18}>
                 Belum ada data untuk {viewYear}-{viewQuarter}
               </td>
             </tr>
@@ -184,7 +187,7 @@ export default function DataTablePasar({ rows, totalWeighted, viewYear, viewQuar
                     <td className="border px-3 py-0">
                       <div style={{ minHeight: 70, padding: '12px 0' }}>{g.sectionLabel}</div>
                     </td>
-                    <td className="border px-3 py-3 text-center" colSpan={14} style={{ height: 70 }}>
+                    <td className="border px-3 py-3 text-center" colSpan={15} style={{ height: 70 }}>
                       Belum ada indikator
                     </td>
                   </tr>
@@ -250,6 +253,13 @@ export default function DataTablePasar({ rows, totalWeighted, viewYear, viewQuar
                             </>
                           )}
 
+                          {/* Column: Sub No */}
+                          <td className="border px-3 py-0 text-center align-top bg-[#d9eefb]">
+                            <div style={{ minHeight: 70, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              {r.subNo}
+                            </div>
+                          </td>
+
                           <td className="border px-3 py-0 align-top bg-[#d9eefb]">
                             <div style={{ minHeight: 70, padding: '12px 0' }}>
                               <div className="font-medium">{r.indikator}</div>
@@ -259,38 +269,38 @@ export default function DataTablePasar({ rows, totalWeighted, viewYear, viewQuar
                             <div style={{ minHeight: 70, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{r.bobotIndikator}%</div>
                           </td>
                           <td className="border px-3 py-0 align-top bg-[#d9eefb]">
-                            <div className="custom-scrollbar" style={{ height: 70, overflowY: 'auto', padding: '12px 0' }}>
+                            <div style={{ minHeight: 70, padding: '12px 0' }}>
                               {r.sumberRisiko}
                             </div>
                           </td>
                           <td className="border px-3 py-0 align-top bg-[#d9eefb]">
-                            <div className="custom-scrollbar" style={{ height: 70, overflowY: 'auto', padding: '12px 0' }}>
+                            <div style={{ minHeight: 70, padding: '12px 0' }}>
                               {r.dampak}
                             </div>
                           </td>
 
-                          <td className="border px-3 py-0 text-center bg-green-700/10">
-                            <div className="custom-scrollbar" style={{ height: 70, overflowY: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px' }}>
+                          <td className="border px-3 py-0 text-center">
+                            <div style={{ minHeight: 70, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px' }}>
                               {r.low}
                             </div>
                           </td>
-                          <td className="border px-3 py-0 text-center bg-green-700/10">
-                            <div className="custom-scrollbar" style={{ height: 70, overflowY: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px' }}>
+                          <td className="border px-3 py-0 text-center">
+                            <div style={{ minHeight: 70, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px' }}>
                               {r.lowToModerate}
                             </div>
                           </td>
-                          <td className="border px-3 py-0 text-center bg-green-700/10">
-                            <div className="custom-scrollbar" style={{ height: 70, overflowY: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px' }}>
+                          <td className="border px-3 py-0 text-center">
+                            <div style={{ minHeight: 70, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px' }}>
                               {r.moderate}
                             </div>
                           </td>
-                          <td className="border px-3 py-0 text-center bg-green-700/10">
-                            <div className="custom-scrollbar" style={{ height: 70, overflowY: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px' }}>
+                          <td className="border px-3 py-0 text-center">
+                            <div style={{ minHeight: 70, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px' }}>
                               {r.moderateToHigh}
                             </div>
                           </td>
-                          <td className="border px-3 py-0 text-center bg-green-700/10">
-                            <div className="custom-scrollbar" style={{ height: 70, overflowY: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px' }}>
+                          <td className="border px-3 py-0 text-center">
+                            <div style={{ minHeight: 70, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px' }}>
                               {r.high}
                             </div>
                           </td>
@@ -356,7 +366,7 @@ export default function DataTablePasar({ rows, totalWeighted, viewYear, viewQuar
                             <div style={{ minHeight: 70, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: '12px' }}>{weightedDisplay}</div>
                           </td>
                           <td className="border px-3 py-0">
-                            <div className="custom-scrollbar" style={{ height: 70, overflowY: 'auto', padding: '12px 0' }}>
+                            <div style={{ minHeight: 70, padding: '12px 0' }}>
                               {r.keterangan}
                             </div>
                           </td>
@@ -382,6 +392,9 @@ export default function DataTablePasar({ rows, totalWeighted, viewYear, viewQuar
 
                         {mode === 'RASIO' && (
                           <tr className={isInherited(r) ? 'bg-yellow-50/50' : 'bg-white'}>
+                            {/* Aligns with Sub No - empty cell */}
+                            <td className="border px-3 py-0" style={{ minHeight: 50 }}></td>
+                            
                             <td className="border px-3 py-0">
                               <div style={{ minHeight: 50, padding: '8px 0' }}>
                                 <div className="text-sm text-gray-700 mt-1">{pembilangLabel || '-'}</div>
@@ -407,6 +420,9 @@ export default function DataTablePasar({ rows, totalWeighted, viewYear, viewQuar
 
                         {mode !== 'TEKS' && (
                           <tr className={isInherited(r) ? 'bg-yellow-50/50' : 'bg-white'}>
+                            {/* Aligns with Sub No - empty cell */}
+                            <td className="border px-3 py-0" style={{ minHeight: 50 }}></td>
+                            
                             <td className="border px-3 py-0">
                               <div style={{ minHeight: 50, padding: '8px 0' }}>
                                 <div className="text-sm text-gray-700 mt-1">{penyebutLabel || '-'}</div>
@@ -440,7 +456,7 @@ export default function DataTablePasar({ rows, totalWeighted, viewYear, viewQuar
 
         <tfoot>
           <tr>
-            <td className="border border-gray-400" colSpan={12}></td>
+            <td className="border border-gray-400" colSpan={13}></td>
             <td className="border border-gray-400 text-white font-semibold text-center bg-[#0b3861]" colSpan={2}>
               Summary
             </td>

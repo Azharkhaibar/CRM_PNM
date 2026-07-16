@@ -197,7 +197,12 @@ export const calculatePeringkat = (hasilValue, riskLevels = {}, isPercent = fals
       hasilPercent = vRaw;
     } else {
       // RASIO/NILAI_TUNGGAL mode: hasil perhitungan perlu dikonversi (e.g., 1.52 → 152%)
-      hasilPercent = vRaw * 100;
+      // FIXED: Untuk rasio negatif (misal -3.31), jangan kalikan 100 karena thresholds di excel dibandingkan langsung dengan raw ratio
+      if (vRaw < 0) {
+        hasilPercent = vRaw;
+      } else {
+        hasilPercent = vRaw * 100;
+      }
     }
   } else {
     // Risk level dalam format nilai absolut (x ≤ 16, dst) - TANPA dikali 100

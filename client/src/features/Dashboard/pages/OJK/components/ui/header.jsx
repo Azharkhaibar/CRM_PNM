@@ -1,7 +1,7 @@
 // FILE: src/features/Dashboard/components/header.jsx
 // FIX TOTAL ERROR activeQuarter.toUpperCase + SINKRON DENGAN STORE
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent } from '@/components/ui/dropdown-menu';
@@ -12,12 +12,11 @@ export default function Header({ title }) {
   const { year, activeQuarter, search, setYear, setActiveQuarter, setSearch, requestExport } = useHeaderStore();
 
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [availableYears, setAvailableYears] = useState([year]);
+  const currentYear = new Date().getFullYear();
+  const availableYears = useMemo(() => {
+    return Array.from({ length: 201 }, (_, i) => currentYear - 100 + i);
+  }, [currentYear]);
   const yearsListRef = useRef(null);
-
-  useEffect(() => {
-    setAvailableYears((prev) => (prev.includes(year) ? prev : [...prev, year]));
-  }, [year]);
 
   const handleDropdownOpenChange = (open) => {
     setDropdownOpen(open);
@@ -32,20 +31,6 @@ export default function Header({ title }) {
   const handleYearSelect = (y) => {
     setYear(y);
     setDropdownOpen(false);
-  };
-
-  const addPreviousYear = () => {
-    setAvailableYears((prev) => {
-      const min = Math.min(...prev);
-      return [...prev, min - 1];
-    });
-  };
-
-  const addNextYear = () => {
-    setAvailableYears((prev) => {
-      const max = Math.max(...prev);
-      return [...prev, max + 1];
-    });
   };
 
   // ⬇️ FIX: quarter NUMBER
@@ -82,7 +67,7 @@ export default function Header({ title }) {
           </DropdownMenuTrigger>
 
           <DropdownMenuContent className="w-[150px] bg-white p-0 overflow-hidden">
-            <div ref={yearsListRef} className="overflow-y-auto max-h-[100px]">
+            <div ref={yearsListRef} className="overflow-y-auto max-h-[250px]">
               {availableYears
                 .slice()
                 .sort((a, b) => a - b)
@@ -97,17 +82,6 @@ export default function Header({ title }) {
                     {y === year && <Check className="h-4 w-4 text-blue-600" />}
                   </button>
                 ))}
-            </div>
-
-            <div className="border-t bg-gray-50 px-2 py-1.5 sticky bottom-0">
-              <button onClick={addPreviousYear} className="w-full px-2 py-1.5 text-black text-xs flex items-center gap-2 hover:bg-gray-200 rounded">
-                <Plus />
-                tahun sebelumnya
-              </button>
-              <button onClick={addNextYear} className="w-full px-2 py-1.5 text-xs text-black flex items-center gap-2 hover:bg-gray-200 rounded">
-                <Minus />
-                tahun berikutnya
-              </button>
             </div>
           </DropdownMenuContent>
         </DropdownMenu>

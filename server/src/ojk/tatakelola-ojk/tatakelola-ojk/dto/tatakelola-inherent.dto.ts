@@ -298,6 +298,14 @@ export class CreateNilaiDto {
   keterangan?: string;
 
   @IsOptional()
+  @IsString()
+  sumberRisiko?: string;
+
+  @IsOptional()
+  @IsString()
+  dampak?: string;
+
+  @IsOptional()
   @ValidateNested()
   @Type(() => RiskindikatorDto)
   riskindikator?: RiskindikatorDto;
@@ -331,6 +339,14 @@ export class UpdateNilaiDto {
   @IsOptional()
   @IsString()
   keterangan?: string;
+
+  @IsOptional()
+  @IsString()
+  sumberRisiko?: string;
+
+  @IsOptional()
+  @IsString()
+  dampak?: string;
 
   @IsOptional()
   @ValidateNested()
@@ -455,6 +471,14 @@ export class ExportNilaiDto {
   @IsOptional()
   @IsString()
   keterangan?: string;
+
+  @IsOptional()
+  @IsString()
+  sumberRisiko?: string;
+
+  @IsOptional()
+  @IsString()
+  dampak?: string;
 
   @IsOptional()
   @ValidateNested()

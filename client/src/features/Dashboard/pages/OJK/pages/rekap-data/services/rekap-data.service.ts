@@ -129,6 +129,103 @@ export const rekapApiService = {
       throw error;
     }
   },
+
+  async clonePeriodData(payload: {
+    sourceYear: number;
+    sourceQuarter: number;
+    targetYear: number;
+    targetQuarter: number;
+    overrideExisting: boolean;
+    categories?: string[];
+  }): Promise<RekapApiResponse> {
+    try {
+      console.log(`📡 [Rekap API] Cloning period data:`, payload);
+      const response = await apiClient.post<RekapApiResponse>('/rekap/clone', payload);
+      console.log(`✅ [Rekap API] Clone completed:`, response.data);
+      return response.data;
+    } catch (error) {
+      console.error('❌ [Rekap API] Error cloning period data:', error);
+      throw error;
+    }
+  },
+
+  async undoClonePeriodData(payload: {
+    targetYear: number;
+    targetQuarter: number;
+    categories?: string[];
+  }): Promise<RekapApiResponse> {
+    try {
+      console.log(`📡 [Rekap API] Undoing clone:`, payload);
+      const response = await apiClient.post<RekapApiResponse>('/rekap/undo-clone', payload);
+      console.log(`✅ [Rekap API] Undo clone completed:`, response.data);
+      return response.data;
+    } catch (error) {
+      console.error('❌ [Rekap API] Error undoing clone:', error);
+      throw error;
+    }
+  },
+
+  async cloneKpmrPeriodData(payload: {
+    sourceYear: number;
+    targetYear: number;
+    overrideExisting: boolean;
+    categories?: string[];
+  }): Promise<RekapApiResponse> {
+    try {
+      console.log(`📡 [Rekap API] Cloning KPMR data:`, payload);
+      const response = await apiClient.post<RekapApiResponse>('/rekap/clone-kpmr', payload);
+      console.log(`✅ [Rekap API] KPMR Clone completed:`, response.data);
+      return response.data;
+    } catch (error) {
+      console.error('❌ [Rekap API] Error cloning KPMR data:', error);
+      throw error;
+    }
+  },
+
+  async undoCloneKpmrPeriodData(payload: {
+    targetYear: number;
+    categories?: string[];
+  }): Promise<RekapApiResponse> {
+    try {
+      console.log(`📡 [Rekap API] Undoing KPMR clone:`, payload);
+      const response = await apiClient.post<RekapApiResponse>('/rekap/undo-clone-kpmr', payload);
+      console.log(`✅ [Rekap API] KPMR Undo clone completed:`, response.data);
+      return response.data;
+    } catch (error) {
+      console.error('❌ [Rekap API] Error undoing KPMR clone:', error);
+      throw error;
+    }
+  },
+
+  async resetKpmrPeriodData(year: number, category: string): Promise<RekapApiResponse> {
+    try {
+      console.log(`📡 [Rekap API] Resetting KPMR data:`, { year, category });
+      const response = await apiClient.delete<RekapApiResponse>('/rekap/reset-kpmr', {
+        params: { year, category },
+      });
+      console.log(`✅ [Rekap API] KPMR Reset completed:`, response.data);
+      return response.data;
+    } catch (error) {
+      console.error('❌ [Rekap API] Error resetting KPMR data:', error);
+      throw error;
+    }
+  },
+
+  async importExcel(formData: FormData): Promise<any> {
+    try {
+      console.log(`📡 [Rekap API] Importing Excel...`);
+      const response = await apiClient.post('/rekap/import', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      return response.data;
+    } catch (error) {
+      console.error('❌ [Rekap API] Error importing Excel:', error);
+      throw error;
+    }
+  },
 };
 
 export default rekapApiService;
+

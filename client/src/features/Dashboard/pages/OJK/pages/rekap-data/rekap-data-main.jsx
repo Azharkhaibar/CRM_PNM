@@ -1,14 +1,17 @@
 // src/ojk/rekap/pages/rekap-data-main.jsx
-import React, { useMemo, useState, useRef } from 'react';
+import React, { useMemo, useState, useRef, useEffect } from 'react';
 import Header from '../../components/ui/header';
 import { useHeaderStore } from '../../store/header';
 import { Button } from '@/components/ui/button';
-import { ArrowBigLeftDash, ArrowBigRightDash, Save } from 'lucide-react';
+import { ArrowBigLeftDash, ArrowBigRightDash, Save, Copy, Download, Upload, Trash2 } from 'lucide-react';
 import UnsaveChangesModal from '../../components/unsave-changed-modal';
+import OjkCloneDialog from '../../components/OjkCloneDialog';
 import { KategoriFilter, SimpleTable } from './components/rekap-data.components';
 import { CATEGORIES, PAGE_SIZE } from './contants/rekap-data.contants.js';
 import { useRekapData, useScrollDrag, useHorizontalScroll } from './hooks/rekap-data.hook.ts';
 import { calculateGlobalSummary } from './utils/rekap-data.utils.js';
+import rekapApiService from './services/rekap-data.service';
+import { exportOjkRekapDataToExcel } from './utils/exportOjkRekap.js';
 
 export default function RekapData() {
   const { year, activeQuarter, search } = useHeaderStore();
@@ -37,6 +40,10 @@ export default function RekapData() {
     refreshData,
   } = useRekapData(year, activeQuarter);
 
+  // ====================== CLONING STATES ======================
+  const [cloneDialogOpen, setCloneDialogOpen] = useState(false);
+  const [inheritInfo, setInheritInfo] = useState(null);
+
   // ====================== KATEGORI FILTER STATE ======================
   const [kategoriFilter, setKategoriFilter] = useState({
     model: filter.model || '',
@@ -48,6 +55,35 @@ export default function RekapData() {
   // ====================== REFS ======================
   const kategoriScrollRef = useRef(null);
   const paginationRef = useRef(null);
+  const fileInputRef = useRef(null);
+  const [importing, setImporting] = useState(false);
+
+  const handleExport = () => {
+    exportOjkRekapDataToExcel(flattenedRows, year, activeQuarter);
+  };
+
+  const handleImportFile = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setImporting(true);
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('year', String(year));
+    formData.append('quarter', String(activeQuarter));
+
+    try {
+      const result = await rekapApiService.importExcel(formData);
+      alert(result.message || `✅ Berhasil mengimpor data!`);
+      await refreshData();
+    } catch (err) {
+      console.error('Import error:', err);
+      alert(`❌ Error: ${err.message || 'Gagal mengimpor file Excel.'}`);
+    } finally {
+      setImporting(false);
+      e.target.value = '';
+    }
+  };
 
   // ====================== SCROLL HOOKS ======================
   const { handleMouseDown, handleMouseLeave } = useScrollDrag(kategoriScrollRef);
@@ -136,10 +172,79 @@ export default function RekapData() {
     cancelAction();
   };
 
+  const handleUndoClone = async () => {
+    if (!inheritInfo) return;
+    try {
+      await rekapApiService.undoClonePeriodData({
+        targetYear: inheritInfo.targetYear,
+        targetQuarter: inheritInfo.targetQuarter,
+        categories: inheritInfo.categories,
+      });
+      setInheritInfo(null);
+      await refreshData();
+      alert('Kloning berhasil dibatalkan');
+    } catch (err) {
+      console.error('Error undoing clone:', err);
+      alert('Gagal membatalkan clone');
+    }
+  };
+
+  const handleResetQuarterData = async () => {
+    const confirmReset = window.confirm(
+      `Apakah Anda yakin ingin menghapus/mereset semua data profil risiko inherent OJK untuk periode ${year}-Q${activeQuarter}? Tindakan ini tidak dapat dibatalkan.`
+    );
+    if (!confirmReset) return;
+
+    try {
+      await rekapApiService.undoClonePeriodData({
+        targetYear: year,
+        targetQuarter: activeQuarter,
+      });
+      setInheritInfo(null);
+      await refreshData();
+      alert('Data periode ini berhasil direset / dihapus.');
+    } catch (err) {
+      console.error('Error resetting quarter data:', err);
+      alert('Gagal mereset / menghapus data periode ini.');
+    }
+  };
+
   // ====================== RENDER ======================
   return (
     <div className="space-y-4">
       <Header title="Rekap Data" />
+
+      {inheritInfo && (
+        <div className="mb-4 rounded-lg bg-yellow-50 border border-yellow-300 px-4 py-3 text-sm flex justify-between items-start gap-4 text-black">
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="inline-block w-2 h-2 rounded-full bg-yellow-500"></span>
+              <strong>Kloning Berhasil</strong>
+            </div>
+            <p className="text-gray-700">
+              Data untuk periode{' '}
+              <strong>
+                {inheritInfo.targetYear}-Q{inheritInfo.targetQuarter}
+              </strong>{' '}
+              telah berhasil disalin dari <strong>{inheritInfo.from}</strong> ({inheritInfo.count} modul).
+            </p>
+          </div>
+          <div className="flex flex-col gap-2">
+            <button 
+              onClick={handleUndoClone} 
+              className="px-3 py-1.5 rounded border border-red-200 bg-white hover:bg-red-50 text-red-600 text-sm font-medium whitespace-nowrap"
+            >
+              Undo Clone
+            </button>
+            <button 
+              onClick={() => setInheritInfo(null)} 
+              className="px-3 py-1.5 rounded border border-blue-600 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium whitespace-nowrap"
+            >
+              Confirm Clone
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="bg-white rounded-lg p-4 shadow space-y-4">
         {/* CATEGORY SELECTION */}
@@ -204,7 +309,7 @@ export default function RekapData() {
           />
         )}
 
-        {/* SAVE BUTTON */}
+        {/* SAVE & CLONE BUTTONS */}
         <div className="flex justify-end gap-2">
           {hasUnsavedChanges && (
             <div className="flex items-center mr-4 text-yellow-600 text-sm">
@@ -218,6 +323,50 @@ export default function RekapData() {
               Ada perubahan yang belum disimpan
             </div>
           )}
+
+          <Button
+            onClick={handleExport}
+            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
+            disabled={isLoading || flattenedRows.length === 0}
+          >
+            <Download className="w-4 h-4" />
+            Export Excel
+          </Button>
+
+          <Button
+            onClick={() => fileInputRef.current?.click()}
+            className="flex items-center gap-2 bg-amber-600 hover:bg-amber-700 text-white"
+            disabled={isLoading || importing}
+          >
+            <Upload className="w-4 h-4" />
+            {importing ? 'Mengimpor...' : 'Import Excel'}
+          </Button>
+
+          <Button
+            onClick={() => setCloneDialogOpen(true)}
+            className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white"
+            disabled={hasUnsavedChanges}
+            title={hasUnsavedChanges ? "Simpan perubahan terlebih dahulu sebelum menyalin data" : "Salin data dari periode lain"}
+          >
+            <Copy className="w-4 h-4" />
+            Salin / Clone Periode
+          </Button>
+
+          <Button
+            onClick={handleResetQuarterData}
+            className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white"
+            disabled={isLoading || hasUnsavedChanges || flattenedRows.length === 0}
+            title={
+              hasUnsavedChanges
+                ? "Simpan perubahan terlebih dahulu sebelum mereset data"
+                : flattenedRows.length === 0
+                ? "Tidak ada data untuk direset di periode ini"
+                : "Hapus semua data di periode/quarter ini"
+            }
+          >
+            <Trash2 className="w-4 h-4" />
+            Reset / Hapus Data Periode
+          </Button>
 
           <Button
             onClick={handleSaveAllChanges}
@@ -303,6 +452,25 @@ export default function RekapData() {
         saveText="Simpan dan Lanjutkan"
         dontSaveText="Lanjutkan Tanpa Simpan"
         cancelText="Batal"
+      />
+
+      {/* CLONE DIALOG */}
+      <OjkCloneDialog
+        isOpen={cloneDialogOpen}
+        onClose={() => setCloneDialogOpen(false)}
+        onSuccess={(cloneInfo) => {
+          setInheritInfo(cloneInfo);
+          refreshData();
+        }}
+        currentYear={year}
+        currentQuarter={activeQuarter}
+      />
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".xlsx,.xls"
+        onChange={handleImportFile}
+        style={{ display: 'none' }}
       />
     </div>
   );

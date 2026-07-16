@@ -221,25 +221,37 @@ export default function KepatuhanOJK() {
     setKpmrRows(formattedRows);
   }, [kpmr]);
 
-  // ========== HANDLE REFRESH ==========
-  const handleKpmrRefresh = useCallback(async () => {
-    if (!kpmrId) {
-      console.log('⚠️ [Kepatuhan] Cannot refresh: kpmrId is null');
+  const handleKpmrRefresh = useCallback(async (customData) => {
+    if (customData === null) {
+      setKpmrId(null);
+      setKpmrRows([]);
       return [];
     }
-
-    console.log('🔄 [Kepatuhan] handleKpmrRefresh dipanggil');
     try {
+      if (!kpmrId) {
+        setIsKpmrLoading(true);
+        await loadKpmrByYearQuarter(9999, 1);
+        const data = await loadKpmrByYearQuarter(year, 1);
+        if (data) {
+          setKpmrId(data.id);
+          const formatted = formatKpmrRowsFromBackend(data.aspekList || []);
+          setKpmrRows(formatted);
+          return data.aspekList || [];
+        }
+        return [];
+      }
       const refreshedRows = await refreshKpmrData();
-      if (refreshedRows && refreshedRows.length > 0) {
+      if (refreshedRows?.length > 0) {
         setKpmrRows(formatKpmrRowsFromBackend(refreshedRows));
       }
       return refreshedRows;
     } catch (error) {
-      console.error('❌ [Kepatuhan] Error refreshing:', error);
+      console.error('❌ [Kepatuhan] Error refreshing KPMR:', error);
       return [];
+    } finally {
+      setIsKpmrLoading(false);
     }
-  }, [kpmrId, refreshKpmrData]);
+  }, [kpmrId, refreshKpmrData, loadKpmrByYearQuarter, year]);
 
   // ========== STABILKAN KPMR PAGE ==========
   const kpmrPage = useMemo(() => {

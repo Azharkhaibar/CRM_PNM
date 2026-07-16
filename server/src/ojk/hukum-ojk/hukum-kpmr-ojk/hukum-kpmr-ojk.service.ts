@@ -279,6 +279,8 @@ export class KpmrHukumService {
         return;
       }
 
+      const activeQuarterKey = `Q${kpmr.quarter}`;
+
       let totalScore = 0;
       let totalQuestions = 0;
 
@@ -289,40 +291,9 @@ export class KpmrHukumService {
 
           if (aspek.pertanyaanList && aspek.pertanyaanList.length > 0) {
             for (const pertanyaan of aspek.pertanyaanList) {
-              const scores: number[] = [];
-
-              if (
-                typeof pertanyaan.skor?.Q1 === 'number' &&
-                pertanyaan.skor.Q1 >= 1 &&
-                pertanyaan.skor.Q1 <= 5
-              ) {
-                scores.push(pertanyaan.skor.Q1);
-              }
-              if (
-                typeof pertanyaan.skor?.Q2 === 'number' &&
-                pertanyaan.skor.Q2 >= 1 &&
-                pertanyaan.skor.Q2 <= 5
-              ) {
-                scores.push(pertanyaan.skor.Q2);
-              }
-              if (
-                typeof pertanyaan.skor?.Q3 === 'number' &&
-                pertanyaan.skor.Q3 >= 1 &&
-                pertanyaan.skor.Q3 <= 5
-              ) {
-                scores.push(pertanyaan.skor.Q3);
-              }
-              if (
-                typeof pertanyaan.skor?.Q4 === 'number' &&
-                pertanyaan.skor.Q4 >= 1 &&
-                pertanyaan.skor.Q4 <= 5
-              ) {
-                scores.push(pertanyaan.skor.Q4);
-              }
-
-              if (scores.length > 0) {
-                const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
-                aspekTotalScore += avg;
+              const score = pertanyaan.skor?.[activeQuarterKey];
+              if (typeof score === 'number' && score >= 1 && score <= 5) {
+                aspekTotalScore += score;
                 aspekQuestionCount++;
               }
             }

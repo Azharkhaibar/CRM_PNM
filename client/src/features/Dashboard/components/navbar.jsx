@@ -37,7 +37,7 @@ const Navbar = () => {
       <div className="flex justify-between items-center px-6 py-3">
         <div className="flex items-center gap-6">
           <div>
-            <h1 className="text-xl font-bold tracking-wide">RIMS</h1>
+            <h1 className="text-xl font-bold tracking-wide">SIMARI</h1>
             <p className={`text-sm ${darkMode ? 'text-gray-300' : 'text-white/80'}`}>{pageTitle}</p>
           </div>
 

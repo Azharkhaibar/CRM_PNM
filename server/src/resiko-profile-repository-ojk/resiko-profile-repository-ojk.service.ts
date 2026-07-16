@@ -124,15 +124,15 @@ export class ResikoProfileRepositoryOjkService {
       const pem = this.parseNumber(entity.pembilangValue);
       if (!isNaN(pem)) {
         rawValue = formula ? this.evaluateFormula(formula, { pem }) : pem;
-      } else if (entity.pembilangLabel && entity.pembilangLabel.trim() !== '') {
-        rawString = entity.pembilangLabel.trim().toLowerCase();
+      } else if (entity.pembilangValue && String(entity.pembilangValue).trim() !== '') {
+        rawString = String(entity.pembilangValue).trim().toLowerCase();
       }
     } else if (mode === 'Satu Faktor') {
       const pem = this.parseNumber(entity.pembilangValue);
       if (!isNaN(pem)) {
         rawValue = formula ? this.evaluateFormula(formula, { pem }) : pem;
-      } else if (entity.pembilangLabel && entity.pembilangLabel.trim() !== '') {
-        rawString = entity.pembilangLabel.trim().toLowerCase();
+      } else if (entity.pembilangValue && String(entity.pembilangValue).trim() !== '') {
+        rawString = String(entity.pembilangValue).trim().toLowerCase();
       }
     } else if (mode === 'Dua Faktor') {
       const pem = this.parseNumber(entity.pembilangValue);
@@ -143,8 +143,8 @@ export class ResikoProfileRepositoryOjkService {
           : pen !== 0
             ? pem / pen
             : NaN;
-      } else if (entity.pembilangLabel && entity.pembilangLabel.trim() !== '') {
-        rawString = entity.pembilangLabel.trim().toLowerCase();
+      } else if (entity.pembilangValue && String(entity.pembilangValue).trim() !== '') {
+        rawString = String(entity.pembilangValue).trim().toLowerCase();
       }
     }
 
@@ -191,10 +191,10 @@ export class ResikoProfileRepositoryOjkService {
           if (hasPercent) n = n / 100;
           if (/≤|<=/.test(rawText)) max = n;
           else if (/≥|>=/.test(rawText)) min = n;
-          else if (/^[xX]?\s*>|>\s*\d+/i.test(rawText)) {
+          else if (/^\s*(?:[xX]?\s*>|≥?>)\s*-?\d+(?:\.\d+)?/i.test(rawText)) {
             min = n;
             max = Infinity;
-          } else if (/^[xX]?\s*<|<\s*\d+/i.test(rawText)) {
+          } else if (/^\s*(?:[xX]?\s*<|≤?<)\s*-?\d+(?:\.\d+)?/i.test(rawText)) {
             min = -Infinity;
             max = n;
           } else {
@@ -371,7 +371,10 @@ export class ResikoProfileRepositoryOjkService {
       });
 
       const byModuleArray = Object.entries(byModule).map(([module, items]) => {
-        const totalWeighted = items.reduce((sum, item) => sum + (item.weighted || 0), 0);
+        const totalWeighted = items.reduce((sum, item) => {
+          const rating = this.computeRating(item);
+          return sum + (rating.weighted || 0);
+        }, 0);
         return {
           module: this.getModuleName(module as ModuleTypeOjk),
           count: items.length,
@@ -383,7 +386,10 @@ export class ResikoProfileRepositoryOjkService {
       const byQuarterArray = Object.entries(byQuarter).map(([q, items]) => ({
         quarter: q as Quarter,
         count: items.length,
-        totalWeighted: items.reduce((sum, item) => sum + (item.weighted || 0), 0),
+        totalWeighted: items.reduce((sum, item) => {
+          const rating = this.computeRating(item);
+          return sum + (rating.weighted || 0);
+        }, 0),
       }));
 
       const validated = data.filter((item) => item.isValidated).length;
@@ -391,7 +397,10 @@ export class ResikoProfileRepositoryOjkService {
       return {
         totalModules: Object.keys(byModule).length,
         totalIndicators: data.length,
-        totalWeighted: data.reduce((sum, item) => sum + (item.weighted || 0), 0),
+        totalWeighted: data.reduce((sum, item) => {
+          const rating = this.computeRating(item);
+          return sum + (rating.weighted || 0);
+        }, 0),
         byModule: byModuleArray,
         byQuarter: byQuarterArray,
         validationStatus: {
@@ -499,13 +508,17 @@ export class ResikoProfileRepositoryOjkService {
         moduleBreakdown[module] = { count: 0, totalWeighted: 0 };
       }
       moduleBreakdown[module].count++;
-      moduleBreakdown[module].totalWeighted += item.weighted || 0;
+      const rating = this.computeRating(item);
+      moduleBreakdown[module].totalWeighted += rating.weighted || 0;
     });
 
     return {
       totalModules: Object.keys(moduleBreakdown).length,
       totalIndicators: data.length,
-      totalWeighted: data.reduce((sum, item) => sum + (item.weighted || 0), 0),
+      totalWeighted: data.reduce((sum, item) => {
+        const rating = this.computeRating(item);
+        return sum + (rating.weighted || 0);
+      }, 0),
       moduleBreakdown: Object.entries(moduleBreakdown).map(([module, stats]) => ({
         module: this.getModuleName(module as ModuleTypeOjk),
         count: stats.count,

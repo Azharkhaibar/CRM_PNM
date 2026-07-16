@@ -289,11 +289,27 @@ export class CreateNilaiDto {
 
   @IsOptional()
   @IsString()
+  kodeEmiten?: string;
+
+  @IsOptional()
+  @IsString()
+  kepemilikan?: string;
+
+  @IsOptional()
+  @IsString()
   portofolio?: string;
 
   @IsOptional()
   @IsString()
   keterangan?: string;
+
+  @IsOptional()
+  @IsString()
+  sumberRisiko?: string;
+
+  @IsOptional()
+  @IsString()
+  dampak?: string;
 
   @IsOptional()
   @ValidateNested()
@@ -324,11 +340,27 @@ export class UpdateNilaiDto {
 
   @IsOptional()
   @IsString()
+  kodeEmiten?: string;
+
+  @IsOptional()
+  @IsString()
+  kepemilikan?: string;
+
+  @IsOptional()
+  @IsString()
   portofolio?: string;
 
   @IsOptional()
   @IsString()
   keterangan?: string;
+
+  @IsOptional()
+  @IsString()
+  sumberRisiko?: string;
+
+  @IsOptional()
+  @IsString()
+  dampak?: string;
 
   @IsOptional()
   @ValidateNested()
@@ -448,11 +480,27 @@ export class ExportNilaiDto {
 
   @IsOptional()
   @IsString()
+  kodeEmiten?: string;
+
+  @IsOptional()
+  @IsString()
+  kepemilikan?: string;
+
+  @IsOptional()
+  @IsString()
   portofolio?: string;
 
   @IsOptional()
   @IsString()
   keterangan?: string;
+
+  @IsOptional()
+  @IsString()
+  sumberRisiko?: string;
+
+  @IsOptional()
+  @IsString()
+  dampak?: string;
 
   @IsOptional()
   @ValidateNested()

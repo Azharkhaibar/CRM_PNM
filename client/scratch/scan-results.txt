@@ -1,0 +1,229 @@
+Scanning 766 files...
+
+Bug found in: features\Dashboard\pages\notification\hooks\notification.hook.ts
+  Renamed to: boolean
+    L142: const [isLoading, setIsLoading] = useState(false);
+    L772: isLoading,
+    L839: isLoading,
+    L871: isLoading,
+
+Bug found in: features\Dashboard\pages\OJK\pages\produk\konsentrasi-produk\tabs\konsentrasi-produk-inherent.jsx
+  Renamed to: loading
+    L57: isLoading,
+    L86: isLoading,
+    L91: }, [year, quarter, isInitialLoading, rows, isLoading, currentInherentId, currentInherentData, error]);
+    L478: disabled={isLoading}
+    L487: disabled={typeof isLoading !== 'undefined' ? isLoading : loading}
+    L494: <Button onClick={() => backendHandlers.refreshData()} variant="outline" className="flex items-center gap-2" disabled={isLoading}>
+    L495: {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+    L522: <KonsentrasiProdukInherent rows={rows} setRows={setRows} search={search} active={active} backendHandlers={backendHandlers} isLoading={isLoading} isLocked={currentInherentData?.isLocked} />
+    L541: function KonsentrasiProdukInherent({ rows, setRows, search, active, backendHandlers, isLoading, isLocked = false }) {
+    L554: <ParameterPanel rows={rows} setRows={setRows} active={active} backendHandlers={backendHandlers} isLoading={isLoading || isLocked} isLocked={isLocked} />
+    L1744: isLoading={loading}
+
+Bug found in: features\Dashboard\pages\OJK\pages\produk\konsentrasi-produk\tabs\konsentrasi-produk.jsx
+  Renamed to: inherentLoading
+    L349: isLoading={inherentLoading}
+
+Bug found in: features\Dashboard\pages\OJK\pages\produk\kredit-produk\tabs\kredit-produk-inherent.jsx
+  Renamed to: loading
+    L57: isLoading,
+    L86: isLoading,
+    L91: }, [year, quarter, isInitialLoading, rows, isLoading, currentInherentId, currentInherentData, error]);
+    L477: disabled={isLoading}
+    L487: disabled={typeof isLoading !== 'undefined' ? isLoading : loading}
+    L494: <Button onClick={() => backendHandlers.refreshData()} variant="outline" className="flex items-center gap-2" disabled={isLoading}>
+    L495: {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+    L522: <KreditProdukInherent rows={rows} setRows={setRows} search={search} active={active} backendHandlers={backendHandlers} isLoading={isLoading} isLocked={currentInherentData?.isLocked} />
+    L541: function KreditProdukInherent({ rows, setRows, search, active, backendHandlers, isLoading, isLocked = false }) {
+    L554: <ParameterPanel rows={rows} setRows={setRows} active={active} backendHandlers={backendHandlers} isLoading={isLoading || isLocked} isLocked={isLocked} />
+    L1744: isLoading={loading}
+
+Bug found in: features\Dashboard\pages\OJK\pages\produk\kredit-produk\tabs\kredit-produk.jsx
+  Renamed to: inherentLoading
+    L349: isLoading={inherentLoading}
+
+Bug found in: features\Dashboard\pages\OJK\pages\produk\likuiditas-produk\tabs\likuiditas-produk-inherent.jsx
+  Renamed to: loading
+    L57: isLoading,
+    L86: isLoading,
+    L91: }, [year, quarter, isInitialLoading, rows, isLoading, currentInherentId, currentInherentData, error]);
+    L477: disabled={isLoading}
+    L487: disabled={typeof isLoading !== 'undefined' ? isLoading : loading}
+    L494: <Button onClick={() => backendHandlers.refreshData()} variant="outline" className="flex items-center gap-2" disabled={isLoading}>
+    L495: {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+    L522: <LikuiditasProdukInherent rows={rows} setRows={setRows} search={search} active={active} backendHandlers={backendHandlers} isLoading={isLoading} isLocked={currentInherentData?.isLocked} />
+    L541: function LikuiditasProdukInherent({ rows, setRows, search, active, backendHandlers, isLoading, isLocked = false }) {
+    L554: <ParameterPanel rows={rows} setRows={setRows} active={active} backendHandlers={backendHandlers} isLoading={isLoading || isLocked} isLocked={isLocked} />
+    L1744: isLoading={loading}
+
+Bug found in: features\Dashboard\pages\OJK\pages\produk\likuiditas-produk\tabs\likuiditas-produk.jsx
+  Renamed to: inherentLoading
+    L349: isLoading={inherentLoading}
+
+Bug found in: features\Dashboard\pages\OJK\pages\produk\pasar-produk\tabs\pasar-produk-inherent.jsx
+  Renamed to: globalLoading
+    L57: isLoading,
+    L86: isLoading,
+    L91: }, [year, quarter, isInitialLoading, rows, isLoading, currentInherentId, currentInherentData, error]);
+    L477: disabled={isLoading}
+    L487: disabled={isLoading}
+    L494: <Button onClick={() => backendHandlers.refreshData()} variant="outline" className="flex items-center gap-2" disabled={isLoading}>
+    L495: {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+    L522: <PasarProdukInherent rows={rows} setRows={setRows} search={search} active={active} backendHandlers={backendHandlers} isLoading={isLoading} isLocked={currentInherentData?.isLocked} />
+    L541: function PasarProdukInherent({ rows, setRows, search, active, backendHandlers, isLoading, isLocked = false }) {
+    L554: <ParameterPanel rows={rows} setRows={setRows} active={active} backendHandlers={backendHandlers} isLoading={isLoading || isLocked} isLocked={isLocked} />
+    L1744: isLoading={loading}
+
+Bug found in: features\Dashboard\pages\OJK\pages\regulatory\hukum\tabs\hukum-inherent.jsx
+  Renamed to: loading
+    L57: isLoading,
+    L86: isLoading,
+    L91: }, [year, quarter, isInitialLoading, rows, isLoading, currentHukumId, currentHukumData, error]);
+    L478: disabled={isLoading}
+    L487: disabled={typeof isLoading !== 'undefined' ? isLoading : loading}
+    L494: <Button onClick={() => backendHandlers.refreshData()} variant="outline" className="flex items-center gap-2" disabled={isLoading}>
+    L495: {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+    L522: <HukumInherent rows={rows} setRows={setRows} search={search} active={active} backendHandlers={backendHandlers} isLoading={isLoading} isLocked={currentHukumData?.isLocked} />
+    L541: function HukumInherent({ rows, setRows, search, active, backendHandlers, isLoading, isLocked = false }) {
+    L554: <ParameterPanel rows={rows} setRows={setRows} active={active} backendHandlers={backendHandlers} isLoading={isLoading || isLocked} isLocked={isLocked} />
+    L1744: isLoading={loading}
+
+Bug found in: features\Dashboard\pages\OJK\pages\regulatory\hukum\tabs\hukum.jsx
+  Renamed to: inherentLoading
+    L349: isLoading={inherentLoading}
+
+Bug found in: features\Dashboard\pages\OJK\pages\regulatory\investasi\tabs\investasi-inherent.jsx
+  Renamed to: loading
+    L76: isLoading,
+    L105: isLoading,
+    L110: }, [year, quarter, isInitialLoading, rows, isLoading, currentInherentId, currentInherentData, error]);
+    L583: disabled={isLoading}
+    L592: disabled={typeof isLoading !== 'undefined' ? isLoading : loading}
+    L599: <Button onClick={() => backendHandlers.refreshData()} variant="outline" className="flex items-center gap-2" disabled={isLoading}>
+    L600: {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+    L627: <InvestasiProdukInherent rows={rows} setRows={setRows} search={search} active={active} backendHandlers={backendHandlers} isLoading={isLoading} isLocked={currentInherentData?.isLocked} />
+    L646: function InvestasiProdukInherent({ rows, setRows, search, active, backendHandlers, isLoading, isLocked = false }) {
+    L659: <ParameterPanel rows={rows} setRows={setRows} active={active} backendHandlers={backendHandlers} isLoading={isLoading || isLocked} isLocked={isLocked} />
+    L1849: isLoading={loading}
+
+Bug found in: features\Dashboard\pages\OJK\pages\regulatory\investasi\tabs\investasi.jsx
+  Renamed to: inherentLoading
+    L349: isLoading={inherentLoading}
+
+Bug found in: features\Dashboard\pages\OJK\pages\regulatory\kepatuhan\tabs\kepatuhan-inherent.jsx
+  Renamed to: loading
+    L633: disabled={isLoading}
+    L642: disabled={typeof isLoading !== 'undefined' ? isLoading : loading}
+    L677: <KepatuhanInherent rows={safeRows} setRows={setRows} search={search} active={active} backendHandlers={backendHandlers} isLoading={loading || saving || isRefreshing} isLocked={kepatuhan?.isLocked || false} />
+    L696: function KepatuhanInherent({ rows, setRows, search, active, backendHandlers, isLoading, isLocked = false }) {
+    L721: <AspekPanel rows={safeRows} setRows={setRows} active={active} backendHandlers={backendHandlers} isLoading={isLoading || isLocked} isLocked={isLocked} />
+    L1834: isLoading={loading}
+
+Bug found in: features\Dashboard\pages\OJK\pages\regulatory\operasional\tabs\operasional-inherent.jsx
+  Renamed to: loading
+    L57: isLoading,
+    L86: isLoading,
+    L91: }, [year, quarter, isInitialLoading, rows, isLoading, currentInherentId, currentInherentData, error]);
+    L478: disabled={isLoading}
+    L487: disabled={typeof isLoading !== 'undefined' ? isLoading : loading}
+    L494: <Button onClick={() => backendHandlers.refreshData()} variant="outline" className="flex items-center gap-2" disabled={isLoading}>
+    L495: {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+    L522: <OperasionalProdukInherent rows={rows} setRows={setRows} search={search} active={active} backendHandlers={backendHandlers} isLoading={isLoading} isLocked={currentInherentData?.isLocked} />
+    L541: function OperasionalProdukInherent({ rows, setRows, search, active, backendHandlers, isLoading, isLocked = false }) {
+    L554: <ParameterPanel rows={rows} setRows={setRows} active={active} backendHandlers={backendHandlers} isLoading={isLoading || isLocked} isLocked={isLocked} />
+    L1744: isLoading={loading}
+
+Bug found in: features\Dashboard\pages\OJK\pages\regulatory\operasional\tabs\operasional.jsx
+  Renamed to: inherentLoading
+    L349: isLoading={inherentLoading}
+
+Bug found in: features\Dashboard\pages\OJK\pages\regulatory\permodalan\tabs\permodalan-inherent.jsx
+  Renamed to: loading
+    L77: isLoading,
+    L106: isLoading,
+    L111: }, [year, quarter, isInitialLoading, rows, isLoading, currentInherentId, currentInherentData, error]);
+    L584: disabled={isLoading}
+    L593: disabled={typeof isLoading !== 'undefined' ? isLoading : loading}
+    L600: <Button onClick={() => backendHandlers.refreshData()} variant="outline" className="flex items-center gap-2" disabled={isLoading}>
+    L601: {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+    L628: <PermodalanProdukInherent rows={rows} setRows={setRows} search={search} active={active} backendHandlers={backendHandlers} isLoading={isLoading} isLocked={currentInherentData?.isLocked} />
+    L647: function PermodalanProdukInherent({ rows, setRows, search, active, backendHandlers, isLoading, isLocked = false }) {
+    L660: <ParameterPanel rows={rows} setRows={setRows} active={active} backendHandlers={backendHandlers} isLoading={isLoading || isLocked} isLocked={isLocked} />
+    L1850: isLoading={loading}
+
+Bug found in: features\Dashboard\pages\OJK\pages\regulatory\permodalan\tabs\permodalan.jsx
+  Renamed to: inherentLoading
+    L349: isLoading={inherentLoading}
+
+Bug found in: features\Dashboard\pages\OJK\pages\regulatory\rentabilitas\tabs\rentabilitas-inherent.jsx
+  Renamed to: loading
+    L61: isLoading,
+    L90: isLoading,
+    L95: }, [year, quarter, isInitialLoading, rows, isLoading, currentInherentId, currentInherentData, error]);
+    L770: disabled={isLoading}
+    L779: disabled={typeof isLoading !== 'undefined' ? isLoading : loading}
+    L786: <Button onClick={() => backendHandlers.refreshData()} variant="outline" className="flex items-center gap-2" disabled={isLoading}>
+    L787: {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+    L814: <RentabilitasProdukInherent rows={rows} setRows={setRows} search={search} active={active} backendHandlers={backendHandlers} isLoading={isLoading} isLocked={currentInherentData?.isLocked} />
+    L833: function RentabilitasProdukInherent({ rows, setRows, search, active, backendHandlers, isLoading, isLocked = false }) {
+    L846: <ParameterPanel rows={rows} setRows={setRows} active={active} backendHandlers={backendHandlers} isLoading={isLoading || isLocked} isLocked={isLocked} />
+    L1910: isLoading={loading}
+
+Bug found in: features\Dashboard\pages\OJK\pages\regulatory\rentabilitas\tabs\rentabilitas.jsx
+  Renamed to: inherentLoading
+    L349: isLoading={inherentLoading}
+
+Bug found in: features\Dashboard\pages\OJK\pages\regulatory\reputasi\tabs\reputasi-inherent.jsx
+  Renamed to: loading
+    L61: isLoading,
+    L90: isLoading,
+    L95: }, [year, quarter, isInitialLoading, rows, isLoading, currentInherentId, currentInherentData, error]);
+    L645: disabled={isLoading}
+    L654: disabled={typeof isLoading !== 'undefined' ? isLoading : loading}
+    L661: <Button onClick={() => backendHandlers.refreshData()} variant="outline" className="flex items-center gap-2" disabled={isLoading}>
+    L662: {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+    L689: <ReputasiProdukInherent rows={rows} setRows={setRows} search={search} active={active} backendHandlers={backendHandlers} isLoading={isLoading} isLocked={currentInherentData?.isLocked} />
+    L708: function ReputasiProdukInherent({ rows, setRows, search, active, backendHandlers, isLoading, isLocked = false }) {
+    L721: <ParameterPanel rows={rows} setRows={setRows} active={active} backendHandlers={backendHandlers} isLoading={isLoading || isLocked} isLocked={isLocked} />
+    L1911: isLoading={loading}
+
+Bug found in: features\Dashboard\pages\OJK\pages\regulatory\reputasi\tabs\reputasi.jsx
+  Renamed to: inherentLoading
+    L349: isLoading={inherentLoading}
+
+Bug found in: features\Dashboard\pages\OJK\pages\regulatory\strategis\tabs\strategis-inherent.jsx
+  Renamed to: loading
+    L61: isLoading,
+    L90: isLoading,
+    L95: }, [year, quarter, isInitialLoading, rows, isLoading, currentInherentId, currentInherentData, error]);
+    L549: disabled={isLoading}
+    L558: disabled={typeof isLoading !== 'undefined' ? isLoading : loading}
+    L565: <Button onClick={() => backendHandlers.refreshData()} variant="outline" className="flex items-center gap-2" disabled={isLoading}>
+    L566: {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+    L593: <StrategisProdukInherent rows={rows} setRows={setRows} search={search} active={active} backendHandlers={backendHandlers} isLoading={isLoading} isLocked={currentInherentData?.isLocked} />
+    L612: function StrategisProdukInherent({ rows, setRows, search, active, backendHandlers, isLoading, isLocked = false }) {
+    L625: <ParameterPanel rows={rows} setRows={setRows} active={active} backendHandlers={backendHandlers} isLoading={isLoading || isLocked} isLocked={isLocked} />
+    L1817: isLoading={loading}
+
+Bug found in: features\Dashboard\pages\OJK\pages\regulatory\strategis\tabs\strategis.jsx
+  Renamed to: inherentLoading
+    L349: isLoading={inherentLoading}
+
+Bug found in: features\Dashboard\pages\OJK\pages\regulatory\tatakelola\tabs\tatakelola-inherent.jsx
+  Renamed to: loading
+    L61: isLoading,
+    L90: isLoading,
+    L95: }, [year, quarter, isInitialLoading, rows, isLoading, currentInherentId, currentInherentData, error]);
+    L549: disabled={isLoading}
+    L558: disabled={typeof isLoading !== 'undefined' ? isLoading : loading}
+    L565: <Button onClick={() => backendHandlers.refreshData()} variant="outline" className="flex items-center gap-2" disabled={isLoading}>
+    L566: {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+    L593: <TatakelolaProdukInherent rows={rows} setRows={setRows} search={search} active={active} backendHandlers={backendHandlers} isLoading={isLoading} isLocked={currentInherentData?.isLocked} />
+    L612: function TatakelolaProdukInherent({ rows, setRows, search, active, backendHandlers, isLoading, isLocked = false }) {
+    L625: <ParameterPanel rows={rows} setRows={setRows} active={active} backendHandlers={backendHandlers} isLoading={isLoading || isLocked} isLocked={isLocked} />
+    L1817: isLoading={loading}
+
+Bug found in: features\Dashboard\pages\OJK\pages\regulatory\tatakelola\tabs\tatakelola.jsx
+  Renamed to: inherentLoading
+    L349: isLoading={inherentLoading}

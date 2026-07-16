@@ -16,6 +16,7 @@ import { UpdateRasDto } from './dto/update-ra.dto';
 import { UpdateMonthlyValuesDto } from './dto/update-monthly-values.dto';
 import { FilterRasDto } from './dto/filter-ras.dto';
 import { ImportRasDto } from './dto/import-ras.dto';
+import { CloneMonthlyValuesDto, CloneYearlyParametersDto, UndoCloneMonthlyDto, UndoCloneYearlyDto } from './dto/clone-ras.dto';
 
 @Controller('ras')
 export class RasController {
@@ -109,5 +110,25 @@ export class RasController {
   @Post('import')
   importData(@Body() importRasDto: ImportRasDto) {
     return this.rasService.importData(importRasDto);
+  }
+
+  @Post('clone/month')
+  cloneMonthlyValues(@Body() dto: CloneMonthlyValuesDto) {
+    return this.rasService.cloneMonthlyValues(dto);
+  }
+
+  @Post('clone/year')
+  cloneYearlyParameters(@Body() dto: CloneYearlyParametersDto) {
+    return this.rasService.cloneYearlyParameters(dto);
+  }
+
+  @Post('undo-clone/month')
+  undoCloneMonthly(@Body() dto: UndoCloneMonthlyDto) {
+    return this.rasService.undoCloneMonthly(dto);
+  }
+
+  @Post('undo-clone/year')
+  undoCloneYearly(@Body() dto: UndoCloneYearlyDto) {
+    return this.rasService.undoCloneYearly(dto);
   }
 }

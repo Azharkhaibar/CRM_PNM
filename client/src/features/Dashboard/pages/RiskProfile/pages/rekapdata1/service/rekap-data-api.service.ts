@@ -79,4 +79,11 @@ export const rekapDataAPI = {
     }),
 
   saveResult: (data: RekapResult) => axios.post(`${API_BASE_URL}/rekap-data-1/result`, data),
+
+  // ===================== KOMPOSIT SUMMARY =====================
+  getKompositSummary: (year: number, quarter: string) =>
+    axios.get(`${API_BASE_URL}/komposit/summary`, {
+      params: { year, quarter },
+    }),
 };
+

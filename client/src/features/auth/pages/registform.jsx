@@ -1,5 +1,5 @@
 // registform.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import InputField from '../components/inputField';
 import fileIMG from '../../../assets/logo-pnm-2-removebg-preview.png';
 import bgImage from '../../../assets/Gedung-PNM-Banner.jpg';
@@ -20,6 +20,14 @@ export default function RegisterPage() {
   const [role, setRole] = useState('USER'); 
   const [genderForm, setGenderForm] = useState('MALE'); 
   const [showPinDialog, setShowPinDialog] = useState(false);
+
+  useEffect(() => {
+    const isVerified = sessionStorage.getItem('register_pin_verified') === 'true';
+    if (!isVerified) {
+      alert('Akses ditolak. Silakan masukkan PIN terlebih dahulu.');
+      navigate('/login');
+    }
+  }, [navigate]);
 
   const handleRegister = async (e) => {
     e.preventDefault();
@@ -42,6 +50,7 @@ export default function RegisterPage() {
       const result = await register(payload);
       console.log('[Register] Response:', result);
 
+      sessionStorage.removeItem('register_pin_verified');
       alert('Registrasi berhasil! Silakan login');
       navigate('/login');
     } catch (err) {

@@ -1,6 +1,8 @@
 // src/ojk/strategis/strategis-kpmr/strategis-kpmr.jsx
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useHeaderStore } from '../../../../store/header';
+import OjkKpmrCloneDialog from '../../../../components/OjkKpmrCloneDialog';
+import rekapApiService from '../../../rekap-data/services/rekap-data.service';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
@@ -797,10 +799,42 @@ function PertanyaanPanel({ aspekId, pertanyaanList = [], activePertanyaanIndex, 
 }
 
 function AspekPanel({ rows = [], setRows, activeQuarter, onRefreshData, kpmrId, onCreateKpmr }) {
+  const year = useHeaderStore((s) => s.year);
   const { toast } = useToast();
   const { user } = useAuth();
   const { logCreate, logUpdate, logDelete } = useAuditLog();
+
+  const handleResetData = async () => {
+    if (!confirm(`Apakah Anda yakin ingin menghapus/reset semua data KPMR Strategis untuk tahun ${year}? Semua data aspek dan pertanyaan akan terhapus secara permanen.`)) {
+      return;
+    }
+    setLoading(true);
+    try {
+      await rekapApiService.resetKpmrPeriodData(Number(year), 'strategis-regulatory');
+      toast({
+        title: 'Berhasil',
+        description: 'Data KPMR berhasil di-reset',
+      });
+      if (typeof setRows === 'function') {
+        setRows([]);
+      }
+      if (typeof onRefreshData === 'function') {
+        await onRefreshData(null);
+      }
+    } catch (err) {
+      console.error('Error resetting data:', err);
+      toast({
+        title: 'Gagal',
+        description: 'Gagal me-reset data KPMR',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const [activeAspekIndex, setActiveAspekIndex] = useState(-1);
+  const [cloneDialogOpen, setCloneDialogOpen] = useState(false);
   const [activePertanyaanIndex, setActivePertanyaanIndex] = useState(-1);
   const [editModeAspek, setEditModeAspek] = useState(false);
   const [editModePertanyaan, setEditModePertanyaan] = useState(false);
@@ -1312,6 +1346,26 @@ function AspekPanel({ rows = [], setRows, activeQuarter, onRefreshData, kpmrId, 
           <div className="flex items-center gap-2">
             {(loading || saving) && <div className="text-xs bg-slate-700 text-white px-2 py-1 rounded">Memproses...</div>}
 
+            <Button
+              size="icon"
+              onClick={() => setCloneDialogOpen(true)}
+              className="bg-purple-600 hover:bg-purple-700"
+              disabled={loading || saving}
+              title="Salin KPMR"
+            >
+              <Copy className="w-4 h-4" />
+            </Button>
+
+            <Button
+              size="icon"
+              onClick={handleResetData}
+              className="bg-red-600 hover:bg-red-700"
+              disabled={loading || saving || !kpmrId}
+              title="Reset Data"
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
+
             <Button size="sm" variant="outline" onClick={() => setShowAspekForm(!showAspekForm)} className="bg-slate-900 text-white hover:bg-slate-800 text-md px-3 border border-black" disabled={loading || saving}>
               {showAspekForm ? (
                 <>
@@ -1363,7 +1417,22 @@ function AspekPanel({ rows = [], setRows, activeQuarter, onRefreshData, kpmrId, 
               <div className="w-[10%]">
                 <label className="font-semibold text-md tracking-wide ml-1 text-white">No</label>
                 <Input placeholder="No" value={aspek.nomor} onChange={(e) => handleChangeAspek('nomor', e.target.value)} className="bg-white text-slate-950 border-slate-300" disabled={isFieldDisabled()} />
-              </div>
+                <OjkKpmrCloneDialog
+        isOpen={cloneDialogOpen}
+        onClose={() => setCloneDialogOpen(false)}
+        defaultCategory="strategis-regulatory"
+        currentYear={year}
+        onSuccess={async (cloneInfo) => {
+          toast({
+            title: 'Berhasil',
+            description: `Berhasil menyalin data KPMR dari tahun ${cloneInfo.from} ke ${cloneInfo.targetYear}`,
+          });
+          if (typeof onRefreshData === 'function') {
+            await onRefreshData();
+          }
+        }}
+      />
+    </div>
 
               <div className="w-[10%]">
                 <label className="font-semibold text-md tracking-wid ml-1 text-white">Bobot</label>
@@ -1835,6 +1904,7 @@ function TableKpmr({ rows = [], activeQuarter }) {
           )}
         </div>
       )}
+      
     </div>
   );
 }
@@ -1877,7 +1947,12 @@ export default function StrategisKpmrPage({ rows, setRows, search, onRefreshData
         return;
       }
 
-      if (!kpmrId) return;
+      if (!kpmrId) {
+        if (typeof onRefreshData === 'function') {
+          await onRefreshData();
+        }
+        return;
+      }
 
       if (isLoadingRef.current) {
         console.log('⏳ [KpmrPage] Refresh already in progress, skipping...');

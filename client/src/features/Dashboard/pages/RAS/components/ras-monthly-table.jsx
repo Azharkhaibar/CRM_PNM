@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Pencil, Trash2, FileText, List, ListX } from 'lucide-react';
+import { Pencil, Trash2, FileText, List, ListX, Copy } from 'lucide-react';
 // import { formatRasDisplayValue, calculateRasValue, getMonthName } from '../utils/rasUtils.js';
 import { formatRasDisplayValue, calculateRasValue, getMonthName } from '../utils/ras-utils';
 const fmtNumber = (num) => {
@@ -20,7 +20,7 @@ const parseNumericValue = (str) => {
   return isNaN(val) ? null : val;
 };
 
-export default function RasMonthlyTable({ rows, year, selectedMonths, onEdit, onDelete, onCellClick, showNumDenom = true, showDetailColumns = true }) {
+export default function RasMonthlyTable({ rows, year, selectedMonths, onEdit, onClone, onDelete, onDeleteMonthData, onCellClick, showNumDenom = true, showDetailColumns = true }) {
   const groupedData = useMemo(() => {
     if (!rows) return {};
     const sortedRows = [...rows].sort((a, b) => (Number(a.no) || 0) - (Number(b.no) || 0));
@@ -196,9 +196,27 @@ export default function RasMonthlyTable({ rows, year, selectedMonths, onEdit, on
                             {selectedMonths.map((mIdx) => {
                               const val = getValueForMonth(item, mIdx);
                               const { className, onClick } = getCellStyleAndHandler(val.final, item.rasLimit, item);
+                              const hasData = val.num !== null || val.den !== null || val.man !== null;
                               return (
                                 <td key={mIdx} className={className} onClick={onClick} title={onClick ? 'Klik untuk Tindak Lanjut' : ''}>
-                                  {val.display}
+                                  <div className="flex items-center justify-center gap-1.5">
+                                    <span>{val.display}</span>
+                                    {hasData && (
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          if (window.confirm(`Apakah yakin ingin menghapus data bulan ${getMonthName(mIdx)} untuk parameter "${item.parameter}"?`)) {
+                                            onDeleteMonthData(item.id, mIdx);
+                                          }
+                                        }}
+                                        className="p-0.5 text-red-500 hover:text-red-700 hover:bg-red-100 rounded transition-colors cursor-pointer"
+                                        title={`Hapus data bulan ${getMonthName(mIdx)}`}
+                                      >
+                                        <Trash2 size={12} />
+                                      </button>
+                                    )}
+                                  </div>
                                   {onClick && <div className="text-[10px] text-red-500 font-normal mt-1">(Klik)</div>}
                                 </td>
                               );
@@ -206,10 +224,13 @@ export default function RasMonthlyTable({ rows, year, selectedMonths, onEdit, on
 
                             <td rowSpan={itemSpan} className="px-2 py-3 text-center align-middle border border-gray-400">
                               <div className="flex flex-col items-center gap-2">
-                                <button onClick={() => onEdit(item)} className="p-2 text-yellow-600 hover:bg-yellow-100 rounded border border-yellow-200">
+                                <button onClick={() => onEdit(item)} className="p-2 text-yellow-600 hover:bg-yellow-100 rounded border border-yellow-200" title="Edit Parameter">
                                   <Pencil size={14} />
                                 </button>
-                                <button onClick={() => onDelete(item.id)} className="p-2 text-red-600 hover:bg-red-100 rounded border border-red-200">
+                                <button onClick={() => onClone(item)} className="p-2 text-blue-600 hover:bg-blue-100 rounded border border-blue-200" title="Clone Parameter">
+                                  <Copy size={14} />
+                                </button>
+                                <button onClick={() => onDelete(item.id)} className="p-2 text-red-600 hover:bg-red-100 rounded border border-red-200" title="Hapus Parameter">
                                   <Trash2 size={14} />
                                 </button>
                               </div>

@@ -8,7 +8,7 @@ import { getLastAvailablePeriod } from '../data/dashboard-data';
 import RIMS_API from '../../auth/api/auth.api';
 
 // Dashboard Components
-import { DashboardSummary, TopRisksList, RiskAttention, OjkSection, RecentActivity, PeriodSelector } from '../components/dashboard/dashboard-component';
+import { DashboardSummary, TopRisksList, RiskAttention, OjkSection, PeriodSelector } from '../components/dashboard/dashboard-component';
 
 // RekapData2 Components (untuk Dashboard View)
 import { HeaderWithFilter, SummaryCard as RiskSummaryCard, RiskTable, RiskMatrix, AlertBox } from '../../Dashboard/pages/RiskProfile/pages/rekapdata2/components/rekapdata2.component';
@@ -279,7 +279,6 @@ export default function Dashboard() {
       </AnimatePresence>
 
       {/* ===================== RECENT ACTIVITY ===================== */}
-      <RecentActivity />
 
       {/* ===================== WELCOME DIALOG ===================== */}
       <AnimatePresence>

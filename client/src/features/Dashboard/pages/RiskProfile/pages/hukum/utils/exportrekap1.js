@@ -59,16 +59,16 @@ const fillRangeBackground = (ws, startR, startC, endR, endC, bgColor) => {
 };
 
 const COLORS = {
-    headerTop: "#4472C4",          // PENGUKURAN
+    headerTop: "#1F4E79",          // PENGUKURAN
     headerSection: "#1f4e79",      // A, B, C headers (dark blue)
     headerRiskName: "#C591FF",     // Risk name (purple) - light purple for Investasi, Pasar, etc.
     headerJenisRisiko: "#800080",  // JENIS RISIKO header - dark purple
-    headerOrange: "#D9A26A",       // BVt, BHz, 10% (tan/orange)
+    headerOrange: "#FCE4D6",       // BVt, BHz, 10% (peach)
     labelRow: "#1f4e79",           // Row labels (dark blue)
     headerKomposit: "#70AD47",     // Peringkat Komposit (green)
     finalOrange: "#FF6600",        // PERINGKAT PROFIL RISIKO
     lightCyan: "#B4E4FF",          // Light cyan for BVt/100% cells
-    dataBackground: "#D9A26A",     // Orange background same as BVt BHz headers
+    dataBackground: "#FCE4D6",     // Sheet background (peach)
 };
 
 const skorToLevel = (skor) => {
@@ -148,15 +148,53 @@ export function exportRekap1ToExcel(
     const ws = {};
     ws["!merges"] = [];
     
-    let currentRow = 0;
     const startCol = 1; // Mulai dari kolom B (index 1)
-
-    // ============================================================
-    // ROW 0: PENGUKURAN HEADER (spanning all columns)
-    // ============================================================
     const numRisks = riskRows.length;
     const endCol = startCol + (numRisks * 3) + 2; // risks + komposit columns
-    
+    const kompositCol = startCol + (numRisks * 3) + 1; // col index of Peringkat Komposit (AA)
+
+    const QUARTER_TO_INDONESIAN_MONTH = {
+      Q1: 'MARET',
+      Q2: 'JUNI',
+      Q3: 'SEPTEMBER',
+      Q4: 'DESEMBER',
+    };
+
+    // Subtitle Date: MARET 2025
+    setCellValue(ws, 0, startCol, `${QUARTER_TO_INDONESIAN_MONTH[viewQuarter] || viewQuarter} ${viewYear}`);
+    ws["!merges"].push({ s: { r: 0, c: startCol }, e: { r: 0, c: endCol } });
+    setStyle(ws, 0, startCol, {
+        font: { bold: true, size: 11, color: { rgb: "FF000000" } },
+        alignment: { horizontal: "left", vertical: "center" },
+        fill: { patternType: "solid", fgColor: { rgb: hexToARGB(COLORS.dataBackground) } }
+    });
+
+    // Main Title: LAPORAN HASIL PENILAIAN SENDIRI TINGKAT KESEHATAN MANAJER INVESTASI
+    setCellValue(ws, 1, startCol, "LAPORAN HASIL PENILAIAN SENDIRI TINGKAT KESEHATAN MANAJER INVESTASI");
+    ws["!merges"].push({ s: { r: 1, c: startCol }, e: { r: 1, c: endCol } });
+    setStyle(ws, 1, startCol, {
+        font: { bold: true, size: 14, color: { rgb: "FF000000" } },
+        alignment: { horizontal: "center", vertical: "center" },
+        fill: { patternType: "solid", fgColor: { rgb: hexToARGB(COLORS.dataBackground) } }
+    });
+
+    // Empty cell styling for merged rows
+    for (let c = startCol + 1; c <= endCol; c++) {
+        setStyle(ws, 0, c, { fill: { patternType: "solid", fgColor: { rgb: hexToARGB(COLORS.dataBackground) } } });
+        setStyle(ws, 1, c, { fill: { patternType: "solid", fgColor: { rgb: hexToARGB(COLORS.dataBackground) } } });
+    }
+
+    // Empty spacing row 2
+    for (let c = startCol; c <= endCol; c++) {
+        setCellValue(ws, 2, c, "");
+        setStyle(ws, 2, c, { fill: { patternType: "solid", fgColor: { rgb: hexToARGB(COLORS.dataBackground) } } });
+    }
+
+    let currentRow = 3;
+
+    // ============================================================
+    // ROW 3: PENGUKURAN HEADER (spanning all columns)
+    // ============================================================
     setCellValue(ws, currentRow, startCol, "PENGUKURAN");
     ws["!merges"].push({ s: { r: currentRow, c: startCol }, e: { r: currentRow, c: endCol } });
     setStyle(ws, currentRow, startCol, headerStyle(COLORS.headerTop));
@@ -168,7 +206,7 @@ export function exportRekap1ToExcel(
     
     const riskStartCol = startCol + 1; // Risks start RIGHT AFTER "Peringkat Risiko Inheren"
     const riskEndCol = riskStartCol + (numRisks * 3) - 1;
-    const kompositCol = riskEndCol + 1;
+    // kompositCol already declared at top
     
     // Row 1: "A. Risiko Inheren" only (orange background row)
     setCellValue(ws, currentRow, startCol, "A. Risiko Inheren");
@@ -709,9 +747,11 @@ export function exportRekap1ToExcel(
             if (!ws[addr].s || !ws[addr].s.fill) {
                 ws[addr].s = {
                     ...(ws[addr].s || {}),
-                    fill: { patternType: "solid", fgColor: { rgb: hexToARGB(COLORS.dataBackground) } },
-                    border: borderThin
+                    fill: { patternType: "solid", fgColor: { rgb: hexToARGB(COLORS.dataBackground) } }
                 };
+                if (r >= 3) {
+                    ws[addr].s.border = borderThin;
+                }
             }
         }
     }

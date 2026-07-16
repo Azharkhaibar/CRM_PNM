@@ -253,11 +253,11 @@ export default function DataTable({ rows, totalWeighted, viewYear, viewQuarter, 
                               <div className="max-h-20 overflow-y-auto whitespace-pre-wrap break-words pr-1">{r.dampak}</div>
                             </td>
 
-                            <td className="border border-gray-400 px-2 py-2 text-center text-xs bg-green-700/10">{r.low}</td>
-                            <td className="border border-gray-400 px-2 py-2 text-center text-xs bg-green-700/10">{r.lowToModerate}</td>
-                            <td className="border border-gray-400 px-2 py-2 text-center text-xs bg-green-700/10">{r.moderate}</td>
-                            <td className="border border-gray-400 px-2 py-2 text-center text-xs bg-green-700/10">{r.moderateToHigh}</td>
-                            <td className="border border-gray-400 px-2 py-2 text-center text-xs bg-green-700/10">{r.high}</td>
+                            <td className="border border-gray-400 px-2 py-2 text-center text-xs">{r.low}</td>
+                            <td className="border border-gray-400 px-2 py-2 text-center text-xs">{r.lowToModerate}</td>
+                            <td className="border border-gray-400 px-2 py-2 text-center text-xs">{r.moderate}</td>
+                            <td className="border border-gray-400 px-2 py-2 text-center text-xs">{r.moderateToHigh}</td>
+                            <td className="border border-gray-400 px-2 py-2 text-center text-xs">{r.high}</td>
 
                             <td className="border border-gray-400 px-3 py-2 text-right bg-gray-400/20">{hasilDisplay}</td>
                             <td className="border border-gray-400 px-3 py-2 text-center">{String(r.peringkat ?? '')}</td>

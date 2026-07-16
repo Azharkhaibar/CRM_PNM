@@ -129,9 +129,13 @@ export const useRas = () => {
       setData((prev) => [...prev, result]);
       return result;
     } catch (err: any) {
-      const message = err.message || 'Gagal menambah data';
+      const errData = err.response?.data;
+      let message = errData?.message || err.message || 'Gagal menambah data';
+      if (errData?.errors && Array.isArray(errData.errors)) {
+        message = `${message}: ${errData.errors.join(', ')}`;
+      }
       setError(message);
-      throw err;
+      throw new Error(message);
     } finally {
       setLoading(false);
     }
@@ -147,9 +151,13 @@ export const useRas = () => {
       setData((prev) => prev.map((item) => (item.id === id ? result : item)));
       return result;
     } catch (err: any) {
-      const message = err.message || 'Gagal mengupdate data';
+      const errData = err.response?.data;
+      let message = errData?.message || err.message || 'Gagal mengupdate data';
+      if (errData?.errors && Array.isArray(errData.errors)) {
+        message = `${message}: ${errData.errors.join(', ')}`;
+      }
       setError(message);
-      throw err;
+      throw new Error(message);
     } finally {
       setLoading(false);
     }
@@ -165,9 +173,9 @@ export const useRas = () => {
       setData((prev) => prev.map((item) => (item.id === id ? result : item)));
       return result;
     } catch (err: any) {
-      const message = err.message || 'Gagal mengupdate nilai bulanan';
+      const message = err.response?.data?.message || err.message || 'Gagal mengupdate nilai bulanan';
       setError(message);
-      throw err;
+      throw new Error(message);
     } finally {
       setLoading(false);
     }
@@ -183,9 +191,9 @@ export const useRas = () => {
       setData((prev) => prev.map((item) => (item.id === id ? result : item)));
       return result;
     } catch (err: any) {
-      const message = err.message || 'Gagal mengupdate tindak lanjut';
+      const message = err.response?.data?.message || err.message || 'Gagal mengupdate tindak lanjut';
       setError(message);
-      throw err;
+      throw new Error(message);
     } finally {
       setLoading(false);
     }
@@ -200,9 +208,9 @@ export const useRas = () => {
       await rasApi.delete(id);
       setData((prev) => prev.filter((item) => item.id !== id));
     } catch (err: any) {
-      const message = err.message || 'Gagal menghapus data';
+      const message = err.response?.data?.message || err.message || 'Gagal menghapus data';
       setError(message);
-      throw err;
+      throw new Error(message);
     } finally {
       setLoading(false);
     }
@@ -281,6 +289,38 @@ export const useRas = () => {
     clearError();
   }, [clearError]);
 
+  // Clone month
+  const cloneMonth = useCallback(async (payload: { year: number; sourceMonth: number; targetMonth: number; overrideExisting: boolean; parameterIds?: number[] }) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await rasApi.cloneMonth(payload);
+      return result;
+    } catch (err: any) {
+      const message = err.response?.data?.message || err.message || 'Gagal mengkloning data bulanan';
+      setError(message);
+      throw new Error(message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Clone year
+  const cloneYear = useCallback(async (payload: { sourceYear: number; targetYear: number; copyMonthlyValues: boolean; overrideExisting: boolean }) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await rasApi.cloneYear(payload);
+      return result;
+    } catch (err: any) {
+      const message = err.response?.data?.message || err.message || 'Gagal mengkloning data tahunan';
+      setError(message);
+      throw new Error(message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   // Initial fetch categories
   useEffect(() => {
     fetchCategories();
@@ -317,6 +357,10 @@ export const useRas = () => {
     updateMonthlyValues,
     updateTindakLanjut,
     deleteData,
+
+    // Clone methods
+    cloneMonth,
+    cloneYear,
 
     // Import/Export
     importData,

@@ -1,43 +1,47 @@
 # Simari App - Internal Audit & Risk Management System
 
-Simari App adalah platform manajemen risiko dan audit internal terintegrasi yang dirancang untuk memantau, menganalisis, dan melaporkan profil risiko entitas keuangan serta kepatuhan terhadap regulasi OJK (Otoritas Jasa Keuangan).
+Simari App adalah platform manajemen risiko dan audit internal terintegrasi yang dirancang untuk memantau, menganalisis, dan melaporkan profil risiko entitas keuangan serta kepatuhan terhadap regulasi OJK (Otoritas Jasa Keuangan) baik pada tingkat Holding maupun unit usaha terkait.
 
-Sistem ini mendukung pengumpulan data profil risiko, penilaian KPMR (Kualitas Penerapan Manajemen Risiko), agregasi data holding company, analisis bertenaga AI, serta pembuatan laporan secara real-time.
+Sistem ini mendukung pengumpulan data profil risiko, penilaian KPMR (Kualitas Penerapan Manajemen Risiko), penilaian Risiko Inherent, agregasi data holding company, analisis bertenaga AI, serta pembuatan laporan secara real-time.
 
 ---
 
-## 🚀 Fitur Utama
+## 🚀 Fitur Utama & Modul
 
-### 1. **Modul Kepatuhan Regulasi OJK**
-Penilaian komprehensif terhadap indikator kepatuhan regulasi OJK:
-*   **Permodalan (Capital)**
-*   **Rentabilitas (Profitability)**
-*   **Tatakelola (Corporate Governance)**
-*   **Hukum (Legal)**
-*   **Likuiditas (Liquidity)**
-*   **Reputasi (Reputation)**
-*   **Strategis (Strategic)**
+### 1. Modul Profil Risiko Inherent (OJK & Holding)
+Penilaian komprehensif terhadap indikator risiko inherent untuk mendeteksi tingkat risiko bawaan sebelum mitigasi:
+*   **Holding (8 Modul):** Investasi, Pasar, Likuiditas, Operasional, Hukum, Kepatuhan, Reputasi, Stratejik.
+*   **OJK (13 Modul):** Pasar Produk, Likuiditas Produk, Kredit Produk, Konsentrasi Produk, Operasional, Hukum, Kepatuhan, Reputasi, Strategis, Investasi, Rentabilitas, Permodalan, Tata Kelola.
 
-### 2. **Analisis Profil Risiko (KPMR - Kualitas Penerapan Manajemen Risiko)**
-Sistem evaluasi mandiri (Self-Assessment) untuk mengukur kualitas kontrol dan tingkat risiko inheren pada kategori:
-*   **KPMR Stratejik**
-*   **KPMR Reputasi**
-*   **KPMR Kepatuhan**
-*   **KPMR Hukum**
-*   **KPMR Operasional**
+### 2. Evaluasi KPMR - Kualitas Penerapan Manajemen Risiko (OJK & Holding)
+Sistem evaluasi mandiri (Self-Assessment) untuk mengukur efektivitas kualitas kontrol manajemen risiko pada aspek tata kelola, kebijakan, proses, dan sistem kontrol internal:
+*   **Holding (8 Modul):** Investasi, Pasar, Likuiditas, Operasional, Hukum, Stratejik, Kepatuhan, Reputasi.
+*   **OJK (13 Modul):** Pasar Produk, Likuiditas Produk, Kredit Produk, Konsentrasi Produk, Operasional, Hukum, Kepatuhan, Reputasi, Strategis, Investasi, Rentabilitas, Permodalan, Tata Kelola.
 
-### 3. **Agregasi Data & Rekap Holding**
+### 3. Agregasi Data & Rekap Holding
 Fitur rekapitulasi data tingkat holding (`rekap-data-1` & `rekap-data-2`) untuk menggabungkan skor parameter risiko dari berbagai unit usaha ke dalam laporan konsolidasi.
 
-### 4. **AI-Powered Insights (Google Gemini)**
+### 4. Salin Periode (Clone Period) & Reset Data
+*   **Salin Periode (Clone):** Menduplikasi data aspek, pertanyaan, definisi, parameter, dan nilai dari periode/tahun/triwulan sebelumnya ke periode tujuan dengan opsi overwrite. Tersedia untuk modul inherent maupun KPMR di OJK dan Holding.
+*   **Reset Data:** Fitur untuk mengosongkan/membersihkan semua data aspek, parameter, skor, dan indikator nilai periode tertentu secara permanen per modul.
+
+### 5. Konsolidasi Skema Database (folder `/schema-sql`)
+Folder khusus di tingkat root proyek yang menyimpan berkas `schema.sql` akurat, mencakup:
+*   Skema tabel utama (users, auth, division, notifications, audit_log).
+*   Skema tabel Holding & OJK (Inherent & KPMR).
+*   Database view konsolidasi `risk_profile_repository_ojk_view`.
+*   Data seeding awal (master division, user default, ojk module default, reference values).
+
+### 6. AI-Powered Insights (Google Gemini)
 Integrasi langsung dengan **Google Gemini AI SDK** baik pada sisi frontend maupun backend untuk menganalisis data mentah secara otomatis dan menghasilkan ringkasan naratif, rekomendasi perbaikan, serta laporan audit.
 
-### 5. **Ekspor Data & Visualisasi**
+### 7. Ekspor Data & Visualisasi
 *   Ekspor laporan langsung ke berkas Excel berformat premium menggunakan `exceljs`, `xlsx`, dan `xlsx-js-style`.
 *   Visualisasi data tren dan parameter risiko menggunakan grafik interaktif dari `recharts`.
 
-### 6. **Notifikasi Real-Time**
-Pemberitahuan instan menggunakan WebSockets (`socket.io` & `@nestjs/websockets`) untuk status audit, pengisian parameter, dan perubahan data profil risiko.
+### 8. Notifikasi & Audit Log Real-Time
+*   Pemberitahuan instan menggunakan WebSockets (`socket.io` & `@nestjs/websockets`) untuk status audit, pengisian parameter, dan perubahan data profil risiko.
+*   Audit Log terpusat yang mencatat seluruh aksi CRUD, Login/Logout, dan ekspor data dengan standardisasi argumen posisional dan pelacakan metadata yang aman.
 
 ---
 
@@ -46,7 +50,7 @@ Pemberitahuan instan menggunakan WebSockets (`socket.io` & `@nestjs/websockets`)
 ### Sisi Frontend (`/client`)
 *   **Framework**: React (v19) + Vite
 *   **Styling**: Tailwind CSS (v4) + `framer-motion` (Animasi)
-*   **UI Components**: `shadcn/ui` + Radix UI
+*   **UI Components**: `shadcn/ui` + Radix UI + Lucide React
 *   **State Management**: Zustand
 *   **Data Fetching**: TanStack React Query (v5) + Axios
 *   **Charting**: Recharts
@@ -54,7 +58,7 @@ Pemberitahuan instan menggunakan WebSockets (`socket.io` & `@nestjs/websockets`)
 ### Sisi Backend (`/server`)
 *   **Framework**: NestJS (v11) (TypeScript)
 *   **Database ORM**: TypeORM (MySQL)
-*   **Autentikasi**: Passport JWT (`@nestjs/jwt`)
+*   **Autentikasi**: Passport JWT (`@nestjs/jwt`) + Bcrypt
 *   **Dokumentasi API**: OpenAPI Swagger
 *   **Notifikasi**: WebSockets (`socket.io`)
 *   **Ekstra/Dokumen**: PDFKit (Ekspor PDF)
@@ -91,14 +95,11 @@ Pastikan Anda telah menginstal aplikasi berikut di komputer Anda:
    DB_PORT=3306
    DB_USERNAME=root
    DB_PASSWORD=password_db_anda
-   DB_DATABASE=simari_audit_db
+   DB_DATABASE=rims_v1
    JWT_SECRET=your_jwt_secret_key
    GEMINI_API_KEY=your_gemini_api_key
    ```
-4. Jalankan migrasi database (jika diperlukan):
-   ```bash
-   npm run typeorm migration:run
-   ```
+4. Jalankan migrasi database atau impor langsung berkas skema `/schema-sql/schema.sql`.
 5. Jalankan backend server dalam mode development:
    ```bash
    npm run start:dev

@@ -394,43 +394,44 @@ export class RekapData1Service {
       ];
 
       if (!isNaN(rawValue)) {
-        const highText = String(ri.high ?? '').trim();
-        if (/^[xX]?\s*>|≥?>\s*\d+/i.test(highText)) {
-          const match = highText.match(/(\d+(\.\d+)?)/);
-          if (match && rawValue >= Number(match[1])) peringkat = 5;
-        }
+        for (const { key, rank } of ranges) {
+          const rawText = String(ri[key] ?? '');
+          const nums = rawText.match(/-?\d+(\.\d+)?/g);
+          if (!nums || nums.length === 0) continue;
 
-        if (peringkat === null) {
-          for (const { key, rank } of ranges) {
-            const rawText = String(ri[key] ?? '');
-            const nums = rawText.match(/-?\d+(\.\d+)?/g);
-            if (!nums || nums.length === 0) continue;
+          const hasPercent = rawText.includes('%');
+          let min = -Infinity;
+          let max = Infinity;
 
-            let min = -Infinity,
+          if (nums.length === 1) {
+            let n = Number(nums[0]);
+            if (hasPercent) n = n / 100;
+            if (/≤|<=/.test(rawText)) max = n;
+            else if (/≥|>=/.test(rawText)) min = n;
+            else if (/^\s*(?:[xX]?\s*>|≥?>)\s*-?\d+(?:\.\d+)?/i.test(rawText)) {
+              min = n;
               max = Infinity;
-            if (nums.length === 1) {
-              const n = Number(nums[0]);
-              if (/≤|<=/.test(rawText)) max = n;
-              else if (/≥|>=/.test(rawText)) min = n;
-              else if (/^[xX]?\s*>|>\s*\d+/i.test(rawText)) {
-                min = n;
-                max = Infinity;
-              } else if (/^[xX]?\s*<|<\s*\d+/i.test(rawText)) {
-                min = -Infinity;
-                max = n;
-              } else {
-                min = n;
-                max = n;
-              }
+            } else if (/^\s*(?:[xX]?\s*<|≤?<)\s*-?\d+(?:\.\d+)?/i.test(rawText)) {
+              min = -Infinity;
+              max = n;
             } else {
-              min = Number(nums[0]);
-              max = Number(nums[1]);
+              min = n;
+              max = n;
             }
+          } else {
+            let n1 = Number(nums[0]);
+            let n2 = Number(nums[1]);
+            if (hasPercent) {
+              n1 = n1 / 100;
+              n2 = n2 / 100;
+            }
+            min = Math.min(n1, n2);
+            max = Math.max(n1, n2);
+          }
 
-            if (rawValue >= min && rawValue <= max) {
-              peringkat = rank;
-              break;
-            }
+          if (rawValue >= min && rawValue <= max) {
+            peringkat = rank;
+            break;
           }
         }
       }

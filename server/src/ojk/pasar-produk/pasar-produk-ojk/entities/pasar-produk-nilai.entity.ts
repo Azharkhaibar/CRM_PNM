@@ -43,6 +43,12 @@ export class PasarProdukNilai {
   @Column({ type: 'text', nullable: true })
   keterangan?: string;
 
+  @Column({ type: 'text', nullable: true, name: 'sumber_risiko' })
+  sumberRisiko?: string;
+
+  @Column({ type: 'text', nullable: true })
+  dampak?: string;
+
   @Column({ type: 'json', nullable: true })
   riskindikator?: {
     low?: string;

@@ -5,6 +5,7 @@ export function computeDerived(nilai, param) {
     }
 
     const judul = nilai.judul || {};
+    const ri = nilai.riskindikator || {};
 
     const paramBobotFraction = Number(param?.bobot ?? 0) / 100;
     const nilaiBobotFraction = Number(nilai?.bobot ?? 0) / 100;
@@ -133,8 +134,6 @@ export function computeDerived(nilai, param) {
 
     let peringkat = null;
     let matchedIndex = null;
-
-    const ri = nilai.riskindikator || {};
     const ranges = [
       { key: 'low', rank: 1 },
       { key: 'lowToModerate', rank: 2 },
@@ -144,64 +143,45 @@ export function computeDerived(nilai, param) {
     ];
 
     if (!isNaN(rawValue)) {
-      const highText = String(ri.high ?? '').trim();
-      const isGreaterThanFormat = /^[xX]?\s*>|≥?>\s*\d+/i.test(highText);
+      for (const { key, rank } of ranges) {
+        const rawText = String(ri[key] ?? '');
+        const nums = rawText.match(/-?\d+(\.\d+)?/g);
+        if (!nums || nums.length === 0) continue;
 
-      if (isGreaterThanFormat) {
-        const match = highText.match(/(\d+(\.\d+)?)/);
-        if (match) {
-          let threshold = Number(match[1]);
-          if (highText.includes('%')) {
-            threshold = threshold / 100;
-          }
-          if (rawValue >= threshold) {
-            peringkat = 5;
-            matchedIndex = 0;
-          }
-        }
-      }
+        const hasPercent = rawText.includes('%');
+        let min = -Infinity;
+        let max = Infinity;
 
-      if (peringkat === null) {
-        for (const { key, rank } of ranges) {
-          const rawText = String(ri[key] ?? '');
-          const nums = rawText.match(/-?\d+(\.\d+)?/g);
-          if (!nums || nums.length === 0) continue;
-
-          const hasPercent = rawText.includes('%');
-          let min = -Infinity;
-          let max = Infinity;
-
-          if (nums.length === 1) {
-            let n = Number(nums[0]);
-            if (hasPercent) n = n / 100;
-            if (/≤|<=/.test(rawText)) max = n;
-            else if (/≥|>=/.test(rawText)) min = n;
-            else if (/^[xX]?\s*>|>\s*\d+/i.test(rawText)) {
-              min = n;
-              max = Infinity;
-            } else if (/^[xX]?\s*<|<\s*\d+/i.test(rawText)) {
-              min = -Infinity;
-              max = n;
-            } else {
-              min = n;
-              max = n;
-            }
+        if (nums.length === 1) {
+          let n = Number(nums[0]);
+          if (hasPercent) n = n / 100;
+          if (/≤|<=/.test(rawText)) max = n;
+          else if (/≥|>=/.test(rawText)) min = n;
+          else if (/^\s*(?:[xX]?\s*>|≥?>)\s*-?\d+(?:\.\d+)?/i.test(rawText)) {
+            min = n;
+            max = Infinity;
+          } else if (/^\s*(?:[xX]?\s*<|≤?<)\s*-?\d+(?:\.\d+)?/i.test(rawText)) {
+            min = -Infinity;
+            max = n;
           } else {
-            let n1 = Number(nums[0]);
-            let n2 = Number(nums[1]);
-            if (hasPercent) {
-              n1 = n1 / 100;
-              n2 = n2 / 100;
-            }
-            min = n1;
-            max = n2;
+            min = n;
+            max = n;
           }
+        } else {
+          let n1 = Number(nums[0]);
+          let n2 = Number(nums[1]);
+          if (hasPercent) {
+            n1 = n1 / 100;
+            n2 = n2 / 100;
+          }
+          min = Math.min(n1, n2);
+          max = Math.max(n1, n2);
+        }
 
-          if (rawValue >= min && rawValue <= max) {
-            peringkat = rank;
-            matchedIndex = 0;
-            break;
-          }
+        if (rawValue >= min && rawValue <= max) {
+          peringkat = rank;
+          matchedIndex = 0;
+          break;
         }
       }
     }
@@ -219,9 +199,9 @@ export function computeDerived(nilai, param) {
       }
     }
 
-    const weighted = !isNaN(peringkat) ? paramBobotFraction * nilaiBobotFraction * peringkat : null;
+    const weighted = (peringkat !== null && !isNaN(peringkat)) ? paramBobotFraction * nilaiBobotFraction * peringkat : null;
 
-    const weightedDisplay = !isNaN(weighted) ? weighted.toFixed(2) : '';
+    const weightedDisplay = (weighted !== null && !isNaN(weighted)) ? weighted.toFixed(2) : '';
 
     return {
       hasilDisplay,
@@ -240,7 +220,12 @@ export function computeDerived(nilai, param) {
 
     function finalizeDisplay(type) {
       if (!isNaN(rawValue)) {
-        hasilDisplay = `${rawValue.toFixed(2)}%`;
+        const hasPercentInRange = Object.values(ri).some(val => typeof val === 'string' && val.includes('%'));
+        if (judul.percent || hasPercentInRange) {
+          hasilDisplay = `${(rawValue * 100).toFixed(2)}%`;
+        } else {
+          hasilDisplay = rawValue.toFixed(2);
+        }
         return;
       }
 

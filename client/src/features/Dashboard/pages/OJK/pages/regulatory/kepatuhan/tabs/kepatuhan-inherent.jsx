@@ -2,6 +2,8 @@
 import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useHeaderStore } from '../../../../store/header';
+import OjkCloneDialog from '../../../../components/OjkCloneDialog';
+import rekapApiService from '../../../rekap-data/services/rekap-data.service';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
@@ -46,14 +48,34 @@ export default function KepatuhanInherentWrapper() {
   const quarter = useHeaderStore((s) => s.activeQuarter);
   const [active, setActive] = useState(true);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [cloneDialogOpen, setCloneDialogOpen] = useState(false);
+  const [inheritInfo, setInheritInfo] = useState(null);
 
   // PERBAIKAN: State lokal untuk optimistic updates
   const [localRows, setLocalRows] = useState([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // PERBAIKAN: Gunakan useKepatuhanInherent, bukan useKepatuhanIntegration
-  const { kepatuhan, parameters, loading, saving, error, currentKepatuhanId, loadByYearQuarter, refreshData, addParameter, updateParameter, deleteParameter, copyParameter, addNilai, updateNilai, deleteNilai, copyNilai } =
-    useKepatuhanInherent();
+  // PERBAIKAN: Gunakan useKepatuhanInherent dengan destructuring yang benar
+  const {
+    currentInherentData: kepatuhan,
+    rows: parameters,
+    isLoading: loading,
+    error,
+    currentInherentId: currentKepatuhanId,
+    changeYearQuarter: loadByYearQuarter,
+    reloadData: refreshData,
+    handleAddParameter: addParameter,
+    handleUpdateParameter: updateParameter,
+    handleDeleteParameter: deleteParameter,
+    handleCopyParameter: copyParameter,
+    handleAddNilai: addNilai,
+    handleUpdateNilai: updateNilai,
+    handleDeleteNilai: deleteNilai,
+    handleCopyNilai: copyNilai,
+  } = useKepatuhanInherent(year, quarter);
+  const saving = loading; // Samakan saving state dengan loading dari hook
+  const isLoading = loading || saving || isRefreshing;
+
 
   // PERBAIKAN: Konversi parameters ke rows (aspek)
   const rows = useMemo(() => {
@@ -172,7 +194,7 @@ export default function KepatuhanInherentWrapper() {
           setLocalRows((prev) => [...prev, tempAspek]);
 
           // Panggil API
-          await addParameter(currentKepatuhanId, createAspekDto);
+          await addParameter(createAspekDto);
 
           // PERBAIKAN: Refresh untuk dapat ID asli
           await handleRefresh();
@@ -272,7 +294,7 @@ export default function KepatuhanInherentWrapper() {
             ),
           );
 
-          await addNilai(currentKepatuhanId, aspekId, createPertanyaanDto);
+          await addNilai(aspekId, createPertanyaanDto);
           await handleRefresh();
 
           log.success('Pertanyaan added successfully');
@@ -306,7 +328,7 @@ export default function KepatuhanInherentWrapper() {
             ),
           );
 
-          await updateNilai(pertanyaanId, updatePertanyaanDto);
+          await updateNilai(aspekId, pertanyaanId, updatePertanyaanDto);
           await handleRefresh();
 
           log.success('Pertanyaan updated successfully');
@@ -340,7 +362,7 @@ export default function KepatuhanInherentWrapper() {
             ),
           );
 
-          await deleteNilai(pertanyaanId);
+          await deleteNilai(aspekId, pertanyaanId);
           await handleRefresh();
 
           log.success('Pertanyaan deleted successfully');
@@ -365,7 +387,7 @@ export default function KepatuhanInherentWrapper() {
             throw new Error('Tidak ada data kepatuhan yang dipilih');
           }
 
-          await copyParameter(currentKepatuhanId, aspekId);
+          await copyParameter(aspekId);
           await handleRefresh();
 
           log.success('Aspek copied successfully');
@@ -386,7 +408,7 @@ export default function KepatuhanInherentWrapper() {
             throw new Error('Tidak ada data kepatuhan yang dipilih');
           }
 
-          await copyNilai(currentKepatuhanId, aspekId, pertanyaanId);
+          await copyNilai(aspekId, pertanyaanId);
           await handleRefresh();
 
           log.success('Pertanyaan copied successfully');
@@ -505,9 +527,76 @@ export default function KepatuhanInherentWrapper() {
     );
   }
 
+    const handleUndoClone = async () => {
+    if (!inheritInfo) return;
+    try {
+      await rekapApiService.undoClonePeriodData({
+        targetYear: inheritInfo.targetYear,
+        targetQuarter: inheritInfo.targetQuarter,
+        categories: inheritInfo.categories,
+      });
+      setInheritInfo(null);
+      await backendHandlers.refreshData();
+      alert('Kloning berhasil dibatalkan');
+    } catch (err) {
+      console.error('Error undoing clone:', err);
+      alert('Gagal membatalkan clone');
+    }
+  };
+
+  const handleResetData = async () => {
+    if (!confirm('Apakah Anda yakin ingin menghapus/reset semua data Kepatuhan Regulatory untuk periode ini? Semua parameter dan nilai akan terhapus secara permanen.')) {
+      return;
+    }
+    try {
+      await rekapApiService.undoClonePeriodData({
+        targetYear: year,
+        targetQuarter: quarter,
+        categories: ['kepatuhan-regulatory'],
+      });
+      await backendHandlers.refreshData();
+      alert('Data berhasil di-reset');
+      setInheritInfo(null);
+    } catch (err) {
+      console.error('Error resetting data:', err);
+      alert('Gagal me-reset data');
+    }
+  };
+
   return (
-    <div className="w-full space-y-6">
-      {/* Header dengan kontrol */}
+    <div className="w-full space-y-6 text-black">
+      {inheritInfo && (
+        <div className="mb-4 rounded-lg bg-yellow-50 border border-yellow-300 px-4 py-3 text-sm flex justify-between items-start gap-4">
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="inline-block w-2 h-2 rounded-full bg-yellow-500"></span>
+              <strong>Kloning Berhasil</strong>
+            </div>
+            <p className="text-gray-700">
+              Data untuk periode{' '}
+              <strong>
+                {inheritInfo.targetYear}-Q{inheritInfo.targetQuarter}
+              </strong>{' '}
+              telah berhasil disalin dari <strong>{inheritInfo.from}</strong>.
+            </p>
+          </div>
+          <div className="flex flex-col gap-2">
+            <button 
+              onClick={handleUndoClone} 
+              className="px-3 py-1.5 rounded border border-red-200 bg-white hover:bg-red-50 text-red-600 text-sm font-medium whitespace-nowrap"
+            >
+              Undo Clone
+            </button>
+            <button 
+              onClick={() => setInheritInfo(null)} 
+              className="px-3 py-1.5 rounded border border-blue-600 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium whitespace-nowrap"
+            >
+              Confirm Clone
+            </button>
+          </div>
+        </div>
+      )}
+{/* Header dengan kontrol */}
       <div className="bg-white rounded-lg border shadow p-4">
         <div className="flex justify-between items-center mb-4">
           <div>
@@ -536,6 +625,26 @@ export default function KepatuhanInherentWrapper() {
             {/* Status Toggle */}
             <Button onClick={() => setActive(!active)} variant={active ? 'default' : 'outline'} className={active ? 'bg-blue-600 hover:bg-blue-700' : ''}>
               {active ? 'Aktif' : 'Nonaktif'}
+            </Button>
+
+            {/* Salin/Clone Button */}
+                        {/* Reset Button */}
+            <Button
+              onClick={handleResetData}
+              className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white"
+              disabled={isLoading}
+            >
+              <Trash2 className="w-4 h-4" />
+              Reset Data
+            </Button>
+
+<Button
+              onClick={() => setCloneDialogOpen(true)}
+              className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white"
+              disabled={isLoading}
+            >
+              <Copy className="w-4 h-4" />
+              Salin Periode
             </Button>
 
             {/* Refresh Button */}
@@ -568,6 +677,19 @@ export default function KepatuhanInherentWrapper() {
 
       {/* Komponen utama */}
       <KepatuhanInherent rows={safeRows} setRows={setRows} search={search} active={active} backendHandlers={backendHandlers} isLoading={loading || saving || isRefreshing} isLocked={kepatuhan?.isLocked || false} />
+
+      {/* CLONE DIALOG */}
+      <OjkCloneDialog
+        isOpen={cloneDialogOpen}
+        onClose={() => setCloneDialogOpen(false)}
+        onSuccess={(cloneInfo) => {
+          setInheritInfo(cloneInfo);
+          backendHandlers.refreshData();
+        }}
+        defaultCategory="kepatuhan-regulatory"
+        currentYear={year}
+        currentQuarter={quarter}
+      />
     </div>
   );
 }
@@ -625,7 +747,15 @@ function AspekPanel({ rows, setRows, active, backendHandlers, isLoading: globalL
     judul: '',
     bobot: 0,
     deskripsi: '',
+    kategori: {
+      model: '',
+      prinsip: '',
+      jenis: '',
+      underlying: [],
+    },
   }));
+
+  const [openUnderlying, setOpenUnderlying] = useState(false);
 
   const [openAspekList, setOpenAspekList] = useState(false);
   const dropdownBtnRef = useRef(null);
@@ -649,6 +779,12 @@ function AspekPanel({ rows, setRows, active, backendHandlers, isLoading: globalL
         judul: '',
         bobot: '',
         deskripsi: '',
+        kategori: {
+          model: '',
+          prinsip: '',
+          jenis: '',
+          underlying: [],
+        },
       });
     }
   }, [safeRows]);
@@ -725,6 +861,12 @@ function AspekPanel({ rows, setRows, active, backendHandlers, isLoading: globalL
         judul: safeActiveAspek.judul ?? '',
         bobot: safeActiveAspek.bobot ?? '',
         deskripsi: safeActiveAspek.deskripsi ?? '',
+        kategori: {
+          model: safeActiveAspek.kategori?.model ?? '',
+          prinsip: safeActiveAspek.kategori?.prinsip ?? '',
+          jenis: safeActiveAspek.kategori?.jenis ?? '',
+          underlying: Array.isArray(safeActiveAspek.kategori?.underlying) ? safeActiveAspek.kategori.underlying : [],
+        },
       };
 
       setDraftAspek((prev) => (JSON.stringify(prev) === JSON.stringify(newDraft) ? prev : newDraft));
@@ -734,6 +876,12 @@ function AspekPanel({ rows, setRows, active, backendHandlers, isLoading: globalL
         judul: '',
         bobot: '',
         deskripsi: '',
+        kategori: {
+          model: '',
+          prinsip: '',
+          jenis: '',
+          underlying: [],
+        },
       });
       setEditMode(false);
       setOriginalAspek(null);
@@ -742,6 +890,103 @@ function AspekPanel({ rows, setRows, active, backendHandlers, isLoading: globalL
 
   const handleChangeAspek = useCallback((key, value) => {
     setDraftAspek((p) => ({ ...p, [key]: value }));
+  }, []);
+
+  const handleChangeKategori = useCallback((key, value) => {
+    setDraftAspek((prev) => {
+      const next = {
+        ...prev,
+        kategori: {
+          ...prev.kategori,
+          [key]: value,
+        },
+      };
+
+      // Reset logic yang lebih baik
+      if (key === 'model') {
+        const newModel = value;
+
+        if (newModel === 'tanpa_model') {
+          next.kategori = {
+            model: 'tanpa_model',
+            prinsip: '',
+            jenis: '',
+            underlying: [],
+          };
+        } else if (newModel === 'open_end') {
+          next.kategori = {
+            model: 'open_end',
+            prinsip: '',
+            jenis: '',
+            underlying: [],
+          };
+        } else if (newModel === 'terstruktur') {
+          next.kategori = {
+            model: 'terstruktur',
+            prinsip: '',
+            jenis: '',
+            underlying: [],
+          };
+        }
+      }
+
+      if (prev.kategori.model !== 'terstruktur' && key === 'underlying') {
+        next.kategori.underlying = [];
+      }
+
+      return next;
+    });
+  }, []);
+
+  const isKategoriIncomplete = useCallback((param) => {
+    const k = param?.kategori || {};
+
+    if (!k.model) {
+      return true;
+    }
+
+    if (k.model === 'open_end' || k.model === 'terstruktur') {
+      if (!k.prinsip) {
+        return true;
+      }
+
+      if (!['syariah', 'konvensional'].includes(k.prinsip)) {
+        return true;
+      }
+    }
+
+    if (k.model === 'open_end') {
+      if (!k.jenis) {
+        return true;
+      }
+
+      const validJenis = ['pasar_uang', 'pendapatan_tetap', 'campuran', 'saham', 'indeks', 'terproteksi'];
+      if (!validJenis.includes(k.jenis)) {
+        return true;
+      }
+
+      if (k.underlying && k.underlying.length > 0) {
+        return true;
+      }
+    }
+
+    if (k.model === 'terstruktur') {
+      if (k.jenis) {
+        return true;
+      }
+
+      if (!Array.isArray(k.underlying)) {
+        return true;
+      }
+    }
+
+    if (k.model === 'tanpa_model') {
+      if (k.prinsip || k.jenis || (Array.isArray(k.underlying) && k.underlying.length > 0)) {
+        return true;
+      }
+    }
+
+    return false;
   }, []);
 
   const handleEditAspek = useCallback(() => {
@@ -767,6 +1012,17 @@ function AspekPanel({ rows, setRows, active, backendHandlers, isLoading: globalL
       judul: aspek.judul ?? '',
       bobot: aspek.bobot ?? '',
       deskripsi: aspek.deskripsi ?? '',
+      kategori: aspek.kategori
+        ? {
+            ...aspek.kategori,
+            underlying: [...(aspek.kategori.underlying || [])],
+          }
+        : {
+            model: '',
+            prinsip: '',
+            jenis: '',
+            underlying: [],
+          },
     });
 
     setEditMode(true);
@@ -774,6 +1030,11 @@ function AspekPanel({ rows, setRows, active, backendHandlers, isLoading: globalL
 
   const handleUpdateAspek = useCallback(async () => {
     if (safeActiveAspekIndex === null) return;
+
+    if (isKategoriIncomplete(draftAspek)) {
+      alert('Lengkapi kategori sebelum mengupdate aspek.');
+      return;
+    }
 
     const bobotNum = Number(draftAspek.bobot);
     if (isNaN(bobotNum) || bobotNum < 0 || bobotNum > 100) {
@@ -789,11 +1050,34 @@ function AspekPanel({ rows, setRows, active, backendHandlers, isLoading: globalL
 
     setLoading(true);
     try {
+      const kategori = {
+        model: draftAspek.kategori.model || '',
+        prinsip: draftAspek.kategori.prinsip || '',
+        jenis: draftAspek.kategori.jenis || '',
+        underlying: Array.isArray(draftAspek.kategori.underlying) ? draftAspek.kategori.underlying : [],
+      };
+
+      const cleanKategori = { ...kategori };
+
+      if (cleanKategori.model === 'tanpa_model') {
+        cleanKategori.prinsip = '';
+        cleanKategori.jenis = '';
+        cleanKategori.underlying = [];
+      } else if (cleanKategori.model === 'open_end') {
+        cleanKategori.underlying = [];
+      } else if (cleanKategori.model === 'terstruktur') {
+        cleanKategori.jenis = '';
+        if (!Array.isArray(cleanKategori.underlying)) {
+          cleanKategori.underlying = [];
+        }
+      }
+
       const updateAspekDto = {
         nomor: draftAspek.nomor || '',
         judul: judul,
         bobot: bobotNum,
         deskripsi: draftAspek.deskripsi || '',
+        kategori: cleanKategori,
       };
 
       console.log('🟢 [COMPONENT] Update payload:', JSON.stringify(updateAspekDto, null, 2));
@@ -815,6 +1099,7 @@ function AspekPanel({ rows, setRows, active, backendHandlers, isLoading: globalL
               judul: judul,
               bobot: bobotNum,
               deskripsi: draftAspek.deskripsi || '',
+              kategori: cleanKategori,
             }
           : row,
       );
@@ -841,7 +1126,7 @@ function AspekPanel({ rows, setRows, active, backendHandlers, isLoading: globalL
       alert(`❌ Error: ${errorMessage}`);
       setLoading(false);
     }
-  }, [draftAspek, safeActiveAspekIndex, safeRows, setRows, backendHandlers]);
+  }, [draftAspek, safeActiveAspekIndex, safeRows, setRows, backendHandlers, isKategoriIncomplete]);
 
   const handleAddNewAspek = useCallback(async () => {
     const bobotNum = Number(draftAspek.bobot);
@@ -853,6 +1138,11 @@ function AspekPanel({ rows, setRows, active, backendHandlers, isLoading: globalL
       return;
     }
 
+    if (isKategoriIncomplete(draftAspek)) {
+      alert('Lengkapi kategori sebelum menambah aspek.');
+      return;
+    }
+
     const judul = draftAspek.judul?.trim();
     if (!judul) {
       alert('Judul aspek tidak boleh kosong.');
@@ -861,11 +1151,34 @@ function AspekPanel({ rows, setRows, active, backendHandlers, isLoading: globalL
 
     setLoading(true);
     try {
+      const kategori = {
+        model: draftAspek.kategori.model || '',
+        prinsip: draftAspek.kategori.prinsip || '',
+        jenis: draftAspek.kategori.jenis || '',
+        underlying: Array.isArray(draftAspek.kategori.underlying) ? draftAspek.kategori.underlying : [],
+      };
+
+      const cleanKategori = { ...kategori };
+
+      if (cleanKategori.model === 'tanpa_model') {
+        cleanKategori.prinsip = '';
+        cleanKategori.jenis = '';
+        cleanKategori.underlying = [];
+      } else if (cleanKategori.model === 'open_end') {
+        cleanKategori.underlying = [];
+      } else if (cleanKategori.model === 'terstruktur') {
+        cleanKategori.jenis = '';
+        if (!Array.isArray(cleanKategori.underlying)) {
+          cleanKategori.underlying = [];
+        }
+      }
+
       const createAspekDto = {
         nomor: draftAspek.nomor || '',
         judul: judul,
         bobot: bobotNum,
         deskripsi: draftAspek.deskripsi || '',
+        kategori: cleanKategori,
       };
 
       console.log('🚀 [DEBUG] Final payload untuk backend:', JSON.stringify(createAspekDto, null, 2));
@@ -904,6 +1217,12 @@ function AspekPanel({ rows, setRows, active, backendHandlers, isLoading: globalL
         judul: '',
         bobot: '',
         deskripsi: '',
+        kategori: {
+          model: '',
+          prinsip: '',
+          jenis: '',
+          underlying: [],
+        },
       });
 
       setLoading(false);
@@ -915,7 +1234,7 @@ function AspekPanel({ rows, setRows, active, backendHandlers, isLoading: globalL
       alert(`❌ Error: ${errorMessage}`);
       setLoading(false);
     }
-  }, [draftAspek, backendHandlers]);
+  }, [draftAspek, backendHandlers, isKategoriIncomplete]);
 
   const handleCancelEdit = useCallback(() => {
     if (originalAspek && safeActiveAspekIndex !== null) {
@@ -932,6 +1251,12 @@ function AspekPanel({ rows, setRows, active, backendHandlers, isLoading: globalL
       judul: '',
       bobot: '',
       deskripsi: '',
+      kategori: {
+        model: '',
+        prinsip: '',
+        jenis: '',
+        underlying: [],
+      },
     });
   }, [originalAspek, safeActiveAspekIndex, setRows]);
 
@@ -960,6 +1285,17 @@ function AspekPanel({ rows, setRows, active, backendHandlers, isLoading: globalL
         judul: `${source.judul} (Copy)`,
         bobot: source.bobot,
         deskripsi: source.deskripsi || '',
+        kategori: source.kategori
+          ? {
+              ...source.kategori,
+              underlying: [...(source.kategori.underlying || [])],
+            }
+          : {
+              model: '',
+              prinsip: '',
+              jenis: '',
+              underlying: [],
+            },
         pertanyaanList: (source.pertanyaanList || []).map((p) => ({
           ...structuredClone(p),
           id: `copy-pertanyaan-${Date.now()}-${Math.random()}`,
@@ -1103,7 +1439,10 @@ function AspekPanel({ rows, setRows, active, backendHandlers, isLoading: globalL
     const isTemp = row.isTemp ? '⏳ ' : '';
     const isUpdating = row.isUpdating ? '🔄 ' : '';
 
-    return `${isTemp || isUpdating}${row.nomor || '-'} – ${row.judul || 'Tanpa Judul'} (Bobot: ${row.bobot || 0}%)${row.deskripsi ? ' | ' + row.deskripsi : ''}`;
+    const k = row.kategori || {};
+    const kategoriText = [k.model, k.prinsip, k.jenis, ...(k.underlying || [])].filter(Boolean).join(' / ');
+
+    return `${isTemp || isUpdating}${row.nomor || '-'} – ${row.judul || 'Tanpa Judul'} (Bobot: ${row.bobot || 0}%)${kategoriText ? ' | ' + kategoriText : ''}${row.deskripsi ? ' | ' + row.deskripsi : ''}`;
   }, []);
 
   const handleClearSelection = useCallback(() => {
@@ -1213,7 +1552,146 @@ function AspekPanel({ rows, setRows, active, backendHandlers, isLoading: globalL
 
         {showAspekForm && (
           <>
-            <div className="w-full bg-slate-200 rounded p-0.5 mt-2" />
+            {isKategoriIncomplete(aspek) && aspek.kategori?.model !== 'tanpa_model' ? (
+              <div className="w-full mt-2 p-1 flex items-center gap-2 justify-center bg-amber-50 text-amber-700 rounded border border-amber-200">
+                <TriangleAlert className="w-4 h-4" />
+                <span className="text-xs">Kategori belum diselesaikan</span>
+              </div>
+            ) : (
+              <div className="w-full bg-slate-200 rounded p-0.5 mt-2" />
+            )}
+
+            <div className="w-full flex gap-4 my-3 items-start text-slate-800">
+              <div className="w-[40%] flex flex-col">
+                <label className="font-semibold text-sm ml-1 mb-1 text-slate-200">Model Produk</label>
+                <select
+                  className="bg-white text-slate-800 text-sm rounded px-2 py-1 border border-slate-300"
+                  value={aspek.kategori?.model || ''}
+                  onChange={(e) => handleChangeKategori('model', e.target.value)}
+                  disabled={isDisabled || (safeActiveAspekIndex !== null && !editMode) || isLocked}
+                >
+                  <option value="">Pilih Model</option>
+                  <option value="tanpa_model">Tanpa Model</option>
+                  <option value="open_end">Open-End</option>
+                  <option value="terstruktur">Terstruktur</option>
+                </select>
+              </div>
+
+              {aspek.kategori?.model === 'open_end' && (
+                <div className="w-[50%] flex flex-col">
+                  <label className="font-semibold text-sm ml-1 mb-1 text-slate-200 font-medium">Jenis Reksa Dana</label>
+                  <select
+                    className="bg-white text-slate-800 text-sm rounded px-2 py-1 border border-slate-300"
+                    value={aspek.kategori?.jenis || ''}
+                    onChange={(e) => handleChangeKategori('jenis', e.target.value)}
+                    disabled={isDisabled || (safeActiveAspekIndex !== null && !editMode) || isLocked}
+                    required={aspek.kategori?.model === 'open_end'}
+                  >
+                    <option value="">Pilih Jenis</option>
+                    <option value="pasar_uang">Pasar Uang</option>
+                    <option value="pendapatan_tetap">Pendapatan Tetap</option>
+                    <option value="campuran">Campuran</option>
+                    <option value="saham">Saham</option>
+                    <option value="indeks">Indeks</option>
+                    <option value="terproteksi">Terproteksi</option>
+                  </select>
+                </div>
+              )}
+
+              {aspek.kategori?.model === 'terstruktur' && (
+                <div className="w-[50%] flex flex-col">
+                  <label className="font-semibold text-sm ml-1 mb-1 text-slate-200 font-medium">Aset Dasar</label>
+
+                  <div className="relative">
+                    <button
+                      type="button"
+                      className="w-full bg-white text-slate-800 text-sm rounded px-2 py-1 flex justify-between items-center border border-slate-300"
+                      onClick={() => setOpenUnderlying((v) => !v)}
+                      disabled={isDisabled || (safeActiveAspekIndex !== null && !editMode) || isLocked}
+                    >
+                      <span className="truncate">
+                        {aspek.kategori?.underlying && aspek.kategori.underlying.length > 0
+                          ? aspek.kategori.underlying
+                              .map((key) => {
+                                const map = {
+                                  indeks: 'Indeks',
+                                  eba: 'Efek Beragun Aset (EBA)',
+                                  dinfra: 'DinFra',
+                                  obligasi: 'Obligasi',
+                                };
+                                return map[key] || key;
+                              })
+                              .join(', ')
+                          : 'Pilih Aset Dasar (Opsional)'}
+                      </span>
+                      <span>▾</span>
+                    </button>
+
+                    {openUnderlying && (
+                      <div className="absolute z-50 mt-1 w-full bg-white rounded shadow-lg text-sm text-slate-800 border border-slate-200">
+                        <div className="px-3 py-2 text-xs text-gray-500 border-b">Pilih aset dasar (boleh kosong untuk model terstruktur)</div>
+                        {[
+                          { key: 'indeks', label: 'Indeks' },
+                          { key: 'eba', label: 'Efek Beragun Aset (EBA)' },
+                          { key: 'dinfra', label: 'DinFra' },
+                          { key: 'obligasi', label: 'Obligasi' },
+                        ].map((u) => {
+                          const underlyingArray = Array.isArray(aspek.kategori?.underlying) ? aspek.kategori.underlying : [];
+                          const checked = underlyingArray.includes(u.key);
+
+                          return (
+                            <label key={u.key} className="flex items-center gap-2 px-3 py-2 hover:bg-slate-50 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                className="accent-slate-700"
+                                checked={checked}
+                                onChange={(e) => {
+                                  const currentUnderlying = Array.isArray(aspek.kategori?.underlying) ? [...aspek.kategori.underlying] : [];
+                                  const next = e.target.checked ? [...currentUnderlying, u.key] : currentUnderlying.filter((x) => x !== u.key);
+                                  handleChangeKategori('underlying', next);
+                                }}
+                                disabled={isDisabled || (safeActiveAspekIndex !== null && !editMode) || isLocked}
+                              />
+                              <span>{u.label}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {aspek.kategori?.model && aspek.kategori.model !== 'tanpa_model' && (
+                <div className="flex gap-4 mt-6">
+                  <label className="flex items-center gap-2 text-sm cursor-pointer select-none text-slate-200">
+                    <input
+                      type="radio"
+                      name="prinsip"
+                      checked={aspek.kategori?.prinsip === 'syariah'}
+                      onChange={() => handleChangeKategori('prinsip', 'syariah')}
+                      disabled={isDisabled || (safeActiveAspekIndex !== null && !editMode) || isLocked}
+                      className="accent-emerald-500"
+                      required={aspek.kategori?.model !== 'tanpa_model'}
+                    />
+                    <span>Syariah</span>
+                  </label>
+
+                  <label className="flex items-center gap-2 text-sm cursor-pointer select-none text-slate-200">
+                    <input
+                      type="radio"
+                      name="prinsip"
+                      checked={aspek.kategori?.prinsip === 'konvensional'}
+                      onChange={() => handleChangeKategori('prinsip', 'konvensional')}
+                      disabled={isDisabled || (safeActiveAspekIndex !== null && !editMode) || isLocked}
+                      className="accent-slate-500"
+                      required={aspek.kategori?.model !== 'tanpa_model'}
+                    />
+                    <span>Konvensional</span>
+                  </label>
+                </div>
+              )}
+            </div>
 
             <div className="w-full flex gap-2 my-3">
               <div className="w-[10%]">
@@ -1247,9 +1725,9 @@ function AspekPanel({ rows, setRows, active, backendHandlers, isLoading: globalL
                 <Input
                   placeholder="Nama aspek"
                   value={aspek.judul}
-                  disabled={isDisabled || (safeActiveAspekIndex !== null && !editMode) || isLocked}
+                  disabled={(aspek.kategori?.model && aspek.kategori.model !== 'tanpa_model' && isKategoriIncomplete(aspek)) || isDisabled || (safeActiveAspekIndex !== null && !editMode) || isLocked}
                   onChange={(e) => handleChangeAspek('judul', e.target.value)}
-                  className={`bg-white text-slate-950 border-slate-300 ${isDisabled || (safeActiveAspekIndex !== null && !editMode) || isLocked ? 'opacity-60 cursor-not-allowed' : ''}`}
+                  className={`bg-white text-slate-950 border-slate-300 ${(aspek.kategori?.model && aspek.kategori.model !== 'tanpa_model' && isKategoriIncomplete(aspek)) || isDisabled || (safeActiveAspekIndex !== null && !editMode) || isLocked ? 'opacity-60 cursor-not-allowed' : ''}`}
                   required
                 />
               </div>
@@ -1457,6 +1935,10 @@ function PertanyaanPanel({ aspek, pertanyaanList = [], activePertanyaanIndex, se
     return {
       nomor: '',
       pertanyaan: '',
+      bobot: '',
+      portofolio: '',
+      sumberRisiko: '',
+      dampak: '',
       skor: {
         Q1: undefined,
         Q2: undefined,
@@ -1580,7 +2062,11 @@ function PertanyaanPanel({ aspek, pertanyaanList = [], activePertanyaanIndex, se
       const createPertanyaanDto = {
         nomor: draftPertanyaan.nomor || '',
         pertanyaan: draftPertanyaan.pertanyaan.trim(),
+        bobot: Number(draftPertanyaan.bobot) || 0,
+        portofolio: draftPertanyaan.portofolio || '',
         skor: draftPertanyaan.skor || {},
+        sumberRisiko: draftPertanyaan.sumberRisiko || '',
+        dampak: draftPertanyaan.dampak || '',
         indicator: {
           strong: draftPertanyaan.indicator?.strong || '',
           satisfactory: draftPertanyaan.indicator?.satisfactory || '',
@@ -2024,6 +2510,34 @@ function PertanyaanPanel({ aspek, pertanyaanList = [], activePertanyaanIndex, se
                 />
               </div>
 
+              <div className="grid grid-cols-12 gap-4 text-slate-800">
+                <div className="col-span-2 flex flex-col gap-1">
+                  <label className="font-semibold text-sm text-slate-200 ml-1">Bobot (%)</label>
+                  <Input
+                    className="bg-white text-slate-800 border-slate-300 text-sm h-8"
+                    value={draftPertanyaan.bobot ?? ''}
+                    onChange={(e) => handleChangePertanyaanField('bobot', e.target.value)}
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.01"
+                    disabled={isInputDisabled}
+                    placeholder="max 100%"
+                  />
+                </div>
+
+                <div className="col-span-10 flex flex-col gap-1">
+                  <label className="font-semibold text-sm text-slate-200 ml-1">% dalam Portofolio</label>
+                  <Input
+                    className="bg-white text-slate-800 border-slate-300 text-sm h-8"
+                    value={draftPertanyaan.portofolio ?? ''}
+                    onChange={(e) => handleChangePertanyaanField('portofolio', e.target.value)}
+                    disabled={isInputDisabled}
+                    placeholder="masukan % dalam portofolio"
+                  />
+                </div>
+              </div>
+
               <div className="w-full flex gap-2 text-slate-800">
                 <div className="w-[10%]">
                   <label className="font-semibold text-sm text-slate-200">Nomor</label>
@@ -2124,6 +2638,29 @@ function PertanyaanPanel({ aspek, pertanyaanList = [], activePertanyaanIndex, se
                       isLocked={isLocked}
                     />
                   ))}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 text-slate-800 mt-2">
+                <div className="flex flex-col gap-1">
+                  <label className="text-slate-200 font-semibold text-sm">Sumber Risiko</label>
+                  <Textarea
+                    className="min-h-[40px] text-sm bg-white border-slate-300"
+                    value={draftPertanyaan.sumberRisiko ?? ''}
+                    onChange={(e) => handleChangePertanyaanField('sumberRisiko', e.target.value)}
+                    disabled={isInputDisabled}
+                    placeholder="masukan sumber risiko"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-slate-200 font-semibold text-sm">Dampak</label>
+                  <Textarea
+                    className="min-h-[40px] text-sm bg-white border-slate-300"
+                    value={draftPertanyaan.dampak ?? ''}
+                    onChange={(e) => handleChangePertanyaanField('dampak', e.target.value)}
+                    disabled={isInputDisabled}
+                    placeholder="masukan dampak"
+                  />
                 </div>
               </div>
 
@@ -2323,6 +2860,10 @@ function TableInherent({ rows = [], activeQuarter }) {
 
                 <th className="border border-black px-2 py-2 bg-blue-900 text-white w-10">No</th>
                 <th className="border border-black px-2 py-2 bg-blue-900 text-white w-64">Pertanyaan</th>
+                <th className="border border-black px-2 py-2 bg-blue-900 text-white w-16">Bobot</th>
+
+                <th className="border border-black px-2 py-2 bg-blue-900 text-white w-64">Sumber Risiko</th>
+                <th className="border border-black px-2 py-2 bg-blue-900 text-white w-64">Dampak</th>
 
                 <th className="border border-black py-2 bg-[#2ECC71] text-white w-32">Strong</th>
                 <th className="border border-black py-2 bg-[#A3E635] text-black w-32">Satisfactory</th>
@@ -2348,7 +2889,7 @@ function TableInherent({ rows = [], activeQuarter }) {
                       <td className="border px-2 py-2 align-top bg-[#E8F5FA]">{aspek.nomor || '-'}</td>
                       <td className="border px-2 py-2 align-top bg-[#E8F5FA]">{formatPercent(aspek.bobot)}</td>
                       <td className="border px-2 py-2 align-top bg-[#E8F5FA] break-words max-w-[200px]">{aspek.judul || '-'}</td>
-                      <td colSpan={12} className="border px-2 py-2 text-center text-gray-400 bg-white">
+                      <td colSpan={15} className="border px-2 py-2 text-center text-gray-400 bg-white">
                         Belum ada pertanyaan
                       </td>
                     </tr>
@@ -2397,6 +2938,10 @@ function TableInherent({ rows = [], activeQuarter }) {
 
                       <td className="border px-2 py-2 text-center bg-[#E8F5FA]">{pertanyaan.nomor || '-'}</td>
                       <td className="border px-2 py-2 bg-[#E8F5FA] break-words max-w-[180px]">{pertanyaan.pertanyaan || '-'}</td>
+                      <td className="border px-2 py-2 text-center bg-[#E8F5FA]">{formatPercent(pertanyaan.bobot)}</td>
+
+                      <td className="border px-2 py-2 text-center bg-white break-words max-w-[200px]">{pertanyaan.sumberRisiko ?? ''}</td>
+                      <td className="border px-2 py-2 text-center bg-white break-words max-w-[200px]">{pertanyaan.dampak ?? ''}</td>
 
                       <td className="border px-2 py-2 text-center bg-white break-words max-w-[130px]">{pertanyaan.indicator?.strong || '-'}</td>
                       <td className="border px-2 py-2 text-center bg-white break-words max-w-[130px]">{pertanyaan.indicator?.satisfactory || '-'}</td>
@@ -2415,7 +2960,7 @@ function TableInherent({ rows = [], activeQuarter }) {
               })}
 
               <tr>
-                <td colSpan={11} className="border-0 bg-white"></td>
+                <td colSpan={13} className="border-0 bg-white"></td>
                 <td colSpan={2} className="border border-black px-2 py-2 text-center font-semibold text-white bg-blue-900">
                   Summary
                 </td>

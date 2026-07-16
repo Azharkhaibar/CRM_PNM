@@ -294,11 +294,11 @@ const ModuleTable = ({ moduleName, moduleData, year, quarter, onViewIndicator, i
                                 <td className="border px-3 py-3 text-center align-top bg-[#d9eefb]">{it.bobotIndikator}%</td>
                                 <td className="border px-3 py-3 align-top bg-[#d9eefb] whitespace-pre-wrap">{it.sumberRisiko || '-'}</td>
                                 <td className="border px-3 py-3 align-top bg-[#d9eefb] whitespace-pre-wrap">{it.dampak || '-'}</td>
-                                <td className="border px-3 py-3 text-center bg-green-700/10 whitespace-pre-wrap">{it.low || '-'}</td>
-                                <td className="border px-3 py-3 text-center bg-green-700/10 whitespace-pre-wrap">{it.lowToModerate || '-'}</td>
-                                <td className="border px-3 py-3 text-center bg-green-700/10 whitespace-pre-wrap">{it.moderate || '-'}</td>
-                                <td className="border px-3 py-3 text-center bg-green-700/10 whitespace-pre-wrap">{it.moderateToHigh || '-'}</td>
-                                <td className="border px-3 py-3 text-center bg-green-700/10 whitespace-pre-wrap">{it.high || '-'}</td>
+                                <td className="border px-3 py-3 text-center whitespace-pre-wrap">{it.low || '-'}</td>
+                                <td className="border px-3 py-3 text-center whitespace-pre-wrap">{it.lowToModerate || '-'}</td>
+                                <td className="border px-3 py-3 text-center whitespace-pre-wrap">{it.moderate || '-'}</td>
+                                <td className="border px-3 py-3 text-center whitespace-pre-wrap">{it.moderateToHigh || '-'}</td>
+                                <td className="border px-3 py-3 text-center whitespace-pre-wrap">{it.high || '-'}</td>
                                 <td className="border px-3 py-3 text-right bg-gray-400/20 whitespace-pre-wrap">{formatHasil(it)}</td>
                                 <td className="border px-3 py-3 text-center"><div className="inline-block rounded bg-yellow-300 px-2">{it.peringkat}</div></td>
                                 <td className="border px-3 py-3 text-right bg-gray-400/20">{formatWeighted(it.weighted)}</td>

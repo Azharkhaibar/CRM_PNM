@@ -207,8 +207,7 @@ export default function DataTable({ rows, totalWeighted, viewYear, viewQuarter, 
                     const isFirstOfSection = idx === 0;
                     const isTeksMode = mode === 'TEKS';
 
-                    // Hitung total baris yang sebenarnya untuk section ini
-                    // dengan menjumlahkan actual rows berdasarkan mode masing-masing item
+                    
                     const totalSectionRows = g.items.reduce((sum, item) => {
                       return sum + getRowCountForMode(item.mode || 'RASIO');
                     }, 0);
@@ -283,27 +282,27 @@ export default function DataTable({ rows, totalWeighted, viewYear, viewQuarter, 
                             </div>
                           </td>
 
-                          <td className="border px-3 py-0 text-center bg-green-700/10">
+                          <td className="border px-3 py-0 text-center">
                             <div className="custom-scrollbar" style={{ height: 70, overflowY: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px' }}>
                               {r.low}
                             </div>
                           </td>
-                          <td className="border px-3 py-0 text-center bg-green-700/10">
+                          <td className="border px-3 py-0 text-center">
                             <div className="custom-scrollbar" style={{ height: 70, overflowY: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px' }}>
                               {r.lowToModerate}
                             </div>
                           </td>
-                          <td className="border px-3 py-0 text-center bg-green-700/10">
+                          <td className="border px-3 py-0 text-center">
                             <div className="custom-scrollbar" style={{ height: 70, overflowY: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px' }}>
                               {r.moderate}
                             </div>
                           </td>
-                          <td className="border px-3 py-0 text-center bg-green-700/10">
+                          <td className="border px-3 py-0 text-center">
                             <div className="custom-scrollbar" style={{ height: 70, overflowY: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px' }}>
                               {r.moderateToHigh}
                             </div>
                           </td>
-                          <td className="border px-3 py-0 text-center bg-green-700/10">
+                          <td className="border px-3 py-0 text-center">
                             <div className="custom-scrollbar" style={{ height: 70, overflowY: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px' }}>
                               {r.high}
                             </div>

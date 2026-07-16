@@ -106,7 +106,7 @@ export function exportInherent({ rows = [], year, quarter, categoryLabel = 'Pasa
      ====================== */
   const groupHeaders = [
     { label: 'Parameter', span: 3 },
-    { label: 'Nilai', span: 4 },
+    { label: 'Nilai', span: 6 },
     { label: 'Risk Level', span: 5 },
     { label: 'Hasil', span: 4 },
   ];
@@ -132,7 +132,7 @@ export function exportInherent({ rows = [], year, quarter, categoryLabel = 'Pasa
   /* ======================
      HEADER ROW 2 (SUB)
      ====================== */
-  const subHeaders = ['No', 'Bobot', 'Parameter', 'No', 'Nilai', 'Bobot', '% Portofolio', 'Low', 'Low To Moderate', 'Moderate', 'Moderate To High', 'High', 'Hasil', 'Peringkat', 'Weighted', 'Keterangan'];
+  const subHeaders = ['No', 'Bobot', 'Parameter', 'No', 'Nilai', 'Bobot', '% Portofolio', 'Sumber Risiko', 'Dampak', 'Low', 'Low To Moderate', 'Moderate', 'Moderate To High', 'High', 'Hasil', 'Peringkat', 'Weighted', 'Keterangan'];
 
   subHeaders.forEach((label, i) => {
     const style = riskStyles[label] ?? (['Hasil', 'Peringkat', 'Weighted', 'Keterangan'].includes(label) ? headerBlueDark : headerBlue);
@@ -185,12 +185,12 @@ export function exportInherent({ rows = [], year, quarter, categoryLabel = 'Pasa
       writeCell(currentRow, 4, param.judul || '-', { ...cellStyle, fill: { fgColor: { rgb: 'FFE8F5FA' } } });
 
       writeCell(currentRow, 5, 'Belum ada nilai', { ...cellStyle, alignment: { horizontal: 'center', vertical: 'center' } });
-      for (let c = 6; c <= 17; c++) {
+      for (let c = 6; c <= 19; c++) {
         writeCell(currentRow, c, '', { ...cellStyle });
       }
       ws['!merges'].push({
         s: { r: currentRow, c: 5 },
-        e: { r: currentRow, c: 17 }
+        e: { r: currentRow, c: 19 }
       });
 
       currentRow++;
@@ -274,15 +274,24 @@ export function exportInherent({ rows = [], year, quarter, categoryLabel = 'Pasa
         writeCell(currentRow, 7, isMainRow ? formatPercent(nilai.bobot) : '', { ...cellStyle, fill, alignment: { horizontal: 'center', vertical: 'center' } });
         writeCell(currentRow, 8, isMainRow ? (nilai.portofolio ?? '-') : '', { ...cellStyle, fill, alignment: { horizontal: 'center', vertical: 'center' } });
 
-        // 3. Risk Level columns (9 to 13)
+        // 3. Sumber Risiko and Dampak columns (9 and 10)
+        if (subIndex === 0) {
+          writeCell(currentRow, 9, nilai.sumberRisiko || '', { ...cellStyle, fill });
+          writeCell(currentRow, 10, nilai.dampak || '', { ...cellStyle, fill });
+        } else {
+          writeCell(currentRow, 9, '', { ...cellStyle, fill });
+          writeCell(currentRow, 10, '', { ...cellStyle, fill });
+        }
+
+        // 4. Risk Level columns (11 to 15)
         const rkBg = isMainRow ? 'FFD9EAD3' : 'FFFFFFFF';
         const rkFill = { fgColor: { rgb: rkBg } };
         ['low', 'lowToModerate', 'moderate', 'moderateToHigh', 'high'].forEach((rk, rkIdx) => {
           const val = isMainRow ? (nilai.riskindikator?.[rk] ?? '-') : '';
-          writeCell(currentRow, 9 + rkIdx, val, { ...cellStyle, fill: rkFill, alignment: { horizontal: 'center', vertical: 'center' } });
+          writeCell(currentRow, 11 + rkIdx, val, { ...cellStyle, fill: rkFill, alignment: { horizontal: 'center', vertical: 'center' } });
         });
 
-        // 4. Hasil column
+        // 5. Hasil column
         let formattedHasil = hasilText;
         if (isMainRow && formattedHasil !== '-' && formattedHasil !== '') {
           const cleanVal = String(formattedHasil).replace(/,/g, '.').trim();
@@ -292,9 +301,9 @@ export function exportInherent({ rows = [], year, quarter, categoryLabel = 'Pasa
           }
         }
         const hasilBg = isMainRow ? 'FFFFFFFF' : 'FFD9EAD3';
-        writeCell(currentRow, 14, formattedHasil, { ...cellStyle, fill: { fgColor: { rgb: hasilBg } }, alignment: { horizontal: 'center', vertical: 'center' }, font: { name: 'Calibri', size: 11, bold: isMainRow } });
+        writeCell(currentRow, 16, formattedHasil, { ...cellStyle, fill: { fgColor: { rgb: hasilBg } }, alignment: { horizontal: 'center', vertical: 'center' }, font: { name: 'Calibri', size: 11, bold: isMainRow } });
 
-        // 5. Peringkat, Weighted, Keterangan columns
+        // 6. Peringkat, Weighted, Keterangan columns
         if (subIndex === 0) {
           const pRank = Number(peringkat);
           const rStyle = rankColors[pRank] || {};
@@ -302,19 +311,19 @@ export function exportInherent({ rows = [], year, quarter, categoryLabel = 'Pasa
           const pFontColor = rStyle.font?.color?.rgb || 'FF000000';
           const pFontBold = rStyle.font?.bold || false;
 
-          writeCell(currentRow, 15, Number.isFinite(peringkat) ? peringkat : '-', {
+          writeCell(currentRow, 17, Number.isFinite(peringkat) ? peringkat : '-', {
             ...cellStyle,
             fill: { fgColor: { rgb: pBg } },
             font: { name: 'Calibri', size: 11, bold: pFontBold, color: { rgb: pFontColor } },
             alignment: { horizontal: 'center', vertical: 'center' },
           });
 
-          writeCell(currentRow, 16, weightedDisplay || '', { ...cellStyle, alignment: { horizontal: 'center', vertical: 'center' } });
-          writeCell(currentRow, 17, nilai.keterangan || '', { ...cellStyle });
+          writeCell(currentRow, 18, weightedDisplay || '', { ...cellStyle, alignment: { horizontal: 'center', vertical: 'center' } });
+          writeCell(currentRow, 19, nilai.keterangan || '', { ...cellStyle });
         } else {
-          writeCell(currentRow, 15, '', { ...cellStyle });
-          writeCell(currentRow, 16, '', { ...cellStyle });
           writeCell(currentRow, 17, '', { ...cellStyle });
+          writeCell(currentRow, 18, '', { ...cellStyle });
+          writeCell(currentRow, 19, '', { ...cellStyle });
         }
 
         currentRow++;
@@ -322,16 +331,24 @@ export function exportInherent({ rows = [], year, quarter, categoryLabel = 'Pasa
 
       if (rowsForThisNilai > 1) {
         ws['!merges'].push({
-          s: { r: nilaiStartRow, c: 15 },
-          e: { r: currentRow - 1, c: 15 }
+          s: { r: nilaiStartRow, c: 9 },
+          e: { r: currentRow - 1, c: 9 }
         });
         ws['!merges'].push({
-          s: { r: nilaiStartRow, c: 16 },
-          e: { r: currentRow - 1, c: 16 }
+          s: { r: nilaiStartRow, c: 10 },
+          e: { r: currentRow - 1, c: 10 }
         });
         ws['!merges'].push({
           s: { r: nilaiStartRow, c: 17 },
           e: { r: currentRow - 1, c: 17 }
+        });
+        ws['!merges'].push({
+          s: { r: nilaiStartRow, c: 18 },
+          e: { r: currentRow - 1, c: 18 }
+        });
+        ws['!merges'].push({
+          s: { r: nilaiStartRow, c: 19 },
+          e: { r: currentRow - 1, c: 19 }
         });
       }
     });
@@ -373,33 +390,33 @@ export function exportInherent({ rows = [], year, quarter, categoryLabel = 'Pasa
   const totalWeightedBg = getSummaryBgColor(totalWeighted);
   const totalWeightedFontColor = totalWeightedBg === 'FFFF0000' ? 'FFFFFFFF' : 'FF000000';
 
-  for (let c = 2; c <= 13; c++) {
+  for (let c = 2; c <= 15; c++) {
     writeCell(currentRow, c, '', { font: { name: 'Calibri', size: 11 } });
   }
 
-  writeCell(currentRow, 14, 'Summary', {
+  writeCell(currentRow, 16, 'Summary', {
     fill: { fgColor: { rgb: 'FF0F172A' } },
     font: { name: 'Calibri', size: 11, bold: true, color: { rgb: 'FFFFFFFF' } },
     alignment: { horizontal: 'center', vertical: 'center' },
     border: thinBorder,
   });
-  writeCell(currentRow, 15, '', {
+  writeCell(currentRow, 17, '', {
     fill: { fgColor: { rgb: 'FF0F172A' } },
     border: thinBorder,
   });
   ws['!merges'].push({
-    s: { r: currentRow, c: 14 },
-    e: { r: currentRow, c: 15 }
+    s: { r: currentRow, c: 16 },
+    e: { r: currentRow, c: 17 }
   });
 
-  writeCell(currentRow, 16, Number.isFinite(totalWeighted) ? totalWeighted.toFixed(2) : '-', {
+  writeCell(currentRow, 18, Number.isFinite(totalWeighted) ? totalWeighted.toFixed(2) : '-', {
     fill: { fgColor: { rgb: totalWeightedBg } },
     font: { name: 'Calibri', size: 11, bold: true, color: { rgb: totalWeightedFontColor } },
     alignment: { horizontal: 'center', vertical: 'center' },
     border: thinBorder,
   });
 
-  writeCell(currentRow, 17, '', { border: thinBorder });
+  writeCell(currentRow, 19, '', { border: thinBorder });
   currentRow++;
 
   /* ======================
@@ -408,27 +425,29 @@ export function exportInherent({ rows = [], year, quarter, categoryLabel = 'Pasa
   ws['!cols'] = [
     { wch: 4 }, // A
     { wch: 4 }, // B
-    { wch: 6 }, // C
-    { wch: 8 }, // D
-    { wch: 32 }, // E
-    { wch: 6 }, // F
-    { wch: 32 }, // G
-    { wch: 8 }, // H
-    { wch: 18 }, // I
-    { wch: 16 }, // J
-    { wch: 18 }, // K
-    { wch: 16 }, // L
-    { wch: 20 }, // M
-    { wch: 16 }, // N
-    { wch: 16 }, // O
-    { wch: 12 }, // P
-    { wch: 12 }, // Q
-    { wch: 24 }, // R
+    { wch: 6 }, // C (Parameter No)
+    { wch: 8 }, // D (Parameter Bobot)
+    { wch: 32 }, // E (Parameter Judul)
+    { wch: 6 }, // F (Nilai No)
+    { wch: 32 }, // G (Nilai Text)
+    { wch: 8 }, // H (Nilai Bobot)
+    { wch: 18 }, // I (% Portofolio)
+    { wch: 24 }, // J (Sumber Risiko)
+    { wch: 24 }, // K (Dampak)
+    { wch: 16 }, // L (Low)
+    { wch: 18 }, // M (Low To Moderate)
+    { wch: 16 }, // N (Moderate)
+    { wch: 16 }, // O (Moderate To High)
+    { wch: 12 }, // P (High)
+    { wch: 12 }, // Q (Hasil)
+    { wch: 12 }, // R (Peringkat)
+    { wch: 12 }, // S (Weighted)
+    { wch: 24 }, // T (Keterangan)
   ];
 
   ws['!ref'] = XLSX.utils.encode_range({
     s: { r: 0, c: 0 },
-    e: { r: currentRow - 1, c: 17 },
+    e: { r: currentRow - 1, c: 19 },
   });
 
   XLSX.utils.book_append_sheet(wb, ws, 'Inherent Risk');

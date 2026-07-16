@@ -271,16 +271,10 @@ export class PeringkatKompositService {
             // 2. Count categories
             if (data.parameters) {
               for (const param of data.parameters) {
-                if (param.nilaiList && param.nilaiList.length > 0) {
-                  const nilai = param.nilaiList[0];
-                  let value = 0;
-                  if (nilai.judul?.value != null) {
-                    value = typeof nilai.judul.value === 'number'
-                      ? nilai.judul.value
-                      : parseFloat(nilai.judul.value as string) || 0;
-                  }
-                  if (!isNaN(value) && value > 0) {
-                    const level = this.skorToLevel(value);
+                for (const nilai of param.nilaiList || []) {
+                  const derived = this.computeDerived(nilai, param);
+                  const level = derived.peringkat;
+                  if (level !== null && level > 0) {
                     if (level === 5) categories.high++;
                     else if (level === 4) categories.moderateHigh++;
                     else if (level === 3) categories.moderate++;
@@ -413,31 +407,170 @@ export class PeringkatKompositService {
   // ========== KALKULASI ==========
   private hitungWeightedAverage(parameters: any[]): number {
     let totalWeighted = 0;
-    let totalWeight = 0;
+    let totalParameterBobot = 0;
 
     for (const param of parameters) {
-      const weight = parseFloat(param.bobot?.toString() || '0');
-      if (isNaN(weight) || weight === 0) continue;
+      const paramBobot = (Number(param.bobot) || 0) / 100;
+      totalParameterBobot += paramBobot;
 
-      if (param.nilaiList?.length > 0) {
-        const nilai = param.nilaiList[0];
-        let value = 0;
-
-        if (nilai.judul?.value != null) {
-          value =
-            typeof nilai.judul.value === 'number'
-              ? nilai.judul.value
-              : parseFloat(nilai.judul.value as string) || 0;
-        }
-
-        if (!isNaN(value)) {
-          totalWeighted += value * weight;
-          totalWeight += weight;
-        }
+      for (const nilai of param.nilaiList || []) {
+        const derived = this.computeDerived(nilai, param);
+        totalWeighted += derived.weighted;
       }
     }
 
-    return totalWeight > 0 ? totalWeighted / totalWeight : 0;
+    return totalParameterBobot > 0
+      ? Number((totalWeighted / totalParameterBobot).toFixed(2))
+      : 0;
+  }
+
+  private computeDerived(nilai: any, param: any): { weighted: number; peringkat: number | null } {
+    try {
+      if (!nilai) return { weighted: 0, peringkat: null };
+
+      const judul = nilai.judul || {};
+      const paramBobotFraction = Number(param?.bobot ?? 0) / 100;
+      const nilaiBobotFraction = Number(nilai?.bobot ?? 0) / 100;
+
+      const parseNumber = (v: any): number => {
+        if (v == null || v === '' || v === undefined) return NaN;
+        if (typeof v === 'number') return v;
+        if (typeof v === 'string') {
+          let cleaned = v.trim().replace(/\s/g, '');
+          const isPercent = cleaned.includes('%');
+          cleaned = cleaned
+            .replace('%', '')
+            .replace(/\./g, '')
+            .replace(/,/g, '.');
+          const num = Number(cleaned);
+          if (!isNaN(num) && isPercent) return num / 100;
+          return num;
+        }
+        return Number(v);
+      };
+
+      const evaluateFormula = (
+        expr: string,
+        subs: Record<string, number> = {},
+      ): number => {
+        if (!expr || typeof expr !== 'string' || expr.trim() === '') return NaN;
+        let e = expr.trim();
+        for (const [token, value] of Object.entries(subs)) {
+          e = e.replace(new RegExp(`\\b${token}\\b`, 'gi'), String(value));
+        }
+        if (!/^[0-9eE\.\+\-\*\/\(\)\s]+$/.test(e)) return NaN;
+        try {
+          const fn = new Function(
+            `"use strict"; try { return (${e}); } catch(err) { return NaN; }`,
+          );
+          const val = fn();
+          return typeof val === 'number' && !isNaN(val) && isFinite(val)
+            ? val
+            : NaN;
+        } catch {
+          return NaN;
+        }
+      };
+
+      let rawValue: number = NaN;
+      const type = judul.type || 'Tanpa Faktor';
+
+      if (type === 'Tanpa Faktor') {
+        const parsed = parseNumber(judul.value);
+        if (!isNaN(parsed))
+          rawValue = judul.formula
+            ? evaluateFormula(judul.formula, { pem: parsed })
+            : parsed;
+      } else if (type === 'Satu Faktor') {
+        const parsed = parseNumber(judul.valuePembilang);
+        if (!isNaN(parsed))
+          rawValue = judul.formula
+            ? evaluateFormula(judul.formula, { pem: parsed })
+            : parsed;
+      } else if (type === 'Dua Faktor') {
+        const pem = parseNumber(judul.valuePembilang);
+        const pen = parseNumber(judul.valuePenyebut);
+        if (!isNaN(pem) && !isNaN(pen)) {
+          rawValue = judul.formula
+            ? evaluateFormula(judul.formula, { pem, pen })
+            : pen !== 0
+              ? pem / pen
+              : NaN;
+        }
+      }
+
+      let peringkat: number | null = null;
+      const ri = nilai.riskindikator || {};
+      const ranges = [
+        { key: 'low', rank: 1 },
+        { key: 'lowToModerate', rank: 2 },
+        { key: 'moderate', rank: 3 },
+        { key: 'moderateToHigh', rank: 4 },
+        { key: 'high', rank: 5 },
+      ];
+
+      if (!isNaN(rawValue)) {
+        for (const { key, rank } of ranges) {
+          const rawText = String(ri[key] ?? '');
+          const nums = rawText.match(/-?\d+(\.\d+)?/g);
+          if (!nums || nums.length === 0) continue;
+
+          const hasPercent = rawText.includes('%');
+          let min = -Infinity;
+          let max = Infinity;
+
+          if (nums.length === 1) {
+            let n = Number(nums[0]);
+            if (hasPercent) n = n / 100;
+            if (/≤|<=/.test(rawText)) max = n;
+            else if (/≥|>=/.test(rawText)) min = n;
+            else if (/^\s*(?:[xX]?\s*>|≥?>)\s*-?\d+(?:\.\d+)?/i.test(rawText)) {
+              min = n;
+              max = Infinity;
+            } else if (/^\s*(?:[xX]?\s*<|≤?<)\s*-?\d+(?:\.\d+)?/i.test(rawText)) {
+              min = -Infinity;
+              max = n;
+            } else {
+              min = n;
+              max = n;
+            }
+          } else {
+            let n1 = Number(nums[0]);
+            let n2 = Number(nums[1]);
+            if (hasPercent) {
+              n1 = n1 / 100;
+              n2 = n2 / 100;
+            }
+            min = Math.min(n1, n2);
+            max = Math.max(n1, n2);
+          }
+
+          if (rawValue >= min && rawValue <= max) {
+            peringkat = rank;
+            break;
+          }
+        }
+      }
+
+      if (peringkat === null && !isNaN(rawValue)) {
+        if (rawValue <= 1.5) peringkat = 1;
+        else if (rawValue <= 2.5) peringkat = 2;
+        else if (rawValue <= 3.5) peringkat = 3;
+        else if (rawValue <= 4.5) peringkat = 4;
+        else peringkat = 5;
+      }
+
+      const weighted =
+        peringkat !== null
+          ? Math.round(
+              paramBobotFraction * nilaiBobotFraction * peringkat * 10000,
+            ) / 10000
+          : 0;
+
+      return { weighted, peringkat };
+    } catch {
+      return { weighted: 0, peringkat: null };
+    }
   }
 
   private hitungRataRataSkor(aspekList: any[], quarter: number): number {

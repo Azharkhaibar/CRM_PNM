@@ -2,6 +2,8 @@
 import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useHeaderStore } from '../../../../store/header';
+import OjkCloneDialog from '../../../../components/OjkCloneDialog';
+import rekapApiService from '../../../rekap-data/services/rekap-data.service';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
@@ -46,6 +48,8 @@ export default function OperasionalProdukInherentWrapper() {
   const quarter = useHeaderStore((s) => s.activeQuarter);
   const [active, setActive] = useState(true);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [cloneDialogOpen, setCloneDialogOpen] = useState(false);
+  const [inheritInfo, setInheritInfo] = useState(null);
 
   // Gunakan hook integration yang sudah diperbaiki
   const {
@@ -366,9 +370,76 @@ export default function OperasionalProdukInherentWrapper() {
     );
   }
 
+    const handleUndoClone = async () => {
+    if (!inheritInfo) return;
+    try {
+      await rekapApiService.undoClonePeriodData({
+        targetYear: inheritInfo.targetYear,
+        targetQuarter: inheritInfo.targetQuarter,
+        categories: inheritInfo.categories,
+      });
+      setInheritInfo(null);
+      await backendHandlers.refreshData();
+      alert('Kloning berhasil dibatalkan');
+    } catch (err) {
+      console.error('Error undoing clone:', err);
+      alert('Gagal membatalkan clone');
+    }
+  };
+
+  const handleResetData = async () => {
+    if (!confirm('Apakah Anda yakin ingin menghapus/reset semua data Operasional untuk periode ini? Semua parameter dan nilai akan terhapus secara permanen.')) {
+      return;
+    }
+    try {
+      await rekapApiService.undoClonePeriodData({
+        targetYear: year,
+        targetQuarter: quarter,
+        categories: ['operasional'],
+      });
+      await backendHandlers.refreshData();
+      alert('Data berhasil di-reset');
+      setInheritInfo(null);
+    } catch (err) {
+      console.error('Error resetting data:', err);
+      alert('Gagal me-reset data');
+    }
+  };
+
   return (
-    <div className="w-full space-y-6">
-      {/* Header dengan kontrol */}
+    <div className="w-full space-y-6 text-black">
+      {inheritInfo && (
+        <div className="mb-4 rounded-lg bg-yellow-50 border border-yellow-300 px-4 py-3 text-sm flex justify-between items-start gap-4">
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="inline-block w-2 h-2 rounded-full bg-yellow-500"></span>
+              <strong>Kloning Berhasil</strong>
+            </div>
+            <p className="text-gray-700">
+              Data untuk periode{' '}
+              <strong>
+                {inheritInfo.targetYear}-Q{inheritInfo.targetQuarter}
+              </strong>{' '}
+              telah berhasil disalin dari <strong>{inheritInfo.from}</strong>.
+            </p>
+          </div>
+          <div className="flex flex-col gap-2">
+            <button 
+              onClick={handleUndoClone} 
+              className="px-3 py-1.5 rounded border border-red-200 bg-white hover:bg-red-50 text-red-600 text-sm font-medium whitespace-nowrap"
+            >
+              Undo Clone
+            </button>
+            <button 
+              onClick={() => setInheritInfo(null)} 
+              className="px-3 py-1.5 rounded border border-blue-600 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium whitespace-nowrap"
+            >
+              Confirm Clone
+            </button>
+          </div>
+        </div>
+      )}
+{/* Header dengan kontrol */}
       <div className="bg-white rounded-lg border shadow p-4">
         <div className="flex justify-between items-center mb-4">
           <div>
@@ -397,6 +468,26 @@ export default function OperasionalProdukInherentWrapper() {
             {/* Status Toggle */}
             <Button onClick={() => setActive(!active)} variant={active ? 'default' : 'outline'} className={active ? 'bg-blue-600 hover:bg-blue-700' : ''}>
               {active ? 'Aktif' : 'Nonaktif'}
+            </Button>
+
+            {/* Salin/Clone Button */}
+                        {/* Reset Button */}
+            <Button
+              onClick={handleResetData}
+              className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white"
+              disabled={isLoading}
+            >
+              <Trash2 className="w-4 h-4" />
+              Reset Data
+            </Button>
+
+<Button
+              onClick={() => setCloneDialogOpen(true)}
+              className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white"
+              disabled={isLoading}
+            >
+              <Copy className="w-4 h-4" />
+              Salin Periode
             </Button>
 
             {/* Refresh Button */}
@@ -429,6 +520,19 @@ export default function OperasionalProdukInherentWrapper() {
 
       {/* Komponen utama */}
       <OperasionalProdukInherent rows={rows} setRows={setRows} search={search} active={active} backendHandlers={backendHandlers} isLoading={isLoading} isLocked={currentInherentData?.isLocked} />
+
+      {/* CLONE DIALOG */}
+      <OjkCloneDialog
+        isOpen={cloneDialogOpen}
+        onClose={() => setCloneDialogOpen(false)}
+        onSuccess={(cloneInfo) => {
+          setInheritInfo(cloneInfo);
+          backendHandlers.refreshData();
+        }}
+        defaultCategory="operasional"
+        currentYear={year}
+        currentQuarter={quarter}
+      />
     </div>
   );
 }
@@ -1726,6 +1830,8 @@ function NilaiPanel({ param, nilaiList = [], activeNilaiIndex, setActiveNilaiInd
       bobot: 0,
       portofolio: '',
       keterangan: '',
+      sumberRisiko: '',
+      dampak: '',
       judul: {
         type: 'Tanpa Faktor',
         text: '',
@@ -1875,6 +1981,8 @@ function NilaiPanel({ param, nilaiList = [], activeNilaiIndex, setActiveNilaiInd
         bobot: bobotNum,
         portofolio: draftNilai.portofolio || '',
         keterangan: draftNilai.keterangan || '',
+        sumberRisiko: draftNilai.sumberRisiko || '',
+        dampak: draftNilai.dampak || '',
         riskindikator: draftNilai.riskindikator || {
           low: '',
           lowToModerate: '',
@@ -2346,7 +2454,7 @@ function NilaiPanel({ param, nilaiList = [], activeNilaiIndex, setActiveNilaiInd
                   />
                 </div>
 
-                <div className="col-span-2 flex flex-col gap-1">
+                <div className="col-span-10 flex flex-col gap-1">
                   <label className="font-semibold text-sm text-slate-200 ml-1">Bobot</label>
                   <Input
                     className="bg-white text-slate-800 border-slate-300 text-sm"
@@ -2358,17 +2466,6 @@ function NilaiPanel({ param, nilaiList = [], activeNilaiIndex, setActiveNilaiInd
                     step="0.01"
                     disabled={isInputDisabled}
                     placeholder="max 100%"
-                  />
-                </div>
-
-                <div className="col-span-8 flex flex-col gap-1">
-                  <label className="font-semibold text-sm text-slate-200 ml-1">% dalam Portofolio</label>
-                  <Input
-                    className="bg-white text-slate-800 border-slate-300 text-sm"
-                    value={draftNilai.portofolio ?? ''}
-                    onChange={(e) => handleChangeNilaiField('portofolio', e.target.value)}
-                    disabled={isInputDisabled}
-                    placeholder="masukan % dalam portofolio"
                   />
                 </div>
               </div>
@@ -2411,6 +2508,8 @@ function NilaiPanel({ param, nilaiList = [], activeNilaiIndex, setActiveNilaiInd
                   ))}
                 </div>
               </div>
+
+
 
               <div className="mt-2 text-slate-800">
                 <label className="text-slate-200 font-semibold text-sm">Keterangan</label>
@@ -2797,7 +2896,6 @@ function TableInherent({ rows = [], activeQuarter }) {
                 <th className="border border-black px-2 py-2 bg-blue-900 text-white w-10">No</th>
                 <th className="border border-black px-2 py-2 bg-blue-900 text-white w-64">Nilai</th>
                 <th className="border border-black px-2 py-2 bg-blue-900 text-white w-16">Bobot</th>
-                <th className="border border-black px-2 py-2 bg-blue-900 text-white w-64">% dalam Portofolio</th>
 
                 <th className="border border-black py-2 bg-[#2ECC71] text-white w-32">Low</th>
                 <th className="border border-black py-2 bg-[#A3E635] text-black w-32">Low To Moderate</th>
@@ -2822,7 +2920,7 @@ function TableInherent({ rows = [], activeQuarter }) {
                       <td className="border px-2 py-2 align-top bg-[#E8F5FA]">{param.nomor || '-'}</td>
                       <td className="border px-2 py-2 align-top bg-[#E8F5FA]">{formatPercent(param.bobot)}</td>
                       <td className="border px-2 py-2 align-top bg-[#E8F5FA] break-words max-w-[200px]">{param.judul || '-'}</td>
-                      <td colSpan={13} className="border px-2 py-2 text-center text-gray-400 bg-white">
+                      <td colSpan={11} className="border px-2 py-2 text-center text-gray-400 bg-white">
                         Belum ada nilai
                       </td>
                     </tr>
@@ -2916,7 +3014,7 @@ function TableInherent({ rows = [], activeQuarter }) {
 
                           <td className={`border px-2 py-2 text-center ${isMainRow ? 'bg-[#E8F5FA]' : 'bg-white'}`}>{isMainRow ? formatPercent(nilai.bobot) : ''}</td>
 
-                          <td className={`border px-2 py-2 text-center ${isMainRow ? 'bg-[#E8F5FA]' : 'bg-white'} break-words max-w-[180px]`}>{isMainRow ? (nilai.portofolio ?? '-') : ''}</td>
+
 
                           {['low', 'lowToModerate', 'moderate', 'moderateToHigh', 'high'].map((rk) => (
                             <td key={rk} className={`border px-2 py-2 text-center ${isMainRow ? 'bg-[#D9EAD3]' : 'bg-white'} break-words max-w-[130px]`}>
@@ -2951,7 +3049,7 @@ function TableInherent({ rows = [], activeQuarter }) {
               })}
 
               <tr>
-                <td colSpan={12} className="border-0 bg-white"></td>
+                <td colSpan={11} className="border-0 bg-white"></td>
                 <td colSpan={2} className="border border-black px-2 py-2 text-center font-semibold text-white bg-blue-900">
                   Summary
                 </td>

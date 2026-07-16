@@ -78,6 +78,7 @@ export default function LoginPage() {
 
   const handlePinVerified = () => {
     setShowPinDialog(false);
+    sessionStorage.setItem('register_pin_verified', 'true');
     navigate('/register');
   };
 

@@ -67,6 +67,7 @@ const Sidebar = ({ onWidthChange }) => {
     { name: 'Rekap Data', path: '/dashboard/rekap-data' },
     { name: 'Rekap Data 2', path: '/dashboard/rekapdata2' },
     { name: 'Rekap 1', path: '/dashboard/rekap1' },
+    { name: 'Peringkat Komposit', path: '/dashboard/peringkat-komposit' },
   ];
 
   const ojkRiskItems = [
@@ -91,7 +92,7 @@ const Sidebar = ({ onWidthChange }) => {
   ];
 
   useEffect(() => {
-    if (pathname.startsWith('/dashboard/risk-form') || pathname === '/dashboard/rekap1' || pathname === '/dashboard/rekap-data' || pathname === '/dashboard/rekap-data-2' || pathname === '/dashboard/ringkasan') {
+    if (pathname.startsWith('/dashboard/risk-form') || pathname === '/dashboard/rekap1' || pathname === '/dashboard/rekap-data' || pathname === '/dashboard/rekapdata2' || pathname === '/dashboard/ringkasan' || pathname === '/dashboard/peringkat-komposit') {
       setOpenRisk(true);
     }
     if (pathname.startsWith('/dashboard/ojk')) {
@@ -133,7 +134,6 @@ const Sidebar = ({ onWidthChange }) => {
     const handleClickOutside = (event) => {
       if (divisionRef.current && !divisionRef.current.contains(event.target)) setDivisionDropdownOpen(false);
       if (menuRef.current && !menuRef.current.contains(event.target)) setMenuOpen(false);
-      if (ojkRiskRef.current && !ojkRiskRef.current.contains(event.target)) setOpenOjkRisk(false);
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
@@ -154,21 +154,21 @@ const Sidebar = ({ onWidthChange }) => {
   };
 
   const colors = {
-    bg: 'bg-white',
+    bg: 'bg-white', // Minimalist White Sidebar
     bgHover: 'hover:bg-slate-50',
-    bgActive: 'bg-blue-50',
-    text: 'text-slate-600',
+    bgActive: 'bg-blue-50 text-blue-600 shadow-sm',
+    text: 'text-slate-650',
     textHover: 'hover:text-slate-900',
-    textActive: 'text-blue-700',
+    textActive: 'text-blue-600 font-semibold',
     textMuted: 'text-slate-400',
-    border: 'border-slate-200',
-    icon: 'text-slate-400',
+    border: 'border-slate-200/60',
+    icon: 'text-slate-450',
     iconActive: 'text-blue-600',
-    accent: 'bg-blue-700',
-    accentLight: 'bg-blue-50',
+    accent: 'bg-blue-600',
+    accentLight: 'bg-blue-50 border border-blue-100',
     surface: 'bg-white',
-    userBg: 'bg-slate-50',
-    userBgHover: 'hover:bg-slate-100',
+    userBg: 'bg-slate-50/50 border border-slate-200/60 hover:bg-slate-50',
+    userBgHover: 'hover:bg-slate-50',
   };
 
   const ResizeHandle = () => (
@@ -176,30 +176,30 @@ const Sidebar = ({ onWidthChange }) => {
       className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize group z-10" 
       onMouseDown={() => setIsResizing(true)}
     >
-      <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-10 rounded-full bg-blue-400/50 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+      <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-10 rounded-full bg-blue-500/50 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
     </div>
   );
 
   const CollapseToggle = () => (
     <button
       onClick={handleToggleCollapse}
-      className="absolute -right-3 top-6 w-6 h-6 rounded-full border border-slate-200 flex items-center justify-center bg-white hover:bg-slate-50 transition-all duration-200 z-20 shadow-sm"
+      className="absolute -right-3 top-6 w-6 h-6 rounded-full border border-slate-200 flex items-center justify-center bg-white hover:bg-slate-50 text-slate-500 hover:text-slate-800 transition-all duration-200 z-20 shadow-md shadow-slate-100"
       title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
     >
-      {isCollapsed ? <FaChevronRight size={10} className="text-slate-500" /> : <FaChevronLeft size={10} className="text-slate-500" />}
+      {isCollapsed ? <FaChevronRight size={10} /> : <FaChevronLeft size={10} />}
     </button>
   );
 
   const scrollbarStyles = `
     .sidebar-scrollbar::-webkit-scrollbar {
-      width: 3px;
+      width: 4px;
     }
     .sidebar-scrollbar::-webkit-scrollbar-track {
       background: transparent;
     }
     .sidebar-scrollbar::-webkit-scrollbar-thumb {
       background: #e2e8f0;
-      border-radius: 3px;
+      border-radius: 4px;
     }
     .sidebar-scrollbar::-webkit-scrollbar-thumb:hover {
       background: #cbd5e1;
@@ -239,7 +239,7 @@ const Sidebar = ({ onWidthChange }) => {
               to={item.path}
               className={`flex items-center justify-center p-2.5 rounded-lg transition-all duration-200 ${
                 isActive(item.path, item.exact)
-                  ? `${colors.bgActive} ${colors.iconActive}`
+                  ? `${colors.bgActive}`
                   : `${colors.icon} ${colors.bgHover} ${colors.textHover}`
               }`}
               title={item.name}
@@ -250,12 +250,12 @@ const Sidebar = ({ onWidthChange }) => {
         </div>
 
         {/* Risk Profile Section */}
-        <div className="pt-4 border-t border-slate-100 flex flex-col gap-1.5">
+        <div className="pt-4 border-t border-slate-200/60 flex flex-col gap-1.5">
           <button
             onClick={() => setOpenRisk(!openRisk)}
             className={`flex items-center justify-center p-2.5 rounded-lg w-full transition-all duration-200 ${
-              isActive('/dashboard/risk-form') || isActive('/dashboard/rekap1')
-                ? `${colors.bgActive} ${colors.iconActive}`
+              isActive('/dashboard/risk-form') || isActive('/dashboard/rekap1') || isActive('/dashboard/rekap-data') || isActive('/dashboard/rekapdata2') || isActive('/dashboard/ringkasan') || isActive('/dashboard/peringkat-komposit')
+                ? `bg-blue-50 text-blue-600`
                 : `${colors.icon} ${colors.bgHover} ${colors.textHover}`
             }`}
             title="Profil Resiko Holding"
@@ -267,7 +267,7 @@ const Sidebar = ({ onWidthChange }) => {
             onClick={() => setOpenOjkRisk(!openOjkRisk)}
             className={`flex items-center justify-center p-2.5 rounded-lg w-full transition-all duration-200 ${
               isActive('/dashboard/ojk')
-                ? `${colors.bgActive} ${colors.iconActive}`
+                ? `bg-blue-50 text-blue-600`
                 : `${colors.icon} ${colors.bgHover} ${colors.textHover}`
             }`}
             title="Profil Resiko OJK"
@@ -279,14 +279,14 @@ const Sidebar = ({ onWidthChange }) => {
 
       {/* Secondary Navigation & User */}
       <div className="w-full px-2.5 pb-4 flex flex-col gap-4">
-        <div className="pt-4 border-t border-slate-100 flex flex-col gap-1.5">
+        <div className="pt-4 border-t border-slate-200/60 flex flex-col gap-1.5">
           {secondaryNavItems.map((item) => (
             <Link
               key={item.path}
               to={item.path}
               className={`flex items-center justify-center p-2.5 rounded-lg transition-all duration-200 ${
                 isActive(item.path, item.exact)
-                  ? `${colors.bgActive} ${colors.iconActive}`
+                  ? `${colors.bgActive}`
                   : `${colors.icon} ${colors.bgHover} ${colors.textHover}`
               }`}
               title={item.name}
@@ -296,7 +296,12 @@ const Sidebar = ({ onWidthChange }) => {
           ))}
         </div>
 
-        <div className="pt-3 border-t border-slate-100 flex justify-center" ref={menuRef}>
+        <div 
+          className="pt-3 border-t border-slate-200/60 flex justify-center relative" 
+          ref={menuRef}
+          onMouseEnter={() => setMenuOpen(true)}
+          onMouseLeave={() => setMenuOpen(false)}
+        >
           <button 
             onClick={() => setMenuOpen(!menuOpen)} 
             className="w-full flex justify-center p-1 hover:opacity-80 transition-opacity"
@@ -306,9 +311,50 @@ const Sidebar = ({ onWidthChange }) => {
               name={user?.userID || 'U'} 
               size="32" 
               round 
-              color="#1e40af"
+              color="#2563eb"
             />
           </button>
+
+          <AnimatePresence>
+            {menuOpen && (
+              <motion.div
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 6 }}
+                transition={{ duration: 0.15 }}
+                className="absolute bottom-full left-1 w-56 mb-2 rounded-xl border border-slate-200 shadow-xl overflow-hidden bg-white text-slate-800 z-50 animate-in fade-in slide-in-from-bottom-2"
+              >
+                <button
+                  onClick={() => {
+                    navigate('/dashboard/profile');
+                    setMenuOpen(false);
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors text-left"
+                >
+                  <FaUserCircle className="text-blue-600 text-lg" />
+                  <div>
+                    <p className="text-sm font-medium text-slate-800">Profile</p>
+                    <p className={`text-xs ${colors.textMuted}`}>Kelola profil Anda</p>
+                  </div>
+                </button>
+                <div className="border-t border-slate-200" />
+                <button
+                  onClick={() => {
+                    logout();
+                    navigate('/login');
+                    setMenuOpen(false);
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-red-50 transition-colors text-left"
+                >
+                  <FaSignOutAlt className="text-red-550 text-lg" />
+                  <div>
+                    <p className="text-sm font-medium text-red-550">Logout</p>
+                    <p className={`text-xs ${colors.textMuted}`}>Keluar dari sistem</p>
+                  </div>
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
     </div>
@@ -316,25 +362,25 @@ const Sidebar = ({ onWidthChange }) => {
 
   const renderExpandedContent = () => (
     <div className={`h-full flex flex-col ${colors.bg}`}>
-      {/* Logo Section - Centered & Larger */}
+      {/* Logo Section - Centered & Sleek */}
       <div className="flex-shrink-0 flex justify-center px-6 pt-6 pb-5">
-        <img src={logo} alt="PNM" className="w-full max-w-[160px] h-auto opacity-90" />
+        <img src={logo} alt="PNM" className="w-full max-w-[140px] h-auto opacity-95" />
       </div>
 
       {/* Division Selector */}
       <div className="px-3 mb-4" ref={divisionRef}>
         <button
           onClick={() => setDivisionDropdownOpen(!divisionDropdownOpen)}
-          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border ${colors.border} ${colors.bgHover} transition-all duration-200 group`}
+          className="w-full flex items-center gap-3 px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 transition-all duration-200 group"
         >
-          <div className={`w-9 h-9 rounded-lg ${colors.accent} flex items-center justify-center flex-shrink-0`}>
-            <FaBuilding className="text-white text-sm" />
+          <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center flex-shrink-0 shadow-md shadow-blue-500/10">
+            <FaBuilding className="text-white text-xs" />
           </div>
           <div className="flex-1 text-left min-w-0">
-            <p className="text-sm font-semibold text-slate-800 truncate">{selectedDivision.name}</p>
-            <p className={`text-xs ${colors.textMuted} truncate`}>{user?.role || 'User'}</p>
+            <p className="text-xs font-semibold text-slate-800 truncate">{selectedDivision.name}</p>
+            <p className={`text-[10px] ${colors.textMuted} truncate`}>{user?.role || 'User'}</p>
           </div>
-          <ChevronsUpDown size={14} className={`${colors.textMuted} transition-transform duration-200 ${divisionDropdownOpen ? 'rotate-180' : ''}`} />
+          <ChevronsUpDown size={12} className={`${colors.textMuted} transition-transform duration-200 ${divisionDropdownOpen ? 'rotate-180' : ''}`} />
         </button>
 
         <AnimatePresence>
@@ -344,29 +390,29 @@ const Sidebar = ({ onWidthChange }) => {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -6 }}
               transition={{ duration: 0.15 }}
-              className="mt-2 rounded-xl border border-slate-200 shadow-lg overflow-hidden bg-white"
+              className="mt-2 rounded-xl border border-slate-200 shadow-xl overflow-hidden bg-white z-50 relative"
             >
               <div className="p-3 border-b border-slate-100">
                 <p className="text-xs font-semibold text-slate-800">Pilih Divisi</p>
-                <p className={`text-xs ${colors.textMuted} mt-0.5`}>Saat ini hanya tersedia divisi Compliance</p>
+                <p className={`text-[10px] ${colors.textMuted} mt-0.5`}>Saat ini hanya tersedia divisi Compliance</p>
               </div>
               {divisions.map((division) => (
                 <button
                   key={division.divisi_id}
                   onClick={() => handleDivisionSelect(division)}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 hover:bg-slate-50 transition-colors ${
-                    selectedDivision.divisi_id === division.divisi_id ? 'bg-blue-50/50' : ''
+                    selectedDivision.divisi_id === division.divisi_id ? 'bg-blue-50/30' : ''
                   }`}
                 >
                   <div className={`w-8 h-8 rounded-lg ${colors.accentLight} flex items-center justify-center`}>
                     <FaBuilding className="text-blue-600 text-xs" />
                   </div>
                   <div className="flex-1 text-left">
-                    <p className="text-sm font-medium text-slate-800">{division.name}</p>
-                    <p className={`text-xs ${colors.textMuted}`}>{division.description}</p>
+                    <p className="text-xs font-medium text-slate-800">{division.name}</p>
+                    <p className={`text-[10px] ${colors.textMuted}`}>{division.description}</p>
                   </div>
                   {selectedDivision.divisi_id === division.divisi_id && (
-                    <FaCheck className="text-blue-600 text-xs" />
+                    <FaCheck className="text-blue-600 text-xs flex-shrink-0" />
                   )}
                 </button>
               ))}
@@ -380,18 +426,18 @@ const Sidebar = ({ onWidthChange }) => {
         <div className="flex flex-col gap-6">
           {/* Section 1: Menu Utama */}
           <div className="flex flex-col gap-1">
-            <p className="px-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Menu Utama</p>
+            <p className="px-3 text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Menu Utama</p>
             {mainNavItems.map((item) => (
               <Link
                 key={item.path}
                 to={item.path}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-200 ${
+                className={`flex items-center gap-3 px-3 py-2 rounded-lg text-xs transition-all duration-200 ${
                   isActive(item.path, item.exact)
-                    ? `${colors.bgActive} ${colors.textActive} font-medium`
+                    ? `${colors.bgActive}`
                     : `${colors.text} ${colors.bgHover} ${colors.textHover}`
                 }`}
               >
-                <item.icon className={`w-4 h-4 flex-shrink-0 ${isActive(item.path, item.exact) ? colors.iconActive : ''}`} />
+                <item.icon className={`w-3.5 h-3.5 flex-shrink-0 ${isActive(item.path, item.exact) ? colors.iconActive : ''}`} />
                 <span className="truncate">{item.name}</span>
               </Link>
             ))}
@@ -399,23 +445,23 @@ const Sidebar = ({ onWidthChange }) => {
 
           {/* Section 2: Profil Risiko */}
           <div className="flex flex-col gap-1">
-            <p className="px-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Manajemen Risiko</p>
+            <p className="px-3 text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Manajemen Risiko</p>
             
             {/* Risk Profile Group */}
-            <div>
+            <div className="mb-0.5">
               <button
                 onClick={() => setOpenRisk(!openRisk)}
-                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm transition-all duration-200 ${
-                  isActive('/dashboard/risk-form') || isActive('/dashboard/rekap1')
-                    ? `${colors.bgActive} ${colors.textActive} font-medium`
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs transition-all duration-200 ${
+                  isActive('/dashboard/risk-form') || isActive('/dashboard/rekap1') || isActive('/dashboard/rekap-data') || isActive('/dashboard/rekapdata2') || isActive('/dashboard/ringkasan') || isActive('/dashboard/peringkat-komposit')
+                    ? 'bg-blue-50 text-blue-600 font-semibold'
                     : `${colors.text} ${colors.bgHover} ${colors.textHover}`
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <FaShieldAlt className={`w-4 h-4 flex-shrink-0 ${isActive('/dashboard/risk-form') || isActive('/dashboard/rekap1') ? colors.iconActive : ''}`} />
+                  <FaShieldAlt className={`w-3.5 h-3.5 flex-shrink-0 ${isActive('/dashboard/risk-form') || isActive('/dashboard/rekap1') || isActive('/dashboard/rekap-data') || isActive('/dashboard/rekapdata2') || isActive('/dashboard/ringkasan') || isActive('/dashboard/peringkat-komposit') ? 'text-blue-650' : ''}`} />
                   <span>Profil Resiko Holding</span>
                 </div>
-                <FaChevronDown className={`w-3 h-3 transition-transform duration-200 ${openRisk ? 'rotate-180' : ''}`} />
+                <FaChevronDown className={`w-3 h-3 transition-transform duration-200 flex-shrink-0 ${openRisk ? 'rotate-180' : ''}`} />
               </button>
               <AnimatePresence>
                 {openRisk && (
@@ -426,20 +472,20 @@ const Sidebar = ({ onWidthChange }) => {
                     transition={{ duration: 0.2 }}
                     className="overflow-hidden"
                   >
-                    <div className="ml-5 pl-4 border-l border-slate-100 mt-1 mb-1.5 space-y-1">
+                    <div className="ml-5 pl-3 border-l border-slate-200 mt-1 mb-1.5 space-y-0.5 bg-slate-50/50 rounded-lg p-1.5 border border-slate-100">
                       {riskItems.map((item) => (
                         <Link
                           key={item.path}
                           to={item.path}
-                          className={`group flex items-center px-2.5 py-1.5 rounded-md text-[13px] transition-all duration-200 ${
+                          className={`group flex items-center px-2 py-1.5 rounded-md text-[11px] transition-all duration-200 ${
                             isActive(item.path)
-                              ? `${colors.textActive} font-medium`
-                              : `${colors.text} ${colors.textHover}`
+                              ? `text-blue-600 font-semibold bg-blue-50/40`
+                              : `text-slate-500 hover:text-slate-800 hover:bg-slate-50/40`
                           }`}
                         >
-                          <div className={`w-1.5 h-1.5 rounded-full mr-2.5 transition-all duration-200 flex-shrink-0 ${
+                          <div className={`w-1 h-1 rounded-full mr-2 transition-all duration-200 flex-shrink-0 ${
                             isActive(item.path)
-                              ? 'bg-blue-600 scale-110 shadow-sm shadow-blue-200'
+                              ? 'bg-blue-500 scale-110 shadow-sm'
                               : 'bg-slate-300 group-hover:bg-slate-400'
                           }`} />
                           <span className="truncate group-hover:translate-x-0.5 transition-transform duration-150">{item.name}</span>
@@ -455,17 +501,17 @@ const Sidebar = ({ onWidthChange }) => {
             <div ref={ojkRiskRef}>
               <button
                 onClick={() => setOpenOjkRisk(!openOjkRisk)}
-                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm transition-all duration-200 ${
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs transition-all duration-200 ${
                   isActive('/dashboard/ojk')
-                    ? `${colors.bgActive} ${colors.textActive} font-medium`
+                    ? 'bg-blue-50 text-blue-600 font-semibold'
                     : `${colors.text} ${colors.bgHover} ${colors.textHover}`
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <FaBuildingIcon className={`w-4 h-4 flex-shrink-0 ${isActive('/dashboard/ojk') ? colors.iconActive : ''}`} />
+                  <FaBuildingIcon className={`w-3.5 h-3.5 flex-shrink-0 ${isActive('/dashboard/ojk') ? 'text-blue-650' : ''}`} />
                   <span>Profil Resiko OJK</span>
                 </div>
-                <FaChevronDown className={`w-3 h-3 transition-transform duration-200 ${openOjkRisk ? 'rotate-180' : ''}`} />
+                <FaChevronDown className={`w-3 h-3 transition-transform duration-200 flex-shrink-0 ${openOjkRisk ? 'rotate-180' : ''}`} />
               </button>
               <AnimatePresence>
                 {openOjkRisk && (
@@ -476,25 +522,27 @@ const Sidebar = ({ onWidthChange }) => {
                     transition={{ duration: 0.2 }}
                     className="overflow-hidden"
                   >
-                    <div className="ml-5 pl-4 border-l border-slate-100 mt-1 mb-1.5 space-y-1 max-h-52 overflow-y-auto sidebar-scrollbar">
-                      {ojkRiskItems.map((item) => (
-                        <Link
-                          key={item.path}
-                          to={item.path}
-                          className={`group flex items-center px-2.5 py-1.5 rounded-md text-[13px] transition-all duration-200 ${
-                            isActive(item.path)
-                              ? `${colors.textActive} font-medium`
-                              : `${colors.text} ${colors.textHover}`
-                          }`}
-                        >
-                          <div className={`w-1.5 h-1.5 rounded-full mr-2.5 transition-all duration-200 flex-shrink-0 ${
-                            isActive(item.path)
-                              ? 'bg-blue-600 scale-110 shadow-sm shadow-blue-200'
-                              : 'bg-slate-300 group-hover:bg-slate-400'
-                          }`} />
-                          <span className="truncate group-hover:translate-x-0.5 transition-transform duration-150">{item.name}</span>
-                        </Link>
-                      ))}
+                    <div className="ml-5 pl-3 border-l border-slate-200 mt-1 mb-1.5 space-y-0.5 bg-slate-50/50 rounded-lg p-1.5 border border-slate-100">
+                      <div className="max-h-52 overflow-y-auto sidebar-scrollbar pr-0.5 space-y-0.5">
+                        {ojkRiskItems.map((item) => (
+                          <Link
+                            key={item.path}
+                            to={item.path}
+                            className={`group flex items-center px-2 py-1.5 rounded-md text-[11px] transition-all duration-200 ${
+                              isActive(item.path)
+                                ? `text-blue-600 font-semibold bg-blue-50/40`
+                                : `text-slate-500 hover:text-slate-800 hover:bg-slate-50/40`
+                            }`}
+                          >
+                            <div className={`w-1 h-1 rounded-full mr-2 transition-all duration-200 flex-shrink-0 ${
+                              isActive(item.path)
+                                ? 'bg-blue-500 scale-110 shadow-sm'
+                                : 'bg-slate-300 group-hover:bg-slate-400'
+                            }`} />
+                            <span className="truncate group-hover:translate-x-0.5 transition-transform duration-150">{item.name}</span>
+                          </Link>
+                        ))}
+                      </div>
                     </div>
                   </motion.div>
                 )}
@@ -503,19 +551,19 @@ const Sidebar = ({ onWidthChange }) => {
           </div>
 
           {/* Section 3: Lainnya */}
-          <div className="flex flex-col gap-1 pt-4 border-t border-slate-100">
-            <p className="px-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Lainnya</p>
+          <div className="flex flex-col gap-1 pt-4 border-t border-slate-200/60">
+            <p className="px-3 text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Lainnya</p>
             {secondaryNavItems.map((item) => (
               <Link
                 key={item.path}
                 to={item.path}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-200 ${
+                className={`flex items-center gap-3 px-3 py-2 rounded-lg text-xs transition-all duration-200 ${
                   isActive(item.path, item.exact)
-                    ? `${colors.bgActive} ${colors.textActive} font-medium`
+                    ? `${colors.bgActive}`
                     : `${colors.text} ${colors.bgHover} ${colors.textHover}`
                 }`}
               >
-                <item.icon className={`w-4 h-4 flex-shrink-0 ${isActive(item.path, item.exact) ? colors.iconActive : ''}`} />
+                <item.icon className={`w-3.5 h-3.5 flex-shrink-0 ${isActive(item.path, item.exact) ? colors.iconActive : ''}`} />
                 <span className="truncate">{item.name}</span>
               </Link>
             ))}
@@ -524,24 +572,29 @@ const Sidebar = ({ onWidthChange }) => {
       </nav>
 
       {/* User Section */}
-      <div className={`flex-shrink-0 px-3 pb-4 pt-3 border-t ${colors.border} mt-2`} ref={menuRef}>
+      <div 
+        className={`flex-shrink-0 px-3 pb-4 pt-3 border-t ${colors.border} mt-2 relative`} 
+        ref={menuRef}
+        onMouseEnter={() => setMenuOpen(true)}
+        onMouseLeave={() => setMenuOpen(false)}
+      >
         <button
           onClick={() => setMenuOpen(!menuOpen)}
-          className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl ${colors.userBg} ${colors.userBgHover} transition-all duration-200 group`}
+          className="w-full flex items-center gap-3 px-3 py-2 rounded-xl bg-slate-50/50 border border-slate-200/60 hover:bg-slate-50 transition-all duration-200 group"
         >
           <Avatar 
             src={user?.photoURL} 
             name={user?.userID || 'User'} 
-            size="36" 
+            size="32" 
             round 
-            color="#1e40af"
+            color="#2563eb"
             className="flex-shrink-0"
           />
           <div className="flex-1 text-left min-w-0">
-            <p className="text-sm font-semibold text-slate-800 truncate">{user?.userID || 'Nama User'}</p>
-            <p className={`text-xs ${colors.textMuted} truncate`}>{selectedDivision.name} • {user?.role || 'Role'}</p>
+            <p className="text-xs font-semibold text-slate-800 truncate">{user?.userID || 'Nama User'}</p>
+            <p className={`text-[10px] ${colors.textMuted} truncate`}>{selectedDivision.name} • {user?.role || 'Role'}</p>
           </div>
-          <ChevronsUpDown size={14} className={`${colors.textMuted} transition-transform duration-200 ${menuOpen ? 'rotate-180' : ''}`} />
+          <ChevronsUpDown size={12} className={`${colors.textMuted} transition-transform duration-200 ${menuOpen ? 'rotate-180' : ''}`} />
         </button>
 
         <AnimatePresence>
@@ -551,7 +604,7 @@ const Sidebar = ({ onWidthChange }) => {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 6 }}
               transition={{ duration: 0.15 }}
-              className="absolute bottom-full left-3 right-3 mb-2 rounded-xl border border-slate-200 shadow-lg overflow-hidden bg-white"
+              className="absolute bottom-full left-3 right-3 mb-2 rounded-xl border border-slate-200 shadow-xl overflow-hidden bg-white text-slate-800 z-50"
             >
               <button
                 onClick={() => {
@@ -562,11 +615,11 @@ const Sidebar = ({ onWidthChange }) => {
               >
                 <FaUserCircle className="text-blue-600 text-lg" />
                 <div>
-                  <p className="text-sm font-medium text-slate-800">Profile</p>
-                  <p className={`text-xs ${colors.textMuted}`}>Kelola profil Anda</p>
+                  <p className="text-xs font-medium text-slate-200">Profile</p>
+                  <p className={`text-[10px] ${colors.textMuted}`}>Kelola profil Anda</p>
                 </div>
               </button>
-              <div className="border-t border-slate-100" />
+              <div className="border-t border-slate-200" />
               <button
                 onClick={() => {
                   logout();
@@ -575,10 +628,10 @@ const Sidebar = ({ onWidthChange }) => {
                 }}
                 className="w-full flex items-center gap-3 px-4 py-3 hover:bg-red-50 transition-colors text-left"
               >
-                <FaSignOutAlt className="text-red-400 text-lg" />
+                <FaSignOutAlt className="text-red-550 text-lg" />
                 <div>
-                  <p className="text-sm font-medium text-red-500">Logout</p>
-                  <p className={`text-xs ${colors.textMuted}`}>Keluar dari sistem</p>
+                  <p className="text-xs font-medium text-red-550">Logout</p>
+                  <p className={`text-[10px] ${colors.textMuted}`}>Keluar dari sistem</p>
                 </div>
               </button>
             </motion.div>

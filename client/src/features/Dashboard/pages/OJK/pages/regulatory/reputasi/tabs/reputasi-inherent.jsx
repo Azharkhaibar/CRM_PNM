@@ -2,6 +2,8 @@
 import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useHeaderStore } from '../../../../store/header';
+import OjkCloneDialog from '../../../../components/OjkCloneDialog';
+import rekapApiService from '../../../rekap-data/services/rekap-data.service';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
@@ -48,6 +50,8 @@ export default function ReputasiProdukInherentWrapper() {
   const quarter = useHeaderStore((s) => s.activeQuarter);
   const [active, setActive] = useState(true);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [cloneDialogOpen, setCloneDialogOpen] = useState(false);
+  const [inheritInfo, setInheritInfo] = useState(null);
   const { user: currentUser } = useAuth();
   const { logCreate, logUpdate, logDelete, logExport } = useAuditLog();
 
@@ -134,7 +138,7 @@ export default function ReputasiProdukInherentWrapper() {
           await handleAddParameter(createParamDto);
           
           // AUDIT LOG: Create parameter
-          await logCreate('REPUTASI', `Menambah parameter: ${createParamDto.judul}`, {
+          await logCreate('REPUTASI_OJK', `Menambah parameter: ${createParamDto.judul}`, {
             userId: currentUser?.id || null,
             isSuccess: true,
             metadata: { type: 'inherent', ...createParamDto }
@@ -146,7 +150,7 @@ export default function ReputasiProdukInherentWrapper() {
           log.error('Error adding parameter:', err);
           
           // AUDIT LOG: Failed create
-          await logCreate('REPUTASI', `Gagal menambah parameter: ${createParamDto?.judul || 'Unknown'}`, {
+          await logCreate('REPUTASI_OJK', `Gagal menambah parameter: ${createParamDto?.judul || 'Unknown'}`, {
             userId: currentUser?.id || null,
             isSuccess: false,
             metadata: { type: 'inherent', error: err.message }
@@ -165,7 +169,7 @@ export default function ReputasiProdukInherentWrapper() {
           await handleUpdateParameter(parameterId, updateParamDto);
           
           // AUDIT LOG: Update parameter
-          await logUpdate('REPUTASI', `Mengupdate parameter ID: ${parameterId} - ${updateParamDto.judul}`, {
+          await logUpdate('REPUTASI_OJK', `Mengupdate parameter ID: ${parameterId} - ${updateParamDto.judul}`, {
             userId: currentUser?.id || null,
             isSuccess: true,
             metadata: { type: 'inherent', parameterId, ...updateParamDto }
@@ -177,7 +181,7 @@ export default function ReputasiProdukInherentWrapper() {
           log.error('Error updating parameter:', err);
           
           // AUDIT LOG: Failed update
-          await logUpdate('REPUTASI', `Gagal mengupdate parameter ID: ${parameterId}`, {
+          await logUpdate('REPUTASI_OJK', `Gagal mengupdate parameter ID: ${parameterId}`, {
             userId: currentUser?.id || null,
             isSuccess: false,
             metadata: { type: 'inherent', parameterId, error: err.message }
@@ -196,7 +200,7 @@ export default function ReputasiProdukInherentWrapper() {
           await handleDeleteParameter(parameterId);
           
           // AUDIT LOG: Delete parameter
-          await logDelete('REPUTASI', `Menghapus parameter ID: ${parameterId}`, {
+          await logDelete('REPUTASI_OJK', `Menghapus parameter ID: ${parameterId}`, {
             userId: currentUser?.id || null,
             isSuccess: true,
             metadata: { type: 'inherent', parameterId }
@@ -208,7 +212,7 @@ export default function ReputasiProdukInherentWrapper() {
           log.error('Error deleting parameter:', err);
           
           // AUDIT LOG: Failed delete
-          await logDelete('REPUTASI', `Gagal menghapus parameter ID: ${parameterId}`, {
+          await logDelete('REPUTASI_OJK', `Gagal menghapus parameter ID: ${parameterId}`, {
             userId: currentUser?.id || null,
             isSuccess: false,
             metadata: { type: 'inherent', parameterId, error: err.message }
@@ -227,7 +231,7 @@ export default function ReputasiProdukInherentWrapper() {
           await handleAddNilai(parameterId, createNilaiDto);
           
           // AUDIT LOG: Create nilai
-          await logCreate('REPUTASI', `Menambah nilai untuk parameter ID: ${parameterId} - ${createNilaiDto.judul?.text}`, {
+          await logCreate('REPUTASI_OJK', `Menambah nilai untuk parameter ID: ${parameterId} - ${createNilaiDto.judul?.text}`, {
             userId: currentUser?.id || null,
             isSuccess: true,
             metadata: { type: 'inherent', parameterId, ...createNilaiDto }
@@ -239,7 +243,7 @@ export default function ReputasiProdukInherentWrapper() {
           log.error('Error adding nilai:', err);
           
           // AUDIT LOG: Failed create nilai
-          await logCreate('REPUTASI', `Gagal menambah nilai untuk parameter ID: ${parameterId}`, {
+          await logCreate('REPUTASI_OJK', `Gagal menambah nilai untuk parameter ID: ${parameterId}`, {
             userId: currentUser?.id || null,
             isSuccess: false,
             metadata: { type: 'inherent', parameterId, error: err.message }
@@ -258,7 +262,7 @@ export default function ReputasiProdukInherentWrapper() {
           await handleUpdateNilai(parameterId, nilaiId, updateNilaiDto);
           
           // AUDIT LOG: Update nilai
-          await logUpdate('REPUTASI', `Mengupdate nilai ID: ${nilaiId} untuk parameter ID: ${parameterId} - ${updateNilaiDto.judul?.text}`, {
+          await logUpdate('REPUTASI_OJK', `Mengupdate nilai ID: ${nilaiId} untuk parameter ID: ${parameterId} - ${updateNilaiDto.judul?.text}`, {
             userId: currentUser?.id || null,
             isSuccess: true,
             metadata: { type: 'inherent', parameterId, nilaiId, ...updateNilaiDto }
@@ -270,7 +274,7 @@ export default function ReputasiProdukInherentWrapper() {
           log.error('Error updating nilai:', err);
           
           // AUDIT LOG: Failed update nilai
-          await logUpdate('REPUTASI', `Gagal mengupdate nilai ID: ${nilaiId} untuk parameter ID: ${parameterId}`, {
+          await logUpdate('REPUTASI_OJK', `Gagal mengupdate nilai ID: ${nilaiId} untuk parameter ID: ${parameterId}`, {
             userId: currentUser?.id || null,
             isSuccess: false,
             metadata: { type: 'inherent', parameterId, nilaiId, error: err.message }
@@ -289,7 +293,7 @@ export default function ReputasiProdukInherentWrapper() {
           await handleDeleteNilai(parameterId, nilaiId);
           
           // AUDIT LOG: Delete nilai
-          await logDelete('REPUTASI', `Menghapus nilai ID: ${nilaiId} dari parameter ID: ${parameterId}`, {
+          await logDelete('REPUTASI_OJK', `Menghapus nilai ID: ${nilaiId} dari parameter ID: ${parameterId}`, {
             userId: currentUser?.id || null,
             isSuccess: true,
             metadata: { type: 'inherent', parameterId, nilaiId }
@@ -301,7 +305,7 @@ export default function ReputasiProdukInherentWrapper() {
           log.error('Error deleting nilai:', err);
           
           // AUDIT LOG: Failed delete nilai
-          await logDelete('REPUTASI', `Gagal menghapus nilai ID: ${nilaiId} dari parameter ID: ${parameterId}`, {
+          await logDelete('REPUTASI_OJK', `Gagal menghapus nilai ID: ${nilaiId} dari parameter ID: ${parameterId}`, {
             userId: currentUser?.id || null,
             isSuccess: false,
             metadata: { type: 'inherent', parameterId, nilaiId, error: err.message }
@@ -320,7 +324,7 @@ export default function ReputasiProdukInherentWrapper() {
           await handleCopyParameter(parameterId);
           
           // AUDIT LOG: Copy parameter (menggunakan logCreate karena menambah data baru)
-          await logCreate('REPUTASI', `Menyalin parameter ID: ${parameterId}`, {
+          await logCreate('REPUTASI_OJK', `Menyalin parameter ID: ${parameterId}`, {
             userId: currentUser?.id || null,
             isSuccess: true,
             metadata: { type: 'inherent', sourceParameterId: parameterId }
@@ -332,7 +336,7 @@ export default function ReputasiProdukInherentWrapper() {
           log.error('Error copying parameter:', err);
           
           // AUDIT LOG: Failed copy
-          await logCreate('REPUTASI', `Gagal menyalin parameter ID: ${parameterId}`, {
+          await logCreate('REPUTASI_OJK', `Gagal menyalin parameter ID: ${parameterId}`, {
             userId: currentUser?.id || null,
             isSuccess: false,
             metadata: { type: 'inherent', sourceParameterId: parameterId, error: err.message }
@@ -351,7 +355,7 @@ export default function ReputasiProdukInherentWrapper() {
           await handleCopyNilai(parameterId, nilaiId);
           
           // AUDIT LOG: Copy nilai (menggunakan logCreate karena menambah data baru)
-          await logCreate('REPUTASI', `Menyalin nilai ID: ${nilaiId} dari parameter ID: ${parameterId}`, {
+          await logCreate('REPUTASI_OJK', `Menyalin nilai ID: ${nilaiId} dari parameter ID: ${parameterId}`, {
             userId: currentUser?.id || null,
             isSuccess: true,
             metadata: { type: 'inherent', parameterId, sourceNilaiId: nilaiId }
@@ -363,7 +367,7 @@ export default function ReputasiProdukInherentWrapper() {
           log.error('Error copying nilai:', err);
           
           // AUDIT LOG: Failed copy nilai
-          await logCreate('REPUTASI', `Gagal menyalin nilai ID: ${nilaiId} dari parameter ID: ${parameterId}`, {
+          await logCreate('REPUTASI_OJK', `Gagal menyalin nilai ID: ${nilaiId} dari parameter ID: ${parameterId}`, {
             userId: currentUser?.id || null,
             isSuccess: false,
             metadata: { type: 'inherent', parameterId, sourceNilaiId: nilaiId, error: err.message }
@@ -385,7 +389,7 @@ export default function ReputasiProdukInherentWrapper() {
           await reloadData();
           
           // AUDIT LOG: Export/Refresh data
-          await logExport('REPUTASI', 'Merefresh data reputasi produk inherent', {
+          await logExport('REPUTASI_OJK', 'Merefresh data reputasi produk inherent', {
             userId: currentUser?.id || null,
             isSuccess: true,
             metadata: { type: 'inherent', year, quarter }
@@ -397,7 +401,7 @@ export default function ReputasiProdukInherentWrapper() {
           log.error('Error refreshing data:', err);
           
           // AUDIT LOG: Failed refresh
-          await logExport('REPUTASI', 'Gagal merefresh data reputasi produk inherent', {
+          await logExport('REPUTASI_OJK', 'Gagal merefresh data reputasi produk inherent', {
             userId: currentUser?.id || null,
             isSuccess: false,
             metadata: { type: 'inherent', year, quarter, error: err.message }
@@ -417,7 +421,7 @@ export default function ReputasiProdukInherentWrapper() {
           await changeYearQuarter(newYear, newQuarter);
           
           // AUDIT LOG: Change quarter (menggunakan logExport karena navigasi data)
-          await logExport('REPUTASI', `Berpindah ke quarter ${newYear}-Q${newQuarter}`, {
+          await logExport('REPUTASI_OJK', `Berpindah ke quarter ${newYear}-Q${newQuarter}`, {
             userId: currentUser?.id || null,
             isSuccess: true,
             metadata: { type: 'inherent', fromYear: year, fromQuarter: quarter, toYear: newYear, toQuarter: newQuarter }
@@ -429,7 +433,7 @@ export default function ReputasiProdukInherentWrapper() {
           log.error('Error changing quarter:', err);
           
           // AUDIT LOG: Failed change quarter
-          await logExport('REPUTASI', `Gagal berpindah ke quarter ${newYear}-Q${newQuarter}`, {
+          await logExport('REPUTASI_OJK', `Gagal berpindah ke quarter ${newYear}-Q${newQuarter}`, {
             userId: currentUser?.id || null,
             isSuccess: false,
             metadata: { type: 'inherent', error: err.message }
@@ -533,9 +537,76 @@ export default function ReputasiProdukInherentWrapper() {
     );
   }
 
+    const handleUndoClone = async () => {
+    if (!inheritInfo) return;
+    try {
+      await rekapApiService.undoClonePeriodData({
+        targetYear: inheritInfo.targetYear,
+        targetQuarter: inheritInfo.targetQuarter,
+        categories: inheritInfo.categories,
+      });
+      setInheritInfo(null);
+      await backendHandlers.refreshData();
+      alert('Kloning berhasil dibatalkan');
+    } catch (err) {
+      console.error('Error undoing clone:', err);
+      alert('Gagal membatalkan clone');
+    }
+  };
+
+  const handleResetData = async () => {
+    if (!confirm('Apakah Anda yakin ingin menghapus/reset semua data Reputasi Regulatory untuk periode ini? Semua parameter dan nilai akan terhapus secara permanen.')) {
+      return;
+    }
+    try {
+      await rekapApiService.undoClonePeriodData({
+        targetYear: year,
+        targetQuarter: quarter,
+        categories: ['reputasi-regulatory'],
+      });
+      await backendHandlers.refreshData();
+      alert('Data berhasil di-reset');
+      setInheritInfo(null);
+    } catch (err) {
+      console.error('Error resetting data:', err);
+      alert('Gagal me-reset data');
+    }
+  };
+
   return (
-    <div className="w-full space-y-6">
-      {/* Header dengan kontrol */}
+    <div className="w-full space-y-6 text-black">
+      {inheritInfo && (
+        <div className="mb-4 rounded-lg bg-yellow-50 border border-yellow-300 px-4 py-3 text-sm flex justify-between items-start gap-4">
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="inline-block w-2 h-2 rounded-full bg-yellow-500"></span>
+              <strong>Kloning Berhasil</strong>
+            </div>
+            <p className="text-gray-700">
+              Data untuk periode{' '}
+              <strong>
+                {inheritInfo.targetYear}-Q{inheritInfo.targetQuarter}
+              </strong>{' '}
+              telah berhasil disalin dari <strong>{inheritInfo.from}</strong>.
+            </p>
+          </div>
+          <div className="flex flex-col gap-2">
+            <button 
+              onClick={handleUndoClone} 
+              className="px-3 py-1.5 rounded border border-red-200 bg-white hover:bg-red-50 text-red-600 text-sm font-medium whitespace-nowrap"
+            >
+              Undo Clone
+            </button>
+            <button 
+              onClick={() => setInheritInfo(null)} 
+              className="px-3 py-1.5 rounded border border-blue-600 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium whitespace-nowrap"
+            >
+              Confirm Clone
+            </button>
+          </div>
+        </div>
+      )}
+{/* Header dengan kontrol */}
       <div className="bg-white rounded-lg border shadow p-4">
         <div className="flex justify-between items-center mb-4">
           <div>
@@ -564,6 +635,26 @@ export default function ReputasiProdukInherentWrapper() {
             {/* Status Toggle */}
             <Button onClick={() => setActive(!active)} variant={active ? 'default' : 'outline'} className={active ? 'bg-blue-600 hover:bg-blue-700' : ''}>
               {active ? 'Aktif' : 'Nonaktif'}
+            </Button>
+
+            {/* Salin/Clone Button */}
+                        {/* Reset Button */}
+            <Button
+              onClick={handleResetData}
+              className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white"
+              disabled={isLoading}
+            >
+              <Trash2 className="w-4 h-4" />
+              Reset Data
+            </Button>
+
+<Button
+              onClick={() => setCloneDialogOpen(true)}
+              className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white"
+              disabled={isLoading}
+            >
+              <Copy className="w-4 h-4" />
+              Salin Periode
             </Button>
 
             {/* Refresh Button */}
@@ -596,6 +687,19 @@ export default function ReputasiProdukInherentWrapper() {
 
       {/* Komponen utama */}
       <ReputasiProdukInherent rows={rows} setRows={setRows} search={search} active={active} backendHandlers={backendHandlers} isLoading={isLoading} isLocked={currentInherentData?.isLocked} />
+
+      {/* CLONE DIALOG */}
+      <OjkCloneDialog
+        isOpen={cloneDialogOpen}
+        onClose={() => setCloneDialogOpen(false)}
+        onSuccess={(cloneInfo) => {
+          setInheritInfo(cloneInfo);
+          backendHandlers.refreshData();
+        }}
+        defaultCategory="reputasi-regulatory"
+        currentYear={year}
+        currentQuarter={quarter}
+      />
     </div>
   );
 }
@@ -1893,6 +1997,8 @@ function NilaiPanel({ param, nilaiList = [], activeNilaiIndex, setActiveNilaiInd
       bobot: 0,
       portofolio: '',
       keterangan: '',
+      sumberRisiko: '',
+      dampak: '',
       judul: {
         type: 'Tanpa Faktor',
         text: '',
@@ -2042,6 +2148,8 @@ function NilaiPanel({ param, nilaiList = [], activeNilaiIndex, setActiveNilaiInd
         bobot: bobotNum,
         portofolio: draftNilai.portofolio || '',
         keterangan: draftNilai.keterangan || '',
+        sumberRisiko: draftNilai.sumberRisiko || '',
+        dampak: draftNilai.dampak || '',
         riskindikator: draftNilai.riskindikator || {
           low: '',
           lowToModerate: '',
@@ -2577,6 +2685,29 @@ function NilaiPanel({ param, nilaiList = [], activeNilaiIndex, setActiveNilaiInd
                 </div>
               </div>
 
+              <div className="grid grid-cols-2 gap-4 text-slate-800 mt-2">
+                <div className="flex flex-col gap-1">
+                  <label className="text-slate-200 font-semibold text-sm">Sumber Risiko</label>
+                  <Textarea
+                    className="min-h-[40px] text-sm bg-white border-slate-300"
+                    value={draftNilai.sumberRisiko ?? ''}
+                    onChange={(e) => handleChangeNilaiField('sumberRisiko', e.target.value)}
+                    disabled={isInputDisabled}
+                    placeholder="masukan sumber risiko"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-slate-200 font-semibold text-sm">Dampak</label>
+                  <Textarea
+                    className="min-h-[40px] text-sm bg-white border-slate-300"
+                    value={draftNilai.dampak ?? ''}
+                    onChange={(e) => handleChangeNilaiField('dampak', e.target.value)}
+                    disabled={isInputDisabled}
+                    placeholder="masukan dampak"
+                  />
+                </div>
+              </div>
+
               <div className="mt-2 text-slate-800">
                 <label className="text-slate-200 font-semibold text-sm">Keterangan</label>
                 <Textarea
@@ -2962,7 +3093,8 @@ function TableInherent({ rows = [], activeQuarter }) {
                 <th className="border border-black px-2 py-2 bg-blue-900 text-white w-10">No</th>
                 <th className="border border-black px-2 py-2 bg-blue-900 text-white w-64">Nilai</th>
                 <th className="border border-black px-2 py-2 bg-blue-900 text-white w-16">Bobot</th>
-                <th className="border border-black px-2 py-2 bg-blue-900 text-white w-64">% dalam Portofolio</th>
+                <th className="border border-black px-2 py-2 bg-blue-900 text-white w-64">Sumber Risiko</th>
+                <th className="border border-black px-2 py-2 bg-blue-900 text-white w-64">Dampak</th>
 
                 <th className="border border-black py-2 bg-[#2ECC71] text-white w-32">Low</th>
                 <th className="border border-black py-2 bg-[#A3E635] text-black w-32">Low To Moderate</th>
@@ -3081,7 +3213,16 @@ function TableInherent({ rows = [], activeQuarter }) {
 
                           <td className={`border px-2 py-2 text-center ${isMainRow ? 'bg-[#E8F5FA]' : 'bg-white'}`}>{isMainRow ? formatPercent(nilai.bobot) : ''}</td>
 
-                          <td className={`border px-2 py-2 text-center ${isMainRow ? 'bg-[#E8F5FA]' : 'bg-white'} break-words max-w-[180px]`}>{isMainRow ? (nilai.portofolio ?? '-') : ''}</td>
+                           {subIndex === 0 && (
+                             <>
+                               <td rowSpan={rowsForThisNilai} className="border px-2 py-2 text-center align-middle bg-white break-words max-w-[200px]">
+                                 {nilai.sumberRisiko ?? ''}
+                               </td>
+                               <td rowSpan={rowsForThisNilai} className="border px-2 py-2 text-center align-middle bg-white break-words max-w-[200px]">
+                                 {nilai.dampak ?? ''}
+                               </td>
+                             </>
+                           )}
 
                           {['low', 'lowToModerate', 'moderate', 'moderateToHigh', 'high'].map((rk) => (
                             <td key={rk} className={`border px-2 py-2 text-center ${isMainRow ? 'bg-[#D9EAD3]' : 'bg-white'} break-words max-w-[130px]`}>
@@ -3116,7 +3257,7 @@ function TableInherent({ rows = [], activeQuarter }) {
               })}
 
               <tr>
-                <td colSpan={12} className="border-0 bg-white"></td>
+                <td colSpan={13} className="border-0 bg-white"></td>
                 <td colSpan={2} className="border border-black px-2 py-2 text-center font-semibold text-white bg-blue-900">
                   Summary
                 </td>

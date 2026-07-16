@@ -1,28 +1,34 @@
 import * as XLSX from 'xlsx-js-style';
 
 /**
- * Risk indicator label berdasarkan peringkat integer 1-5
+ * Risk indicator label berdasarkan level (riskLevel)
  * Konsisten dengan getRiskIndicator di ringkasan.utils.js
  */
-const getRiskIndicatorByPeringkat = (peringkat) => {
-  if (peringkat === 1) return 'Low';
-  if (peringkat === 2) return 'Low To Moderate';
-  if (peringkat === 3) return 'Moderate';
-  if (peringkat === 4) return 'Moderate To High';
-  if (peringkat === 5) return 'High';
+const getRiskIndicator = (level) => {
+  if (level === null || level === undefined || level === '') return '-';
+  const num = Number(level);
+  if (isNaN(num)) return '-';
+  if (num >= 0 && num < 2) return 'Low';
+  if (num >= 2 && num < 3) return 'Low To Moderate';
+  if (num >= 3 && num < 4) return 'Moderate';
+  if (num >= 4 && num < 5) return 'Moderate To High';
+  if (num >= 5) return 'High';
   return '-';
 };
 
 /**
- * Warna fill Excel berdasarkan peringkat integer 1-5
+ * Warna fill Excel berdasarkan level (riskLevel)
  * Konsisten dengan getRiskColor di ringkasan.utils.js
  */
-const getRiskStyleByPeringkat = (peringkat) => {
-  if (peringkat === 1) return { bg: '2ECC71', fg: 'FFFFFF' }; // Low        – Hijau
-  if (peringkat === 2) return { bg: 'A3E635', fg: '000000' }; // Low-Mod    – Hijau muda
-  if (peringkat === 3) return { bg: 'FACC15', fg: '000000' }; // Moderate   – Kuning
-  if (peringkat === 4) return { bg: 'F97316', fg: '000000' }; // Mod-High   – Orange
-  if (peringkat === 5) return { bg: 'FF0000', fg: 'FFFFFF' }; // High       – Merah
+const getRiskStyle = (level) => {
+  if (level === null || level === undefined || level === '') return null;
+  const num = Number(level);
+  if (isNaN(num)) return null;
+  if (num >= 0 && num < 2) return { bg: '2ECC71', fg: 'FFFFFF' }; // Low        – Hijau
+  if (num >= 2 && num < 3) return { bg: 'A3E635', fg: '000000' }; // Low-Mod    – Hijau muda
+  if (num >= 3 && num < 4) return { bg: 'FACC15', fg: '000000' }; // Moderate   – Kuning
+  if (num >= 4 && num < 5) return { bg: 'F97316', fg: '000000' }; // Mod-High   – Orange
+  if (num >= 5) return { bg: 'FF0000', fg: 'FFFFFF' }; // High       – Merah
   return null;
 };
 
@@ -97,10 +103,10 @@ export function exportRingkasanToExcel({ summaryData = [], year, quarter, search
   let currentRowIndex  = DATA_START_ROW;
 
   /**
-   * Map: rowIndex (Excel) → peringkat (1–5 | null)
-   * Digunakan saat styling agar warna berdasarkan peringkat, bukan nilai weighted.
+   * Map: rowIndex (Excel) → riskLevel (1–5 | null)
+   * Digunakan saat styling agar warna berdasarkan riskLevel, bukan nilai weighted.
    */
-  const peringkatMap = {};
+  const riskLevelMap = {};
 
   // ── Build baris data ──────────────────────────────────────────────
   summaryData.forEach((pageData) => {
@@ -108,7 +114,7 @@ export function exportRingkasanToExcel({ summaryData = [], year, quarter, search
 
     if (!Array.isArray(pageRows) || pageRows.length === 0) {
       wsData.push([no, `Risiko ${categoryLabel}`, '-', 'Data tidak ditemukan', '-', '-', '-', '-', '-', '-']);
-      peringkatMap[currentRowIndex] = null;
+      riskLevelMap[currentRowIndex] = null;
       currentRowIndex++;
       return;
     }
@@ -185,35 +191,34 @@ export function exportRingkasanToExcel({ summaryData = [], year, quarter, search
 
       if (row.type === 'empty-param') {
         wsData.push([no, `Risiko ${categoryLabel}`, fmtPercent(row.param.bobot), row.paramName, row.indeks, '-', '-', '-', '-', '-']);
-        peringkatMap[excelRow] = null;
+        riskLevelMap[excelRow] = null;
         return;
       }
 
       const { item, indeks } = row;
       const derived = item?.derived || {};
 
-      // peringkat: integer 1-5 dari computeDerived
-      const peringkat = derived.peringkat ?? null;
+      // riskLevel dari computeDerived
+      const riskLevel = derived.riskLevel ?? derived.weighted ?? 0;
 
-      // hasilAssessment: sama persis dengan UI (hasilDisplay adalah string seperti "2.50%")
+      // hasilAssessment: sama persis dengan UI
       const hasilRaw  = derived.hasilDisplay ?? derived.weighted ?? 0;
       const hasilCell = (() => {
-        if (hasilRaw === null || hasilRaw === undefined || hasilRaw === 0 || hasilRaw === '') return '-';
-        if (typeof hasilRaw === 'string' && hasilRaw.trim() !== '') return hasilRaw;
+        if (hasilRaw === null || hasilRaw === undefined || hasilRaw === '') return '-';
+        if (typeof hasilRaw === 'string') return hasilRaw;
         const num = Number(hasilRaw);
-        if (isNaN(num) || num === 0) return '-';
+        if (isNaN(num)) return '-';
         return num % 1 !== 0 ? Number(num.toFixed(2)) : num;
       })();
 
-      // riskLevel display: nilai weighted (kontribusi bobot) sebagai angka
-      const weighted         = derived.weighted ?? null;
-      const riskLevelDisplay = weighted !== null && weighted !== 0 ? Number(weighted.toFixed(2)) : '-';
+      // riskLevelDisplay: sesuai dengan UI
+      const riskLevelDisplay = riskLevel !== null && riskLevel !== 0 ? (riskLevel % 1 !== 0 ? Number(riskLevel.toFixed(2)) : riskLevel) : '-';
 
-      // riskIndicator label: berdasarkan peringkat integer
-      const riskIndicator    = peringkat !== null ? getRiskIndicatorByPeringkat(peringkat) : '-';
+      // riskIndicator label: sesuai dengan UI
+      const riskIndicator    = riskLevel !== null && riskLevel !== 0 ? getRiskIndicator(riskLevel) : '-';
 
-      // Simpan peringkat untuk styling nanti
-      peringkatMap[excelRow] = peringkat;
+      // Simpan riskLevel untuk styling nanti
+      riskLevelMap[excelRow] = riskLevel;
 
       wsData.push([
         no,
@@ -290,10 +295,10 @@ export function exportRingkasanToExcel({ summaryData = [], year, quarter, search
       }
 
       // ── Kolom Risk Level (8) & Risk Indicator (9) ──────────────
-      // Warna berdasarkan peringkat integer 1-5, BUKAN nilai weighted
+      // Warna berdasarkan riskLevel, BUKAN nilai weighted
       if (c === 8 || c === 9) {
-        const peringkat   = peringkatMap[r] ?? null;
-        const riskStyle   = peringkat !== null ? getRiskStyleByPeringkat(peringkat) : null;
+        const riskLevel   = riskLevelMap[r] ?? null;
+        const riskStyle   = riskLevel !== null && riskLevel !== 0 ? getRiskStyle(riskLevel) : null;
 
         if (riskStyle) {
           cell.s = {

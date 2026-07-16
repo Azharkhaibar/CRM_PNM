@@ -37,11 +37,23 @@ export class KonsentrasiNilai {
   @Column('decimal', { precision: 10, scale: 2, nullable: false })
   bobot: number;
 
+  @Column({ name: 'kode_emiten', nullable: true })
+  kodeEmiten?: string;
+
+  @Column({ nullable: true })
+  kepemilikan?: string;
+
   @Column({ nullable: true })
   portofolio?: string;
 
   @Column({ type: 'text', nullable: true })
   keterangan?: string;
+
+  @Column({ type: 'text', nullable: true, name: 'sumber_risiko' })
+  sumberRisiko?: string;
+
+  @Column({ type: 'text', nullable: true })
+  dampak?: string;
 
   @Column({ type: 'json', nullable: true })
   riskindikator?: {

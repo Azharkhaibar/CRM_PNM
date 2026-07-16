@@ -23,6 +23,8 @@ import {
   RekapDataResponseDto,
   ImportResponseDto,
 } from './dto/rekap-data.dto';
+import { CloneRekapDataDto } from './dto/clone-rekap-data.dto';
+import { CloneHoldingKpmrDto } from './dto/clone-kpmr.dto';
 
 // Type untuk file upload
 interface MulterFile {
@@ -89,5 +91,42 @@ export class RekapDataController {
     @Query('quarter') quarter: string,
   ): Promise<{ removed: number }> {
     return this.rekapDataService.cleanupDuplicates(parseInt(year), quarter);
+  }
+
+  // ===================== RESET PERIOD DATA =====================
+  @Delete('reset')
+  async resetPeriodData(
+    @Query('year') year: string,
+    @Query('quarter') quarter: string,
+    @Query('source') source: RiskSource,
+  ): Promise<{ success: boolean; message: string }> {
+    return this.rekapDataService.resetPeriodData(parseInt(year), quarter, source);
+  }
+
+  // ===================== RESET KPMR PERIOD DATA =====================
+  @Delete('reset-kpmr')
+  async resetKpmrPeriodData(
+    @Query('year') year: string,
+    @Query('category') category: string,
+  ): Promise<{ success: boolean; message: string }> {
+    return this.rekapDataService.resetKpmrPeriodData(parseInt(year), category);
+  }
+
+  // ===================== CLONE PERIOD DATA =====================
+  @Post('clone')
+  @HttpCode(HttpStatus.OK)
+  async clonePeriodData(
+    @Body(new ValidationPipe({ transform: true })) dto: CloneRekapDataDto,
+  ): Promise<any> {
+    return this.rekapDataService.clonePeriodData(dto);
+  }
+
+  // ===================== CLONE KPMR DATA =====================
+  @Post('clone-kpmr')
+  @HttpCode(HttpStatus.OK)
+  async cloneKpmrPeriodData(
+    @Body(new ValidationPipe({ transform: true })) dto: CloneHoldingKpmrDto,
+  ): Promise<any> {
+    return this.rekapDataService.cloneKpmrPeriodData(dto);
   }
 }
