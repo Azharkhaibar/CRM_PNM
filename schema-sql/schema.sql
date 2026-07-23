@@ -13,6 +13,7 @@ SET FOREIGN_KEY_CHECKS = 0;
 -- DROP EXISTING TABLES
 -- ================================================================================
 
+DROP TABLE IF EXISTS `sessions`;
 DROP TABLE IF EXISTS `auth`;
 DROP TABLE IF EXISTS `notifications`;
 DROP TABLE IF EXISTS `audit_log`;
@@ -20,12 +21,20 @@ DROP TABLE IF EXISTS `users`;
 DROP TABLE IF EXISTS `division`;
 DROP TABLE IF EXISTS `risk_appetite_statement`;
 DROP TABLE IF EXISTS `ojk_modules`;
+DROP TABLE IF EXISTS `system_settings`;
 
--- Holding
+-- Holding Rekap Data 1
+DROP TABLE IF EXISTS `rekap1_result_holding`, `bvt_config_holding_rekap1`, `bhz_config_holding_rekap1`;
+
+-- Holding 8 Risk Modules
 DROP TABLE IF EXISTS `kpmr_investasi_skor_holding`, `kpmr_investasi_definisi_holding`, `kpmr_investasi_pertanyaan_holding`, `kpmr_investasi_aspek_holding`, `indikators_investasi_holding`, `sections_investasi_holding`;
 DROP TABLE IF EXISTS `kpmr_pasar_skor_holding`, `kpmr_pasar_definisi_holding`, `kpmr_pasar_pertanyaan_holding`, `kpmr_pasar_aspek_holding`, `indikators_pasar_holding`, `sections_pasar_holding`;
 DROP TABLE IF EXISTS `kpmr_likuiditas_skor_holding`, `kpmr_likuiditas_definisi_holding`, `kpmr_likuiditas_pertanyaan_holding`, `kpmr_likuiditas_aspek_holding`, `indikators_likuiditas_holding`, `sections_likuiditas_holding`;
 DROP TABLE IF EXISTS `kpmr_hukum_skor_holding`, `kpmr_hukum_definisi_holding`, `kpmr_hukum_pertanyaan_holding`, `kpmr_hukum_aspek_holding`, `indikators_hukum_holding`, `sections_hukum_holding`;
+DROP TABLE IF EXISTS `kpmr_kepatuhan_skor_holding`, `kpmr_kepatuhan_definisi_holding`, `kpmr_kepatuhan_pertanyaan_holding`, `kpmr_kepatuhan_aspek_holding`, `indikators_kepatuhan_holding`, `sections_kepatuhan_holding`;
+DROP TABLE IF EXISTS `kpmr_operasional_skor_holding`, `kpmr_operasional_definisi_holding`, `kpmr_operasional_pertanyaan_holding`, `kpmr_operasional_aspek_holding`, `indikators_operasional_holding`, `sections_operasional_holding`;
+DROP TABLE IF EXISTS `kpmr_reputasi_skor_holding`, `kpmr_reputasi_definisi_holding`, `kpmr_reputasi_pertanyaan_holding`, `kpmr_reputasi_aspek_holding`, `indikators_reputasi_holding`, `sections_reputasi_holding`;
+DROP TABLE IF EXISTS `kpmr_stratejik_skor_holding`, `kpmr_stratejik_definisi_holding`, `kpmr_stratejik_pertanyaan_holding`, `kpmr_stratejik_aspek_holding`, `indikators_stratejik_holding`, `sections_stratejik_holding`;
 
 -- OJK 13 Modules
 DROP TABLE IF EXISTS `kpmr_pertanyaan_pasar_produk`;
@@ -183,11 +192,11 @@ CREATE TABLE `risk_appetite_statement` (
     `unitType` VARCHAR(20) DEFAULT 'PERCENTAGE',
     `dataTypeExplanation` TEXT,
     `notes` TEXT,
-    `rkapTarget` VARCHAR(100),
-    `rasLimit` VARCHAR(100),
+    `rkapTarget` TEXT NULL,
+    `rasLimit` TEXT NULL,
     `hasNumeratorDenominator` BOOLEAN DEFAULT FALSE,
-    `numeratorLabel` VARCHAR(100),
-    `denominatorLabel` VARCHAR(100),
+    `numeratorLabel` TEXT NULL,
+    `denominatorLabel` TEXT NULL,
     `monthlyValues` JSON,
     `tindakLanjut` JSON,
     `createdAt` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -246,7 +255,32 @@ CREATE TABLE `notifications` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ================================================================================
--- 7. OJK MODULES MASTER
+-- 7. CORE TABLE: SESSIONS
+-- ================================================================================
+CREATE TABLE `sessions` (
+    `session_id` INT AUTO_INCREMENT PRIMARY KEY,
+    `auth_id` INT NULL,
+    `user_id` INT NULL,
+    `user_agent` VARCHAR(255) NULL,
+    `is_active` BOOLEAN DEFAULT TRUE,
+    `expires_at` TIMESTAMP NOT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT `fk_sessions_auth` FOREIGN KEY (`auth_id`) REFERENCES `auth`(`auth_id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_sessions_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`user_id`) ON DELETE CASCADE,
+    INDEX `idx_sessions_user` (`user_id`),
+    INDEX `idx_sessions_auth` (`auth_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ================================================================================
+-- 8. CORE TABLE: SYSTEM SETTINGS
+-- ================================================================================
+CREATE TABLE `system_settings` (
+    `key` VARCHAR(255) PRIMARY KEY,
+    `value` TEXT NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ================================================================================
+-- 9. OJK MODULES MASTER
 -- ================================================================================
 CREATE TABLE `ojk_modules` (
     `id` VARCHAR(50) NOT NULL,
@@ -774,6 +808,572 @@ CREATE TABLE `kpmr_hukum_skor_holding` (
     UNIQUE INDEX `IDX_KPMR_SCORE_DEF_QUARTER_HUKUM` (`definition_id`, `year`, `quarter`),
     CONSTRAINT `fk_skor_definisi_hukum` FOREIGN KEY (`definition_id`) REFERENCES `kpmr_hukum_definisi_holding`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+-- ================================================================================
+-- HOLDING MODULE: Kepatuhan INHERENT & KPMR
+-- ================================================================================
+CREATE TABLE `sections_kepatuhan_holding` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `year` INT NOT NULL,
+    `quarter` ENUM('Q1', 'Q2', 'Q3', 'Q4') NOT NULL,
+    `no` VARCHAR(50) NOT NULL,
+    `bobot_section` DECIMAL(5,2) DEFAULT 100,
+    `parameter` VARCHAR(500) NOT NULL,
+    `description` TEXT NULL,
+    `sort_order` INT DEFAULT 0,
+    `is_active` BOOLEAN DEFAULT TRUE,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `is_deleted` BOOLEAN DEFAULT FALSE,
+    `created_by` VARCHAR(100) NULL,
+    `updated_by` VARCHAR(100) NULL,
+    CONSTRAINT `uk_section_period_kepatuhan` UNIQUE (`year`, `quarter`, `no`, `parameter`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `indikators_kepatuhan_holding` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `year` INT NOT NULL,
+    `quarter` ENUM('Q1', 'Q2', 'Q3', 'Q4') NOT NULL,
+    `section_id` INT NOT NULL,
+    `no` VARCHAR(50) NOT NULL,
+    `section_label` VARCHAR(500) NOT NULL,
+    `bobot_section` DECIMAL(5,2) NOT NULL,
+    `sub_no` VARCHAR(50) NOT NULL,
+    `indikator` VARCHAR(1000) NOT NULL,
+    `bobot_indikator` DECIMAL(5,2) NOT NULL,
+    `sumber_risiko` TEXT NULL,
+    `dampak` TEXT NULL,
+    `low` VARCHAR(200) NULL,
+    `low_to_moderate` VARCHAR(200) NULL,
+    `moderate` VARCHAR(200) NULL,
+    `moderate_to_high` VARCHAR(200) NULL,
+    `high` VARCHAR(200) NULL,
+    `mode` ENUM('RASIO', 'NILAI_TUNGGAL', 'TEKS') DEFAULT 'RASIO',
+    `formula` TEXT NULL,
+    `is_percent` BOOLEAN DEFAULT FALSE,
+    `pembilang_label` VARCHAR(255) NULL,
+    `pembilang_value` DECIMAL(15,2) NULL,
+    `penyebut_label` VARCHAR(255) NULL,
+    `penyebut_value` DECIMAL(15,2) NULL,
+    `hasil` DECIMAL(15,6) NULL,
+    `hasil_text` VARCHAR(1000) NULL,
+    `peringkat` INT NOT NULL,
+    `weighted` DECIMAL(10,4) NOT NULL,
+    `keterangan` TEXT NULL,
+    `is_validated` BOOLEAN DEFAULT FALSE,
+    `validated_at` TIMESTAMP NULL,
+    `validated_by` VARCHAR(100) NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `is_deleted` BOOLEAN DEFAULT FALSE,
+    `deleted_at` TIMESTAMP NULL,
+    `created_by` VARCHAR(100) NULL,
+    `updated_by` VARCHAR(100) NULL,
+    `deleted_by` VARCHAR(100) NULL,
+    `version` INT DEFAULT 1,
+    `revision_notes` VARCHAR(50) NULL,
+    CONSTRAINT `uk_indikator_period_subno_kepatuhan` UNIQUE (`year`, `quarter`, `sub_no`, `section_id`),
+    CONSTRAINT `fk_indikator_section_kepatuhan` FOREIGN KEY (`section_id`) REFERENCES `sections_kepatuhan_holding`(`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+    INDEX `idx_indikator_period_kepatuhan` (`year`, `quarter`),
+    INDEX `idx_indikator_section_kepatuhan` (`section_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `kpmr_kepatuhan_aspek_holding` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `year` INT NOT NULL,
+    `aspek_no` VARCHAR(50) NOT NULL,
+    `aspek_title` VARCHAR(255) NOT NULL,
+    `aspek_bobot` DECIMAL(5,2) NOT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE INDEX `UQ_YEAR_ASPEK_NO_KEPATUHAN` (`year`, `aspek_no`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `kpmr_kepatuhan_pertanyaan_holding` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `year` INT NOT NULL,
+    `aspek_no` VARCHAR(50) NOT NULL,
+    `section_no` VARCHAR(50) NOT NULL,
+    `section_title` TEXT NOT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX `IDX_YEAR_ASPECT_SECTION_KEPATUHAN` (`year`, `aspek_no`, `section_no`),
+    UNIQUE INDEX `idx_kepatuhan_pertanyaan_composite` (`year`, `aspek_no`, `section_no`),
+    CONSTRAINT `fk_pertanyaan_aspek_kepatuhan` FOREIGN KEY (`year`, `aspek_no`) REFERENCES `kpmr_kepatuhan_aspek_holding`(`year`, `aspek_no`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `kpmr_kepatuhan_definisi_holding` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `year` INT NOT NULL,
+    `aspek_no` VARCHAR(50) NOT NULL,
+    `aspek_title` VARCHAR(255) NOT NULL,
+    `aspek_bobot` DECIMAL(5,2) DEFAULT 0,
+    `section_no` VARCHAR(50) NOT NULL,
+    `section_title` TEXT NOT NULL,
+    `level_1` TEXT NULL,
+    `level_2` TEXT NULL,
+    `level_3` TEXT NULL,
+    `level_4` TEXT NULL,
+    `level_5` TEXT NULL,
+    `evidence` TEXT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `created_by` VARCHAR(100) NULL,
+    `updated_by` VARCHAR(100) NULL,
+    UNIQUE INDEX `IDX_KPMR_DEF_YEAR_ASPECT_KEPATUHAN` (`year`, `aspek_no`, `section_no`),
+    CONSTRAINT `fk_definisi_pertanyaan_kepatuhan` FOREIGN KEY (`year`, `aspek_no`, `section_no`) REFERENCES `kpmr_kepatuhan_pertanyaan_holding`(`year`, `aspek_no`, `section_no`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `kpmr_kepatuhan_skor_holding` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `definition_id` INT NOT NULL,
+    `year` INT NOT NULL,
+    `quarter` VARCHAR(10) NOT NULL,
+    `section_skor` DECIMAL(5,2) NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `created_by` VARCHAR(100) NULL,
+    `updated_by` VARCHAR(100) NULL,
+    UNIQUE INDEX `IDX_KPMR_SCORE_DEF_QUARTER_KEPATUHAN` (`definition_id`, `year`, `quarter`),
+    CONSTRAINT `fk_skor_definisi_kepatuhan` FOREIGN KEY (`definition_id`) REFERENCES `kpmr_kepatuhan_definisi_holding`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+-- ================================================================================
+-- HOLDING MODULE: Operasional INHERENT & KPMR
+-- ================================================================================
+CREATE TABLE `sections_operasional_holding` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `year` INT NOT NULL,
+    `quarter` ENUM('Q1', 'Q2', 'Q3', 'Q4') NOT NULL,
+    `no` VARCHAR(50) NOT NULL,
+    `bobot_section` DECIMAL(5,2) DEFAULT 100,
+    `parameter` VARCHAR(500) NOT NULL,
+    `description` TEXT NULL,
+    `sort_order` INT DEFAULT 0,
+    `is_active` BOOLEAN DEFAULT TRUE,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `is_deleted` BOOLEAN DEFAULT FALSE,
+    `created_by` VARCHAR(100) NULL,
+    `updated_by` VARCHAR(100) NULL,
+    CONSTRAINT `uk_section_period_operasional` UNIQUE (`year`, `quarter`, `no`, `parameter`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `indikators_operasional_holding` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `year` INT NOT NULL,
+    `quarter` ENUM('Q1', 'Q2', 'Q3', 'Q4') NOT NULL,
+    `section_id` INT NOT NULL,
+    `no` VARCHAR(50) NOT NULL,
+    `section_label` VARCHAR(500) NOT NULL,
+    `bobot_section` DECIMAL(5,2) NOT NULL,
+    `sub_no` VARCHAR(50) NOT NULL,
+    `indikator` VARCHAR(1000) NOT NULL,
+    `bobot_indikator` DECIMAL(5,2) NOT NULL,
+    `sumber_risiko` TEXT NULL,
+    `dampak` TEXT NULL,
+    `low` VARCHAR(200) NULL,
+    `low_to_moderate` VARCHAR(200) NULL,
+    `moderate` VARCHAR(200) NULL,
+    `moderate_to_high` VARCHAR(200) NULL,
+    `high` VARCHAR(200) NULL,
+    `mode` ENUM('RASIO', 'NILAI_TUNGGAL', 'TEKS') DEFAULT 'RASIO',
+    `formula` TEXT NULL,
+    `is_percent` BOOLEAN DEFAULT FALSE,
+    `pembilang_label` VARCHAR(255) NULL,
+    `pembilang_value` DECIMAL(15,2) NULL,
+    `penyebut_label` VARCHAR(255) NULL,
+    `penyebut_value` DECIMAL(15,2) NULL,
+    `hasil` DECIMAL(15,6) NULL,
+    `hasil_text` VARCHAR(1000) NULL,
+    `peringkat` INT NOT NULL,
+    `weighted` DECIMAL(10,4) NOT NULL,
+    `keterangan` TEXT NULL,
+    `is_validated` BOOLEAN DEFAULT FALSE,
+    `validated_at` TIMESTAMP NULL,
+    `validated_by` VARCHAR(100) NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `is_deleted` BOOLEAN DEFAULT FALSE,
+    `deleted_at` TIMESTAMP NULL,
+    `created_by` VARCHAR(100) NULL,
+    `updated_by` VARCHAR(100) NULL,
+    `deleted_by` VARCHAR(100) NULL,
+    `version` INT DEFAULT 1,
+    `revision_notes` VARCHAR(50) NULL,
+    CONSTRAINT `uk_indikator_period_subno_operasional` UNIQUE (`year`, `quarter`, `sub_no`, `section_id`),
+    CONSTRAINT `fk_indikator_section_operasional` FOREIGN KEY (`section_id`) REFERENCES `sections_operasional_holding`(`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+    INDEX `idx_indikator_period_operasional` (`year`, `quarter`),
+    INDEX `idx_indikator_section_operasional` (`section_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `kpmr_operasional_aspek_holding` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `year` INT NOT NULL,
+    `aspek_no` VARCHAR(50) NOT NULL,
+    `aspek_title` VARCHAR(255) NOT NULL,
+    `aspek_bobot` DECIMAL(5,2) NOT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE INDEX `UQ_YEAR_ASPEK_NO_OPERASIONAL` (`year`, `aspek_no`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `kpmr_operasional_pertanyaan_holding` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `year` INT NOT NULL,
+    `aspek_no` VARCHAR(50) NOT NULL,
+    `section_no` VARCHAR(50) NOT NULL,
+    `section_title` TEXT NOT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX `IDX_YEAR_ASPECT_SECTION_OPERASIONAL` (`year`, `aspek_no`, `section_no`),
+    UNIQUE INDEX `idx_operasional_pertanyaan_composite` (`year`, `aspek_no`, `section_no`),
+    CONSTRAINT `fk_pertanyaan_aspek_operasional` FOREIGN KEY (`year`, `aspek_no`) REFERENCES `kpmr_operasional_aspek_holding`(`year`, `aspek_no`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `kpmr_operasional_definisi_holding` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `year` INT NOT NULL,
+    `aspek_no` VARCHAR(50) NOT NULL,
+    `aspek_title` VARCHAR(255) NOT NULL,
+    `aspek_bobot` DECIMAL(5,2) DEFAULT 0,
+    `section_no` VARCHAR(50) NOT NULL,
+    `section_title` TEXT NOT NULL,
+    `level_1` TEXT NULL,
+    `level_2` TEXT NULL,
+    `level_3` TEXT NULL,
+    `level_4` TEXT NULL,
+    `level_5` TEXT NULL,
+    `evidence` TEXT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `created_by` VARCHAR(100) NULL,
+    `updated_by` VARCHAR(100) NULL,
+    UNIQUE INDEX `IDX_KPMR_DEF_YEAR_ASPECT_OPERASIONAL` (`year`, `aspek_no`, `section_no`),
+    CONSTRAINT `fk_definisi_pertanyaan_operasional` FOREIGN KEY (`year`, `aspek_no`, `section_no`) REFERENCES `kpmr_operasional_pertanyaan_holding`(`year`, `aspek_no`, `section_no`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `kpmr_operasional_skor_holding` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `definition_id` INT NOT NULL,
+    `year` INT NOT NULL,
+    `quarter` VARCHAR(10) NOT NULL,
+    `section_skor` DECIMAL(5,2) NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `created_by` VARCHAR(100) NULL,
+    `updated_by` VARCHAR(100) NULL,
+    UNIQUE INDEX `IDX_KPMR_SCORE_DEF_QUARTER_OPERASIONAL` (`definition_id`, `year`, `quarter`),
+    CONSTRAINT `fk_skor_definisi_operasional` FOREIGN KEY (`definition_id`) REFERENCES `kpmr_operasional_definisi_holding`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+-- ================================================================================
+-- HOLDING MODULE: Reputasi INHERENT & KPMR
+-- ================================================================================
+CREATE TABLE `sections_reputasi_holding` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `year` INT NOT NULL,
+    `quarter` ENUM('Q1', 'Q2', 'Q3', 'Q4') NOT NULL,
+    `no` VARCHAR(50) NOT NULL,
+    `bobot_section` DECIMAL(5,2) DEFAULT 100,
+    `parameter` VARCHAR(500) NOT NULL,
+    `description` TEXT NULL,
+    `sort_order` INT DEFAULT 0,
+    `is_active` BOOLEAN DEFAULT TRUE,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `is_deleted` BOOLEAN DEFAULT FALSE,
+    `created_by` VARCHAR(100) NULL,
+    `updated_by` VARCHAR(100) NULL,
+    CONSTRAINT `uk_section_period_reputasi` UNIQUE (`year`, `quarter`, `no`, `parameter`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `indikators_reputasi_holding` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `year` INT NOT NULL,
+    `quarter` ENUM('Q1', 'Q2', 'Q3', 'Q4') NOT NULL,
+    `section_id` INT NOT NULL,
+    `no` VARCHAR(50) NOT NULL,
+    `section_label` VARCHAR(500) NOT NULL,
+    `bobot_section` DECIMAL(5,2) NOT NULL,
+    `sub_no` VARCHAR(50) NOT NULL,
+    `indikator` VARCHAR(1000) NOT NULL,
+    `bobot_indikator` DECIMAL(5,2) NOT NULL,
+    `sumber_risiko` TEXT NULL,
+    `dampak` TEXT NULL,
+    `low` VARCHAR(200) NULL,
+    `low_to_moderate` VARCHAR(200) NULL,
+    `moderate` VARCHAR(200) NULL,
+    `moderate_to_high` VARCHAR(200) NULL,
+    `high` VARCHAR(200) NULL,
+    `mode` ENUM('RASIO', 'NILAI_TUNGGAL', 'TEKS') DEFAULT 'RASIO',
+    `formula` TEXT NULL,
+    `is_percent` BOOLEAN DEFAULT FALSE,
+    `pembilang_label` VARCHAR(255) NULL,
+    `pembilang_value` DECIMAL(15,2) NULL,
+    `penyebut_label` VARCHAR(255) NULL,
+    `penyebut_value` DECIMAL(15,2) NULL,
+    `hasil` DECIMAL(15,6) NULL,
+    `hasil_text` VARCHAR(1000) NULL,
+    `peringkat` INT NOT NULL,
+    `weighted` DECIMAL(10,4) NOT NULL,
+    `keterangan` TEXT NULL,
+    `is_validated` BOOLEAN DEFAULT FALSE,
+    `validated_at` TIMESTAMP NULL,
+    `validated_by` VARCHAR(100) NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `is_deleted` BOOLEAN DEFAULT FALSE,
+    `deleted_at` TIMESTAMP NULL,
+    `created_by` VARCHAR(100) NULL,
+    `updated_by` VARCHAR(100) NULL,
+    `deleted_by` VARCHAR(100) NULL,
+    `version` INT DEFAULT 1,
+    `revision_notes` VARCHAR(50) NULL,
+    CONSTRAINT `uk_indikator_period_subno_reputasi` UNIQUE (`year`, `quarter`, `sub_no`, `section_id`),
+    CONSTRAINT `fk_indikator_section_reputasi` FOREIGN KEY (`section_id`) REFERENCES `sections_reputasi_holding`(`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+    INDEX `idx_indikator_period_reputasi` (`year`, `quarter`),
+    INDEX `idx_indikator_section_reputasi` (`section_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `kpmr_reputasi_aspek_holding` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `year` INT NOT NULL,
+    `aspek_no` VARCHAR(50) NOT NULL,
+    `aspek_title` VARCHAR(255) NOT NULL,
+    `aspek_bobot` DECIMAL(5,2) NOT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE INDEX `UQ_YEAR_ASPEK_NO_REPUTASI` (`year`, `aspek_no`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `kpmr_reputasi_pertanyaan_holding` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `year` INT NOT NULL,
+    `aspek_no` VARCHAR(50) NOT NULL,
+    `section_no` VARCHAR(50) NOT NULL,
+    `section_title` TEXT NOT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX `IDX_YEAR_ASPECT_SECTION_REPUTASI` (`year`, `aspek_no`, `section_no`),
+    UNIQUE INDEX `idx_reputasi_pertanyaan_composite` (`year`, `aspek_no`, `section_no`),
+    CONSTRAINT `fk_pertanyaan_aspek_reputasi` FOREIGN KEY (`year`, `aspek_no`) REFERENCES `kpmr_reputasi_aspek_holding`(`year`, `aspek_no`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `kpmr_reputasi_definisi_holding` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `year` INT NOT NULL,
+    `aspek_no` VARCHAR(50) NOT NULL,
+    `aspek_title` VARCHAR(255) NOT NULL,
+    `aspek_bobot` DECIMAL(5,2) DEFAULT 0,
+    `section_no` VARCHAR(50) NOT NULL,
+    `section_title` TEXT NOT NULL,
+    `level_1` TEXT NULL,
+    `level_2` TEXT NULL,
+    `level_3` TEXT NULL,
+    `level_4` TEXT NULL,
+    `level_5` TEXT NULL,
+    `evidence` TEXT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `created_by` VARCHAR(100) NULL,
+    `updated_by` VARCHAR(100) NULL,
+    UNIQUE INDEX `IDX_KPMR_DEF_YEAR_ASPECT_REPUTASI` (`year`, `aspek_no`, `section_no`),
+    CONSTRAINT `fk_definisi_pertanyaan_reputasi` FOREIGN KEY (`year`, `aspek_no`, `section_no`) REFERENCES `kpmr_reputasi_pertanyaan_holding`(`year`, `aspek_no`, `section_no`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `kpmr_reputasi_skor_holding` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `definition_id` INT NOT NULL,
+    `year` INT NOT NULL,
+    `quarter` VARCHAR(10) NOT NULL,
+    `section_skor` DECIMAL(5,2) NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `created_by` VARCHAR(100) NULL,
+    `updated_by` VARCHAR(100) NULL,
+    UNIQUE INDEX `IDX_KPMR_SCORE_DEF_QUARTER_REPUTASI` (`definition_id`, `year`, `quarter`),
+    CONSTRAINT `fk_skor_definisi_reputasi` FOREIGN KEY (`definition_id`) REFERENCES `kpmr_reputasi_definisi_holding`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+-- ================================================================================
+-- HOLDING MODULE: Stratejik INHERENT & KPMR
+-- ================================================================================
+CREATE TABLE `sections_stratejik_holding` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `year` INT NOT NULL,
+    `quarter` ENUM('Q1', 'Q2', 'Q3', 'Q4') NOT NULL,
+    `no` VARCHAR(50) NOT NULL,
+    `bobot_section` DECIMAL(5,2) DEFAULT 100,
+    `parameter` VARCHAR(500) NOT NULL,
+    `description` TEXT NULL,
+    `sort_order` INT DEFAULT 0,
+    `is_active` BOOLEAN DEFAULT TRUE,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `is_deleted` BOOLEAN DEFAULT FALSE,
+    `created_by` VARCHAR(100) NULL,
+    `updated_by` VARCHAR(100) NULL,
+    CONSTRAINT `uk_section_period_stratejik` UNIQUE (`year`, `quarter`, `no`, `parameter`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `indikators_stratejik_holding` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `year` INT NOT NULL,
+    `quarter` ENUM('Q1', 'Q2', 'Q3', 'Q4') NOT NULL,
+    `section_id` INT NOT NULL,
+    `no` VARCHAR(50) NOT NULL,
+    `section_label` VARCHAR(500) NOT NULL,
+    `bobot_section` DECIMAL(5,2) NOT NULL,
+    `sub_no` VARCHAR(50) NOT NULL,
+    `indikator` VARCHAR(1000) NOT NULL,
+    `bobot_indikator` DECIMAL(5,2) NOT NULL,
+    `sumber_risiko` TEXT NULL,
+    `dampak` TEXT NULL,
+    `low` VARCHAR(200) NULL,
+    `low_to_moderate` VARCHAR(200) NULL,
+    `moderate` VARCHAR(200) NULL,
+    `moderate_to_high` VARCHAR(200) NULL,
+    `high` VARCHAR(200) NULL,
+    `mode` ENUM('RASIO', 'NILAI_TUNGGAL', 'TEKS') DEFAULT 'RASIO',
+    `formula` TEXT NULL,
+    `is_percent` BOOLEAN DEFAULT FALSE,
+    `pembilang_label` VARCHAR(255) NULL,
+    `pembilang_value` DECIMAL(15,2) NULL,
+    `penyebut_label` VARCHAR(255) NULL,
+    `penyebut_value` DECIMAL(15,2) NULL,
+    `hasil` DECIMAL(15,6) NULL,
+    `hasil_text` VARCHAR(1000) NULL,
+    `peringkat` INT NOT NULL,
+    `weighted` DECIMAL(10,4) NOT NULL,
+    `keterangan` TEXT NULL,
+    `is_validated` BOOLEAN DEFAULT FALSE,
+    `validated_at` TIMESTAMP NULL,
+    `validated_by` VARCHAR(100) NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `is_deleted` BOOLEAN DEFAULT FALSE,
+    `deleted_at` TIMESTAMP NULL,
+    `created_by` VARCHAR(100) NULL,
+    `updated_by` VARCHAR(100) NULL,
+    `deleted_by` VARCHAR(100) NULL,
+    `version` INT DEFAULT 1,
+    `revision_notes` VARCHAR(50) NULL,
+    CONSTRAINT `uk_indikator_period_subno_stratejik` UNIQUE (`year`, `quarter`, `sub_no`, `section_id`),
+    CONSTRAINT `fk_indikator_section_stratejik` FOREIGN KEY (`section_id`) REFERENCES `sections_stratejik_holding`(`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+    INDEX `idx_indikator_period_stratejik` (`year`, `quarter`),
+    INDEX `idx_indikator_section_stratejik` (`section_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `kpmr_stratejik_aspek_holding` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `year` INT NOT NULL,
+    `aspek_no` VARCHAR(50) NOT NULL,
+    `aspek_title` VARCHAR(255) NOT NULL,
+    `aspek_bobot` DECIMAL(5,2) NOT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE INDEX `UQ_YEAR_ASPEK_NO_STRATEJIK` (`year`, `aspek_no`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `kpmr_stratejik_pertanyaan_holding` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `year` INT NOT NULL,
+    `aspek_no` VARCHAR(50) NOT NULL,
+    `section_no` VARCHAR(50) NOT NULL,
+    `section_title` TEXT NOT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX `IDX_YEAR_ASPECT_SECTION_STRATEJIK` (`year`, `aspek_no`, `section_no`),
+    UNIQUE INDEX `idx_stratejik_pertanyaan_composite` (`year`, `aspek_no`, `section_no`),
+    CONSTRAINT `fk_pertanyaan_aspek_stratejik` FOREIGN KEY (`year`, `aspek_no`) REFERENCES `kpmr_stratejik_aspek_holding`(`year`, `aspek_no`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `kpmr_stratejik_definisi_holding` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `year` INT NOT NULL,
+    `aspek_no` VARCHAR(50) NOT NULL,
+    `aspek_title` VARCHAR(255) NOT NULL,
+    `aspek_bobot` DECIMAL(5,2) DEFAULT 0,
+    `section_no` VARCHAR(50) NOT NULL,
+    `section_title` TEXT NOT NULL,
+    `level_1` TEXT NULL,
+    `level_2` TEXT NULL,
+    `level_3` TEXT NULL,
+    `level_4` TEXT NULL,
+    `level_5` TEXT NULL,
+    `evidence` TEXT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `created_by` VARCHAR(100) NULL,
+    `updated_by` VARCHAR(100) NULL,
+    UNIQUE INDEX `IDX_KPMR_DEF_YEAR_ASPECT_STRATEJIK` (`year`, `aspek_no`, `section_no`),
+    CONSTRAINT `fk_definisi_pertanyaan_stratejik` FOREIGN KEY (`year`, `aspek_no`, `section_no`) REFERENCES `kpmr_stratejik_pertanyaan_holding`(`year`, `aspek_no`, `section_no`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `kpmr_stratejik_skor_holding` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `definition_id` INT NOT NULL,
+    `year` INT NOT NULL,
+    `quarter` VARCHAR(10) NOT NULL,
+    `section_skor` DECIMAL(5,2) NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `created_by` VARCHAR(100) NULL,
+    `updated_by` VARCHAR(100) NULL,
+    UNIQUE INDEX `IDX_KPMR_SCORE_DEF_QUARTER_STRATEJIK` (`definition_id`, `year`, `quarter`),
+    CONSTRAINT `fk_skor_definisi_stratejik` FOREIGN KEY (`definition_id`) REFERENCES `kpmr_stratejik_definisi_holding`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ================================================================================
+-- HOLDING MODULE: REKAP DATA 1 CONFIG & RESULT
+-- ================================================================================
+CREATE TABLE `bhz_config_holding_rekap1` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `year` INT NOT NULL,
+    `quarter` ENUM('Q1', 'Q2', 'Q3', 'Q4') NOT NULL,
+    `investasi` DECIMAL(5,2) DEFAULT 10.00,
+    `pasar` DECIMAL(5,2) DEFAULT 10.00,
+    `likuiditas` DECIMAL(5,2) DEFAULT 10.00,
+    `operasional` DECIMAL(5,2) DEFAULT 20.00,
+    `hukum` DECIMAL(5,2) DEFAULT 10.00,
+    `strategis` DECIMAL(5,2) DEFAULT 20.00,
+    `kepatuhan` DECIMAL(5,2) DEFAULT 10.00,
+    `reputasi` DECIMAL(5,2) DEFAULT 10.00,
+    `created_by` VARCHAR(100) NULL,
+    `updated_by` VARCHAR(100) NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE INDEX `UQ_BHZ_YEAR_QUARTER` (`year`, `quarter`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `bvt_config_holding_rekap1` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `year` INT NOT NULL,
+    `quarter` ENUM('Q1', 'Q2', 'Q3', 'Q4') NOT NULL,
+    `investasi` DECIMAL(5,2) DEFAULT 100.00,
+    `pasar` DECIMAL(5,2) DEFAULT 100.00,
+    `likuiditas` DECIMAL(5,2) DEFAULT 100.00,
+    `operasional` DECIMAL(5,2) DEFAULT 100.00,
+    `hukum` DECIMAL(5,2) DEFAULT 100.00,
+    `strategis` DECIMAL(5,2) DEFAULT 100.00,
+    `kepatuhan` DECIMAL(5,2) DEFAULT 100.00,
+    `reputasi` DECIMAL(5,2) DEFAULT 100.00,
+    `created_by` VARCHAR(100) NULL,
+    `updated_by` VARCHAR(100) NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE INDEX `UQ_BVT_YEAR_QUARTER` (`year`, `quarter`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `rekap1_result_holding` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `year` INT NOT NULL,
+    `quarter` ENUM('Q1', 'Q2', 'Q3', 'Q4') NOT NULL,
+    `komposit_a` DECIMAL(6,2) NOT NULL,
+    `komposit_b` DECIMAL(6,2) NOT NULL,
+    `total_peringkat` DECIMAL(6,2) NOT NULL,
+    `risk_details` JSON NOT NULL,
+    `created_by` VARCHAR(100) NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE INDEX `UQ_REKAP_RESULT_YEAR_QUARTER` (`year`, `quarter`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ================================================================================
 -- OJK MODULE: PASAR PRODUK
@@ -1104,14 +1704,14 @@ CREATE TABLE `kredit_parameters_ojk` (
     `judul` VARCHAR(255) NOT NULL,
     `bobot` DECIMAL(10, 2) NOT NULL,
     `kategori` JSON NULL,
-    `kredit_produk_ojk_id` INT NOT NULL,
+    `kredit_ojk_id` INT NOT NULL,
     `order_index` INT DEFAULT 0,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (`kredit_produk_ojk_id`) REFERENCES `kredit_produk_ojk`(`id`) ON DELETE CASCADE,
-    INDEX `idx_kredit_produk_param_id_nomor` (`kredit_produk_ojk_id`, `nomor`),
-    INDEX `idx_kredit_produk_param_id_order` (`kredit_produk_ojk_id`, `order_index`),
-    INDEX `idx_kredit_produk_param_id` (`kredit_produk_ojk_id`),
+    FOREIGN KEY (`kredit_ojk_id`) REFERENCES `kredit_produk_ojk`(`id`) ON DELETE CASCADE,
+    INDEX `idx_kredit_produk_param_id_nomor` (`kredit_ojk_id`, `nomor`),
+    INDEX `idx_kredit_produk_param_id_order` (`kredit_ojk_id`, `order_index`),
+    INDEX `idx_kredit_produk_param_id` (`kredit_ojk_id`),
     CHECK (`bobot` >= 0 AND `bobot` <= 100)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -1245,14 +1845,14 @@ CREATE TABLE `konsentrasi_parameters_ojk` (
     `judul` VARCHAR(255) NOT NULL,
     `bobot` DECIMAL(10, 2) NOT NULL,
     `kategori` JSON NULL,
-    `konsentrasi_produk_ojk_id` INT NOT NULL,
+    `konsentrasi_ojk_id` INT NOT NULL,
     `order_index` INT DEFAULT 0,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (`konsentrasi_produk_ojk_id`) REFERENCES `konsentrasi_produk_ojk`(`id`) ON DELETE CASCADE,
-    INDEX `idx_konsentrasi_produk_param_id_nomor` (`konsentrasi_produk_ojk_id`, `nomor`),
-    INDEX `idx_konsentrasi_produk_param_id_order` (`konsentrasi_produk_ojk_id`, `order_index`),
-    INDEX `idx_konsentrasi_produk_param_id` (`konsentrasi_produk_ojk_id`),
+    FOREIGN KEY (`konsentrasi_ojk_id`) REFERENCES `konsentrasi_produk_ojk`(`id`) ON DELETE CASCADE,
+    INDEX `idx_konsentrasi_produk_param_id_nomor` (`konsentrasi_ojk_id`, `nomor`),
+    INDEX `idx_konsentrasi_produk_param_id_order` (`konsentrasi_ojk_id`, `order_index`),
+    INDEX `idx_konsentrasi_produk_param_id` (`konsentrasi_ojk_id`),
     CHECK (`bobot` >= 0 AND `bobot` <= 100)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -1261,6 +1861,8 @@ CREATE TABLE `konsentrasi_nilai_ojk` (
     `nomor` VARCHAR(50) NULL,
     `judul` JSON NULL,
     `bobot` DECIMAL(10, 2) NOT NULL,
+    `kode_emiten` VARCHAR(255) NULL,
+    `kepemilikan` VARCHAR(255) NULL,
     `portofolio` VARCHAR(255) NULL,
     `keterangan` TEXT NULL,
     `riskindikator` JSON NULL,

@@ -33,13 +33,13 @@ export class KpmrAspekHukum {
   @Column({ type: 'text', nullable: true })
   deskripsi?: string;
 
-  @Column({ name: 'kpmr_id' })
+  @Column({ name: 'kpmr_ojk_id' })
   kpmrId: number;
 
   @ManyToOne(() => KpmrHukumOjk, (kpmr) => kpmr.aspekList, {
     onDelete: 'CASCADE',
   })
-  @JoinColumn({ name: 'kpmr_id' })
+  @JoinColumn({ name: 'kpmr_ojk_id' })
   kpmr: KpmrHukumOjk;
 
   @OneToMany(() => KpmrPertanyaanHukum, (pertanyaan) => pertanyaan.aspek, {
